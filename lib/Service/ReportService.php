@@ -13,17 +13,11 @@ class ReportService {
 
     /** @return Report[] */
     public function list(string $userId): array {
-        $qb = $this->reportMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_reports')->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->reportMapper->findEntities($qb);
+        return $this->reportMapper->findAllByUser($userId);
     }
 
     public function getById(int $id, string $userId): Report {
-        $qb = $this->reportMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_reports')
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        $report = $this->reportMapper->findEntity($qb);
+        $report = $this->reportMapper->findByIdForUser($id, $userId);
         if ($report === null) {
             throw new \RuntimeException($this->l10n->t('Report not found.'));
         }
@@ -32,12 +26,7 @@ class ReportService {
 
     /** @return Report[] */
     public function listForPropertyYear(int $propertyId, int $year, string $userId): array {
-        $qb = $this->reportMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_reports')
-            ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId)))
-            ->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->reportMapper->findEntities($qb);
+        return $this->reportMapper->findByPropertyYear($propertyId, $year, $userId);
     }
 
     public function createForPropertyYear(int $propertyId, int $year, string $userId): Report {

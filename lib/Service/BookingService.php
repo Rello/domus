@@ -12,17 +12,11 @@ class BookingService {
 
     /** @return Booking[] */
     public function list(string $userId): array {
-        $qb = $this->bookingMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_bookings')->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->bookingMapper->findEntities($qb);
+        return $this->bookingMapper->findAllByUser($userId);
     }
 
     public function getById(int $id, string $userId): Booking {
-        $qb = $this->bookingMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_bookings')
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        $booking = $this->bookingMapper->findEntity($qb);
+        $booking = $this->bookingMapper->findByIdForUser($id, $userId);
         if ($booking === null) {
             throw new \RuntimeException($this->l10n->t('Booking not found.'));
         }

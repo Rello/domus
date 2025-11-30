@@ -12,17 +12,11 @@ class PartnerService {
 
     /** @return Partner[] */
     public function list(string $userId): array {
-        $qb = $this->partnerMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_partners')->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->partnerMapper->findEntities($qb);
+        return $this->partnerMapper->findAllByUser($userId);
     }
 
     public function getById(int $id, string $userId): Partner {
-        $qb = $this->partnerMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_partners')
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        $partner = $this->partnerMapper->findEntity($qb);
+        $partner = $this->partnerMapper->findByIdForUser($id, $userId);
         if ($partner === null) {
             throw new \RuntimeException($this->l10n->t('Partner not found.'));
         }

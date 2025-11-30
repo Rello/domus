@@ -12,26 +12,16 @@ class UnitService {
 
     /** @return Unit[] */
     public function list(string $userId): array {
-        $qb = $this->unitMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_units')->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->unitMapper->findEntities($qb);
+        return $this->unitMapper->findAllByUser($userId);
     }
 
     /** @return Unit[] */
     public function listByProperty(int $propertyId, string $userId): array {
-        $qb = $this->unitMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_units')
-            ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->unitMapper->findEntities($qb);
+        return $this->unitMapper->findByProperty($propertyId, $userId);
     }
 
     public function getById(int $id, string $userId): Unit {
-        $qb = $this->unitMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_units')
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        $unit = $this->unitMapper->findEntity($qb);
+        $unit = $this->unitMapper->findByIdForUser($id, $userId);
         if ($unit === null) {
             throw new \RuntimeException($this->l10n->t('Unit not found.'));
         }

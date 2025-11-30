@@ -12,35 +12,21 @@ class TenancyService {
 
     /** @return Tenancy[] */
     public function list(string $userId): array {
-        $qb = $this->tenancyMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_tenancies')->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->tenancyMapper->findEntities($qb);
+        return $this->tenancyMapper->findAllByUser($userId);
     }
 
     /** @return Tenancy[] */
     public function listByUnit(int $unitId, string $userId): array {
-        $qb = $this->tenancyMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_tenancies')
-            ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->tenancyMapper->findEntities($qb);
+        return $this->tenancyMapper->findByUnit($unitId, $userId);
     }
 
     /** @return Tenancy[] */
     public function listByPartner(int $partnerId, string $userId): array {
-        $qb = $this->tenancyMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_tenancies')
-            ->where($qb->expr()->eq('partner_id', $qb->createNamedParameter($partnerId)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->tenancyMapper->findEntities($qb);
+        return $this->tenancyMapper->findByPartner($partnerId, $userId);
     }
 
     public function getById(int $id, string $userId): Tenancy {
-        $qb = $this->tenancyMapper->getQueryBuilder();
-        $qb->select('*')->from('domus_tenancies')
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        $tenancy = $this->tenancyMapper->findEntity($qb);
+        $tenancy = $this->tenancyMapper->findByIdForUser($id, $userId);
         if ($tenancy === null) {
             throw new \RuntimeException($this->l10n->t('Tenancy not found.'));
         }

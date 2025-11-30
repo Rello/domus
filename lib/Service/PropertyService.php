@@ -19,20 +19,11 @@ class PropertyService {
 
     /** @return Property[] */
     public function list(string $userId): array {
-        $qb = $this->propertyMapper->getQueryBuilder();
-        $qb->select('*')
-            ->from('domus_properties')
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        return $this->propertyMapper->findEntities($qb);
+        return $this->propertyMapper->findAllByUser($userId);
     }
 
     public function getById(int $id, string $userId): Property {
-        $qb = $this->propertyMapper->getQueryBuilder();
-        $qb->select('*')
-            ->from('domus_properties')
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-        $result = $this->propertyMapper->findEntity($qb);
+        $result = $this->propertyMapper->findByIdForUser($id, $userId);
         if ($result === null) {
             throw new \RuntimeException($this->l10n->t('Property not found.'));
         }

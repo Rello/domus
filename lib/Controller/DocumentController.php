@@ -26,9 +26,9 @@ class DocumentController extends BaseController {
     }
 
     #[NoAdminRequired]
-    public function create(string $entityType, int $entityId, string $filePath): DataResponse {
+    public function create(string $entityType, int $entityId, string $filePath, ?string $content = null): DataResponse {
         try {
-            $document = $this->documentService->create($entityType, $entityId, $filePath, $this->getCurrentUserId());
+            $document = $this->documentService->create($entityType, $entityId, $filePath, $this->getCurrentUserId(), $content);
             return new DataResponse($document, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
