@@ -33,6 +33,15 @@ class UnitMapper extends QBMapper {
         return $this->findEntity($qb);
     }
 
+    public function countByProperty(int $propertyId, string $userId): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select($qb->createFunction('COUNT(*)'))
+            ->from('domus_units')
+            ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+        return (int)$qb->executeQuery()->fetchOne();
+    }
+
     private function getBaseQuery(): IQueryBuilder {
         return $this->db->getQueryBuilder()->select('*')->from('domus_units');
     }

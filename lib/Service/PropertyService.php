@@ -61,11 +61,8 @@ class PropertyService {
 
     public function delete(int $id, string $userId): void {
         $property = $this->getById($id, $userId);
-        $qb = $this->unitMapper->getQueryBuilder();
-        $qb->select('COUNT(*) as cnt')->from('domus_units')
-            ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($id)));
-        $row = $qb->executeQuery()->fetchNumeric();
-        if ($row && (int)$row[0] > 0) {
+        $unitCount = $this->unitMapper->countByProperty($id, $userId);
+        if ($unitCount > 0) {
             throw new \RuntimeException($this->l10n->t('Property cannot be deleted while units exist.'));
         }
         $this->propertyMapper->delete($property);

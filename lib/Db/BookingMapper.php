@@ -25,6 +25,15 @@ class BookingMapper extends QBMapper {
         return $this->findEntity($qb);
     }
 
+    public function sumAmountByYear(string $userId, int $year): float {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select($qb->createFunction('COALESCE(SUM(amount), 0)'))
+            ->from('domus_bookings')
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq($qb->createFunction('YEAR(`date`)'), $qb->createNamedParameter($year)));
+        return (float)$qb->executeQuery()->fetchOne();
+    }
+
     private function getBaseQuery(): IQueryBuilder {
         return $this->db->getQueryBuilder()->select('*')->from('domus_bookings');
     }

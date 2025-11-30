@@ -25,6 +25,14 @@ class PropertyMapper extends QBMapper {
         return $this->findEntity($qb);
     }
 
+    public function countByUser(string $userId): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select($qb->createFunction('COUNT(*)'))
+            ->from('domus_properties')
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+        return (int)$qb->executeQuery()->fetchOne();
+    }
+
     private function getBaseQuery(): IQueryBuilder {
         return $this->db->getQueryBuilder()->select('*')->from('domus_properties');
     }
