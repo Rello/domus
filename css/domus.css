@@ -1,0 +1,14 @@
+#app-navigation ul { list-style: none; padding: 0; }
+#app-navigation li { margin: 0 0 8px 0; }
+#app-navigation a { color: var(--color-primary-text); text-decoration: none; }
+.domus-toolbar { margin-bottom: 10px; }
+.domus-list { list-style: none; padding: 0; }
+.domus-list li { padding: 8px; border-bottom: 1px solid var(--color-border); cursor: pointer; }
+.domus-detail { padding: 10px; }
+.domus-form label { display: block; margin-bottom: 8px; }
+.domus-form input, .domus-form select { width: 100%; }
+.domus-form-actions { display: flex; gap: 8px; }
+.domus-loading, .domus-error { padding: 12px; }
+.domus-notice { padding: 10px; margin-bottom: 8px; border-radius: 4px; }
+.domus-notice.success { background: #e0f6e9; }
+.domus-notice.error { background: #f6e0e0; }

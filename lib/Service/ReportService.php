@@ -1,0 +1,58 @@
+<?php
+
+namespace OCA\Domus\Service;
+
+use OCA\Domus\Db\Report;
+use OCA\Domus\Db\ReportMapper;
+use OCP\IL10N;
+use OCP\ILogger;
+
+class ReportService {
+    public function __construct(private ReportMapper $reportMapper, private IL10N $l10n, private ILogger $logger) {
+    }
+
+    /** @return Report[] */
+    public function list(string $userId): array {
+        $qb = $this->reportMapper->getQueryBuilder();
+        $qb->select('*')->from('domus_reports')->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+        return $this->reportMapper->findEntities($qb);
+    }
+
+    public function getById(int $id, string $userId): Report {
+        $qb = $this->reportMapper->getQueryBuilder();
+        $qb->select('*')->from('domus_reports')
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+        $report = $this->reportMapper->findEntity($qb);
+        if ($report === null) {
+            throw new \RuntimeException($this->l10n->t('Report not found.'));
+        }
+        return $report;
+    }
+
+    /** @return Report[] */
+    public function listForPropertyYear(int $propertyId, int $year, string $userId): array {
+        $qb = $this->reportMapper->getQueryBuilder();
+        $qb->select('*')->from('domus_reports')
+            ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId)))
+            ->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+        return $this->reportMapper->findEntities($qb);
+    }
+
+    public function createForPropertyYear(int $propertyId, int $year, string $userId): Report {
+        $report = new Report();
+        $report->setUserId($userId);
+        $report->setPropertyId($propertyId);
+        $report->setYear($year);
+        $report->setStatus('created');
+        $report->setCreatedAt(time());
+        $report->setUpdatedAt(time());
+        return $this->reportMapper->insert($report);
+    }
+
+    public function delete(int $id, string $userId): void {
+        $report = $this->getById($id, $userId);
+        $this->reportMapper->delete($report);
+    }
+}
