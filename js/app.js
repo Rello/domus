@@ -727,36 +727,56 @@
         }
 
         function renderCreateForm() {
-            const html = '<div class="domus-form">' +
-                '<h2>' + Domus.Utils.escapeHtml(t('domus', 'New unit')) + '</h2>' +
-                '<form id="domus-unit-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Label')) + ' *<input name="label" required></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit number')) + '<input name="unitNumber"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit type')) + '<input name="unitType"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Living area')) + '<input name="livingArea" type="number" step="0.01"></label>' +
-                '<div class="domus-form-actions">' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
-                '<button type="button" id="domus-unit-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '</div>' +
-                '</form>' +
-                '</div>';
-            Domus.UI.renderContent(html);
-            const form = document.getElementById('domus-unit-form');
-            const cancel = document.getElementById('domus-unit-cancel');
-            if (cancel) cancel.addEventListener('click', renderList);
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const data = {};
-                    Array.prototype.forEach.call(form.elements, el => { if (el.name) data[el.name] = el.value; });
-                    Domus.Api.createUnit(data)
-                        .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Unit created.'), 'success');
-                            renderList();
-                        })
-                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                });
-            }
+            Domus.UI.showLoading(t('domus', 'Loading unit form…'));
+            Domus.Api.getProperties()
+                .then(properties => {
+                    const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
+                        value: p.id,
+                        label: p.name || `${t('domus', 'Property')} #${p.id}`
+                    })));
+                    const html = '<div class="domus-form">' +
+                        '<h2>' + Domus.Utils.escapeHtml(t('domus', 'New unit')) + '</h2>' +
+                        '<form id="domus-unit-form">' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + ' *<select name="propertyId" required>' +
+                        propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                        '</select></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Label')) + ' *<input name="label" required></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit number')) + '<input name="unitNumber"></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit type')) + '<input name="unitType"></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Living area')) + '<input name="livingArea" type="number" step="0.01"></label>' +
+                        '<div class="domus-form-actions">' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                        '<button type="button" id="domus-unit-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                        '</div>' +
+                        '</form>' +
+                        '</div>';
+                    Domus.UI.renderContent(html);
+                    const form = document.getElementById('domus-unit-form');
+                    const cancel = document.getElementById('domus-unit-cancel');
+                    if (cancel) cancel.addEventListener('click', renderList);
+                    if (form) {
+                        form.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            const data = {};
+                            Array.prototype.forEach.call(form.elements, el => { if (el.name) data[el.name] = el.value; });
+                            if (!data.propertyId) {
+                                Domus.UI.showNotification(t('domus', 'Property is required.'), 'error');
+                                return;
+                            }
+                            if (!data.label) {
+                                Domus.UI.showNotification(t('domus', 'Label is required.'), 'error');
+                                return;
+                            }
+                            Domus.Api.createUnit(data)
+                                .then(() => {
+                                    Domus.UI.showNotification(t('domus', 'Unit created.'), 'success');
+                                    renderList();
+                                })
+                                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        });
+                    }
+                })
+                .catch(err => Domus.UI.showError(err.message));
         }
 
         function renderDetail(id) {
@@ -946,34 +966,55 @@
         }
 
         function renderCreateForm() {
-            const html = '<div class="domus-form">' +
-                '<h2>' + Domus.Utils.escapeHtml(t('domus', 'New tenancy')) + '</h2>' +
-                '<form id="domus-tenancy-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit ID')) + ' *<input name="unitId" required></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Partner ID')) + ' *<input name="partnerId" required></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Start date')) + ' *<input type="date" name="startDate" required></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'End date')) + '<input type="date" name="endDate"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Base rent')) + ' *<input type="number" step="0.01" name="baseRent" required></label>' +
-                '<div class="domus-form-actions">' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
-                '<button type="button" id="domus-tenancy-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '</div>' +
-                '</form>' +
-                '</div>';
-            Domus.UI.renderContent(html);
-            const form = document.getElementById('domus-tenancy-form');
-            document.getElementById('domus-tenancy-cancel')?.addEventListener('click', renderList);
-            form?.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const data = {};
-                Array.prototype.forEach.call(form.elements, el => { if (el.name) data[el.name] = el.value; });
-                Domus.Api.createTenancy(data)
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Tenancy created.'), 'success');
-                        renderList();
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
-            });
+            Domus.UI.showLoading(t('domus', 'Loading tenancy form…'));
+            Promise.all([
+                Domus.Api.getUnits(),
+                Domus.Api.getPartners()
+            ])
+                .then(([units, partners]) => {
+                    const unitOptions = (units || []).map(u => ({
+                        value: u.id,
+                        label: u.label || `${t('domus', 'Unit')} #${u.id}`
+                    }));
+                    const partnerOptions = (partners || []).map(p => ({
+                        value: p.id,
+                        label: p.name || `${t('domus', 'Partner')} #${p.id}`
+                    }));
+
+                    const html = '<div class="domus-form">' +
+                        '<h2>' + Domus.Utils.escapeHtml(t('domus', 'New tenancy')) + '</h2>' +
+                        '<form id="domus-tenancy-form">' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + ' *<select name="unitId" required>' +
+                        unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                        '</select></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Partner')) + ' *<select name="partnerId" required>' +
+                        partnerOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                        '</select></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Start date')) + ' *<input type="date" name="startDate" required></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'End date')) + '<input type="date" name="endDate"></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Base rent')) + ' *<input type="number" step="0.01" name="baseRent" required></label>' +
+                        '<div class="domus-form-actions">' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                        '<button type="button" id="domus-tenancy-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                        '</div>' +
+                        '</form>' +
+                        '</div>';
+                    Domus.UI.renderContent(html);
+                    const form = document.getElementById('domus-tenancy-form');
+                    document.getElementById('domus-tenancy-cancel')?.addEventListener('click', renderList);
+                    form?.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const data = {};
+                        Array.prototype.forEach.call(form.elements, el => { if (el.name) data[el.name] = el.value; });
+                        Domus.Api.createTenancy(data)
+                            .then(() => {
+                                Domus.UI.showNotification(t('domus', 'Tenancy created.'), 'success');
+                                renderList();
+                            })
+                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    });
+                })
+                .catch(err => Domus.UI.showError(err.message));
         }
 
         function renderDetail(id) {
@@ -1045,32 +1086,86 @@
         }
 
         function renderCreateForm() {
-            const html = '<div class="domus-form">' +
-                '<h2>' + Domus.Utils.escapeHtml(t('domus', 'New booking')) + '</h2>' +
-                '<form id="domus-booking-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Type')) + '<input name="bookingType"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Category')) + '<input name="category"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Amount')) + '<input type="number" step="0.01" name="amount"></label>' +
-                '<div class="domus-form-actions">' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
-                '<button type="button" id="domus-booking-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '</div>' +
-                '</form>' +
-                '</div>';
-            Domus.UI.renderContent(html);
-            const form = document.getElementById('domus-booking-form');
-            document.getElementById('domus-booking-cancel')?.addEventListener('click', renderList);
-            form?.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const data = {};
-                Array.prototype.forEach.call(form.elements, el => { if (el.name) data[el.name] = el.value; });
-                Domus.Api.createBooking(data)
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Booking created.'), 'success');
-                        renderList();
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
-            });
+            Domus.UI.showLoading(t('domus', 'Loading booking form…'));
+            Promise.all([
+                Domus.Api.getProperties(),
+                Domus.Api.getUnits(),
+                Domus.Api.getTenancies()
+            ])
+                .then(([properties, units, tenancies]) => {
+                    const bookingTypeOptions = [
+                        { value: 'income', label: t('domus', 'Income') },
+                        { value: 'expense', label: t('domus', 'Expense') }
+                    ];
+                    const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
+                        value: p.id,
+                        label: p.name || `${t('domus', 'Property')} #${p.id}`
+                    })));
+                    const unitOptions = [{ value: '', label: t('domus', 'Select unit') }].concat((units || []).map(u => ({
+                        value: u.id,
+                        label: u.label || `${t('domus', 'Unit')} #${u.id}`
+                    })));
+                    const tenancyOptions = [{ value: '', label: t('domus', 'Select tenancy') }].concat((tenancies || []).map(tn => ({
+                        value: tn.id,
+                        label: tn.unitLabel || `${t('domus', 'Tenancy')} #${tn.id}`
+                    })));
+
+                    const html = '<div class="domus-form">' +
+                        '<h2>' + Domus.Utils.escapeHtml(t('domus', 'New booking')) + '</h2>' +
+                        '<form id="domus-booking-form">' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Type')) + ' *<select name="bookingType" required>' +
+                        bookingTypeOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                        '</select></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Date')) + ' *<input type="date" name="date" required></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Category')) + '<input name="category"></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Amount')) + '<input type="number" step="0.01" name="amount"></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId">' +
+                        propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                        '</select></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId">' +
+                        unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                        '</select></label>' +
+                        '<label>' + Domus.Utils.escapeHtml(t('domus', 'Tenancy')) + '<select name="tenancyId">' +
+                        tenancyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                        '</select></label>' +
+                        '<div class="domus-form-actions">' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                        '<button type="button" id="domus-booking-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                        '</div>' +
+                        '</form>' +
+                        '</div>';
+
+                    Domus.UI.renderContent(html);
+                    const form = document.getElementById('domus-booking-form');
+                    document.getElementById('domus-booking-cancel')?.addEventListener('click', renderList);
+                    form?.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const data = {};
+                        Array.prototype.forEach.call(form.elements, el => { if (el.name) data[el.name] = el.value; });
+                        Object.keys(data).forEach(key => { if (data[key] === '') delete data[key]; });
+
+                        if (!['income', 'expense'].includes(data.bookingType)) {
+                            Domus.UI.showNotification(t('domus', 'Booking type must be income or expense.'), 'error');
+                            return;
+                        }
+                        if (!data.date) {
+                            Domus.UI.showNotification(t('domus', 'Date is required.'), 'error');
+                            return;
+                        }
+                        if (!data.propertyId && !data.unitId && !data.tenancyId) {
+                            Domus.UI.showNotification(t('domus', 'Select a related property, unit, or tenancy.'), 'error');
+                            return;
+                        }
+
+                        Domus.Api.createBooking(data)
+                            .then(() => {
+                                Domus.UI.showNotification(t('domus', 'Booking created.'), 'success');
+                                renderList();
+                            })
+                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    });
+                })
+                .catch(err => Domus.UI.showError(err.message));
         }
 
         function renderDetail(id) {
