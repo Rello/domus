@@ -6,9 +6,9 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Partner extends Entity implements JsonSerializable {
-    protected string $userId;
-    protected string $partnerType;
-    protected string $name;
+    protected string $userId = '';
+    protected string $partnerType = '';
+    protected string $name = '';
     protected ?string $street = null;
     protected ?string $zip = null;
     protected ?string $city = null;
@@ -18,8 +18,8 @@ class Partner extends Entity implements JsonSerializable {
     protected ?string $customerRef = null;
     protected ?string $notes = null;
     protected ?string $ncUserId = null;
-    protected int $createdAt;
-    protected int $updatedAt;
+    protected int $createdAt = 0;
+    protected int $updatedAt = 0;
 
     public function __construct() {
         $this->addType('id', 'integer');

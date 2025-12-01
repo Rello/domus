@@ -6,11 +6,11 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Document extends Entity implements JsonSerializable {
-    protected string $userId;
-    protected string $entityType;
-    protected int $entityId;
-    protected string $filePath;
-    protected int $createdAt;
+    protected string $userId = '';
+    protected string $entityType = '';
+    protected int $entityId = 0;
+    protected string $filePath = '';
+    protected int $createdAt = 0;
 
     public function __construct() {
         $this->addType('id', 'integer');

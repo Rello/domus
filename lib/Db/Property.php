@@ -6,17 +6,17 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Property extends Entity implements JsonSerializable {
-    protected string $userId;
-    protected string $usageRole;
-    protected string $name;
+    protected string $userId = '';
+    protected string $usageRole = '';
+    protected string $name = '';
     protected ?string $street = null;
     protected ?string $zip = null;
     protected ?string $city = null;
     protected ?string $country = null;
     protected ?string $type = null;
     protected ?string $description = null;
-    protected int $createdAt;
-    protected int $updatedAt;
+    protected int $createdAt = 0;
+    protected int $updatedAt = 0;
 
     protected ?int $unitCount = null;
     protected ?float $annualRentSum = null;

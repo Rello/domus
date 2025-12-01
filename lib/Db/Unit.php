@@ -6,17 +6,17 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Unit extends Entity implements JsonSerializable {
-    protected string $userId;
-    protected int $propertyId;
-    protected string $label;
+    protected string $userId = '';
+    protected int $propertyId = 0;
+    protected string $label = '';
     protected ?string $unitNumber = null;
     protected ?string $landRegister = null;
     protected ?float $livingArea = null;
     protected ?float $usableArea = null;
     protected ?string $unitType = null;
     protected ?string $notes = null;
-    protected int $createdAt;
-    protected int $updatedAt;
+    protected int $createdAt = 0;
+    protected int $updatedAt = 0;
 
     public function __construct() {
         $this->addType('id', 'integer');

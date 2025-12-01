@@ -6,17 +6,17 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Booking extends Entity implements JsonSerializable {
-    protected string $userId;
+    protected string $userId = '';
     protected ?int $propertyId = null;
     protected ?int $unitId = null;
     protected ?int $tenancyId = null;
-    protected string $bookingType;
-    protected string $category;
-    protected float $amount;
-    protected string $date;
+    protected string $bookingType = '';
+    protected string $category = '';
+    protected float $amount = 0.0;
+    protected string $date = '';
     protected ?string $description = null;
-    protected int $createdAt;
-    protected int $updatedAt;
+    protected int $createdAt = 0;
+    protected int $updatedAt = 0;
 
     public function __construct() {
         $this->addType('id', 'integer');

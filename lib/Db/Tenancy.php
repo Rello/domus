@@ -6,19 +6,19 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Tenancy extends Entity implements JsonSerializable {
-    protected string $userId;
-    protected int $unitId;
+    protected string $userId = '';
+    protected int $unitId = 0;
     protected ?int $partnerId = null;
-    protected string $startDate;
+    protected string $startDate = '';
     protected ?string $endDate = null;
-    protected float $baseRent;
+    protected float $baseRent = 0.0;
     protected ?float $serviceCharge = null;
     protected bool $serviceChargeAsPrepayment = false;
     protected ?float $deposit = null;
     protected ?string $conditions = null;
     protected ?string $status = null;
-    protected int $createdAt;
-    protected int $updatedAt;
+    protected int $createdAt = 0;
+    protected int $updatedAt = 0;
 
     public function __construct() {
         $this->addType('id', 'integer');

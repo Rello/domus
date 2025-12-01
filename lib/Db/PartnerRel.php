@@ -6,10 +6,10 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class PartnerRel extends Entity implements JsonSerializable {
-    protected string $userId;
-    protected string $type;
-    protected int $relationId;
-    protected int $partnerId;
+    protected string $userId = '';
+    protected string $type = '';
+    protected int $relationId = 0;
+    protected int $partnerId = 0;
 
     public function __construct() {
         $this->addType('id', 'integer');

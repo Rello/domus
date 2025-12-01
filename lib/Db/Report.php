@@ -6,14 +6,14 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Report extends Entity implements JsonSerializable {
-    protected string $userId;
-    protected int $propertyId;
-    protected int $year;
-    protected string $status;
+    protected string $userId = '';
+    protected int $propertyId = 0;
+    protected int $year = 0;
+    protected string $status = '';
     protected ?string $filePath = null;
     protected ?string $notes = null;
-    protected int $createdAt;
-    protected int $updatedAt;
+    protected int $createdAt = 0;
+    protected int $updatedAt = 0;
 
     public function __construct() {
         $this->addType('id', 'integer');
