@@ -8,7 +8,7 @@ use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCP\IL10N;
-use OCP\ILogger;
+use Psr\Log\LoggerInterface;
 
 class PropertyService {
     public function __construct(
@@ -17,7 +17,7 @@ class PropertyService {
         private BookingMapper $bookingMapper,
         private TenancyMapper $tenancyMapper,
         private IL10N $l10n,
-        private ILogger $logger,
+        private LoggerInterface $logger,
     ) {
     }
 

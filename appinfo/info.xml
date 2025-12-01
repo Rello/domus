@@ -15,6 +15,6 @@
     <navigation>
         <route>domus.page.index</route>
         <order>10</order>
-        <icon>img/app.svg</icon>
+        <icon>app.svg</icon>
     </navigation>
 </info>
