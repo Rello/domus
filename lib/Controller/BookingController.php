@@ -3,7 +3,7 @@
 namespace OCA\Domus\Controller;
 
 use OCA\Domus\Service\BookingService;
-use OCP\AppFramework\Attributes\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http;
 use OCP\IRequest;

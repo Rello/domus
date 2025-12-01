@@ -5,10 +5,10 @@ namespace OCA\Domus\Service;
 use OCA\Domus\Db\Report;
 use OCA\Domus\Db\ReportMapper;
 use OCP\IL10N;
-use OCP\ILogger;
+use Psr\Log\LoggerInterface;
 
 class ReportService {
-    public function __construct(private ReportMapper $reportMapper, private IL10N $l10n, private ILogger $logger) {
+    public function __construct(private ReportMapper $reportMapper, private IL10N $l10n, private LoggerInterface $logger) {
     }
 
     /** @return Report[] */

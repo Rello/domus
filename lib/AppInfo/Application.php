@@ -20,7 +20,5 @@ class Application extends App implements IBootstrap {
     }
 
     public function boot(IBootContext $context): void {
-        Util::addScript(self::APP_ID, 'domus');
-        Util::addStyle(self::APP_ID, 'domus');
     }
 }

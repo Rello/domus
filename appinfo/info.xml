@@ -14,8 +14,10 @@
     </dependencies>
     <navigations>
         <navigation>
+            <id>domus</id>
             <name>Domus</name>
-            <route>page#index</route>
+            <route>domus.page.index</route>
+            <icon>app.svg</icon>
             <order>10</order>
         </navigation>
     </navigations>

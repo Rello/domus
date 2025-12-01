@@ -6,14 +6,14 @@ use OCA\Domus\Db\Property;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCP\IL10N;
-use OCP\ILogger;
+use Psr\Log\LoggerInterface;
 
 class PropertyService {
     public function __construct(
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
         private IL10N $l10n,
-        private ILogger $logger
+        private LoggerInterface $logger
     ) {
     }
 

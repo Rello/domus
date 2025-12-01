@@ -91,7 +91,7 @@ class Version0001Date20240101000000 extends SimpleMigrationStep {
             $table->addColumn('endDate', 'string', ['length' => 32, 'notnull' => false]);
             $table->addColumn('baseRent', 'float');
             $table->addColumn('serviceCharge', 'float', ['notnull' => false]);
-            $table->addColumn('serviceChargeAsPrepayment', 'boolean', ['default' => false]);
+            $table->addColumn('serviceChargeAsPrepayment', 'boolean', ['notnull' => false, 'default' => false]);
             $table->addColumn('deposit', 'float', ['notnull' => false]);
             $table->addColumn('conditions', 'text', ['notnull' => false]);
             $table->addColumn('status', 'string', ['length' => 64, 'notnull' => false]);

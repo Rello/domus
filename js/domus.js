@@ -11,12 +11,16 @@
         selectedPropertyId: null,
     };
 
+    const escapeHtml = (value) => (value === null || value === undefined ? '' : String(value));
+
     Domus.Api = (function() {
         const baseUrl = OC.generateUrl('/apps/domus');
         const headers = {
             'OCS-APIREQUEST': 'true',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'requesttoken': OC.requestToken,
         };
+
 
         function handle(response) {
             if (!response.ok) {
@@ -50,8 +54,8 @@
         function renderNavigation() {
             const nav = document.getElementById('app-navigation');
             nav.innerHTML = '<ul>' +
-                '<li><a href="#" data-view="dashboard">' + OC.escapeHTML(t('domus', 'Dashboard')) + '</a></li>' +
-                '<li><a href="#" data-view="properties">' + OC.escapeHTML(t('domus', 'Properties')) + '</a></li>' +
+                '<li><a href="#" data-view="dashboard">' + escapeHtml(t('domus', 'Dashboard')) + '</a></li>' +
+                '<li><a href="#" data-view="properties">' + escapeHtml(t('domus', 'Properties')) + '</a></li>' +
                 '</ul>';
             nav.querySelectorAll('a[data-view]').forEach(link => {
                 link.addEventListener('click', function(e) {
@@ -75,11 +79,11 @@
         }
 
         function showLoading(message) {
-            renderContent('<div class="domus-loading">' + OC.escapeHTML(message) + '</div>');
+            renderContent('<div class="domus-loading">' + escapeHtml(message) + '</div>');
         }
 
         function showError(message) {
-            renderContent('<div class="domus-error">' + OC.escapeHTML(message) + '</div>');
+            renderContent('<div class="domus-error">' + escapeHtml(message) + '</div>');
         }
 
         return { renderNavigation, renderContent, showNotification, showLoading, showError };
@@ -92,11 +96,11 @@
                 .then(properties => {
                     Domus.state.currentView = 'properties';
                     const items = properties.map(p => '<li data-id="' + p.id + '">' +
-                        '<strong>' + OC.escapeHTML(p.name) + '</strong>' +
-                        '<span class="domus-meta">' + OC.escapeHTML(p.city || '') + '</span>' +
+                        '<strong>' + escapeHtml(p.name) + '</strong>' +
+                        '<span class="domus-meta">' + escapeHtml(p.city || '') + '</span>' +
                         '</li>').join('');
                     const html = '<div class="domus-toolbar">' +
-                        '<button id="domus-new-property" class="primary">' + OC.escapeHTML(t('domus', 'New property')) + '</button>' +
+                        '<button id="domus-new-property" class="primary">' + escapeHtml(t('domus', 'New property')) + '</button>' +
                         '</div>' +
                         '<ul class="domus-list domus-properties">' + items + '</ul>' +
                         '<div id="domus-property-detail"></div>';
@@ -121,16 +125,16 @@
 
         function renderCreateForm() {
             const formHtml = '<div class="domus-form">' +
-                '<h3>' + OC.escapeHTML(t('domus', 'New property')) + '</h3>' +
-                '<label>' + OC.escapeHTML(t('domus', 'Name')) + '<input name="name" required></label>' +
-                '<label>' + OC.escapeHTML(t('domus', 'Usage role')) +
-                '<select name="usageRole"><option value="manager">' + OC.escapeHTML(t('domus', 'Manager')) + '</option>' +
-                '<option value="landlord">' + OC.escapeHTML(t('domus', 'Landlord')) + '</option></select></label>' +
-                '<label>' + OC.escapeHTML(t('domus', 'City')) + '<input name="city"></label>' +
-                '<label>' + OC.escapeHTML(t('domus', 'Street')) + '<input name="street"></label>' +
+                '<h3>' + escapeHtml(t('domus', 'New property')) + '</h3>' +
+                '<label>' + escapeHtml(t('domus', 'Name')) + '<input name="name" required></label>' +
+                '<label>' + escapeHtml(t('domus', 'Usage role')) +
+                '<select name="usageRole"><option value="manager">' + escapeHtml(t('domus', 'Manager')) + '</option>' +
+                '<option value="landlord">' + escapeHtml(t('domus', 'Landlord')) + '</option></select></label>' +
+                '<label>' + escapeHtml(t('domus', 'City')) + '<input name="city"></label>' +
+                '<label>' + escapeHtml(t('domus', 'Street')) + '<input name="street"></label>' +
                 '<div class="domus-form-actions">' +
-                '<button type="button" id="domus-save-property" class="primary">' + OC.escapeHTML(t('domus', 'Save')) + '</button>' +
-                '<button type="button" id="domus-cancel-property">' + OC.escapeHTML(t('domus', 'Cancel')) + '</button>' +
+                '<button type="button" id="domus-save-property" class="primary">' + escapeHtml(t('domus', 'Save')) + '</button>' +
+                '<button type="button" id="domus-cancel-property">' + escapeHtml(t('domus', 'Cancel')) + '</button>' +
                 '</div>' +
                 '</div>';
             Domus.UI.renderContent(formHtml);
@@ -170,11 +174,11 @@
                     Domus.UI.showError(t('domus', 'Property not found.'));
                     return;
                 }
-                const unitItems = units.map(u => '<li>' + OC.escapeHTML(u.label) + '</li>').join('');
+                const unitItems = units.map(u => '<li>' + escapeHtml(u.label) + '</li>').join('');
                 const html = '<div class="domus-detail">' +
-                    '<h2>' + OC.escapeHTML(property.name) + '</h2>' +
-                    '<p>' + OC.escapeHTML(property.city || '') + '</p>' +
-                    '<h3>' + OC.escapeHTML(t('domus', 'Units')) + '</h3>' +
+                    '<h2>' + escapeHtml(property.name) + '</h2>' +
+                    '<p>' + escapeHtml(property.city || '') + '</p>' +
+                    '<h3>' + escapeHtml(t('domus', 'Units')) + '</h3>' +
                     '<ul>' + unitItems + '</ul>' +
                     '</div>';
                 Domus.UI.renderContent(html);
@@ -191,7 +195,7 @@
                     Domus.Properties.renderList();
                     break;
                 default:
-                    Domus.UI.renderContent('<p>' + OC.escapeHTML(t('domus', 'Welcome to Domus dashboard.')) + '</p>');
+                    Domus.UI.renderContent('<p>' + escapeHtml(t('domus', 'Welcome to Domus dashboard.')) + '</p>');
             }
         }
         return { navigate };
