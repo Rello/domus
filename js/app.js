@@ -155,6 +155,7 @@
                 return request('GET', path);
             },
             createReport: (propertyId) => request('POST', `/properties/${propertyId}/reports/${Domus.state.currentYear}`),
+            createTenancyReport: (tenancyId) => request('POST', `/tenancies/${tenancyId}/reports/${Domus.state.currentYear}`),
             getDocuments: (entityType, entityId) => request('GET', `/documents/${entityType}/${entityId}`),
             linkDocument: (entityType, entityId, data) => request('POST', `/documents/${entityType}/${entityId}`, data),
             unlinkDocument: id => request('DELETE', `/documents/${id}`)
@@ -1189,11 +1190,12 @@
         function renderInline(tenancies) {
             const rows = (tenancies || []).map(tn => [
                 Domus.Utils.escapeHtml(formatUnitLabel(tn)),
+                Domus.Utils.escapeHtml(formatPartnerNames(tn.partners) || tn.partnerName || ''),
                 Domus.Utils.escapeHtml(tn.status || ''),
                 Domus.Utils.escapeHtml(tn.period || '')
             ]);
             return Domus.UI.buildTable([
-                t('domus', 'Unit'), t('domus', 'Status'), t('domus', 'Period')
+                t('domus', 'Unit'), t('domus', 'Partners'), t('domus', 'Status'), t('domus', 'Period')
             ], rows);
         }
 
@@ -1253,6 +1255,13 @@
                         Domus.Utils.escapeHtml(tenancy.deposit || '')
                     ]]);
 
+                    const sidebar = '<div class="domus-detail-sidebar">' +
+                        '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Tenancy actions')) + '</h3>' +
+                        '<button id="domus-tenancy-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
+                        '<button id="domus-tenancy-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
+                        '</div>';
+                    Domus.UI.renderSidebar(sidebar);
+
                     const content = '<div class="domus-detail">' +
                         Domus.UI.buildBackButton('tenancies') +
                         '<div class="domus-detail-header">' +
@@ -1260,12 +1269,11 @@
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Tenancy')) + ' #' + Domus.Utils.escapeHtml(id) + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml(tenancy.status || '') + '</p>' +
                         '</div>' +
-                        '<div class="domus-detail-actions">' +
-                        '<button id="domus-tenancy-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
-                        '</div>' +
                         '</div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</h3>' +
                         detailsTable + '</div>' +
+                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + '</h3>' +
+                        Domus.Partners.renderInline(tenancy.partners || []) + '</div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Conditions')) + '</h3>' +
                         '<p>' + Domus.Utils.escapeHtml(tenancy.conditions || t('domus', 'No conditions provided.')) + '</p></div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Bookings')) + '</h3>' +
@@ -1273,7 +1281,7 @@
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Documents')) + '</h3>' +
                         Domus.Documents.renderList('tenancy', id) + '</div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Reports')) + '</h3>' +
-                        Domus.Reports.renderInline(tenancy.reports || []) + '</div>' +
+                        Domus.Reports.renderInline(tenancy.reports || [], null, id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
@@ -1284,6 +1292,18 @@
 
         function bindDetailActions(id, tenancy) {
             document.getElementById('domus-tenancy-edit')?.addEventListener('click', () => openEditModal(id, tenancy));
+            document.getElementById('domus-tenancy-delete')?.addEventListener('click', () => {
+                if (!confirm(t('domus', 'Delete tenancy?'))) {
+                    return;
+                }
+                Domus.Api.deleteTenancy(id)
+                    .then(() => {
+                        Domus.UI.showNotification(t('domus', 'Tenancy deleted.'), 'success');
+                        Domus.UI.renderSidebar('');
+                        renderList();
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
         }
 
         function bindTenancyForm(modalContext, onSubmit) {
@@ -1628,7 +1648,7 @@
                 .catch(err => Domus.UI.showError(err.message));
         }
 
-        function renderInline(reports, propertyId) {
+        function renderInline(reports, propertyId, tenancyId) {
             const rows = (reports || []).map(r => [
                 Domus.Utils.escapeHtml((r.year || Domus.state.currentYear).toString()),
                 '<a class="domus-link" href="' + Domus.Utils.escapeHtml(r.downloadUrl || '#') + '">' + Domus.Utils.escapeHtml(t('domus', 'Download')) + '</a>'
@@ -1644,6 +1664,22 @@
                                 .then(() => {
                                     Domus.UI.showNotification(t('domus', 'Report created.'), 'success');
                                     Domus.Properties.renderDetail(pid);
+                                })
+                                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        });
+                    });
+                }, 0);
+            }
+            if (tenancyId && Domus.Role.isOwnerView()) {
+                html += '<button class="primary" data-tenancy-report-create="' + tenancyId + '">' + Domus.Utils.escapeHtml(t('domus', 'Generate report')) + '</button>';
+                setTimeout(() => {
+                    document.querySelectorAll('button[data-tenancy-report-create]').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const tnid = this.getAttribute('data-tenancy-report-create');
+                            Domus.Api.createTenancyReport(tnid)
+                                .then(() => {
+                                    Domus.UI.showNotification(t('domus', 'Report created.'), 'success');
+                                    Domus.Tenancies.renderDetail(tnid);
                                 })
                                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
                         });

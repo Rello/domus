@@ -47,6 +47,8 @@ return [
         ['name' => 'Report#show', 'url' => '/reports/{id}', 'verb' => 'GET'],
         ['name' => 'Report#listForPropertyYear', 'url' => '/properties/{propertyId}/reports/{year}', 'verb' => 'GET'],
         ['name' => 'Report#generateForPropertyYear', 'url' => '/properties/{propertyId}/reports/{year}', 'verb' => 'POST'],
+        ['name' => 'Report#listForTenancyYear', 'url' => '/tenancies/{tenancyId}/reports/{year}', 'verb' => 'GET'],
+        ['name' => 'Report#generateForTenancyYear', 'url' => '/tenancies/{tenancyId}/reports/{year}', 'verb' => 'POST'],
         ['name' => 'Report#download', 'url' => '/reports/{id}/download', 'verb' => 'GET'],
 
         // Documents
