@@ -846,12 +846,14 @@
                         '</div>';
                     Domus.UI.renderSidebar(sidebar);
 
+                    const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
+
                     const content = '<div class="domus-detail">' +
                         Domus.UI.buildBackButton('units') +
                         '<h2>' + Domus.Utils.escapeHtml(unit.label || '') + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml(unit.unitType || '') + '</p>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Tenancies')) + '</h3>' +
-                        Domus.Tenancies.renderInline(unit.tenancies || []) + '</div>' +
+                        Domus.Tenancies.renderInline(allTenancies) + '</div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Bookings')) + '</h3>' +
                         Domus.Bookings.renderInline(unit.bookings || []) + '</div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Documents')) + '</h3>' +
@@ -954,6 +956,19 @@
      * Partners view
      */
     Domus.Partners = (function() {
+        function renderInline(partners) {
+            const rows = (partners || []).map(partner => [
+                Domus.Utils.escapeHtml(partner.name || ''),
+                Domus.Utils.escapeHtml(partner.partnerType || ''),
+                Domus.Utils.escapeHtml(partner.email || '')
+            ]);
+            return Domus.UI.buildTable([
+                t('domus', 'Name'),
+                t('domus', 'Type'),
+                t('domus', 'Email')
+            ], rows);
+        }
+
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading partners…'));
@@ -1130,7 +1145,7 @@
                 '</div>';
         }
 
-        return { renderList, renderDetail };
+        return { renderList, renderDetail, renderInline };
     })();
 
     /**
