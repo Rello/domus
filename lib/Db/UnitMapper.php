@@ -18,10 +18,10 @@ class UnitMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('userId', $qb->createNamedParameter($userId)));
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
         if ($propertyId !== null) {
-            $qb->andWhere($qb->expr()->eq('propertyId', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
+            $qb->andWhere($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
         }
 
         return $this->findEntities($qb);
@@ -35,7 +35,7 @@ class UnitMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('userId', $qb->createNamedParameter($userId)));
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
         return $this->findEntity($qb);
     }
@@ -47,8 +47,8 @@ class UnitMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select($qb->func()->count('*'))
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('propertyId', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('userId', $qb->createNamedParameter($userId)));
+            ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
         return (int)$qb->executeQuery()->fetchOne();
     }

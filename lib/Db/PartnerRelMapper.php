@@ -18,9 +18,9 @@ class PartnerRelMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('relationId', $qb->createNamedParameter($tenancyId, $qb::PARAM_INT)))
+            ->where($qb->expr()->eq('relation_id', $qb->createNamedParameter($tenancyId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('type', $qb->createNamedParameter('tenancy')))
-            ->andWhere($qb->expr()->eq('userId', $qb->createNamedParameter($userId)));
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
         return $this->findEntities($qb);
     }
@@ -32,9 +32,9 @@ class PartnerRelMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('relationId', $qb->createNamedParameter($unitId, $qb::PARAM_INT)))
+            ->where($qb->expr()->eq('relation_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('type', $qb->createNamedParameter('unit')))
-            ->andWhere($qb->expr()->eq('userId', $qb->createNamedParameter($userId)));
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
         return $this->findEntities($qb);
     }
@@ -46,8 +46,8 @@ class PartnerRelMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->delete($this->getTableName())
             ->where($qb->expr()->eq('type', $qb->createNamedParameter($type)))
-            ->andWhere($qb->expr()->eq('relationId', $qb->createNamedParameter($relationId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('userId', $qb->createNamedParameter($userId)));
+            ->andWhere($qb->expr()->eq('relation_id', $qb->createNamedParameter($relationId, $qb::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
         $qb->executeStatement();
     }

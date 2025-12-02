@@ -18,9 +18,9 @@ class DocumentLinkMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('userId', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->eq('entityType', $qb->createNamedParameter($entityType)))
-            ->andWhere($qb->expr()->eq('entityId', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
 
         return $this->findEntities($qb);
     }
@@ -33,7 +33,7 @@ class DocumentLinkMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('userId', $qb->createNamedParameter($userId)));
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
         return $this->findEntity($qb);
     }

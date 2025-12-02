@@ -54,7 +54,7 @@ class BookingService {
         $booking = $this->getBookingForUser($id, $userId);
         $merged = array_merge($booking->jsonSerialize(), $data);
         $this->assertBookingInput($merged, $userId);
-        foreach (['bookingType', 'category', 'date', 'amount', 'propertyId', 'unitId', 'tenancyId', 'description'] as $field) {
+        foreach (['booking_type', 'category', 'date', 'amount', 'property_id', 'unit_id', 'tenancy_id', 'description'] as $field) {
             if (array_key_exists($field, $data)) {
                 $setter = 'set' . ucfirst($field);
                 $booking->$setter($data[$field]);

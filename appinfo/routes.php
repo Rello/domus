@@ -2,7 +2,7 @@
 
 return [
     'routes' => [
-        ['name' => 'Page#index', 'url' => '/', 'verb' => 'GET', 'postfix' => 'page.index'],
+        ['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 
         // Property
         ['name' => 'Property#index', 'url' => '/properties', 'verb' => 'GET'],
