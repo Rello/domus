@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<info>
+    <id>domus</id>
+    <name>Domus</name>
+    <summary>Property and tenancy management</summary>
+    <description>Domus verwaltet Immobilien, Mietverhältnisse und Abrechnungen direkt in Nextcloud.</description>
+    <version>0.1.1</version>
+    <licence>agpl</licence>
+    <author>Domus</author>
+    <namespace>Domus</namespace>
+    <category>productivity</category>
+    <dependencies>
+        <nextcloud min-version="32" max-version="32"/>
+    </dependencies>
+    <navigations>
+    <navigation>
+        <id>domus</id>
+        <name>Domus</name>
+        <route>domus.page.index</route>
+        <order>10</order>
+        <icon>app.svg</icon>
+    </navigation>
+    </navigations>
+</info>
