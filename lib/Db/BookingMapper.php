@@ -18,11 +18,20 @@ class BookingMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('userId', $qb->createNamedParameter($userId)));
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
-        foreach (['year', 'propertyId', 'unitId', 'tenancyId', 'category', 'bookingType'] as $field) {
-            if (isset($filter[$field])) {
-                $qb->andWhere($qb->expr()->eq($field, $qb->createNamedParameter($filter[$field])));
+        // Map external filter keys (camelCase) to database column names (snake_case)
+        $fields = [
+            'year' => 'year',
+            'propertyId' => 'property_id',
+            'unitId' => 'unit_id',
+            'tenancyId' => 'tenancy_id',
+            'category' => 'category',
+            'bookingType' => 'booking_type',
+        ];
+        foreach ($fields as $key => $column) {
+            if (isset($filter[$key])) {
+                $qb->andWhere($qb->expr()->eq($column, $qb->createNamedParameter($filter[$key])));
             }
         }
 
@@ -37,7 +46,7 @@ class BookingMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('userId', $qb->createNamedParameter($userId)));
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
         return $this->findEntity($qb);
     }

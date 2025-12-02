@@ -99,7 +99,7 @@ class PropertyService {
             $unitCount = $this->unitMapper->countByProperty($property->getId(), $property->getUserId());
             $property->setUnitCount($unitCount);
 
-            $bookings = $this->bookingMapper->findByUser($property->getUserId(), ['propertyId' => $property->getId()]);
+            $bookings = $this->bookingMapper->findByUser($property->getUserId(), ['property_id' => $property->getId()]);
             $annualResult = 0.0;
             foreach ($bookings as $booking) {
                 $amount = (float)$booking->getAmount();
