@@ -21,6 +21,11 @@ class Tenancy extends Entity implements JsonSerializable {
     private ?string $status = null;
     private array $partnerIds = [];
     private array $partners = [];
+    private ?string $unitLabel = null;
+    private ?string $period = null;
+    private ?string $partnerName = null;
+    private array $bookings = [];
+    private array $reports = [];
 
     public function __construct() {
         $this->addType('id', 'int');
@@ -47,6 +52,11 @@ class Tenancy extends Entity implements JsonSerializable {
             'status' => $this->status,
             'partnerIds' => $this->partnerIds,
             'partners' => $this->partners,
+            'unitLabel' => $this->unitLabel,
+            'period' => $this->period,
+            'partnerName' => $this->partnerName,
+            'bookings' => $this->bookings,
+            'reports' => $this->reports,
         ];
     }
 
@@ -60,5 +70,25 @@ class Tenancy extends Entity implements JsonSerializable {
 
     public function setPartners(array $partners): void {
         $this->partners = $partners;
+    }
+
+    public function setUnitLabel(?string $unitLabel): void {
+        $this->unitLabel = $unitLabel;
+    }
+
+    public function setPeriod(?string $period): void {
+        $this->period = $period;
+    }
+
+    public function setPartnerName(?string $partnerName): void {
+        $this->partnerName = $partnerName;
+    }
+
+    public function setBookings(array $bookings): void {
+        $this->bookings = $bookings;
+    }
+
+    public function setReports(array $reports): void {
+        $this->reports = $reports;
     }
 }

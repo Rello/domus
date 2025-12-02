@@ -2,6 +2,10 @@
     padding: 16px;
 }
 
+#app-sidebar.domus-sidebar-hidden {
+    display: none;
+}
+
 #app-navigation {
     border-right: 1px solid var(--color-border);
 }
@@ -71,6 +75,10 @@
 .domus-card-value {
     font-size: 24px;
     font-weight: bold;
+}
+
+.domus-back-button {
+    margin-bottom: 12px;
 }
 
 .domus-table {

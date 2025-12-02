@@ -21,6 +21,9 @@ class Partner extends Entity implements JsonSerializable {
     protected $createdAt;
     protected $updatedAt;
 
+    private array $tenancies = [];
+    private array $reports = [];
+
     public function __construct() {
         $this->addType('id', 'int');
         $this->addType('createdAt', 'int');
@@ -44,6 +47,16 @@ class Partner extends Entity implements JsonSerializable {
             'ncUserId' => $this->ncUserId,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
+            'tenancies' => $this->tenancies,
+            'reports' => $this->reports,
         ];
+    }
+
+    public function setTenancies(array $tenancies): void {
+        $this->tenancies = $tenancies;
+    }
+
+    public function setReports(array $reports): void {
+        $this->reports = $reports;
     }
 }

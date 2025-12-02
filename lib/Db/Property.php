@@ -21,6 +21,9 @@ class Property extends Entity implements JsonSerializable {
     private ?int $unitCount = null;
     private ?string $annualRentSum = null;
     private ?string $annualResult = null;
+    private array $units = [];
+    private array $bookings = [];
+    private array $reports = [];
 
     public function __construct() {
         $this->addType('id', 'int');
@@ -45,6 +48,9 @@ class Property extends Entity implements JsonSerializable {
             'unitCount' => $this->unitCount,
             'annualRentSum' => $this->annualRentSum,
             'annualResult' => $this->annualResult,
+            'units' => $this->units,
+            'bookings' => $this->bookings,
+            'reports' => $this->reports,
         ];
     }
 
@@ -58,5 +64,17 @@ class Property extends Entity implements JsonSerializable {
 
     public function setAnnualResult(?string $annualResult): void {
         $this->annualResult = $annualResult;
+    }
+
+    public function setUnits(array $units): void {
+        $this->units = $units;
+    }
+
+    public function setBookings(array $bookings): void {
+        $this->bookings = $bookings;
+    }
+
+    public function setReports(array $reports): void {
+        $this->reports = $reports;
     }
 }

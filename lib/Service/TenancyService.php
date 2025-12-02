@@ -7,6 +7,8 @@ use OCA\Domus\Db\PartnerRel;
 use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Db\Tenancy;
 use OCA\Domus\Db\TenancyMapper;
+use OCA\Domus\Db\BookingMapper;
+use OCA\Domus\Db\ReportMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCP\IL10N;
 
@@ -16,6 +18,8 @@ class TenancyService {
         private UnitMapper $unitMapper,
         private PartnerMapper $partnerMapper,
         private PartnerRelMapper $partnerRelMapper,
+        private BookingMapper $bookingMapper,
+        private ReportMapper $reportMapper,
         private IL10N $l10n,
     ) {
     }
@@ -28,6 +32,8 @@ class TenancyService {
         foreach ($tenancies as $tenancy) {
             $this->hydratePartners($tenancy, $userId);
             $tenancy->setStatus($this->getStatus($tenancy, new \DateTimeImmutable('today')));
+            $this->hydrateUnit($tenancy, $userId);
+            $this->hydrateDerivedFields($tenancy);
         }
         return array_values($tenancies);
     }
@@ -39,6 +45,10 @@ class TenancyService {
         }
         $this->hydratePartners($tenancy, $userId);
         $tenancy->setStatus($this->getStatus($tenancy, new \DateTimeImmutable('today')));
+        $this->hydrateUnit($tenancy, $userId);
+        $this->hydrateDerivedFields($tenancy);
+        $tenancy->setBookings($this->bookingMapper->findByUser($userId, ['tenancyId' => $tenancy->getId()]));
+        $tenancy->setReports($this->reportMapper->findByUser($userId, null, null, $tenancy->getId()));
         return $tenancy;
     }
 
@@ -158,5 +168,23 @@ class TenancyService {
         }
         $tenancy->setPartnerIds($partnerIds);
         $tenancy->setPartners($partners);
+    }
+
+    private function hydrateUnit(Tenancy $tenancy, string $userId): void {
+        $unit = $this->unitMapper->findForUser($tenancy->getUnitId(), $userId);
+        if ($unit) {
+            $tenancy->setUnitLabel($unit->getLabel());
+        }
+    }
+
+    private function hydrateDerivedFields(Tenancy $tenancy): void {
+        $start = $tenancy->getStartDate();
+        $end = $tenancy->getEndDate();
+        $period = $start ? $start . ' – ' . ($end ?: $this->l10n->t('open')) : null;
+        $tenancy->setPeriod($period);
+        $partners = $tenancy->getPartners();
+        if (!empty($partners)) {
+            $tenancy->setPartnerName($partners[0]->getName());
+        }
     }
 }
