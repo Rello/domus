@@ -1005,6 +1005,16 @@
                 .join(', ');
         }
 
+        function formatUnitLabel(tenancy) {
+            if (tenancy.unitLabel) {
+                return tenancy.unitLabel;
+            }
+            if (tenancy.unitId) {
+                return `${t('domus', 'Unit')} #${tenancy.unitId}`;
+            }
+            return '';
+        }
+
         function renderList() {
             Domus.UI.showLoading(t('domus', 'Loading tenancies…'));
             Domus.Api.getTenancies()
@@ -1016,7 +1026,7 @@
                     const rows = (tenancies || []).map(tn => {
                         const partnerLabel = tn.partnerName || formatPartnerNames(tn.partners);
                         return [
-                            Domus.Utils.escapeHtml(tn.unitLabel || ''),
+                            Domus.Utils.escapeHtml(formatUnitLabel(tn)),
                             Domus.Utils.escapeHtml(partnerLabel || ''),
                             Domus.Utils.escapeHtml(tn.status || ''),
                             '<button class="domus-link" data-tenancy-id="' + tn.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
@@ -1039,7 +1049,7 @@
 
         function renderInline(tenancies) {
             const rows = (tenancies || []).map(tn => [
-                Domus.Utils.escapeHtml(tn.unitLabel || ''),
+                Domus.Utils.escapeHtml(formatUnitLabel(tn)),
                 Domus.Utils.escapeHtml(tn.status || ''),
                 Domus.Utils.escapeHtml(tn.period || '')
             ]);
@@ -1093,7 +1103,7 @@
                         t('domus', 'Prepayment'),
                         t('domus', 'Deposit')
                     ], [[
-                        Domus.Utils.escapeHtml(tenancy.unitLabel || ''),
+                        Domus.Utils.escapeHtml(formatUnitLabel(tenancy)),
                         Domus.Utils.escapeHtml(partnerLabel || t('domus', 'None')),
                         Domus.Utils.escapeHtml(tenancy.startDate || ''),
                         Domus.Utils.escapeHtml(tenancy.endDate || ''),
