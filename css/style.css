@@ -183,3 +183,56 @@
 .muted {
     color: var(--color-text-maxcontrast);
 }
+
+.domus-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+}
+
+.domus-modal {
+    background: var(--color-main-background);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    max-width: 640px;
+    width: 100%;
+    border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+.domus-modal-large {
+    max-width: 860px;
+}
+
+.domus-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.domus-modal-header h3 {
+    margin: 0;
+}
+
+.domus-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--color-text-maxcontrast);
+}
+
+.domus-modal-body {
+    padding: 16px;
+    overflow-y: auto;
+}
