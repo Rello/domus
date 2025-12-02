@@ -10,6 +10,7 @@ use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\ReportMapper;
 use OCA\Domus\Db\UnitMapper;
+use OCA\Domus\Service\ReportService;
 use OCP\IL10N;
 
 class TenancyService {
@@ -20,6 +21,7 @@ class TenancyService {
         private PartnerRelMapper $partnerRelMapper,
         private BookingMapper $bookingMapper,
         private ReportMapper $reportMapper,
+        private ReportService $reportService,
         private IL10N $l10n,
     ) {
     }
@@ -50,7 +52,7 @@ class TenancyService {
         $this->hydrateUnit($tenancy, $userId);
         $this->hydrateDerivedFields($tenancy);
         $tenancy->setBookings($this->bookingMapper->findByUser($userId, ['tenancyId' => $tenancy->getId()]));
-        $tenancy->setReports($this->reportMapper->findByUser($userId, null, null, $tenancy->getId()));
+        $this->hydrateReports($tenancy, $userId);
         return $tenancy;
     }
 
@@ -177,6 +179,14 @@ class TenancyService {
         if ($unit) {
             $tenancy->setUnitLabel($unit->getLabel());
         }
+    }
+
+    private function hydrateReports(Tenancy $tenancy, string $userId): void {
+        $reports = $this->reportMapper->findByUser($userId, null, null, $tenancy->getId());
+        foreach ($reports as $report) {
+            $report->setDownloadUrl($this->reportService->getDownloadUrl($report, $userId));
+        }
+        $tenancy->setReports($reports);
     }
 
     private function hydrateDerivedFields(Tenancy $tenancy): void {
