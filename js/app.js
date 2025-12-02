@@ -308,6 +308,30 @@
             return '<button class="domus-back-button" data-back="' + Domus.Utils.escapeHtml(targetView) + '" data-back-args="' + Domus.Utils.escapeHtml(serializedArgs) + '">' + Domus.Utils.escapeHtml(t('domus', 'Back')) + '</button>';
         }
 
+        function buildSectionHeader(title, action) {
+            let actionHtml = '';
+            if (action) {
+                let attrs = '';
+                if (action.id) {
+                    attrs += ' id="' + Domus.Utils.escapeHtml(action.id) + '"';
+                }
+                if (action.dataset) {
+                    Object.keys(action.dataset).forEach(key => {
+                        const value = action.dataset[key];
+                        if (value === undefined || value === null || value === '') {
+                            return;
+                        }
+                        attrs += ' data-' + Domus.Utils.escapeHtml(key) + '="' + Domus.Utils.escapeHtml(String(value)) + '"';
+                    });
+                }
+                const label = action.label || '+';
+                const titleAttr = action.title || t('domus', 'Add');
+                actionHtml = '<button class="domus-section-action"' + attrs + ' title="' + Domus.Utils.escapeHtml(titleAttr) + '">' + Domus.Utils.escapeHtml(label) + '</button>';
+            }
+
+            return '<div class="domus-section-header"><h3>' + Domus.Utils.escapeHtml(title) + '</h3>' + actionHtml + '</div>';
+        }
+
         function bindBackButtons() {
             document.querySelectorAll('button[data-back]').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -328,6 +352,7 @@
             buildTable,
             buildYearFilter,
             buildBackButton,
+            buildSectionHeader,
             bindBackButtons,
             openModal
         };
@@ -633,22 +658,43 @@
                         '</div>';
                     Domus.UI.renderSidebar(sidebar);
 
+                    const unitsHeader = Domus.UI.buildSectionHeader(t('domus', 'Units'), {
+                        id: 'domus-add-unit',
+                        title: t('domus', 'Add unit'),
+                        dataset: { propertyId: id }
+                    });
+                    const bookingsHeader = Domus.UI.buildSectionHeader(t('domus', 'Bookings'), {
+                        id: 'domus-add-booking',
+                        title: t('domus', 'Add booking'),
+                        dataset: { propertyId: id }
+                    });
+                    const reportsHeader = Domus.UI.buildSectionHeader(t('domus', 'Reports'), Domus.Role.isOwnerView() ? {
+                        id: 'domus-property-report',
+                        title: t('domus', 'Generate report'),
+                        dataset: { propertyId: id }
+                    } : null);
+                    const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), {
+                        id: 'domus-property-link-doc',
+                        title: t('domus', 'Link file'),
+                        dataset: { entityType: 'property', entityId: id }
+                    });
+
                     const content = '<div class="domus-detail">' +
                         Domus.UI.buildBackButton('properties') +
                         '<h2>' + Domus.Utils.escapeHtml(property.name || '') + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml([property.street, property.city].filter(Boolean).join(', ')) + '</p>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Units')) + '</h3>' +
+                        '<div class="domus-section">' + unitsHeader +
                         Domus.Units.renderListInline(property.units || []) + '</div>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Bookings')) + '</h3>' +
+                        '<div class="domus-section">' + bookingsHeader +
                         Domus.Bookings.renderInline(property.bookings || []) + '</div>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Reports')) + '</h3>' +
+                        '<div class="domus-section">' + reportsHeader +
                         Domus.Reports.renderInline(property.reports || [], property.id) + '</div>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Documents')) + '</h3>' +
+                        '<div class="domus-section">' + documentsHeader +
                         Domus.Documents.renderList('property', id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
-                    bindDetailActions(id);
+                    bindDetailActions(id, property);
                 })
                 .catch(err => Domus.UI.showError(err.message));
         }
@@ -672,6 +718,19 @@
                     }
                 });
             }
+
+            document.getElementById('domus-add-unit')?.addEventListener('click', () => {
+                Domus.Units.openCreateModal({ propertyId: id }, () => renderDetail(id));
+            });
+            document.getElementById('domus-add-booking')?.addEventListener('click', () => {
+                Domus.Bookings.openCreateModal({ propertyId: id }, () => renderDetail(id));
+            });
+            document.getElementById('domus-property-report')?.addEventListener('click', () => {
+                Domus.Reports.createForProperty(id, () => renderDetail(id));
+            });
+            document.getElementById('domus-property-link-doc')?.addEventListener('click', () => {
+                Domus.Documents.openLinkModal('property', id, () => renderDetail(id));
+            });
         }
 
         function openEditModal(id) {
@@ -798,7 +857,7 @@
 
         function bindList() {
             const createBtn = document.getElementById('domus-unit-create');
-            if (createBtn) createBtn.addEventListener('click', openCreateModal);
+            if (createBtn) createBtn.addEventListener('click', () => openCreateModal());
             document.querySelectorAll('button[data-unit-id]').forEach(btn => {
                 btn.addEventListener('click', () => Domus.Router.navigate('unitDetail', [btn.getAttribute('data-unit-id')]));
             });
@@ -813,7 +872,7 @@
             return Domus.UI.buildTable([t('domus', 'Label'), t('domus', 'Number'), t('domus', 'Type')], rows);
         }
 
-        function openCreateModal() {
+        function openCreateModal(defaults = {}, onCreated) {
             Domus.Api.getProperties()
                 .then(properties => {
                     const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
@@ -822,13 +881,13 @@
                     })));
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'New unit'),
-                        content: buildUnitForm(propertyOptions)
+                        content: buildUnitForm(propertyOptions, defaults)
                     });
                     bindUnitForm(modal, data => Domus.Api.createUnit(data)
                         .then(() => {
                             Domus.UI.showNotification(t('domus', 'Unit created.'), 'success');
                             modal.close();
-                            renderList();
+                            (onCreated || renderList)();
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error')));
                 })
@@ -847,26 +906,41 @@
                     Domus.UI.renderSidebar(sidebar);
 
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
+                    const tenanciesHeader = Domus.UI.buildSectionHeader(t('domus', 'Tenancies'), {
+                        id: 'domus-add-tenancy',
+                        title: t('domus', 'Add tenancy'),
+                        dataset: { unitId: id }
+                    });
+                    const bookingsHeader = Domus.UI.buildSectionHeader(t('domus', 'Bookings'), {
+                        id: 'domus-add-unit-booking',
+                        title: t('domus', 'Add booking'),
+                        dataset: { propertyId: unit.propertyId, unitId: id }
+                    });
+                    const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), {
+                        id: 'domus-unit-link-doc',
+                        title: t('domus', 'Link file'),
+                        dataset: { entityType: 'unit', entityId: id }
+                    });
 
                     const content = '<div class="domus-detail">' +
                         Domus.UI.buildBackButton('units') +
                         '<h2>' + Domus.Utils.escapeHtml(unit.label || '') + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml(unit.unitType || '') + '</p>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Tenancies')) + '</h3>' +
+                        '<div class="domus-section">' + tenanciesHeader +
                         Domus.Tenancies.renderInline(allTenancies) + '</div>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Bookings')) + '</h3>' +
+                        '<div class="domus-section">' + bookingsHeader +
                         Domus.Bookings.renderInline(unit.bookings || []) + '</div>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Documents')) + '</h3>' +
+                        '<div class="domus-section">' + documentsHeader +
                         Domus.Documents.renderList('unit', id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
-                    bindDetailActions(id);
+                    bindDetailActions(id, unit);
                 })
                 .catch(err => Domus.UI.showError(err.message));
         }
 
-        function bindDetailActions(id) {
+        function bindDetailActions(id, unit) {
             const editBtn = document.getElementById('domus-unit-edit');
             const deleteBtn = document.getElementById('domus-unit-delete');
 
@@ -882,6 +956,16 @@
                         renderList();
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+
+            document.getElementById('domus-add-tenancy')?.addEventListener('click', () => {
+                Domus.Tenancies.openCreateModal({ unitId: id }, () => renderDetail(id));
+            });
+            document.getElementById('domus-add-unit-booking')?.addEventListener('click', () => {
+                Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id));
+            });
+            document.getElementById('domus-unit-link-doc')?.addEventListener('click', () => {
+                Domus.Documents.openLinkModal('unit', id, () => renderDetail(id));
             });
         }
 
@@ -949,7 +1033,7 @@
                 '</div>';
         }
 
-        return { renderList, renderDetail, renderListInline };
+        return { renderList, renderDetail, renderListInline, openCreateModal };
     })();
 
     /**
@@ -1055,15 +1139,26 @@
                         '</div>';
                     Domus.UI.renderSidebar(sidebar);
 
+                    const tenanciesHeader = Domus.UI.buildSectionHeader(t('domus', 'Tenancies'), {
+                        id: 'domus-add-partner-tenancy',
+                        title: t('domus', 'Add tenancy'),
+                        dataset: { partnerId: id }
+                    });
+                    const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), {
+                        id: 'domus-partner-link-doc',
+                        title: t('domus', 'Link file'),
+                        dataset: { entityType: 'partner', entityId: id }
+                    });
+
                     const content = '<div class="domus-detail">' +
                         Domus.UI.buildBackButton('partners') +
                         '<h2>' + Domus.Utils.escapeHtml(partner.name || '') + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml(partner.partnerType || '') + '</p>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Tenancies')) + '</h3>' +
+                        '<div class="domus-section">' + tenanciesHeader +
                         Domus.Tenancies.renderInline(partner.tenancies || []) + '</div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Reports')) + '</h3>' +
                         Domus.Reports.renderInline(partner.reports || []) + '</div>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Documents')) + '</h3>' +
+                        '<div class="domus-section">' + documentsHeader +
                         Domus.Documents.renderList('partner', id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
@@ -1089,6 +1184,13 @@
                         renderList();
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+
+            document.getElementById('domus-add-partner-tenancy')?.addEventListener('click', () => {
+                Domus.Tenancies.openCreateModal({ partnerId: id }, () => renderDetail(id));
+            });
+            document.getElementById('domus-partner-link-doc')?.addEventListener('click', () => {
+                Domus.Documents.openLinkModal('partner', id, () => renderDetail(id));
             });
         }
 
@@ -1196,7 +1298,7 @@
         }
 
         function bindList() {
-            document.getElementById('domus-tenancy-create')?.addEventListener('click', openCreateModal);
+            document.getElementById('domus-tenancy-create')?.addEventListener('click', () => openCreateModal());
             document.querySelectorAll('button[data-tenancy-id]').forEach(btn => {
                 btn.addEventListener('click', () => Domus.Router.navigate('tenancyDetail', [btn.getAttribute('data-tenancy-id')]));
             });
@@ -1214,7 +1316,7 @@
             ], rows);
         }
 
-        function openCreateModal() {
+        function openCreateModal(prefill = {}, onCreated) {
             Promise.all([
                 Domus.Api.getUnits(),
                 Domus.Api.getPartners()
@@ -1231,13 +1333,13 @@
 
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'New tenancy'),
-                        content: buildTenancyForm(unitOptions, partnerOptions)
+                        content: buildTenancyForm(unitOptions, partnerOptions, prefill)
                     });
                     bindTenancyForm(modal, data => Domus.Api.createTenancy(data)
                         .then(() => {
                             Domus.UI.showNotification(t('domus', 'Tenancy created.'), 'success');
                             modal.close();
-                            renderList();
+                            (onCreated || renderList)();
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error')));
                 })
@@ -1277,6 +1379,22 @@
                         '</div>';
                     Domus.UI.renderSidebar(sidebar);
 
+                    const bookingsHeader = Domus.UI.buildSectionHeader(t('domus', 'Bookings'), {
+                        id: 'domus-add-tenancy-booking',
+                        title: t('domus', 'Add booking'),
+                        dataset: { tenancyId: id, unitId: tenancy.unitId, propertyId: tenancy.propertyId }
+                    });
+                    const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), {
+                        id: 'domus-tenancy-link-doc',
+                        title: t('domus', 'Link file'),
+                        dataset: { entityType: 'tenancy', entityId: id }
+                    });
+                    const reportsHeader = Domus.UI.buildSectionHeader(t('domus', 'Reports'), Domus.Role.isOwnerView() ? {
+                        id: 'domus-tenancy-report',
+                        title: t('domus', 'Generate report'),
+                        dataset: { tenancyId: id }
+                    } : null);
+
                     const content = '<div class="domus-detail">' +
                         Domus.UI.buildBackButton('tenancies') +
                         '<div class="domus-detail-header">' +
@@ -1291,11 +1409,11 @@
                         Domus.Partners.renderInline(tenancy.partners || []) + '</div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Conditions')) + '</h3>' +
                         '<p>' + Domus.Utils.escapeHtml(tenancy.conditions || t('domus', 'No conditions provided.')) + '</p></div>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Bookings')) + '</h3>' +
+                        '<div class="domus-section">' + bookingsHeader +
                         Domus.Bookings.renderInline(tenancy.bookings || []) + '</div>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Documents')) + '</h3>' +
+                        '<div class="domus-section">' + documentsHeader +
                         Domus.Documents.renderList('tenancy', id) + '</div>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Reports')) + '</h3>' +
+                        '<div class="domus-section">' + reportsHeader +
                         Domus.Reports.renderInline(tenancy.reports || [], null, id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
@@ -1318,6 +1436,16 @@
                         renderList();
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+
+            document.getElementById('domus-add-tenancy-booking')?.addEventListener('click', () => {
+                Domus.Bookings.openCreateModal({ tenancyId: id, unitId: tenancy.unitId, propertyId: tenancy.propertyId }, () => renderDetail(id));
+            });
+            document.getElementById('domus-tenancy-link-doc')?.addEventListener('click', () => {
+                Domus.Documents.openLinkModal('tenancy', id, () => renderDetail(id));
+            });
+            document.getElementById('domus-tenancy-report')?.addEventListener('click', () => {
+                Domus.Reports.createForTenancy(id, () => renderDetail(id));
             });
         }
 
@@ -1382,6 +1510,9 @@
 
         function buildTenancyForm(unitOptions, partnerOptions, tenancy) {
             const tn = tenancy || {};
+            if (tn.partnerId && !tn.partnerIds) {
+                tn.partnerIds = [tn.partnerId];
+            }
             const partnerIds = (tn.partnerIds || []).map(String);
             const selectedUnitId = tn.unitId !== undefined && tn.unitId !== null ? String(tn.unitId) : '';
             return '<div class="domus-form">' +
@@ -1407,7 +1538,7 @@
                 '</div>';
         }
 
-        return { renderList, renderDetail, renderInline };
+        return { renderList, renderDetail, renderInline, openCreateModal };
     })();
 
     /**
@@ -1438,7 +1569,7 @@
         }
 
         function bindList() {
-            document.getElementById('domus-booking-create')?.addEventListener('click', openCreateModal);
+            document.getElementById('domus-booking-create')?.addEventListener('click', () => openCreateModal());
             document.querySelectorAll('button[data-booking-id]').forEach(btn => {
                 btn.addEventListener('click', () => Domus.Router.navigate('bookingDetail', [btn.getAttribute('data-booking-id')]));
             });
@@ -1455,7 +1586,7 @@
             ], rows);
         }
 
-        function openCreateModal() {
+        function openCreateModal(defaults = {}, onCreated) {
             Promise.all([
                 Domus.Api.getProperties(),
                 Domus.Api.getUnits(),
@@ -1481,14 +1612,14 @@
 
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'New booking'),
-                        content: buildBookingForm({ bookingTypeOptions, propertyOptions, unitOptions, tenancyOptions }),
+                        content: buildBookingForm({ bookingTypeOptions, propertyOptions, unitOptions, tenancyOptions }, defaults),
                         size: 'large'
                     });
                     bindBookingForm(modal, data => Domus.Api.createBooking(data)
                         .then(() => {
                             Domus.UI.showNotification(t('domus', 'Booking created.'), 'success');
                             modal.close();
-                            renderList();
+                            (onCreated || renderList)();
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error')));
                 })
@@ -1510,7 +1641,11 @@
                         Domus.UI.buildBackButton('bookings') +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Booking')) + ' #' + Domus.Utils.escapeHtml(id) + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml(booking.bookingType || '') + '</p>' +
-                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Documents')) + '</h3>' +
+                        '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Documents'), {
+                            id: 'domus-booking-link-doc',
+                            title: t('domus', 'Link file'),
+                            dataset: { entityType: 'booking', entityId: id }
+                        }) +
                         Domus.Documents.renderList('booking', id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
@@ -1536,6 +1671,10 @@
                         renderList();
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+
+            document.getElementById('domus-booking-link-doc')?.addEventListener('click', () => {
+                Domus.Documents.openLinkModal('booking', id, () => renderDetail(id));
             });
         }
 
@@ -1638,7 +1777,7 @@
                 '</div>';
         }
 
-        return { renderList, renderDetail, renderInline };
+        return { renderList, renderDetail, renderInline, openCreateModal };
     })();
 
     /**
@@ -1668,51 +1807,39 @@
                 Domus.Utils.escapeHtml((r.year || Domus.state.currentYear).toString()),
                 '<a class="domus-link" href="' + Domus.Utils.escapeHtml(r.downloadUrl || '#') + '">' + Domus.Utils.escapeHtml(t('domus', 'Download')) + '</a>'
             ]);
-            let html = Domus.UI.buildTable([t('domus', 'Year'), ''], rows);
-            if (propertyId && Domus.Role.isOwnerView()) {
-                html += '<button class="primary" data-report-create="' + propertyId + '">' + Domus.Utils.escapeHtml(t('domus', 'Generate report')) + '</button>';
-                setTimeout(() => {
-                    document.querySelectorAll('button[data-report-create]').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const pid = this.getAttribute('data-report-create');
-                            Domus.Api.createReport(pid)
-                                .then(() => {
-                                    Domus.UI.showNotification(t('domus', 'Report created.'), 'success');
-                                    Domus.Properties.renderDetail(pid);
-                                })
-                                .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                        });
-                    });
-                }, 0);
-            }
-            if (tenancyId && Domus.Role.isOwnerView()) {
-                html += '<button class="primary" data-tenancy-report-create="' + tenancyId + '">' + Domus.Utils.escapeHtml(t('domus', 'Generate report')) + '</button>';
-                setTimeout(() => {
-                    document.querySelectorAll('button[data-tenancy-report-create]').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const tnid = this.getAttribute('data-tenancy-report-create');
-                            Domus.Api.createTenancyReport(tnid)
-                                .then(() => {
-                                    Domus.UI.showNotification(t('domus', 'Report created.'), 'success');
-                                    Domus.Tenancies.renderDetail(tnid);
-                                })
-                                .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                        });
-                    });
-                }, 0);
-            }
-            return html;
+            return Domus.UI.buildTable([t('domus', 'Year'), ''], rows);
         }
 
-        return { renderList, renderInline };
+        function createForProperty(propertyId, onComplete) {
+            if (!propertyId || !Domus.Role.isOwnerView()) return;
+            Domus.Api.createReport(propertyId)
+                .then(() => {
+                    Domus.UI.showNotification(t('domus', 'Report created.'), 'success');
+                    onComplete?.();
+                })
+                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        function createForTenancy(tenancyId, onComplete) {
+            if (!tenancyId || !Domus.Role.isOwnerView()) return;
+            Domus.Api.createTenancyReport(tenancyId)
+                .then(() => {
+                    Domus.UI.showNotification(t('domus', 'Report created.'), 'success');
+                    onComplete?.();
+                })
+                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        return { renderList, renderInline, createForProperty, createForTenancy };
     })();
 
     /**
      * Documents view
      */
     Domus.Documents = (function() {
-        function renderList(entityType, entityId) {
+        function renderList(entityType, entityId, options) {
             const containerId = `domus-documents-${entityType}-${entityId}`;
+            const showLinkAction = options?.showLinkAction;
             Domus.Api.getDocuments(entityType, entityId)
                 .then(docs => {
                     const rows = (docs || []).map(doc => [
@@ -1721,7 +1848,7 @@
                     ]);
                     const html = '<div id="' + containerId + '">' +
                         Domus.UI.buildTable([t('domus', 'File'), ''], rows) +
-                        buildLinkAction(entityType, entityId) + '</div>';
+                        (showLinkAction ? buildLinkAction(entityType, entityId) : '') + '</div>';
                     const section = document.createElement('div');
                     section.innerHTML = html;
                     const placeholder = document.getElementById(containerId);
@@ -1730,10 +1857,10 @@
                     } else {
                         Domus.UI.renderContent(html);
                     }
-                    bindDocumentActions(entityType, entityId, containerId);
+                    bindDocumentActions(entityType, entityId, containerId, showLinkAction);
                 })
                 .catch(() => {
-                    const html = '<div id="' + containerId + '">' + t('domus', 'No documents found.') + buildLinkAction(entityType, entityId) + '</div>';
+                    const html = '<div id="' + containerId + '">' + t('domus', 'No documents found.') + (showLinkAction ? buildLinkAction(entityType, entityId) : '') + '</div>';
                     Domus.UI.renderContent(html);
                 });
             return '<div id="' + containerId + '">' + t('domus', 'Loading documents…') + '</div>';
@@ -1755,7 +1882,7 @@
                 '</form>';
         }
 
-        function bindDocumentActions(entityType, entityId, containerId) {
+        function bindDocumentActions(entityType, entityId, containerId, showLinkAction) {
             document.querySelectorAll('#' + containerId + ' button[data-doc-id]').forEach(btn => {
                 btn.addEventListener('click', function() {
                     Domus.Api.unlinkDocument(this.getAttribute('data-doc-id'))
@@ -1767,14 +1894,16 @@
                 });
             });
 
-            document.querySelectorAll('#' + containerId + ' button[data-doc-link]').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    openLinkModal(entityType, entityId);
+            if (showLinkAction) {
+                document.querySelectorAll('#' + containerId + ' button[data-doc-link]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        openLinkModal(entityType, entityId);
+                    });
                 });
-            });
+            }
         }
 
-        function openLinkModal(entityType, entityId) {
+        function openLinkModal(entityType, entityId, onLinked) {
             const modal = Domus.UI.openModal({
                 title: t('domus', 'Link document'),
                 content: buildLinkForm(entityType, entityId)
@@ -1794,13 +1923,17 @@
                     .then(() => {
                         Domus.UI.showNotification(t('domus', 'Document linked.'), 'success');
                         modal.close();
-                        renderList(entityType, entityId);
+                        if (onLinked) {
+                            onLinked();
+                        } else {
+                            renderList(entityType, entityId);
+                        }
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
             });
         }
 
-        return { renderList };
+        return { renderList, openLinkModal };
     })();
 
     /**

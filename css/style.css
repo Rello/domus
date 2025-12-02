@@ -138,6 +138,29 @@
     margin-bottom: 8px;
 }
 
+.domus-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.domus-section-header h3 {
+    margin: 0;
+}
+
+.domus-section-action {
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    background: var(--color-background-dark);
+    cursor: pointer;
+}
+
+.domus-section-action:hover {
+    background: var(--color-background-hover);
+}
+
 .domus-loading,
 .domus-error {
     padding: 16px;
