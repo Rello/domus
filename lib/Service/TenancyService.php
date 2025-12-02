@@ -103,15 +103,28 @@ class TenancyService {
     }
 
     public function getStatus(Tenancy $tenancy, \DateTimeImmutable $today): string {
-        $start = new \DateTimeImmutable($tenancy->getStartDate());
-        $end = $tenancy->getEndDate() ? new \DateTimeImmutable($tenancy->getEndDate()) : null;
-        if ($start > $today) {
+        $start = $this->parseDate($tenancy->getStartDate());
+        $end = $this->parseDate($tenancy->getEndDate());
+
+        if ($start !== null && $start > $today) {
             return 'future';
         }
         if ($end !== null && $end < $today) {
             return 'historical';
         }
         return 'active';
+    }
+
+    private function parseDate(?string $value): ?\DateTimeImmutable {
+        if (!$value) {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($value);
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     public function getTenanciesForUnit(int $unitId, string $userId): array {

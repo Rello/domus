@@ -52,6 +52,21 @@ class ReportController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function listForTenancyYear(int $tenancyId, int $year): DataResponse {
+        return new DataResponse($this->reportService->listReports($this->getUserId(), null, $year, $tenancyId));
+    }
+
+    #[NoAdminRequired]
+    public function generateForTenancyYear(int $tenancyId, int $year): DataResponse {
+        try {
+            $report = $this->reportService->generateTenancyReport($tenancyId, $year, $this->getUserId());
+            return new DataResponse($report, Http::STATUS_CREATED);
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
     public function download(int $id): DataResponse {
         try {
             $report = $this->reportService->getReportForUser($id, $this->getUserId());

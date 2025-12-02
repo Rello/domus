@@ -98,11 +98,12 @@ class UnitService {
         $tenancies = $this->tenancyService->listTenancies($userId, $unit->getId());
         $active = [];
         $historic = [];
+        $today = new \DateTimeImmutable('today');
         foreach ($tenancies as $tenancy) {
-            $status = $tenancy->getStatus();
+            $status = $tenancy->getStatus() ?? $this->tenancyService->getStatus($tenancy, $today);
             if ($status === 'historical') {
                 $historic[] = $tenancy;
-            } elseif ($status === 'active') {
+            } else {
                 $active[] = $tenancy;
             }
         }
