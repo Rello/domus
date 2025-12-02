@@ -998,6 +998,13 @@
      * Tenancies view
      */
     Domus.Tenancies = (function() {
+        function formatPartnerNames(partners) {
+            return (partners || [])
+                .map(p => p.name)
+                .filter(Boolean)
+                .join(', ');
+        }
+
         function renderList() {
             Domus.UI.showLoading(t('domus', 'Loading tenancies…'));
             Domus.Api.getTenancies()
@@ -1006,12 +1013,15 @@
                         '<button id="domus-tenancy-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New tenancy')) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
-                    const rows = (tenancies || []).map(tn => [
-                        Domus.Utils.escapeHtml(tn.unitLabel || ''),
-                        Domus.Utils.escapeHtml(tn.partnerName || ''),
-                        Domus.Utils.escapeHtml(tn.status || ''),
-                        '<button class="domus-link" data-tenancy-id="' + tn.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
-                    ]);
+                    const rows = (tenancies || []).map(tn => {
+                        const partnerLabel = tn.partnerName || formatPartnerNames(tn.partners);
+                        return [
+                            Domus.Utils.escapeHtml(tn.unitLabel || ''),
+                            Domus.Utils.escapeHtml(partnerLabel || ''),
+                            Domus.Utils.escapeHtml(tn.status || ''),
+                            '<button class="domus-link" data-tenancy-id="' + tn.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
+                        ];
+                    });
                     Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
                         t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Status'), ''
                     ], rows));
@@ -1072,9 +1082,39 @@
             Domus.UI.showLoading(t('domus', 'Loading tenancy…'));
             Domus.Api.get('/tenancies/' + id)
                 .then(tenancy => {
+                    const partnerLabel = formatPartnerNames(tenancy.partners);
+                    const detailsTable = Domus.UI.buildTable([
+                        t('domus', 'Unit'),
+                        t('domus', 'Partners'),
+                        t('domus', 'Start date'),
+                        t('domus', 'End date'),
+                        t('domus', 'Base rent'),
+                        t('domus', 'Service charge'),
+                        t('domus', 'Prepayment'),
+                        t('domus', 'Deposit')
+                    ], [[
+                        Domus.Utils.escapeHtml(tenancy.unitLabel || ''),
+                        Domus.Utils.escapeHtml(partnerLabel || t('domus', 'None')),
+                        Domus.Utils.escapeHtml(tenancy.startDate || ''),
+                        Domus.Utils.escapeHtml(tenancy.endDate || ''),
+                        Domus.Utils.escapeHtml(tenancy.baseRent || ''),
+                        Domus.Utils.escapeHtml(tenancy.serviceCharge || ''),
+                        tenancy.serviceChargeAsPrepayment ? t('domus', 'Yes') : t('domus', 'No'),
+                        Domus.Utils.escapeHtml(tenancy.deposit || '')
+                    ]]);
+
                     const content = '<div class="domus-detail">' +
+                        '<div class="domus-detail-header">' +
+                        '<div>' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Tenancy')) + ' #' + Domus.Utils.escapeHtml(id) + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml(tenancy.status || '') + '</p>' +
+                        '</div>' +
+                        '<div class="domus-detail-actions">' +
+                        '<button id="domus-tenancy-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
+                        '</div>' +
+                        '</div>' +
+                        '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</h3>' +
+                        detailsTable + '</div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Conditions')) + '</h3>' +
                         '<p>' + Domus.Utils.escapeHtml(tenancy.conditions || t('domus', 'No conditions provided.')) + '</p></div>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Bookings')) + '</h3>' +
@@ -1085,8 +1125,13 @@
                         Domus.Reports.renderInline(tenancy.reports || []) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
+                    bindDetailActions(id, tenancy);
                 })
                 .catch(err => Domus.UI.showError(err.message));
+        }
+
+        function bindDetailActions(id, tenancy) {
+            document.getElementById('domus-tenancy-edit')?.addEventListener('click', () => openEditModal(id, tenancy));
         }
 
         function bindTenancyForm(modalContext, onSubmit) {
@@ -1096,9 +1141,18 @@
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const data = {};
-                Array.prototype.forEach.call(form.elements, el => { if (el.name) data[el.name] = el.value; });
-                if (!data.unitId || !data.partnerId) {
-                    Domus.UI.showNotification(t('domus', 'Unit and partner are required.'), 'error');
+                Array.prototype.forEach.call(form.elements, el => {
+                    if (!el.name) return;
+                    if (el.type === 'checkbox') {
+                        data[el.name] = el.checked ? 1 : 0;
+                    } else if (el.multiple) {
+                        data[el.name] = Array.from(el.selectedOptions).map(opt => opt.value);
+                    } else {
+                        data[el.name] = el.value;
+                    }
+                });
+                if (!data.unitId || !data.partnerIds || data.partnerIds.length === 0) {
+                    Domus.UI.showNotification(t('domus', 'Unit and at least one partner are required.'), 'error');
                     return;
                 }
                 if (!data.startDate || !data.baseRent) {
@@ -1109,18 +1163,55 @@
             });
         }
 
-        function buildTenancyForm(unitOptions, partnerOptions) {
+        function openEditModal(id, tenancy) {
+            Promise.all([
+                Domus.Api.getUnits(),
+                Domus.Api.getPartners()
+            ])
+                .then(([units, partners]) => {
+                    const unitOptions = (units || []).map(u => ({
+                        value: u.id,
+                        label: u.label || `${t('domus', 'Unit')} #${u.id}`
+                    }));
+                    const partnerOptions = (partners || []).map(p => ({
+                        value: p.id,
+                        label: p.name || `${t('domus', 'Partner')} #${p.id}`
+                    }));
+
+                    const modal = Domus.UI.openModal({
+                        title: t('domus', 'Edit tenancy'),
+                        content: buildTenancyForm(unitOptions, partnerOptions, tenancy)
+                    });
+                    bindTenancyForm(modal, data => Domus.Api.updateTenancy(id, data)
+                        .then(() => {
+                            Domus.UI.showNotification(t('domus', 'Tenancy updated.'), 'success');
+                            modal.close();
+                            renderDetail(id);
+                        })
+                        .catch(err => Domus.UI.showNotification(err.message, 'error')));
+                })
+                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        function buildTenancyForm(unitOptions, partnerOptions, tenancy) {
+            const tn = tenancy || {};
+            const partnerIds = (tn.partnerIds || []).map(String);
+            const selectedUnitId = tn.unitId !== undefined && tn.unitId !== null ? String(tn.unitId) : '';
             return '<div class="domus-form">' +
                 '<form id="domus-tenancy-form">' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + ' *<select name="unitId" required>' +
-                unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (selectedUnitId === String(opt.value) ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                 '</select></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Partner')) + ' *<select name="partnerId" required>' +
-                partnerOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + ' *<select name="partnerIds" multiple required size="4">' +
+                partnerOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (partnerIds.includes(String(opt.value)) ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                 '</select></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Start date')) + ' *<input type="date" name="startDate" required></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'End date')) + '<input type="date" name="endDate"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Base rent')) + ' *<input type="number" step="0.01" name="baseRent" required></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Start date')) + ' *<input type="date" name="startDate" required value="' + (tn.startDate ? Domus.Utils.escapeHtml(tn.startDate) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'End date')) + '<input type="date" name="endDate" value="' + (tn.endDate ? Domus.Utils.escapeHtml(tn.endDate) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Base rent')) + ' *<input type="number" step="0.01" name="baseRent" required value="' + (tn.baseRent ? Domus.Utils.escapeHtml(tn.baseRent) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Service charge')) + '<input type="number" step="0.01" name="serviceCharge" value="' + (tn.serviceCharge ? Domus.Utils.escapeHtml(tn.serviceCharge) : '') + '"></label>' +
+                '<label class="domus-inline-label"><input type="checkbox" name="serviceChargeAsPrepayment" ' + (tn.serviceChargeAsPrepayment ? 'checked' : '') + '> ' + Domus.Utils.escapeHtml(t('domus', 'Service charge as prepayment')) + '</label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Deposit')) + '<input type="number" step="0.01" name="deposit" value="' + (tn.deposit ? Domus.Utils.escapeHtml(tn.deposit) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Conditions')) + '<textarea name="conditions">' + (tn.conditions ? Domus.Utils.escapeHtml(tn.conditions) : '') + '</textarea></label>' +
                 '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-tenancy-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
