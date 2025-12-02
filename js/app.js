@@ -355,6 +355,7 @@
      */
     Domus.Router = (function() {
         const routes = {};
+        let skipNextHashChange = false;
 
         function register(name, handler) {
             routes[name] = handler;
@@ -365,7 +366,7 @@
             if (routes[name]) {
                 routes[name].apply(null, args || []);
             }
-            updateHash(name, args);
+            skipNextHashChange = updateHash(name, args);
             Domus.Navigation.render();
         }
 
@@ -373,7 +374,9 @@
             const hash = '#/' + name + (args && args.length ? '/' + args.join('/') : '');
             if (window.location.hash !== hash) {
                 window.location.hash = hash;
+                return true;
             }
+            return false;
         }
 
         function parseHash() {
@@ -384,6 +387,10 @@
         }
 
         window.addEventListener('hashchange', function() {
+            if (skipNextHashChange) {
+                skipNextHashChange = false;
+                return;
+            }
             const parsed = parseHash();
             if (parsed && routes[parsed.name]) {
                 Domus.state.currentView = parsed.name;

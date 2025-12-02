@@ -26,15 +26,17 @@ class TenancyService {
 
     public function listTenancies(string $userId, ?int $unitId = null, ?int $partnerId = null): array {
         $tenancies = $this->tenancyMapper->findByUser($userId, $unitId);
-        if ($partnerId !== null) {
-            $tenancies = array_filter($tenancies, fn(Tenancy $tenancy) => in_array($partnerId, $tenancy->getPartnerIds() ?? [], true));
-        }
         foreach ($tenancies as $tenancy) {
             $this->hydratePartners($tenancy, $userId);
             $tenancy->setStatus($this->getStatus($tenancy, new \DateTimeImmutable('today')));
             $this->hydrateUnit($tenancy, $userId);
             $this->hydrateDerivedFields($tenancy);
         }
+
+        if ($partnerId !== null) {
+            $tenancies = array_filter($tenancies, fn(Tenancy $tenancy) => in_array($partnerId, $tenancy->getPartnerIds() ?? [], true));
+        }
+
         return array_values($tenancies);
     }
 
