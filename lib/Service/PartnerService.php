@@ -5,12 +5,14 @@ namespace OCA\Domus\Service;
 use OCA\Domus\Db\Partner;
 use OCA\Domus\Db\PartnerMapper;
 use OCA\Domus\Db\PartnerRelMapper;
+use OCA\Domus\Service\TenancyService;
 use OCP\IL10N;
 
 class PartnerService {
     public function __construct(
         private PartnerMapper $partnerMapper,
         private PartnerRelMapper $partnerRelMapper,
+        private TenancyService $tenancyService,
         private IL10N $l10n,
     ) {
     }
@@ -24,6 +26,7 @@ class PartnerService {
         if (!$partner) {
             throw new \RuntimeException($this->l10n->t('Partner not found.'));
         }
+        $partner->setTenancies($this->tenancyService->getTenanciesForPartner($partner->getId(), $userId));
         return $partner;
     }
 

@@ -16,6 +16,7 @@ class PropertyService {
         private UnitMapper $unitMapper,
         private BookingMapper $bookingMapper,
         private TenancyMapper $tenancyMapper,
+        private ReportService $reportService,
         private IL10N $l10n,
         private LoggerInterface $logger,
     ) {
@@ -96,10 +97,12 @@ class PropertyService {
 
     private function enrichProperty(Property $property): void {
         try {
-            $unitCount = $this->unitMapper->countByProperty($property->getId(), $property->getUserId());
-            $property->setUnitCount($unitCount);
+            $units = $this->unitMapper->findByUser($property->getUserId(), $property->getId());
+            $property->setUnits($units);
+            $property->setUnitCount(count($units));
 
-            $bookings = $this->bookingMapper->findByUser($property->getUserId(), ['property_id' => $property->getId()]);
+            $bookings = $this->bookingMapper->findByUser($property->getUserId(), ['propertyId' => $property->getId()]);
+            $property->setBookings($bookings);
             $annualResult = 0.0;
             foreach ($bookings as $booking) {
                 $amount = (float)$booking->getAmount();
@@ -107,6 +110,9 @@ class PropertyService {
             }
             $property->setAnnualResult(number_format($annualResult, 2, '.', ''));
             $property->setAnnualRentSum($this->calculateRentSum($property));
+
+            $reports = $this->reportService->listReports($property->getUserId(), $property->getId());
+            $property->setReports($reports);
         } catch (\Throwable $e) {
             $this->logger->warning('Failed enriching property', ['message' => $e->getMessage()]);
         }

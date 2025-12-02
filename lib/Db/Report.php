@@ -16,6 +16,7 @@ class Report extends Entity implements JsonSerializable {
     protected $createdAt;
 
     private ?string $downloadUrl = null;
+    private ?string $propertyName = null;
 
     public function __construct() {
         $this->addType('id', 'int');
@@ -39,10 +40,15 @@ class Report extends Entity implements JsonSerializable {
             'filePath' => $this->filePath,
             'createdAt' => $this->createdAt,
             'downloadUrl' => $this->downloadUrl,
+            'propertyName' => $this->propertyName,
         ];
     }
 
     public function setDownloadUrl(?string $downloadUrl): void {
         $this->downloadUrl = $downloadUrl;
+    }
+
+    public function setPropertyName(?string $propertyName): void {
+        $this->propertyName = $propertyName;
     }
 }

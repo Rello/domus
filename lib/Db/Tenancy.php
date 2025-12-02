@@ -18,9 +18,14 @@ class Tenancy extends Entity implements JsonSerializable {
     protected $createdAt;
     protected $updatedAt;
 
-    private ?string $status = null;
-    private array $partnerIds = [];
-    private array $partners = [];
+    protected ?string $status = null;
+    protected array $partnerIds = [];
+    protected array $partners = [];
+    protected ?string $unitLabel = null;
+    protected ?string $period = null;
+    protected ?string $partnerName = null;
+    protected array $bookings = [];
+    protected array $reports = [];
 
     public function __construct() {
         $this->addType('id', 'int');
@@ -47,6 +52,11 @@ class Tenancy extends Entity implements JsonSerializable {
             'status' => $this->status,
             'partnerIds' => $this->partnerIds,
             'partners' => $this->partners,
+            'unitLabel' => $this->unitLabel,
+            'period' => $this->period,
+            'partnerName' => $this->partnerName,
+            'bookings' => $this->bookings,
+            'reports' => $this->reports,
         ];
     }
 
@@ -54,11 +64,63 @@ class Tenancy extends Entity implements JsonSerializable {
         $this->status = $status;
     }
 
+    public function getStatus(): ?string {
+        return $this->status;
+    }
+
     public function setPartnerIds(array $partnerIds): void {
         $this->partnerIds = $partnerIds;
     }
 
+    public function getPartnerIds(): array {
+        return $this->partnerIds;
+    }
+
     public function setPartners(array $partners): void {
         $this->partners = $partners;
+    }
+
+    public function getPartners(): array {
+        return $this->partners;
+    }
+
+    public function setUnitLabel(?string $unitLabel): void {
+        $this->unitLabel = $unitLabel;
+    }
+
+    public function getUnitLabel(): ?string {
+        return $this->unitLabel;
+    }
+
+    public function setPeriod(?string $period): void {
+        $this->period = $period;
+    }
+
+    public function getPeriod(): ?string {
+        return $this->period;
+    }
+
+    public function setPartnerName(?string $partnerName): void {
+        $this->partnerName = $partnerName;
+    }
+
+    public function getPartnerName(): ?string {
+        return $this->partnerName;
+    }
+
+    public function setBookings(array $bookings): void {
+        $this->bookings = $bookings;
+    }
+
+    public function getBookings(): array {
+        return $this->bookings;
+    }
+
+    public function setReports(array $reports): void {
+        $this->reports = $reports;
+    }
+
+    public function getReports(): array {
+        return $this->reports;
     }
 }

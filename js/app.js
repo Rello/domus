@@ -176,6 +176,7 @@
             const el = document.getElementById('app-sidebar');
             if (el) {
                 el.innerHTML = html || '';
+                el.classList.toggle('domus-sidebar-hidden', !html);
             }
         }
 
@@ -301,6 +302,22 @@
             return html;
         }
 
+        function buildBackButton(targetView, args) {
+            const serializedArgs = (args || []).join(',');
+            return '<button class="domus-back-button" data-back="' + Domus.Utils.escapeHtml(targetView) + '" data-back-args="' + Domus.Utils.escapeHtml(serializedArgs) + '">' + Domus.Utils.escapeHtml(t('domus', 'Back')) + '</button>';
+        }
+
+        function bindBackButtons() {
+            document.querySelectorAll('button[data-back]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const target = this.getAttribute('data-back');
+                    const argsRaw = this.getAttribute('data-back-args') || '';
+                    const args = argsRaw ? argsRaw.split(',').filter(Boolean) : [];
+                    Domus.Router.navigate(target, args);
+                });
+            });
+        }
+
         return {
             renderContent,
             renderSidebar,
@@ -309,6 +326,8 @@
             showNotification,
             buildTable,
             buildYearFilter,
+            buildBackButton,
+            bindBackButtons,
             openModal
         };
     })();
@@ -336,6 +355,7 @@
      */
     Domus.Router = (function() {
         const routes = {};
+        let skipNextHashChange = false;
 
         function register(name, handler) {
             routes[name] = handler;
@@ -346,14 +366,17 @@
             if (routes[name]) {
                 routes[name].apply(null, args || []);
             }
-            updateHash(name, args);
+            skipNextHashChange = updateHash(name, args);
+            Domus.Navigation.render();
         }
 
         function updateHash(name, args) {
             const hash = '#/' + name + (args && args.length ? '/' + args.join('/') : '');
             if (window.location.hash !== hash) {
                 window.location.hash = hash;
+                return true;
             }
+            return false;
         }
 
         function parseHash() {
@@ -364,9 +387,15 @@
         }
 
         window.addEventListener('hashchange', function() {
+            if (skipNextHashChange) {
+                skipNextHashChange = false;
+                return;
+            }
             const parsed = parseHash();
             if (parsed && routes[parsed.name]) {
+                Domus.state.currentView = parsed.name;
                 routes[parsed.name].apply(null, parsed.args);
+                Domus.Navigation.render();
             }
         });
 
@@ -604,6 +633,7 @@
                     Domus.UI.renderSidebar(sidebar);
 
                     const content = '<div class="domus-detail">' +
+                        Domus.UI.buildBackButton('properties') +
                         '<h2>' + Domus.Utils.escapeHtml(property.name || '') + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml([property.street, property.city].filter(Boolean).join(', ')) + '</p>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Units')) + '</h3>' +
@@ -616,6 +646,7 @@
                         Domus.Documents.renderList('property', id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
+                    Domus.UI.bindBackButtons();
                     bindDetailActions(id);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -815,6 +846,7 @@
                     Domus.UI.renderSidebar(sidebar);
 
                     const content = '<div class="domus-detail">' +
+                        Domus.UI.buildBackButton('units') +
                         '<h2>' + Domus.Utils.escapeHtml(unit.label || '') + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml(unit.unitType || '') + '</p>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Tenancies')) + '</h3>' +
@@ -825,6 +857,7 @@
                         Domus.Documents.renderList('unit', id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
+                    Domus.UI.bindBackButtons();
                     bindDetailActions(id);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -1007,6 +1040,7 @@
                     Domus.UI.renderSidebar(sidebar);
 
                     const content = '<div class="domus-detail">' +
+                        Domus.UI.buildBackButton('partners') +
                         '<h2>' + Domus.Utils.escapeHtml(partner.name || '') + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml(partner.partnerType || '') + '</p>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Tenancies')) + '</h3>' +
@@ -1017,6 +1051,7 @@
                         Domus.Documents.renderList('partner', id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
+                    Domus.UI.bindBackButtons();
                     bindDetailActions(id);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -1219,6 +1254,7 @@
                     ]]);
 
                     const content = '<div class="domus-detail">' +
+                        Domus.UI.buildBackButton('tenancies') +
                         '<div class="domus-detail-header">' +
                         '<div>' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Tenancy')) + ' #' + Domus.Utils.escapeHtml(id) + '</h2>' +
@@ -1240,6 +1276,7 @@
                         Domus.Reports.renderInline(tenancy.reports || []) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
+                    Domus.UI.bindBackButtons();
                     bindDetailActions(id, tenancy);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -1435,12 +1472,14 @@
                     Domus.UI.renderSidebar(sidebar);
 
                     const content = '<div class="domus-detail">' +
+                        Domus.UI.buildBackButton('bookings') +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Booking')) + ' #' + Domus.Utils.escapeHtml(id) + '</h2>' +
                         '<p class="muted">' + Domus.Utils.escapeHtml(booking.bookingType || '') + '</p>' +
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Documents')) + '</h3>' +
                         Domus.Documents.renderList('booking', id) + '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
+                    Domus.UI.bindBackButtons();
                     bindDetailActions(id);
                 })
                 .catch(err => Domus.UI.showError(err.message));

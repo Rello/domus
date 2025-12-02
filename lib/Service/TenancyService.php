@@ -7,7 +7,10 @@ use OCA\Domus\Db\PartnerRel;
 use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Db\Tenancy;
 use OCA\Domus\Db\TenancyMapper;
+use OCA\Domus\Db\BookingMapper;
+use OCA\Domus\Db\ReportMapper;
 use OCA\Domus\Db\UnitMapper;
+use OCA\Domus\Service\ReportService;
 use OCP\IL10N;
 
 class TenancyService {
@@ -16,19 +19,26 @@ class TenancyService {
         private UnitMapper $unitMapper,
         private PartnerMapper $partnerMapper,
         private PartnerRelMapper $partnerRelMapper,
+        private BookingMapper $bookingMapper,
+        private ReportMapper $reportMapper,
+        private ReportService $reportService,
         private IL10N $l10n,
     ) {
     }
 
     public function listTenancies(string $userId, ?int $unitId = null, ?int $partnerId = null): array {
         $tenancies = $this->tenancyMapper->findByUser($userId, $unitId);
-        if ($partnerId !== null) {
-            $tenancies = array_filter($tenancies, fn(Tenancy $tenancy) => in_array($partnerId, $tenancy->getPartnerIds() ?? [], true));
-        }
         foreach ($tenancies as $tenancy) {
             $this->hydratePartners($tenancy, $userId);
             $tenancy->setStatus($this->getStatus($tenancy, new \DateTimeImmutable('today')));
+            $this->hydrateUnit($tenancy, $userId);
+            $this->hydrateDerivedFields($tenancy);
         }
+
+        if ($partnerId !== null) {
+            $tenancies = array_filter($tenancies, fn(Tenancy $tenancy) => in_array($partnerId, $tenancy->getPartnerIds() ?? [], true));
+        }
+
         return array_values($tenancies);
     }
 
@@ -39,6 +49,10 @@ class TenancyService {
         }
         $this->hydratePartners($tenancy, $userId);
         $tenancy->setStatus($this->getStatus($tenancy, new \DateTimeImmutable('today')));
+        $this->hydrateUnit($tenancy, $userId);
+        $this->hydrateDerivedFields($tenancy);
+        $tenancy->setBookings($this->bookingMapper->findByUser($userId, ['tenancyId' => $tenancy->getId()]));
+        $this->hydrateReports($tenancy, $userId);
         return $tenancy;
     }
 
@@ -158,5 +172,31 @@ class TenancyService {
         }
         $tenancy->setPartnerIds($partnerIds);
         $tenancy->setPartners($partners);
+    }
+
+    private function hydrateUnit(Tenancy $tenancy, string $userId): void {
+        $unit = $this->unitMapper->findForUser($tenancy->getUnitId(), $userId);
+        if ($unit) {
+            $tenancy->setUnitLabel($unit->getLabel());
+        }
+    }
+
+    private function hydrateReports(Tenancy $tenancy, string $userId): void {
+        $reports = $this->reportMapper->findByUser($userId, null, null, $tenancy->getId());
+        foreach ($reports as $report) {
+            $report->setDownloadUrl($this->reportService->getDownloadUrl($report, $userId));
+        }
+        $tenancy->setReports($reports);
+    }
+
+    private function hydrateDerivedFields(Tenancy $tenancy): void {
+        $start = $tenancy->getStartDate();
+        $end = $tenancy->getEndDate();
+        $period = $start ? $start . ' – ' . ($end ?: $this->l10n->t('open')) : null;
+        $tenancy->setPeriod($period);
+        $partners = $tenancy->getPartners();
+        if (!empty($partners)) {
+            $tenancy->setPartnerName($partners[0]->getName());
+        }
     }
 }

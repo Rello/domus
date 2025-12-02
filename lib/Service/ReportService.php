@@ -23,8 +23,17 @@ class ReportService {
 
     public function listReports(string $userId, ?int $propertyId = null, ?int $year = null): array {
         $reports = $this->reportMapper->findByUser($userId, $propertyId, $year);
+        $propertyCache = [];
         foreach ($reports as $report) {
             $report->setDownloadUrl($this->getDownloadUrl($report, $userId));
+            $pid = $report->getPropertyId();
+            if ($pid) {
+                if (!array_key_exists($pid, $propertyCache)) {
+                    $property = $this->propertyMapper->findForUser($pid, $userId);
+                    $propertyCache[$pid] = $property ? $property->getName() : null;
+                }
+                $report->setPropertyName($propertyCache[$pid]);
+            }
         }
         return $reports;
     }

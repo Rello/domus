@@ -14,7 +14,7 @@ class ReportMapper extends QBMapper {
     /**
      * @throws Exception
      */
-    public function findByUser(string $userId, ?int $propertyId = null, ?int $year = null): array {
+    public function findByUser(string $userId, ?int $propertyId = null, ?int $year = null, ?int $tenancyId = null): array {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
@@ -25,6 +25,9 @@ class ReportMapper extends QBMapper {
         }
         if ($year !== null) {
             $qb->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)));
+        }
+        if ($tenancyId !== null) {
+            $qb->andWhere($qb->expr()->eq('tenancy_id', $qb->createNamedParameter($tenancyId, $qb::PARAM_INT)));
         }
 
         return $this->findEntities($qb);

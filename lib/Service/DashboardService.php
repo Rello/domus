@@ -24,10 +24,12 @@ class DashboardService {
         $tenancies = $this->tenancyMapper->findByUser($userId);
         $activeTenancies = array_filter($tenancies, fn($t) => $t->getEndDate() === null || $t->getEndDate() >= date('Y-m-d'));
         $bookings = $this->bookingMapper->findByUser($userId, ['year' => $year]);
+
         $rentSum = 0.0;
         foreach ($tenancies as $tenancy) {
             $rentSum += (float)$tenancy->getBaseRent();
         }
+
         $income = 0.0;
         $expense = 0.0;
         foreach ($bookings as $booking) {
@@ -38,10 +40,23 @@ class DashboardService {
                 $expense += $amount;
             }
         }
+
+        $propertyOverview = array_map(function($property) use ($userId) {
+            $unitCount = $this->unitMapper->countByProperty($property->getId(), $userId);
+            return [
+                'id' => $property->getId(),
+                'name' => $property->getName(),
+                'city' => $property->getCity(),
+                'unitCount' => $unitCount,
+            ];
+        }, $properties);
+
         return [
             'propertyCount' => count($properties),
             'unitCount' => count($units),
-            'activeTenancies' => count($activeTenancies),
+            'tenancyCount' => count($activeTenancies),
+            'bookingCount' => count($bookings),
+            'properties' => $propertyOverview,
             'monthlyBaseRentSum' => number_format($rentSum, 2, '.', ''),
             'annualResult' => number_format($income - $expense, 2, '.', ''),
         ];
