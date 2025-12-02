@@ -7,6 +7,7 @@ use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
+use OCA\Domus\Service\TenancyService;
 use OCP\IL10N;
 
 class UnitService {
@@ -15,6 +16,7 @@ class UnitService {
         private PropertyMapper $propertyMapper,
         private TenancyMapper $tenancyMapper,
         private PartnerRelMapper $partnerRelMapper,
+        private TenancyService $tenancyService,
         private IL10N $l10n,
     ) {
     }
@@ -93,13 +95,11 @@ class UnitService {
     }
 
     private function enrichWithTenancies(Unit $unit, string $userId): void {
-        $tenancies = $this->tenancyMapper->findByUser($userId, $unit->getId());
+        $tenancies = $this->tenancyService->listTenancies($userId, $unit->getId());
         $active = [];
         $historic = [];
-        $today = new \DateTimeImmutable('today');
         foreach ($tenancies as $tenancy) {
-            $status = $this->resolveStatus($tenancy, $today);
-            $tenancy->setStatus($status);
+            $status = $tenancy->getStatus();
             if ($status === 'historical') {
                 $historic[] = $tenancy;
             } elseif ($status === 'active') {
@@ -108,17 +108,5 @@ class UnitService {
         }
         $unit->setActiveTenancies($active);
         $unit->setHistoricTenancies($historic);
-    }
-
-    private function resolveStatus($tenancy, \DateTimeImmutable $today): string {
-        $start = new \DateTimeImmutable($tenancy->getStartDate());
-        $end = $tenancy->getEndDate() ? new \DateTimeImmutable($tenancy->getEndDate()) : null;
-        if ($start > $today) {
-            return 'future';
-        }
-        if ($end !== null && $end < $today) {
-            return 'historical';
-        }
-        return 'active';
     }
 }
