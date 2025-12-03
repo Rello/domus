@@ -1941,6 +1941,10 @@
                     return;
                 }
                 OC.dialogs.filepicker(t('domus', 'Select a file'), function(path, fileInfo) {
+                    if (fileInfo?.type === 'dir' || fileInfo?.mimetype === 'httpd/unix-directory') {
+                        Domus.UI.showNotification(t('domus', 'Please choose a file instead of a folder.'), 'error');
+                        return;
+                    }
                     const fileId = fileInfo?.id || fileInfo?.fileid || fileInfo?.fileId;
                     if (!fileId) {
                         Domus.UI.showNotification(t('domus', 'Could not read selected file.'), 'error');
@@ -1949,7 +1953,7 @@
                     Domus.Api.linkDocument(entityType, entityId, { fileId })
                         .then(handleSuccess)
                         .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                }, false, 'file');
+                }, false, null, 'file');
             });
 
             uploadToggle?.addEventListener('click', () => {
