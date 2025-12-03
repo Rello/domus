@@ -6,6 +6,21 @@
     display: none;
 }
 
+.hidden {
+    display: none !important;
+}
+
+.domus-doc-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.domus-doc-action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
 #app-navigation {
     border-right: 1px solid var(--color-border);
 }
