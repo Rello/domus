@@ -38,6 +38,8 @@ class DocumentController extends Controller {
             return new DataResponse($link, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
+        } catch (\RuntimeException $e) {
+            return $this->validationError($e->getMessage());
         } catch (\Throwable $e) {
             return $this->notFound();
         }
@@ -50,6 +52,9 @@ class DocumentController extends Controller {
             if (!$file) {
                 return $this->validationError($this->l10n->t('No file received.'));
             }
+            if ($year === null && $this->request->getParam('year') !== null) {
+                $year = (int)$this->request->getParam('year');
+            }
             $link = $this->documentService->uploadAndLink(
                 $this->getUserId(),
                 $entityType,
@@ -59,6 +64,8 @@ class DocumentController extends Controller {
             );
             return new DataResponse($link, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        } catch (\RuntimeException $e) {
             return $this->validationError($e->getMessage());
         } catch (\Throwable $e) {
             return $this->notFound();

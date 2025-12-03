@@ -1953,7 +1953,7 @@
                     Domus.Api.linkDocument(entityType, entityId, { fileId })
                         .then(handleSuccess)
                         .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                }, false, null, 'file');
+                }, false, 'file', true, 1);
             });
 
             uploadToggle?.addEventListener('click', () => {

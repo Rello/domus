@@ -8,6 +8,7 @@ use OCA\Domus\Db\Report;
 use OCA\Domus\Db\ReportMapper;
 use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\UnitMapper;
+use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\IL10N;
 
@@ -133,14 +134,32 @@ class ReportService {
 
     private function storeReportFile(string $userId, string $entityName, int $year, string $content, ?string $folder = null): string {
         $userFolder = $this->rootFolder->getUserFolder($userId);
-        $folderPath = 'DomusApp/Abrechnungen/' . $year . '/';
+        $folderPath = 'DomusApp/Abrechnungen/' . $year;
         if ($folder) {
-            $folderPath .= $folder . '/';
+            $folderPath .= '/' . $folder;
         }
-        $folderPath .= $entityName;
-        $folder = $userFolder->newFolder($folderPath, true);
+        $folderPath .= '/' . $entityName;
+
+        $folder = $this->ensureFolderPath($userFolder, $folderPath);
         $fileName = time() . '-Abrechnung.md';
         $file = $folder->newFile($fileName, $content);
         return $file->getPath();
+    }
+
+    private function ensureFolderPath(Folder $root, string $path): Folder {
+        $segments = array_filter(explode('/', trim($path, '/')));
+        $current = $root;
+        foreach ($segments as $segment) {
+            if (!$current->nodeExists($segment)) {
+                $current = $current->newFolder($segment);
+                continue;
+            }
+            $node = $current->get($segment);
+            if (!$node instanceof \OCP\Files\Folder) {
+                throw new \RuntimeException($this->l10n->t('Invalid storage location.'));
+            }
+            $current = $node;
+        }
+        return $current;
     }
 }
