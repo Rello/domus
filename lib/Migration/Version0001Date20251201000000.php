@@ -8,6 +8,8 @@ use OCP\IDBConnection;
 use OCP\Migration\SimpleMigrationStep;
 use OCP\Migration\IOutput;
 
+//sudo -u www-data php occ migrations:execute domus 0001Date20251201000000
+
 class Version0001Date20251201000000 extends SimpleMigrationStep {
     public function __construct(IDBConnection $connection) {
     }
@@ -20,7 +22,8 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table = $schema->createTable('domus_properties');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 32]);
-            $table->addColumn('name', 'string', ['notnull' => true, 'length' => 190]);
+			$table->addColumn('usage_role', 'string', ['notnull' => true, 'length' => 32, 'default' => 'manager']);
+			$table->addColumn('name', 'string', ['notnull' => true, 'length' => 190]);
             $table->addColumn('street', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('zip', 'string', ['length' => 32, 'notnull' => false]);
             $table->addColumn('city', 'string', ['length' => 190, 'notnull' => false]);
@@ -128,16 +131,17 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table = $schema->createTable('domus_docLinks');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
+			$table->addColumn('file_id', 'bigint', ['notnull' => false]);
+			$table->addColumn('file_name', 'string', ['notnull' => false, 'length' => 512]);
             $table->addColumn('entity_type', 'string', ['notnull' => true, 'length' => 32]);
             $table->addColumn('entity_id', 'bigint', ['notnull' => true]);
-            $table->addColumn('file_path', 'string', ['notnull' => true, 'length' => 512]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_doc_user');
             $table->addIndex(['entity_type', 'entity_id'], 'domus_doc_rel');
         }
 
-        if (!$schema->hasTable('domus_reports')) {
+		if (!$schema->hasTable('domus_reports')) {
             $table = $schema->createTable('domus_reports');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);

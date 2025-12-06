@@ -1940,7 +1940,7 @@
                     Domus.UI.showNotification(t('domus', 'Nextcloud file picker is not available.'), 'error');
                     return;
                 }
-                OC.dialogs.filepicker(t('domus', 'Select a file'), function(path, fileInfo) {
+                OC.dialogs.filepicker(t('domus', 'Select a file'), function(path) {
                     if (fileInfo?.type === 'dir' || fileInfo?.mimetype === 'httpd/unix-directory') {
                         Domus.UI.showNotification(t('domus', 'Please choose a file instead of a folder.'), 'error');
                         return;
@@ -1953,7 +1953,7 @@
                     Domus.Api.linkDocument(entityType, entityId, { fileId })
                         .then(handleSuccess)
                         .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                }, false, 'file', true, 1);
+                }, false, null, true, OC.dialogs.FILEPICKER_TYPE_CHOOSE, '', { allowDirectoryChooser: false });
             });
 
             uploadToggle?.addEventListener('click', () => {
