@@ -34,10 +34,10 @@ class DashboardService {
         $expense = 0.0;
         foreach ($bookings as $booking) {
             $amount = (float)$booking->getAmount();
-            if ($booking->getBookingType() === 'income') {
+            if ($amount >= 0) {
                 $income += $amount;
             } else {
-                $expense += $amount;
+                $expense += abs($amount);
             }
         }
 

@@ -106,7 +106,7 @@ class PropertyService {
             $annualResult = 0.0;
             foreach ($bookings as $booking) {
                 $amount = (float)$booking->getAmount();
-                $annualResult += $booking->getBookingType() === 'expense' ? -$amount : $amount;
+                $annualResult += $amount;
             }
             $property->setAnnualResult(number_format($annualResult, 2, '.', ''));
             $property->setAnnualRentSum($this->calculateRentSum($property));
