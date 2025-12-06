@@ -121,8 +121,7 @@ Tabellennamen ≤ 23 Zeichen, lowerCamelCase-Felder, keine Unterstriche. Entitie
    - Einnahme/Ausgabe
    - `id`
    - `user_id`
-   - `bookingType` (`income` | `expense`)
-   - `category` (Enum-ähnlicher String, z.B. `rent`, `serviceCharge`, `maintenance`, usw.)
+   - `account` (Kontonummer als Integer)
    - `date` (date)
    - `amount` (decimal, Euro)
    - `year` (int, redundant zur schnellen Filterung)
@@ -541,7 +540,7 @@ Alle Antworten JSON (außer evtl. Download-Redirect).
 4. **Eingabevalidierung**
    - Serverseitige Validierung aller Felder:
      - Datumsformate, Beträge (dezimal, >= 0), Pflichtfelder.
-     - Enum-Strings (`bookingType`, `partnerType`, `entityType`) gegen Whitelists.
+- Enum-Strings (`partnerType`, `entityType`) gegen Whitelists.
    - Frontend-Validierung ergänzend, aber nicht sicherheitsrelevant.
 
 5. **File-System-Sicherheit**

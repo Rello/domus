@@ -2,6 +2,7 @@
 
 namespace OCA\Domus\Controller;
 
+use OCA\Domus\Accounting\Accounts;
 use OCA\Domus\AppInfo\Application;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -21,6 +22,8 @@ class PageController extends Controller {
     #[NoAdminRequired]
 	#[NoCSRFRequired]
     public function index(): TemplateResponse {
-        return new TemplateResponse(Application::APP_ID, 'main');
+        return new TemplateResponse(Application::APP_ID, 'main', [
+            'accounts' => Accounts::all(),
+        ]);
     }
 }

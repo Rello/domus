@@ -55,16 +55,7 @@ class ReportService {
             throw new \RuntimeException($this->l10n->t('Property not found.'));
         }
         $bookings = $this->bookingMapper->findByUser($userId, ['propertyId' => $propertyId, 'year' => $year]);
-        $income = 0.0;
-        $expense = 0.0;
-        foreach ($bookings as $booking) {
-            $amount = (float)$booking->getAmount();
-            if ($booking->getBookingType() === 'income') {
-                $income += $amount;
-            } else {
-                $expense += $amount;
-            }
-        }
+        [$income, $expense] = $this->splitIncomeExpense($bookings);
         $content = $this->buildMarkdown($property->getName(), $year, $income, $expense);
         $filePath = $this->storeReportFile($userId, $property->getName(), $year, $content);
 
@@ -86,16 +77,7 @@ class ReportService {
         }
 
         $bookings = $this->bookingMapper->findByUser($userId, ['tenancyId' => $tenancyId, 'year' => $year]);
-        $income = 0.0;
-        $expense = 0.0;
-        foreach ($bookings as $booking) {
-            $amount = (float)$booking->getAmount();
-            if ($booking->getBookingType() === 'income') {
-                $income += $amount;
-            } else {
-                $expense += $amount;
-            }
-        }
+        [$income, $expense] = $this->splitIncomeExpense($bookings);
 
         $unitLabel = null;
         if ($tenancy->getUnitId()) {
@@ -142,5 +124,21 @@ class ReportService {
         $fileName = time() . '-Abrechnung.md';
         $file = $folder->newFile($fileName, $content);
         return $file->getPath();
+    }
+
+    private function splitIncomeExpense(array $bookings): array {
+        $income = 0.0;
+        $expense = 0.0;
+
+        foreach ($bookings as $booking) {
+            $amount = (float)$booking->getAmount();
+            if ($amount >= 0) {
+                $income += $amount;
+            } else {
+                $expense += abs($amount);
+            }
+        }
+
+        return [$income, $expense];
     }
 }
