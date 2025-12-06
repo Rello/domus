@@ -26,8 +26,7 @@ class BookingMapper extends QBMapper {
             'propertyId' => 'property_id',
             'unitId' => 'unit_id',
             'tenancyId' => 'tenancy_id',
-            'category' => 'category',
-            'bookingType' => 'booking_type',
+            'account' => 'account',
         ];
         foreach ($fields as $key => $column) {
             if (isset($filter[$key])) {
@@ -49,5 +48,43 @@ class BookingMapper extends QBMapper {
             ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
         return $this->findEntity($qb);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function sumByAccount(int $year, ?int $propertyId = null, ?int $unitId = null): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('account')
+            ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)));
+
+        if ($propertyId !== null) {
+            $qb->andWhere($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
+        }
+
+        if ($unitId !== null) {
+            $qb->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
+        }
+
+        return $qb->executeQuery()->fetchAll();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function sumByAccountGrouped(int $year, string $groupBy): array {
+        $groupColumn = $groupBy === 'unit' ? 'unit_id' : 'property_id';
+        $qb = $this->db->getQueryBuilder();
+        $qb->select($groupColumn)
+            ->select('account')
+            ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)))
+            ->groupBy($groupColumn)
+            ->addGroupBy('account');
+
+        return $qb->executeQuery()->fetchAll();
     }
 }

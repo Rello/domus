@@ -23,14 +23,12 @@ class BookingController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function index(?int $year = null, ?int $propertyId = null, ?int $unitId = null, ?int $tenancyId = null, ?string $category = null, ?string $bookingType = null): DataResponse {
+    public function index(?int $year = null, ?int $propertyId = null, ?int $unitId = null, ?int $tenancyId = null): DataResponse {
         $filter = array_filter([
             'year' => $year,
             'propertyId' => $propertyId,
             'unitId' => $unitId,
             'tenancyId' => $tenancyId,
-            'category' => $category,
-            'bookingType' => $bookingType,
         ], fn($value) => $value !== null);
         return new DataResponse($this->bookingService->listBookings($this->getUserId(), $filter));
     }
@@ -45,8 +43,8 @@ class BookingController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function create(string $bookingType, string $category, string $date, string $amount, ?int $propertyId = null, ?int $unitId = null, ?int $tenancyId = null, ?string $description = null): DataResponse {
-        $data = compact('bookingType', 'category', 'date', 'amount', 'propertyId', 'unitId', 'tenancyId', 'description');
+    public function create(int $account, string $date, string $amount, ?int $propertyId = null, ?int $unitId = null, ?int $tenancyId = null, ?string $description = null): DataResponse {
+        $data = compact('account', 'date', 'amount', 'propertyId', 'unitId', 'tenancyId', 'description');
         try {
             $booking = $this->bookingService->createBooking($data, $this->getUserId());
             return new DataResponse($booking, Http::STATUS_CREATED);
@@ -58,10 +56,9 @@ class BookingController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function update(int $id, ?string $bookingType = null, ?string $category = null, ?string $date = null, ?string $amount = null, ?int $propertyId = null, ?int $unitId = null, ?int $tenancyId = null, ?string $description = null): DataResponse {
+    public function update(int $id, ?int $account = null, ?string $date = null, ?string $amount = null, ?int $propertyId = null, ?int $unitId = null, ?int $tenancyId = null, ?string $description = null): DataResponse {
         $data = array_filter([
-            'bookingType' => $bookingType,
-            'category' => $category,
+            'account' => $account,
             'date' => $date,
             'amount' => $amount,
             'propertyId' => $propertyId,
