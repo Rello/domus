@@ -36,13 +36,13 @@ class StatisticsService {
             'columns' => array_column($definitions, 'key'),
         ]);
 
-        $grouped = $this->bookingService->sumByAccountGrouped($userId, $year, 'unit');
+        $grouped = $this->bookingService->sumByAccountGrouped($userId, $year, 'unit', $unitId);
         $this->logger->info('StatisticsService: grouped sums fetched', [
             'count' => count($grouped),
             'grouped' => $grouped,
         ]);
 
-        $sums = $this->filterSumsForUnit($grouped, $unitId);
+        $sums = $this->mapSums($grouped);
         $this->logger->info('StatisticsService: sums for unit extracted', ['sums' => $sums]);
 
         $row = [];
@@ -83,18 +83,11 @@ class StatisticsService {
         }, $columns);
     }
 
-    private function filterSumsForUnit(array $rows, int $unitId): array {
+    private function mapSums(array $rows): array {
         $sums = [];
         foreach ($rows as $row) {
-            if (!isset($row['unit_id'], $row['account'])) {
-                $this->logger->info('StatisticsService: skipping row missing unit_id/account', ['row' => $row]);
-                continue;
-            }
-            if ((int)$row['unit_id'] !== $unitId) {
-                $this->logger->info('StatisticsService: skipping row for different unit', [
-                    'rowUnit' => (int)$row['unit_id'],
-                    'expectedUnit' => $unitId,
-                ]);
+            if (!isset($row['account'])) {
+                $this->logger->info('StatisticsService: skipping row missing account', ['row' => $row]);
                 continue;
             }
             $account = (string)$row['account'];
