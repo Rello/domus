@@ -18,6 +18,12 @@ class Booking extends Entity implements JsonSerializable {
     protected $createdAt;
     protected $updatedAt;
 
+    public function getBookingType(): ?string {
+        // Legacy compatibility: bookingType was removed but older code paths may still call the getter.
+        // Return null to avoid runtime errors while keeping the simplified account-based model intact.
+        return null;
+    }
+
     public function __construct() {
         $this->addType('id', 'int');
         $this->addType('account', 'int');
