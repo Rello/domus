@@ -11,11 +11,6 @@ use OCA\Domus\Db\UnitMapper;
 use OCP\IL10N;
 
 class BookingService {
-    private array $exampleRule = [
-        ['op' => 'add', 'args' => ['1000', '1001']],
-        ['op' => 'div', 'args' => ['prev', '1000']],
-    ];
-
     public function __construct(
         private BookingMapper $bookingMapper,
         private PropertyMapper $propertyMapper,
@@ -115,85 +110,7 @@ class BookingService {
         }
     }
 
-    public function loadAccountSums(string $userId, ?int $propertyId = null, ?int $unitId = null, int $year): array {
-        $rows = $this->bookingMapper->sumByAccount($userId, $year, $propertyId, $unitId);
-        $sums = [];
-        foreach ($rows as $row) {
-            if (!isset($row['account'])) {
-                continue;
-            }
-            $account = (string)$row['account'];
-            $sums[$account] = (float)($row['total'] ?? 0.0);
-        }
-        return $sums;
-    }
-
-    public function calculateExampleRule(string $userId, int $year, string $groupBy = 'property'): array {
-        $grouping = $groupBy === 'unit' ? 'unit' : 'property';
-        $groupColumn = $grouping === 'unit' ? 'unit_id' : 'property_id';
-        $rows = $this->bookingMapper->sumByAccountGrouped($userId, $year, $grouping);
-        $groupedSums = [];
-        foreach ($rows as $row) {
-            if (!isset($row[$groupColumn], $row['account'])) {
-                continue;
-            }
-            $groupId = (int)$row[$groupColumn];
-            $account = (string)$row['account'];
-            $groupedSums[$groupId][$account] = (float)($row['total'] ?? 0.0);
-        }
-
-        $groupKey = $grouping === 'unit' ? 'unitId' : 'propertyId';
-        $results = [];
-        foreach ($groupedSums as $groupId => $sums) {
-            $results[] = [
-                'year' => $year,
-                $groupKey => $groupId,
-                'value' => $this->evalRule($sums, $this->exampleRule),
-            ];
-        }
-        return $results;
-    }
-
-    public function evalRule(array $sums, array $rule): float {
-        $prev = 0.0;
-
-        foreach ($rule as $step) {
-            $op = $step['op'] ?? '';
-            $args = $step['args'] ?? [];
-            $values = array_map(function ($arg) use (&$prev, $sums) {
-                if ($arg === 'prev') {
-                    return $prev;
-                }
-                return $this->get($sums, (string)$arg);
-            }, $args);
-
-            switch ($op) {
-                case 'add':
-                    $prev = $this->addValues(...$values);
-                    break;
-                case 'div':
-                    $prev = $this->divValues($values[0] ?? 0.0, $values[1] ?? 0.0);
-                    break;
-                default:
-                    throw new \InvalidArgumentException($this->l10n->t('Unsupported operation.'));
-            }
-        }
-
-        return $prev;
-    }
-
-    public function get(array $sums, string $nr): float {
-        return (float)($sums[$nr] ?? 0.0);
-    }
-
-    public function addValues(float ...$values): float {
-        return array_sum($values);
-    }
-
-    public function divValues(float $a, float $b): float {
-        if ($b == 0.0) {
-            throw new \DivisionByZeroError($this->l10n->t('Division by zero.'));
-        }
-        return $a / $b;
+    public function sumByAccountGrouped(string $userId, int $year, string $groupBy, ?int $groupId = null): array {
+        return $this->bookingMapper->sumByAccountGrouped($userId, $year, $groupBy, $groupId);
     }
 }
