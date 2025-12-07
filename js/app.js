@@ -163,6 +163,45 @@
     })();
 
     /**
+     * Accounts helper
+     */
+    Domus.Accounts = (function() {
+        function readAccounts() {
+            const container = document.getElementById('app-content');
+            const raw = container && container.dataset ? container.dataset.accounts : null;
+            if (!raw) {
+                return {};
+            }
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                console.error('Failed to parse accounts data', e);
+                return {};
+            }
+        }
+
+        const accounts = readAccounts();
+        Domus.accounts = accounts;
+
+        function toOptions(includePlaceholder = true) {
+            const opts = Object.entries(accounts).map(([nr, data]) => ({
+                value: nr,
+                label: data && data.label ? `${nr} – ${data.label}` : nr
+            }));
+            if (includePlaceholder) {
+                return [{ value: '', label: t('domus', 'Select account') }].concat(opts);
+            }
+            return opts;
+        }
+
+        function label(accountNr) {
+            return (accounts && accounts[accountNr] && accounts[accountNr].label) || '';
+        }
+
+        return { toOptions, label };
+    })();
+
+    /**
      * Generic UI helpers
      */
     Domus.UI = (function() {
@@ -1545,6 +1584,15 @@
      * Bookings view
      */
     Domus.Bookings = (function() {
+        function formatAccount(booking) {
+            const nr = booking.account || '';
+            const label = Domus.Accounts.label(nr);
+            if (!nr) {
+                return '';
+            }
+            return label ? `${nr} – ${label}` : nr;
+        }
+
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading bookings…'));
@@ -1555,13 +1603,13 @@
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
                     const rows = (bookings || []).map(b => [
-                        Domus.Utils.escapeHtml(b.bookingType || ''),
-                        Domus.Utils.escapeHtml(b.category || ''),
+                        Domus.Utils.escapeHtml(b.date || ''),
+                        Domus.Utils.escapeHtml(formatAccount(b)),
                         Domus.Utils.escapeHtml((b.amount || 0).toString()),
                         '<button class="domus-link" data-booking-id="' + b.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
                     ]);
                     Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
-                        t('domus', 'Type'), t('domus', 'Category'), t('domus', 'Amount'), ''
+                        t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount'), ''
                     ], rows));
                     bindList();
                 })
@@ -1577,12 +1625,12 @@
 
         function renderInline(bookings) {
             const rows = (bookings || []).map(b => [
-                Domus.Utils.escapeHtml(b.bookingType || ''),
-                Domus.Utils.escapeHtml(b.category || ''),
+                Domus.Utils.escapeHtml(b.date || ''),
+                Domus.Utils.escapeHtml(formatAccount(b)),
                 Domus.Utils.escapeHtml((b.amount || 0).toString())
             ]);
             return Domus.UI.buildTable([
-                t('domus', 'Type'), t('domus', 'Category'), t('domus', 'Amount')
+                t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount')
             ], rows);
         }
 
@@ -1593,10 +1641,7 @@
                 Domus.Api.getTenancies()
             ])
                 .then(([properties, units, tenancies]) => {
-                    const bookingTypeOptions = [
-                        { value: 'income', label: t('domus', 'Income') },
-                        { value: 'expense', label: t('domus', 'Expense') }
-                    ];
+                    const accountOptions = Domus.Accounts.toOptions();
                     const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
                         value: p.id,
                         label: p.name || `${t('domus', 'Property')} #${p.id}`
@@ -1612,7 +1657,7 @@
 
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'New booking'),
-                        content: buildBookingForm({ bookingTypeOptions, propertyOptions, unitOptions, tenancyOptions }, defaults),
+                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions, tenancyOptions }, defaults),
                         size: 'large'
                     });
                     bindBookingForm(modal, data => Domus.Api.createBooking(data)
@@ -1630,6 +1675,7 @@
             Domus.UI.showLoading(t('domus', 'Loading booking…'));
             Domus.Api.get('/bookings/' + id)
                 .then(booking => {
+                    const accountDisplay = formatAccount(booking);
                     const sidebar = '<div class="domus-detail-sidebar">' +
                         '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Booking actions')) + '</h3>' +
                         '<button id="domus-booking-edit" data-id="' + id + '">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
@@ -1640,7 +1686,7 @@
                     const content = '<div class="domus-detail">' +
                         Domus.UI.buildBackButton('bookings') +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Booking')) + ' #' + Domus.Utils.escapeHtml(id) + '</h2>' +
-                        '<p class="muted">' + Domus.Utils.escapeHtml(booking.bookingType || '') + '</p>' +
+                        (accountDisplay ? '<p>' + Domus.Utils.escapeHtml(accountDisplay) + '</p>' : '') +
                         '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Documents'), {
                             id: 'domus-booking-link-doc',
                             title: t('domus', 'Link file'),
@@ -1686,10 +1732,7 @@
                 Domus.Api.getTenancies()
             ])
                 .then(([booking, properties, units, tenancies]) => {
-                    const bookingTypeOptions = [
-                        { value: 'income', label: t('domus', 'Income') },
-                        { value: 'expense', label: t('domus', 'Expense') }
-                    ];
+                    const accountOptions = Domus.Accounts.toOptions();
                     const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
                         value: p.id,
                         label: p.name || `${t('domus', 'Property')} #${p.id}`
@@ -1705,7 +1748,7 @@
 
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'Edit booking'),
-                        content: buildBookingForm({ bookingTypeOptions, propertyOptions, unitOptions, tenancyOptions }, booking),
+                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions, tenancyOptions }, booking),
                         size: 'large'
                     });
                     bindBookingForm(modal, data => Domus.Api.updateBooking(id, data)
@@ -1729,12 +1772,12 @@
                 Array.prototype.forEach.call(form.elements, el => { if (el.name) data[el.name] = el.value; });
                 Object.keys(data).forEach(key => { if (data[key] === '') delete data[key]; });
 
-                if (!['income', 'expense'].includes(data.bookingType)) {
-                    Domus.UI.showNotification(t('domus', 'Booking type must be income or expense.'), 'error');
-                    return;
-                }
                 if (!data.date) {
                     Domus.UI.showNotification(t('domus', 'Date is required.'), 'error');
+                    return;
+                }
+                if (!data.account) {
+                    Domus.UI.showNotification(t('domus', 'Select an account.'), 'error');
                     return;
                 }
                 if (!data.propertyId && !data.unitId && !data.tenancyId) {
@@ -1747,18 +1790,17 @@
         }
 
         function buildBookingForm(options, booking) {
-            const { bookingTypeOptions, propertyOptions, unitOptions, tenancyOptions } = options;
-            const selectedBookingType = booking?.bookingType || 'income';
+            const { accountOptions, propertyOptions, unitOptions, tenancyOptions } = options;
+            const selectedAccount = booking?.account ? String(booking.account) : '';
             const selectedProperty = booking?.propertyId ? String(booking.propertyId) : '';
             const selectedUnit = booking?.unitId ? String(booking.unitId) : '';
             const selectedTenancy = booking?.tenancyId ? String(booking.tenancyId) : '';
             return '<div class="domus-form">' +
                 '<form id="domus-booking-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Type')) + ' *<select name="bookingType" required>' +
-                bookingTypeOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (opt.value === selectedBookingType ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Date')) + ' *<input type="date" name="date" required value="' + (booking?.date ? Domus.Utils.escapeHtml(booking.date) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Category')) + '<input name="category" value="' + (booking?.category ? Domus.Utils.escapeHtml(booking.category) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Account')) + ' *<select name="account" required>' +
+                accountOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedAccount ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                '</select></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Amount')) + '<input type="number" step="0.01" name="amount" value="' + (booking?.amount || booking?.amount === 0 ? Domus.Utils.escapeHtml(booking.amount) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId">' +
                 propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedProperty ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +

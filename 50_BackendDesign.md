@@ -177,8 +177,7 @@ Nicht persistent:
 
 - `id`
 - `userId`
-- `bookingType` (`income` | `expense`)
-- `category` (string)
+- `account` (int, Kontonummer)
 - `date` (string `YYYY-MM-DD`)
 - `amount` (decimal)
 - `year` (int)
@@ -316,18 +315,17 @@ Verantwortung:
 Kernmethoden:
 
 - `listBookings(string $userId, array $filter): array`
-  - Filter: year, propertyId, unitId, tenancyId, category, bookingType
+  - Filter: year, propertyId, unitId, tenancyId, account
 - `getBookingForUser(int $id, string $userId): Booking`
 - `createBooking(array $data, string $userId): Booking`
   - amount >= 0
-  - bookingType in [`income`, `expense`]
   - mindestens eine Referenz gesetzt
   - Ownership der referenzierten Entities.
   - year aus date ableiten.
 - `updateBooking(int $id, array $data, string $userId): Booking`
 - `deleteBooking(int $id, string $userId): void`
 - `getAggregatesForPropertyYear(int $propertyId, int $year, string $userId): array`
-  - Summen pro Kategorie und Typ.
+  - Summen pro Konto.
 
 Verteilungslogik für Jahresbeträge:
 
@@ -351,8 +349,8 @@ Kernmethoden:
   - lädt Bookings des Jahres
   - lädt Tenancies und Units der Property
   - berechnet:
-    - Summen pro Kategorie / bookingType
-    - Netto-Ergebnis
+    - Summen pro Konto
+    - Netto-Ergebnis (Einnahmen/Ausgaben über Betragsvorzeichen)
     - Kennzahlen (Miete/m², etc.)
   - baut Markdown-Content
   - nutzt `IRootFolder` / `IUserFolder`:

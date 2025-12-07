@@ -7,8 +7,7 @@ use OCP\AppFramework\Db\Entity;
 
 class Booking extends Entity implements JsonSerializable {
     protected $userId;
-    protected $bookingType;
-    protected $category;
+    protected $account;
     protected $date;
     protected $amount;
     protected $year;
@@ -19,8 +18,15 @@ class Booking extends Entity implements JsonSerializable {
     protected $createdAt;
     protected $updatedAt;
 
+    public function getBookingType(): ?string {
+        // Legacy compatibility: bookingType was removed but older code paths may still call the getter.
+        // Return null to avoid runtime errors while keeping the simplified account-based model intact.
+        return null;
+    }
+
     public function __construct() {
         $this->addType('id', 'int');
+        $this->addType('account', 'int');
         $this->addType('year', 'int');
         $this->addType('propertyId', 'int');
         $this->addType('unitId', 'int');
@@ -33,8 +39,7 @@ class Booking extends Entity implements JsonSerializable {
         return [
             'id' => $this->id,
             'userId' => $this->userId,
-            'bookingType' => $this->bookingType,
-            'category' => $this->category,
+            'account' => $this->account,
             'date' => $this->date,
             'amount' => $this->amount,
             'year' => $this->year,

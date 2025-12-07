@@ -108,8 +108,7 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table = $schema->createTable('domus_bookings');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
-            $table->addColumn('booking_type', 'string', ['notnull' => true, 'length' => 32]);
-            $table->addColumn('category', 'string', ['notnull' => true, 'length' => 64]);
+            $table->addColumn('account', 'integer', ['notnull' => true, 'default' => 0]);
             $table->addColumn('date', 'string', ['notnull' => true, 'length' => 32]);
             $table->addColumn('amount', 'string', ['notnull' => true, 'length' => 32]);
             $table->addColumn('year', 'integer', ['notnull' => true]);
@@ -122,6 +121,17 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_book_user');
             $table->addIndex(['year'], 'domus_book_year');
+        } else {
+            $table = $schema->getTable('domus_bookings');
+            if (!$table->hasColumn('account')) {
+                $table->addColumn('account', 'integer', ['notnull' => true, 'default' => 0]);
+            }
+            if ($table->hasColumn('booking_type')) {
+                $table->dropColumn('booking_type');
+            }
+            if ($table->hasColumn('category')) {
+                $table->dropColumn('category');
+            }
         }
 
         if (!$schema->hasTable('domus_docLinks')) {
