@@ -115,8 +115,8 @@ class BookingService {
         }
     }
 
-    public function loadAccountSums(?int $propertyId = null, ?int $unitId = null, int $year): array {
-        $rows = $this->bookingMapper->sumByAccount($year, $propertyId, $unitId);
+    public function loadAccountSums(string $userId, ?int $propertyId = null, ?int $unitId = null, int $year): array {
+        $rows = $this->bookingMapper->sumByAccount($userId, $year, $propertyId, $unitId);
         $sums = [];
         foreach ($rows as $row) {
             if (!isset($row['account'])) {
@@ -128,10 +128,10 @@ class BookingService {
         return $sums;
     }
 
-    public function calculateExampleRule(int $year, string $groupBy = 'property'): array {
+    public function calculateExampleRule(string $userId, int $year, string $groupBy = 'property'): array {
         $grouping = $groupBy === 'unit' ? 'unit' : 'property';
         $groupColumn = $grouping === 'unit' ? 'unit_id' : 'property_id';
-        $rows = $this->bookingMapper->sumByAccountGrouped($year, $grouping);
+        $rows = $this->bookingMapper->sumByAccountGrouped($userId, $year, $grouping);
         $groupedSums = [];
         foreach ($rows as $row) {
             if (!isset($row[$groupColumn], $row['account'])) {
