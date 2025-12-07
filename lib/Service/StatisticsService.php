@@ -116,7 +116,7 @@ class StatisticsService {
 
     private function divValues(float $a, float $b): float {
         if ($b == 0.0) {
-            throw new \DivisionByZeroError($this->l10n->t('Division by zero.'));
+            return 0.0;
         }
         return $a / $b;
     }

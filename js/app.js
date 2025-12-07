@@ -110,7 +110,7 @@
                 const path = propertyId ? `/properties/${propertyId}/units` : '/units';
                 return request('GET', queryWithYear(path));
             },
-            getUnitStatistics: (unitId) => request('GET', `/units/${unitId}/statistics/${Domus.state.currentYear}`),
+            getUnitStatistics: (unitId) => request('GET', `/statistics/units/${unitId}/${Domus.state.currentYear}`),
             createUnit: data => request('POST', '/units', data),
             updateUnit: (id, data) => request('PUT', `/units/${id}`, data),
             deleteUnit: id => request('DELETE', `/units/${id}`),
