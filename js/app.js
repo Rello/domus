@@ -166,7 +166,22 @@
      * Accounts helper
      */
     Domus.Accounts = (function() {
-        const accounts = window.Domus.accounts || {};
+        function readAccounts() {
+            const container = document.getElementById('app-content');
+            const raw = container && container.dataset ? container.dataset.accounts : null;
+            if (!raw) {
+                return {};
+            }
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                console.error('Failed to parse accounts data', e);
+                return {};
+            }
+        }
+
+        const accounts = readAccounts();
+        Domus.accounts = accounts;
 
         function toOptions(includePlaceholder = true) {
             const opts = Object.entries(accounts).map(([nr, data]) => ({
