@@ -110,6 +110,7 @@
                 const path = propertyId ? `/properties/${propertyId}/units` : '/units';
                 return request('GET', queryWithYear(path));
             },
+            getUnitStatistics: (unitId) => request('GET', `/units/${unitId}/statistics/${Domus.state.currentYear}`),
             createUnit: data => request('POST', '/units', data),
             updateUnit: (id, data) => request('PUT', `/units/${id}`, data),
             deleteUnit: id => request('DELETE', `/units/${id}`),
@@ -911,6 +912,21 @@
             return Domus.UI.buildTable([t('domus', 'Label'), t('domus', 'Number'), t('domus', 'Type')], rows);
         }
 
+        function renderStatisticsTable(statistics) {
+            if (!statistics) {
+                return '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No statistics available.')) + '</div>';
+            }
+
+            const columns = statistics.columns || [];
+            const headers = columns.map(col => Domus.Utils.escapeHtml(col.label || col.key || ''));
+            const rows = (statistics.rows || []).map(row => columns.map(col => {
+                const value = row[col.key];
+                return Domus.Utils.escapeHtml(value === undefined || value === null ? '' : value);
+            }));
+
+            return Domus.UI.buildTable(headers, rows);
+        }
+
         function openCreateModal(defaults = {}, onCreated) {
             Domus.Api.getProperties()
                 .then(properties => {
@@ -935,8 +951,11 @@
 
         function renderDetail(id) {
             Domus.UI.showLoading(t('domus', 'Loading unit…'));
-            Domus.Api.get('/units/' + id)
-                .then(unit => {
+            Promise.all([
+                Domus.Api.get('/units/' + id),
+                Domus.Api.getUnitStatistics(id).catch(() => null)
+            ])
+                .then(([unit, statistics]) => {
                     const sidebar = '<div class="domus-detail-sidebar">' +
                         '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Unit actions')) + '</h3>' +
                         '<button id="domus-unit-edit" data-id="' + id + '">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
@@ -961,6 +980,7 @@
                         dataset: { entityType: 'unit', entityId: id }
                     });
 
+                    const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Statistics'));
                     const content = '<div class="domus-detail">' +
                         Domus.UI.buildBackButton('units') +
                         '<h2>' + Domus.Utils.escapeHtml(unit.label || '') + '</h2>' +
@@ -969,6 +989,8 @@
                         Domus.Tenancies.renderInline(allTenancies) + '</div>' +
                         '<div class="domus-section">' + bookingsHeader +
                         Domus.Bookings.renderInline(unit.bookings || []) + '</div>' +
+                        '<div class="domus-section">' + statisticsHeader +
+                        renderStatisticsTable(statistics) + '</div>' +
                         '<div class="domus-section">' + documentsHeader +
                         Domus.Documents.renderList('unit', id) + '</div>' +
                         '</div>';
