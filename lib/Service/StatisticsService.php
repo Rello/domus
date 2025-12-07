@@ -37,7 +37,10 @@ class StatisticsService {
         ]);
 
         $grouped = $this->bookingService->sumByAccountGrouped($userId, $year, 'unit');
-        $this->logger->info('StatisticsService: grouped sums fetched', ['count' => count($grouped)]);
+        $this->logger->info('StatisticsService: grouped sums fetched', [
+            'count' => count($grouped),
+            'grouped' => $grouped,
+        ]);
 
         $sums = $this->filterSumsForUnit($grouped, $unitId);
         $this->logger->info('StatisticsService: sums for unit extracted', ['sums' => $sums]);
@@ -84,9 +87,14 @@ class StatisticsService {
         $sums = [];
         foreach ($rows as $row) {
             if (!isset($row['unit_id'], $row['account'])) {
+                $this->logger->info('StatisticsService: skipping row missing unit_id/account', ['row' => $row]);
                 continue;
             }
             if ((int)$row['unit_id'] !== $unitId) {
+                $this->logger->info('StatisticsService: skipping row for different unit', [
+                    'rowUnit' => (int)$row['unit_id'],
+                    'expectedUnit' => $unitId,
+                ]);
                 continue;
             }
             $account = (string)$row['account'];
