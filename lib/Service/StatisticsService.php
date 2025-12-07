@@ -3,6 +3,7 @@
 namespace OCA\Domus\Service;
 
 use OCP\IL10N;
+use Psr\Log\LoggerInterface;
 
 class StatisticsService {
     private array $unitStatColumns = [
@@ -19,13 +20,27 @@ class StatisticsService {
         ],
     ];
 
-    public function __construct(private BookingService $bookingService, private IL10N $l10n) {
+    public function __construct(
+        private BookingService $bookingService,
+        private IL10N $l10n,
+        private LoggerInterface $logger,
+    ) {
     }
 
     public function unitStatPerYear(int $unitId, string $userId, int $year, ?array $columns = null): array {
         $definitions = $this->normalizeColumns($columns ?? $this->unitStatColumns);
+        $this->logger->info('StatisticsService: calculating unit stats', [
+            'unitId' => $unitId,
+            'userId' => $userId,
+            'year' => $year,
+            'columns' => array_column($definitions, 'key'),
+        ]);
+
         $grouped = $this->bookingService->sumByAccountGrouped($userId, $year, 'unit');
+        $this->logger->info('StatisticsService: grouped sums fetched', ['count' => count($grouped)]);
+
         $sums = $this->filterSumsForUnit($grouped, $unitId);
+        $this->logger->info('StatisticsService: sums for unit extracted', ['sums' => $sums]);
 
         $row = [];
         foreach ($definitions as $column) {
@@ -44,6 +59,8 @@ class StatisticsService {
             }
             $row[$key] = null;
         }
+
+        $this->logger->info('StatisticsService: calculated statistics row', ['row' => $row]);
 
         return [
             'columns' => array_map(fn(array $col) => ['key' => $col['key'], 'label' => $col['label']], $definitions),
