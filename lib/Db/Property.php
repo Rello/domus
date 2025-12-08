@@ -27,6 +27,7 @@ class Property extends Entity implements JsonSerializable {
 
     public function __construct() {
         $this->addType('id', 'int');
+        $this->addType('usageRole', 'string');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
     }
