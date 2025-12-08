@@ -52,6 +52,7 @@ class StatisticsService {
 
     public function __construct(
         private BookingService $bookingService,
+        private TenancyService $tenancyService,
         private IL10N $l10n,
         private LoggerInterface $logger,
     ) {
@@ -75,7 +76,11 @@ class StatisticsService {
         $sums = $this->mapSums($grouped);
         $this->logger->info('StatisticsService: sums for unit extracted', ['sums' => $sums]);
 
-        $row = $this->buildRowForYear($year, $definitions, $sums);
+        $tenancySums = $this->tenancyService->sumTenancyForYear($userId, $unitId, $year);
+        $mergedSums = $this->mergeSums($sums, $tenancySums);
+        $this->logger->info('StatisticsService: merged booking and tenancy sums', ['sums' => $mergedSums]);
+
+        $row = $this->buildRowForYear($year, $definitions, $mergedSums);
 
         $this->logger->info('StatisticsService: calculated statistics row', ['row' => $row]);
 
@@ -100,11 +105,12 @@ class StatisticsService {
         ]);
 
         $perYearSums = $this->mapSumsByYear($grouped);
-        $years = array_keys($perYearSums);
-        rsort($years, SORT_NUMERIC);
+        $years = $this->collectYears($perYearSums, $this->tenancyService->getTenanciesForUnit($unitId, $userId));
 
-        $rows = array_map(function (int $year) use ($definitions, $perYearSums) {
-            return $this->buildRowForYear($year, $definitions, $perYearSums[$year] ?? []);
+        $rows = array_map(function (int $year) use ($definitions, $perYearSums, $unitId, $userId) {
+            $tenancySums = $this->tenancyService->sumTenancyForYear($userId, $unitId, $year);
+            $mergedSums = $this->mergeSums($perYearSums[$year] ?? [], $tenancySums);
+            return $this->buildRowForYear($year, $definitions, $mergedSums);
         }, $years);
 
         $this->logger->info('StatisticsService: calculated statistics rows for all years', [
@@ -161,6 +167,45 @@ class StatisticsService {
             $perYear[$year][$account] = (float)($row['total'] ?? 0.0);
         }
         return $perYear;
+    }
+
+    private function collectYears(array $bookingSums, array $tenancies): array {
+        $years = array_keys($bookingSums);
+        $currentYear = (int)date('Y');
+
+        foreach ($tenancies as $tenancy) {
+            try {
+                $start = new \DateTimeImmutable($tenancy->getStartDate());
+            } catch (\Exception $e) {
+                $this->logger->info('StatisticsService: skipping tenancy while collecting years due to invalid start date', [
+                    'tenancyId' => $tenancy->getId(),
+                ]);
+                continue;
+            }
+
+            $end = null;
+            if ($tenancy->getEndDate()) {
+                try {
+                    $end = new \DateTimeImmutable($tenancy->getEndDate());
+                } catch (\Exception $e) {
+                    $this->logger->info('StatisticsService: skipping tenancy end date parsing', [
+                        'tenancyId' => $tenancy->getId(),
+                    ]);
+                }
+            }
+
+            $startYear = (int)$start->format('Y');
+            $endYear = $end ? (int)$end->format('Y') : max($startYear, $currentYear);
+
+            for ($year = $startYear; $year <= $endYear; $year++) {
+                $years[] = $year;
+            }
+        }
+
+        $years = array_values(array_unique($years));
+        rsort($years, SORT_NUMERIC);
+
+        return $years;
     }
 
     private function buildRowForYear(int $year, array $definitions, array $sums): array {
@@ -234,6 +279,20 @@ class StatisticsService {
 
     private function get(array $sums, string $nr): float {
         return (float)($sums[$nr] ?? 0.0);
+    }
+
+    private function mergeSums(array ...$sums): array {
+        $merged = [];
+        foreach ($sums as $sum) {
+            foreach ($sum as $account => $value) {
+                if (!isset($merged[$account])) {
+                    $merged[$account] = 0.0;
+                }
+                $merged[$account] += (float)$value;
+            }
+        }
+
+        return $merged;
     }
 
     private function addValues(float ...$values): float {
