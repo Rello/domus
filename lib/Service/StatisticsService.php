@@ -75,29 +75,45 @@ class StatisticsService {
         $sums = $this->mapSums($grouped);
         $this->logger->info('StatisticsService: sums for unit extracted', ['sums' => $sums]);
 
-        $row = [];
-        foreach ($definitions as $column) {
-            $key = $column['key'];
-            if (($column['type'] ?? '') === 'year') {
-                $row[$key] = $year;
-                continue;
-            }
-            if (isset($column['account'])) {
-                $row[$key] = round($this->get($sums, (string)$column['account']), 2);
-                continue;
-            }
-            if (isset($column['rule'])) {
-                $row[$key] = round($this->evalRule($sums, $column['rule'], $row), 2);
-                continue;
-            }
-            $row[$key] = null;
-        }
+        $row = $this->buildRowForYear($year, $definitions, $sums);
 
         $this->logger->info('StatisticsService: calculated statistics row', ['row' => $row]);
 
         return [
             'columns' => array_map(fn(array $col) => ['key' => $col['key'], 'label' => $col['label']], $definitions),
             'rows' => [$row],
+        ];
+    }
+
+    public function unitStatsAllYears(int $unitId, string $userId, ?array $columns = null): array {
+        $definitions = $this->normalizeColumns($columns ?? $this->unitStatColumns);
+        $this->logger->info('StatisticsService: calculating unit stats for all years', [
+            'unitId' => $unitId,
+            'userId' => $userId,
+            'columns' => array_column($definitions, 'key'),
+        ]);
+
+        $grouped = $this->bookingService->sumByAccountGrouped($userId, null, 'unit', $unitId);
+        $this->logger->info('StatisticsService: grouped sums fetched for all years', [
+            'count' => count($grouped),
+            'grouped' => $grouped,
+        ]);
+
+        $perYearSums = $this->mapSumsByYear($grouped);
+        $years = array_keys($perYearSums);
+        rsort($years, SORT_NUMERIC);
+
+        $rows = array_map(function (int $year) use ($definitions, $perYearSums) {
+            return $this->buildRowForYear($year, $definitions, $perYearSums[$year] ?? []);
+        }, $years);
+
+        $this->logger->info('StatisticsService: calculated statistics rows for all years', [
+            'rows' => $rows,
+        ]);
+
+        return [
+            'columns' => array_map(fn(array $col) => ['key' => $col['key'], 'label' => $col['label']], $definitions),
+            'rows' => $rows,
         ];
     }
 
@@ -124,6 +140,48 @@ class StatisticsService {
             $sums[$account] = (float)($row['total'] ?? 0.0);
         }
         return $sums;
+    }
+
+    private function mapSumsByYear(array $rows): array {
+        $perYear = [];
+        foreach ($rows as $row) {
+            if (!isset($row['year'])) {
+                $this->logger->info('StatisticsService: skipping row missing year', ['row' => $row]);
+                continue;
+            }
+            $year = (int)$row['year'];
+            $account = (string)($row['account'] ?? '');
+            if ($account === '') {
+                $this->logger->info('StatisticsService: skipping row missing account while grouping by year', ['row' => $row]);
+                continue;
+            }
+            if (!isset($perYear[$year])) {
+                $perYear[$year] = [];
+            }
+            $perYear[$year][$account] = (float)($row['total'] ?? 0.0);
+        }
+        return $perYear;
+    }
+
+    private function buildRowForYear(int $year, array $definitions, array $sums): array {
+        $row = [];
+        foreach ($definitions as $column) {
+            $key = $column['key'];
+            if (($column['type'] ?? '') === 'year') {
+                $row[$key] = $year;
+                continue;
+            }
+            if (isset($column['account'])) {
+                $row[$key] = round($this->get($sums, (string)$column['account']), 2);
+                continue;
+            }
+            if (isset($column['rule'])) {
+                $row[$key] = round($this->evalRule($sums, $column['rule'], $row), 2);
+                continue;
+            }
+            $row[$key] = null;
+        }
+        return $row;
     }
 
 	private function evalRule(array $sums, array $rule, array $computed = []): float {

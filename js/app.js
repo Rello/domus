@@ -34,7 +34,16 @@
             }[ch]));
         }
 
-        return { escapeHtml };
+        function formatAmount(amount) {
+            if (amount === undefined || amount === null) return '';
+            const numeric = Number(amount);
+            if (!Number.isNaN(numeric)) {
+                return numeric.toLocaleString();
+            }
+            return String(amount);
+        }
+
+        return { escapeHtml, formatAmount };
     })();
 
     /**
@@ -110,7 +119,7 @@
                 const path = propertyId ? `/properties/${propertyId}/units` : '/units';
                 return request('GET', queryWithYear(path));
             },
-            getUnitStatistics: (unitId) => request('GET', `/statistics/units/${unitId}/${Domus.state.currentYear}`),
+            getUnitStatistics: (unitId) => request('GET', `/statistics/units/${unitId}`),
             createUnit: data => request('POST', '/units', data),
             updateUnit: (id, data) => request('PUT', `/units/${id}`, data),
             deleteUnit: id => request('DELETE', `/units/${id}`),
@@ -315,11 +324,71 @@
                 html += '<tr><td colspan="' + headers.length + '">' + Domus.Utils.escapeHtml(t('domus', 'No entries found.')) + '</td></tr>';
             } else {
                 rows.forEach(row => {
-                    html += '<tr>' + row.map(cell => '<td>' + cell + '</td>').join('') + '</tr>';
+                    const rowData = Array.isArray(row) ? { cells: row } : (row || {});
+                    const cells = rowData.cells || [];
+                    const classes = rowData.className ? ' class="' + Domus.Utils.escapeHtml(rowData.className) + '"' : '';
+                    let dataAttrs = '';
+                    if (rowData.dataset) {
+                        Object.keys(rowData.dataset).forEach(key => {
+                            const value = rowData.dataset[key];
+                            if (value === undefined || value === null) return;
+                            dataAttrs += ' data-' + Domus.Utils.escapeHtml(key) + '="' + Domus.Utils.escapeHtml(String(value)) + '"';
+                        });
+                    }
+                    html += '<tr' + classes + dataAttrs + '>' + cells.map(cell => '<td>' + cell + '</td>').join('') + '</tr>';
                 });
             }
             html += '</tbody></table>';
             return html;
+        }
+
+        function bindRowNavigation() {
+            document.querySelectorAll('table.domus-table tr[data-navigate]').forEach(row => {
+                const target = row.getAttribute('data-navigate');
+                const argsRaw = row.getAttribute('data-args') || '';
+                if (!target) return;
+                row.addEventListener('click', function(e) {
+                    if (e.target.closest('a') || e.target.closest('button')) {
+                        return;
+                    }
+                    const args = argsRaw ? argsRaw.split(',').filter(Boolean) : [];
+                    Domus.Router.navigate(target, args);
+                });
+            });
+        }
+
+        function buildCollapsible(content, options = {}) {
+            const collapsed = options.collapsed !== false;
+            const showLabel = options.showLabel || t('domus', 'Show');
+            const hideLabel = options.hideLabel || t('domus', 'Hide');
+            const id = options.id || ('domus-collapsible-' + Math.random().toString(36).slice(2));
+
+            return '<div class="domus-collapsible" data-collapsible id="' + Domus.Utils.escapeHtml(id) + '">' +
+                '<button type="button" class="domus-collapsible-toggle" data-target="' + Domus.Utils.escapeHtml(id) + '" data-show-label="' + Domus.Utils.escapeHtml(showLabel) + '" data-hide-label="' + Domus.Utils.escapeHtml(hideLabel) + '" aria-expanded="' + (!collapsed) + '">' + Domus.Utils.escapeHtml(collapsed ? showLabel : hideLabel) + '</button>' +
+                '<div class="domus-collapsible-body"' + (collapsed ? ' hidden' : '') + '>' + content + '</div>' +
+                '</div>';
+        }
+
+        function bindCollapsibles() {
+            document.querySelectorAll('[data-collapsible] .domus-collapsible-toggle').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const body = targetId ? document.querySelector('#' + CSS.escape(targetId) + ' .domus-collapsible-body') : null;
+                    if (!body) return;
+                    const showLabel = this.getAttribute('data-show-label') || t('domus', 'Show');
+                    const hideLabel = this.getAttribute('data-hide-label') || t('domus', 'Hide');
+                    const isHidden = body.hasAttribute('hidden');
+                    if (isHidden) {
+                        body.removeAttribute('hidden');
+                        this.textContent = hideLabel;
+                        this.setAttribute('aria-expanded', 'true');
+                    } else {
+                        body.setAttribute('hidden', '');
+                        this.textContent = showLabel;
+                        this.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            });
         }
 
         function buildYearFilter(onChange) {
@@ -394,6 +463,9 @@
             buildBackButton,
             buildSectionHeader,
             bindBackButtons,
+            bindRowNavigation,
+            buildCollapsible,
+            bindCollapsibles,
             openModal
         };
     })();
@@ -577,54 +649,44 @@
                 Domus.Utils.escapeHtml(card.label) + '</div><div class="domus-card-value">' +
                 Domus.Utils.escapeHtml(card.value.toString()) + '</div></div>').join('');
 
-            const propertyRows = (data.properties || []).map(p => [
-                Domus.Utils.escapeHtml(p.name || ''),
-                Domus.Utils.escapeHtml(p.city || ''),
-                Domus.Utils.escapeHtml((p.unitCount || 0).toString()),
-                '<button class="domus-link" data-property-id="' + p.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
-            ]);
+            const propertyRows = (data.properties || []).map(p => ({
+                cells: [
+                    Domus.Utils.escapeHtml(p.name || ''),
+                    Domus.Utils.escapeHtml(p.city || ''),
+                    Domus.Utils.escapeHtml((p.unitCount || 0).toString())
+                ],
+                dataset: { navigate: 'propertyDetail', args: p.id }
+            }));
 
             const table = Domus.UI.buildTable([
-                t('domus', 'Name'), t('domus', 'City'), t('domus', 'Units'), ''
+                t('domus', 'Name'), t('domus', 'City'), t('domus', 'Units')
             ], propertyRows);
 
-            setTimeout(bindPropertyLinks, 0);
+            setTimeout(Domus.UI.bindRowNavigation, 0);
 
             return '<div class="domus-cards">' + cardHtml + '</div>' +
                 '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Properties overview')) + '</h2>' + table;
         }
 
-        function bindPropertyLinks() {
-            document.querySelectorAll('button[data-property-id]').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    Domus.Router.navigate('propertyDetail', [this.getAttribute('data-property-id')]);
-                });
-            });
-        }
-
         function buildTenantDashboard(data) {
-            const tenancyRows = (data.tenancies || []).map(tn => [
-                Domus.Utils.escapeHtml(tn.unitLabel || ''),
-                Domus.Utils.escapeHtml(tn.period || ''),
-                Domus.Utils.escapeHtml(tn.status || ''),
-                '<button class="domus-link" data-tenancy-id="' + tn.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>'
-            ]);
+            const tenancyRows = (data.tenancies || []).map(tn => ({
+                cells: [
+                    Domus.Utils.escapeHtml(tn.unitLabel || ''),
+                    Domus.Utils.escapeHtml(tn.period || ''),
+                    Domus.Utils.escapeHtml(tn.status || '')
+                ],
+                dataset: { navigate: 'tenancyDetail', args: tn.id }
+            }));
             const reportRows = (data.reports || []).map(rp => [
                 Domus.Utils.escapeHtml(rp.propertyName || ''),
                 Domus.Utils.escapeHtml((rp.year || Domus.state.currentYear).toString()),
                 '<a class="domus-link" href="' + Domus.Utils.escapeHtml(rp.downloadUrl || '#') + '">' + Domus.Utils.escapeHtml(t('domus', 'Download')) + '</a>'
             ]);
 
-            setTimeout(() => {
-                document.querySelectorAll('button[data-tenancy-id]').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        Domus.Router.navigate('tenancyDetail', [this.getAttribute('data-tenancy-id')]);
-                    });
-                });
-            }, 0);
+            setTimeout(Domus.UI.bindRowNavigation, 0);
 
             return '<h2>' + Domus.Utils.escapeHtml(t('domus', 'My tenancies')) + '</h2>' +
-                Domus.UI.buildTable([t('domus', 'Unit'), t('domus', 'Period'), t('domus', 'Status'), ''], tenancyRows) +
+                Domus.UI.buildTable([t('domus', 'Unit'), t('domus', 'Period'), t('domus', 'Status')], tenancyRows) +
                 '<h2>' + Domus.Utils.escapeHtml(t('domus', 'My reports')) + '</h2>' +
                 Domus.UI.buildTable([t('domus', 'Property'), t('domus', 'Year'), ''], reportRows);
         }
@@ -645,14 +707,16 @@
                         '<button id="domus-property-create-btn" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New property')) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
-                    const rows = (properties || []).map(p => [
-                        Domus.Utils.escapeHtml(p.name || ''),
-                        Domus.Utils.escapeHtml([p.street, p.city].filter(Boolean).join(', ')),
-                        Domus.Utils.escapeHtml((p.unitCount || 0).toString()),
-                        '<button class="domus-link" data-property-id="' + p.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
-                    ]);
+                    const rows = (properties || []).map(p => ({
+                        cells: [
+                            Domus.Utils.escapeHtml(p.name || ''),
+                            Domus.Utils.escapeHtml([p.street, p.city].filter(Boolean).join(', ')),
+                            Domus.Utils.escapeHtml((p.unitCount || 0).toString())
+                        ],
+                        dataset: { navigate: 'propertyDetail', args: p.id }
+                    }));
                     const table = Domus.UI.buildTable([
-                        t('domus', 'Name'), t('domus', 'Address'), t('domus', 'Units'), ''
+                        t('domus', 'Name'), t('domus', 'Address'), t('domus', 'Units')
                     ], rows);
                     Domus.UI.renderContent(header + table);
                     bindListEvents();
@@ -666,11 +730,7 @@
                 createBtn.addEventListener('click', openCreateModal);
             }
 
-            document.querySelectorAll('button[data-property-id]').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    Domus.Router.navigate('propertyDetail', [this.getAttribute('data-property-id')]);
-                });
-            });
+            Domus.UI.bindRowNavigation();
         }
 
         function openCreateModal() {
@@ -726,7 +786,11 @@
                         '<div class="domus-section">' + unitsHeader +
                         Domus.Units.renderListInline(property.units || []) + '</div>' +
                         '<div class="domus-section">' + bookingsHeader +
-                        Domus.Bookings.renderInline(property.bookings || []) + '</div>' +
+                        Domus.UI.buildCollapsible(Domus.Bookings.renderInline(property.bookings || []), {
+                            showLabel: t('domus', 'Show bookings'),
+                            hideLabel: t('domus', 'Hide bookings'),
+                            collapsed: true
+                        }) + '</div>' +
                         '<div class="domus-section">' + reportsHeader +
                         Domus.Reports.renderInline(property.reports || [], property.id) + '</div>' +
                         '<div class="domus-section">' + documentsHeader +
@@ -734,6 +798,7 @@
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
+                    Domus.UI.bindCollapsibles();
                     bindDetailActions(id, property);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -881,14 +946,16 @@
                         '<button id="domus-unit-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New unit')) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
-                    const rows = (units || []).map(u => [
-                        Domus.Utils.escapeHtml(u.label || ''),
-                        Domus.Utils.escapeHtml(u.unitNumber || ''),
-                        Domus.Utils.escapeHtml(u.unitType || ''),
-                        '<button class="domus-link" data-unit-id="' + u.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
-                    ]);
+                    const rows = (units || []).map(u => ({
+                        cells: [
+                            Domus.Utils.escapeHtml(u.label || ''),
+                            Domus.Utils.escapeHtml(u.unitNumber || ''),
+                            Domus.Utils.escapeHtml(u.unitType || '')
+                        ],
+                        dataset: { navigate: 'unitDetail', args: u.id }
+                    }));
                     Domus.UI.renderContent(header + Domus.UI.buildTable([
-                        t('domus', 'Label'), t('domus', 'Number'), t('domus', 'Type'), ''
+                        t('domus', 'Label'), t('domus', 'Number'), t('domus', 'Type')
                     ], rows));
                     bindList();
                 })
@@ -898,9 +965,7 @@
         function bindList() {
             const createBtn = document.getElementById('domus-unit-create');
             if (createBtn) createBtn.addEventListener('click', () => openCreateModal());
-            document.querySelectorAll('button[data-unit-id]').forEach(btn => {
-                btn.addEventListener('click', () => Domus.Router.navigate('unitDetail', [btn.getAttribute('data-unit-id')]));
-            });
+            Domus.UI.bindRowNavigation();
         }
 
         function renderListInline(units) {
@@ -919,9 +984,15 @@
 
             const columns = statistics.columns || [];
             const headers = columns.map(col => Domus.Utils.escapeHtml(col.label || col.key || ''));
-            const rows = (statistics.rows || []).map(row => columns.map(col => {
+            const yearColumn = columns.find(col => (col.key || '').toLowerCase() === 'year' || (col.label || '').toLowerCase() === 'year');
+            const sortedRows = [...(statistics.rows || [])];
+            if (yearColumn) {
+                sortedRows.sort((a, b) => (parseInt(b[yearColumn.key], 10) || 0) - (parseInt(a[yearColumn.key], 10) || 0));
+            }
+
+            const rows = sortedRows.map(row => columns.map(col => {
                 const value = row[col.key];
-                return Domus.Utils.escapeHtml(value === undefined || value === null ? '' : value);
+                return Domus.Utils.escapeHtml(Domus.Utils.formatAmount(value));
             }));
 
             return Domus.UI.buildTable(headers, rows);
@@ -953,9 +1024,10 @@
             Domus.UI.showLoading(t('domus', 'Loading unit…'));
             Promise.all([
                 Domus.Api.get('/units/' + id),
-                Domus.Api.getUnitStatistics(id).catch(() => null)
+                Domus.Api.getUnitStatistics(id).catch(() => null),
+                Domus.Api.getBookings({ unitId: id }).catch(() => [])
             ])
-                .then(([unit, statistics]) => {
+                .then(([unit, statistics, bookings]) => {
                     const sidebar = '<div class="domus-detail-sidebar">' +
                         '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Unit actions')) + '</h3>' +
                         '<button id="domus-unit-edit" data-id="' + id + '">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
@@ -988,7 +1060,11 @@
                         '<div class="domus-section">' + tenanciesHeader +
                         Domus.Tenancies.renderInline(allTenancies) + '</div>' +
                         '<div class="domus-section">' + bookingsHeader +
-                        Domus.Bookings.renderInline(unit.bookings || []) + '</div>' +
+                        Domus.UI.buildCollapsible(Domus.Bookings.renderInline(bookings || []), {
+                            showLabel: t('domus', 'Show bookings'),
+                            hideLabel: t('domus', 'Hide bookings'),
+                            collapsed: true
+                        }) + '</div>' +
                         '<div class="domus-section">' + statisticsHeader +
                         renderStatisticsTable(statistics) + '</div>' +
                         '<div class="domus-section">' + documentsHeader +
@@ -996,6 +1072,7 @@
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
+                    Domus.UI.bindCollapsibles();
                     bindDetailActions(id, unit);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -1127,14 +1204,16 @@
                         '<option value="owner">' + Domus.Utils.escapeHtml(t('domus', 'Owner')) + '</option>' +
                         '</select></label>' +
                         '</div>';
-                    const rows = (partners || []).map(p => [
-                        Domus.Utils.escapeHtml(p.name || ''),
-                        Domus.Utils.escapeHtml(p.partnerType || ''),
-                        Domus.Utils.escapeHtml(p.email || ''),
-                        '<button class="domus-link" data-partner-id="' + p.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
-                    ]);
+                    const rows = (partners || []).map(p => ({
+                        cells: [
+                            Domus.Utils.escapeHtml(p.name || ''),
+                            Domus.Utils.escapeHtml(p.partnerType || ''),
+                            Domus.Utils.escapeHtml(p.email || '')
+                        ],
+                        dataset: { navigate: 'partnerDetail', args: p.id }
+                    }));
                     Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
-                        t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email'), ''
+                        t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
                     ], rows));
                     bindList();
                 })
@@ -1146,18 +1225,20 @@
             document.getElementById('domus-partner-filter')?.addEventListener('change', function() {
                 Domus.Api.getPartners(this.value).then(renderPartnersTable).catch(err => Domus.UI.showError(err.message));
             });
-            bindPartnerLinks();
+            Domus.UI.bindRowNavigation();
         }
 
         function renderPartnersTable(partners) {
-            const rows = (partners || []).map(p => [
-                Domus.Utils.escapeHtml(p.name || ''),
-                Domus.Utils.escapeHtml(p.partnerType || ''),
-                Domus.Utils.escapeHtml(p.email || ''),
-                '<button class="domus-link" data-partner-id="' + p.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
-            ]);
+            const rows = (partners || []).map(p => ({
+                cells: [
+                    Domus.Utils.escapeHtml(p.name || ''),
+                    Domus.Utils.escapeHtml(p.partnerType || ''),
+                    Domus.Utils.escapeHtml(p.email || '')
+                ],
+                dataset: { navigate: 'partnerDetail', args: p.id }
+            }));
             const table = Domus.UI.buildTable([
-                t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email'), ''
+                t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
             ], rows);
             const content = document.getElementById('app-content');
             if (content) {
@@ -1166,13 +1247,7 @@
                     tables[0].outerHTML = table;
                 }
             }
-            bindPartnerLinks();
-        }
-
-        function bindPartnerLinks() {
-            document.querySelectorAll('button[data-partner-id]').forEach(btn => {
-                btn.addEventListener('click', () => Domus.Router.navigate('partnerDetail', [btn.getAttribute('data-partner-id')]));
-            });
+            Domus.UI.bindRowNavigation();
         }
 
         function openCreateModal() {
@@ -1343,15 +1418,17 @@
                         '</div>';
                     const rows = (tenancies || []).map(tn => {
                         const partnerLabel = tn.partnerName || formatPartnerNames(tn.partners);
-                        return [
-                            Domus.Utils.escapeHtml(formatUnitLabel(tn)),
-                            Domus.Utils.escapeHtml(partnerLabel || ''),
-                            Domus.Utils.escapeHtml(tn.status || ''),
-                            '<button class="domus-link" data-tenancy-id="' + tn.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
-                        ];
+                        return {
+                            cells: [
+                                Domus.Utils.escapeHtml(formatUnitLabel(tn)),
+                                Domus.Utils.escapeHtml(partnerLabel || ''),
+                                Domus.Utils.escapeHtml(tn.status || '')
+                            ],
+                            dataset: { navigate: 'tenancyDetail', args: tn.id }
+                        };
                     });
                     Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
-                        t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Status'), ''
+                        t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Status')
                     ], rows));
                     bindList();
                 })
@@ -1360,9 +1437,7 @@
 
         function bindList() {
             document.getElementById('domus-tenancy-create')?.addEventListener('click', () => openCreateModal());
-            document.querySelectorAll('button[data-tenancy-id]').forEach(btn => {
-                btn.addEventListener('click', () => Domus.Router.navigate('tenancyDetail', [btn.getAttribute('data-tenancy-id')]));
-            });
+            Domus.UI.bindRowNavigation();
         }
 
         function renderInline(tenancies) {
@@ -1427,10 +1502,10 @@
                         Domus.Utils.escapeHtml(partnerLabel || t('domus', 'None')),
                         Domus.Utils.escapeHtml(tenancy.startDate || ''),
                         Domus.Utils.escapeHtml(tenancy.endDate || ''),
-                        Domus.Utils.escapeHtml(tenancy.baseRent || ''),
-                        Domus.Utils.escapeHtml(tenancy.serviceCharge || ''),
+                        Domus.Utils.escapeHtml(Domus.Utils.formatAmount(tenancy.baseRent)),
+                        Domus.Utils.escapeHtml(Domus.Utils.formatAmount(tenancy.serviceCharge)),
                         tenancy.serviceChargeAsPrepayment ? t('domus', 'Yes') : t('domus', 'No'),
-                        Domus.Utils.escapeHtml(tenancy.deposit || '')
+                        Domus.Utils.escapeHtml(Domus.Utils.formatAmount(tenancy.deposit))
                     ]]);
 
                     const sidebar = '<div class="domus-detail-sidebar">' +
@@ -1471,7 +1546,11 @@
                         '<div class="domus-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Conditions')) + '</h3>' +
                         '<p>' + Domus.Utils.escapeHtml(tenancy.conditions || t('domus', 'No conditions provided.')) + '</p></div>' +
                         '<div class="domus-section">' + bookingsHeader +
-                        Domus.Bookings.renderInline(tenancy.bookings || []) + '</div>' +
+                        Domus.UI.buildCollapsible(Domus.Bookings.renderInline(tenancy.bookings || []), {
+                            showLabel: t('domus', 'Show bookings'),
+                            hideLabel: t('domus', 'Hide bookings'),
+                            collapsed: true
+                        }) + '</div>' +
                         '<div class="domus-section">' + documentsHeader +
                         Domus.Documents.renderList('tenancy', id) + '</div>' +
                         '<div class="domus-section">' + reportsHeader +
@@ -1479,6 +1558,7 @@
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
+                    Domus.UI.bindCollapsibles();
                     bindDetailActions(id, tenancy);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -1624,14 +1704,16 @@
                         '<button id="domus-booking-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New booking')) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
-                    const rows = (bookings || []).map(b => [
-                        Domus.Utils.escapeHtml(b.date || ''),
-                        Domus.Utils.escapeHtml(formatAccount(b)),
-                        Domus.Utils.escapeHtml((b.amount || 0).toString()),
-                        '<button class="domus-link" data-booking-id="' + b.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>'
-                    ]);
+                    const rows = (bookings || []).map(b => ({
+                        cells: [
+                            Domus.Utils.escapeHtml(b.date || ''),
+                            Domus.Utils.escapeHtml(formatAccount(b)),
+                            Domus.Utils.escapeHtml(Domus.Utils.formatAmount(b.amount))
+                        ],
+                        dataset: { navigate: 'bookingDetail', args: b.id }
+                    }));
                     Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
-                        t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount'), ''
+                        t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount')
                     ], rows));
                     bindList();
                 })
@@ -1640,16 +1722,14 @@
 
         function bindList() {
             document.getElementById('domus-booking-create')?.addEventListener('click', () => openCreateModal());
-            document.querySelectorAll('button[data-booking-id]').forEach(btn => {
-                btn.addEventListener('click', () => Domus.Router.navigate('bookingDetail', [btn.getAttribute('data-booking-id')]));
-            });
+            Domus.UI.bindRowNavigation();
         }
 
         function renderInline(bookings) {
             const rows = (bookings || []).map(b => [
                 Domus.Utils.escapeHtml(b.date || ''),
                 Domus.Utils.escapeHtml(formatAccount(b)),
-                Domus.Utils.escapeHtml((b.amount || 0).toString())
+                Domus.Utils.escapeHtml(Domus.Utils.formatAmount(b.amount))
             ]);
             return Domus.UI.buildTable([
                 t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount')

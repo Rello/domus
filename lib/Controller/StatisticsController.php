@@ -20,6 +20,13 @@ class StatisticsController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function unit(int $unitId): DataResponse {
+        $stats = $this->statisticsService->unitStatsAllYears($unitId, $this->getUserId());
+
+        return new DataResponse($stats);
+    }
+
+    #[NoAdminRequired]
     public function unitPerYear(int $unitId, int $year): DataResponse {
         $stats = $this->statisticsService->unitStatPerYear($unitId, $this->getUserId(), $year);
 
