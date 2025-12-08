@@ -11,6 +11,7 @@ use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\ReportMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCA\Domus\Service\ReportService;
+use Psr\Log\LoggerInterface;
 use OCP\IL10N;
 
 class TenancyService {
@@ -22,6 +23,7 @@ class TenancyService {
         private BookingMapper $bookingMapper,
         private ReportMapper $reportMapper,
         private ReportService $reportService,
+        private LoggerInterface $logger,
         private IL10N $l10n,
     ) {
     }
@@ -133,6 +135,65 @@ class TenancyService {
 
     public function getTenanciesForPartner(int $partnerId, string $userId): array {
         return $this->listTenancies($userId, null, $partnerId);
+    }
+
+    public function sumTenancyForYear(string $userId, int $unitId, int $year): array {
+        $this->logger->info('TenancyService: calculating tenancy sums for year', [
+            'unitId' => $unitId,
+            'userId' => $userId,
+            'year' => $year,
+        ]);
+
+        $tenancies = $this->tenancyMapper->findByUser($userId, $unitId);
+        $this->logger->info('TenancyService: tenancies fetched for unit', [
+            'count' => count($tenancies),
+        ]);
+
+        $startOfYear = new \DateTimeImmutable(sprintf('%d-01-01', $year));
+        $endOfYear = new \DateTimeImmutable(sprintf('%d-12-31', $year));
+        $sums = ['1000' => 0.0, '1001' => 0.0];
+
+        foreach ($tenancies as $tenancy) {
+            $startDate = $this->parseDate($tenancy->getStartDate());
+            if ($startDate === null) {
+                $this->logger->info('TenancyService: skipping tenancy with invalid start date', [
+                    'tenancyId' => $tenancy->getId(),
+                ]);
+                continue;
+            }
+
+            $endDate = $this->parseDate($tenancy->getEndDate()) ?? $endOfYear;
+
+            $periodStart = $startDate > $startOfYear ? $startDate : $startOfYear;
+            $periodEnd = $endDate < $endOfYear ? $endDate : $endOfYear;
+
+            if ($periodEnd < $periodStart) {
+                $this->logger->info('TenancyService: tenancy does not intersect with year', [
+                    'tenancyId' => $tenancy->getId(),
+                    'periodStart' => $periodStart->format('Y-m-d'),
+                    'periodEnd' => $periodEnd->format('Y-m-d'),
+                ]);
+                continue;
+            }
+
+            $months = ($periodEnd->format('Y') - $periodStart->format('Y')) * 12
+                + ($periodEnd->format('n') - $periodStart->format('n')) + 1;
+
+            $sums['1000'] += $months * (float)$tenancy->getBaseRent();
+            $sums['1001'] += $months * (float)($tenancy->getServiceCharge() ?? 0.0);
+
+            $this->logger->info('TenancyService: tenancy contribution calculated', [
+                'tenancyId' => $tenancy->getId(),
+                'months' => $months,
+                'baseRent' => $tenancy->getBaseRent(),
+                'serviceCharge' => $tenancy->getServiceCharge(),
+                'sums' => $sums,
+            ]);
+        }
+
+        $this->logger->info('TenancyService: calculated tenancy sums for year', ['sums' => $sums]);
+
+        return $sums;
     }
 
     private function assertTenancyInput(array $data, string $userId): void {
