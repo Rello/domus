@@ -1142,10 +1142,10 @@
                         '<div class="domus-dashboard-main">' +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
                         Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
-                        '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
-                        Domus.Bookings.renderInline(bookings || []) + '</div></div>' +
                         '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +
                         renderStatisticsTable(statistics) + '</div></div>' +
+                        '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
+                        Domus.Bookings.renderInline(bookings || []) + '</div></div>' +
                         '</div>' +
                         '<div class="domus-dashboard-side">' +
                         '<div class="domus-panel">' + '<div class="domus-panel-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Unit details')) + '</h3></div>' +
