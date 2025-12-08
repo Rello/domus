@@ -79,9 +79,9 @@ class BookingMapper extends QBMapper {
         $groupColumn = $groupBy === 'unit' ? 'unit_id' : 'property_id';
         $qb = $this->db->getQueryBuilder();
         $qb->select('year')
-            ->select($groupColumn)
-            ->select('account')
-            ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
+            ->addSelect($groupColumn)
+            ->addSelect('account')
+            ->addSelect($qb->createFunction('SUM(amount)') . ' AS total')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->groupBy('year')
