@@ -1130,8 +1130,15 @@
                         { label: t('domus', 'Property'), value: unit.propertyName || unit.propertyId },
                         { label: t('domus', 'Unit number'), value: unit.unitNumber },
                         { label: t('domus', 'Unit type'), value: unit.unitType },
+                        { label: t('domus', 'Land register'), value: unit.landRegister },
                         { label: t('domus', 'Living area'), value: unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '' },
-                        { label: t('domus', 'Description'), value: unit.description }
+                        { label: t('domus', 'Usable area'), value: unit.usableArea ? `${Domus.Utils.formatAmount(unit.usableArea)} m²` : '' },
+                        { label: t('domus', 'Buy date'), value: unit.buyDate },
+                        { label: t('domus', 'Total costs'), value: unit.totalCosts ? Domus.Utils.formatAmount(unit.totalCosts) : '' },
+                        { label: t('domus', 'Official ID'), value: unit.officialId },
+                        { label: t('domus', 'IBAN'), value: unit.iban },
+                        { label: t('domus', 'BIC'), value: unit.bic },
+                        { label: t('domus', 'Description'), value: unit.notes }
                     ]);
 
                     const content = '<div class="domus-detail domus-dashboard">' +
@@ -1245,8 +1252,16 @@
                 '</select></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Label')) + ' *<input name="label" required value="' + (unit?.label ? Domus.Utils.escapeHtml(unit.label) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit number')) + '<input name="unitNumber" value="' + (unit?.unitNumber ? Domus.Utils.escapeHtml(unit.unitNumber) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Land register')) + '<input name="landRegister" value="' + (unit?.landRegister ? Domus.Utils.escapeHtml(unit.landRegister) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit type')) + '<input name="unitType" value="' + (unit?.unitType ? Domus.Utils.escapeHtml(unit.unitType) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Living area')) + '<input name="livingArea" type="number" step="0.01" value="' + (unit?.livingArea ? Domus.Utils.escapeHtml(unit.livingArea) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Usable area')) + '<input name="usableArea" type="number" step="0.01" value="' + (unit?.usableArea ? Domus.Utils.escapeHtml(unit.usableArea) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Buy date')) + '<input name="buyDate" type="date" value="' + (unit?.buyDate ? Domus.Utils.escapeHtml(unit.buyDate) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Total costs')) + '<input name="totalCosts" type="number" step="0.01" value="' + (unit?.totalCosts || unit?.totalCosts === 0 ? Domus.Utils.escapeHtml(unit.totalCosts) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Official ID')) + '<input name="officialId" value="' + (unit?.officialId ? Domus.Utils.escapeHtml(unit.officialId) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'IBAN')) + '<input name="iban" value="' + (unit?.iban ? Domus.Utils.escapeHtml(unit.iban) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'BIC')) + '<input name="bic" value="' + (unit?.bic ? Domus.Utils.escapeHtml(unit.bic) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Description')) + '<textarea name="notes">' + (unit?.notes ? Domus.Utils.escapeHtml(unit.notes) : '') + '</textarea></label>' +
                 '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-unit-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
