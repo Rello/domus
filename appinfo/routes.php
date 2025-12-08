@@ -19,6 +19,7 @@ return [
         ['name' => 'Unit#update', 'url' => '/units/{id}', 'verb' => 'PUT'],
         ['name' => 'Unit#destroy', 'url' => '/units/{id}', 'verb' => 'DELETE'],
         // Statistics
+        ['name' => 'Statistics#unit', 'url' => '/statistics/units/{unitId}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitPerYear', 'url' => '/statistics/units/{unitId}/{year}', 'verb' => 'GET'],
 
         // Partner

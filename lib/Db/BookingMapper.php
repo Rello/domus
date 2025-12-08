@@ -75,17 +75,23 @@ class BookingMapper extends QBMapper {
     /**
      * @throws Exception
      */
-    public function sumByAccountGrouped(string $userId, int $year, string $groupBy, ?int $groupId = null): array {
+    public function sumByAccountGrouped(string $userId, ?int $year, string $groupBy, ?int $groupId = null): array {
         $groupColumn = $groupBy === 'unit' ? 'unit_id' : 'property_id';
         $qb = $this->db->getQueryBuilder();
-        $qb->select($groupColumn)
+        $qb->select('year')
+            ->select($groupColumn)
             ->select('account')
             ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)))
-            ->groupBy($groupColumn)
-            ->addGroupBy('account');
+            ->groupBy('year')
+            ->addGroupBy($groupColumn)
+            ->addGroupBy('account')
+            ->orderBy('year', 'DESC');
+
+        if ($year !== null) {
+            $qb->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)));
+        }
 
         if ($groupId !== null) {
             $qb->andWhere($qb->expr()->eq($groupColumn, $qb->createNamedParameter($groupId, $qb::PARAM_INT)));
