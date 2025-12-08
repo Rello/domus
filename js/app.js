@@ -34,7 +34,16 @@
             }[ch]));
         }
 
-        return { escapeHtml };
+        function formatAmount(amount) {
+            if (amount === undefined || amount === null) return '';
+            const numeric = Number(amount);
+            if (!Number.isNaN(numeric)) {
+                return numeric.toLocaleString();
+            }
+            return String(amount);
+        }
+
+        return { escapeHtml, formatAmount };
     })();
 
     /**
@@ -983,7 +992,7 @@
 
             const rows = sortedRows.map(row => columns.map(col => {
                 const value = row[col.key];
-                return Domus.Utils.escapeHtml(value === undefined || value === null ? '' : value);
+                return Domus.Utils.escapeHtml(Domus.Utils.formatAmount(value));
             }));
 
             return Domus.UI.buildTable(headers, rows);
@@ -1493,10 +1502,10 @@
                         Domus.Utils.escapeHtml(partnerLabel || t('domus', 'None')),
                         Domus.Utils.escapeHtml(tenancy.startDate || ''),
                         Domus.Utils.escapeHtml(tenancy.endDate || ''),
-                        Domus.Utils.escapeHtml(tenancy.baseRent || ''),
-                        Domus.Utils.escapeHtml(tenancy.serviceCharge || ''),
+                        Domus.Utils.escapeHtml(Domus.Utils.formatAmount(tenancy.baseRent)),
+                        Domus.Utils.escapeHtml(Domus.Utils.formatAmount(tenancy.serviceCharge)),
                         tenancy.serviceChargeAsPrepayment ? t('domus', 'Yes') : t('domus', 'No'),
-                        Domus.Utils.escapeHtml(tenancy.deposit || '')
+                        Domus.Utils.escapeHtml(Domus.Utils.formatAmount(tenancy.deposit))
                     ]]);
 
                     const sidebar = '<div class="domus-detail-sidebar">' +
@@ -1686,13 +1695,6 @@
             return label ? `${nr} – ${label}` : nr;
         }
 
-        function formatAmount(amount) {
-            if (amount === undefined || amount === null) return '';
-            const numeric = Number(amount);
-            if (Number.isNaN(numeric)) return Domus.Utils.escapeHtml(String(amount));
-            return numeric.toLocaleString();
-        }
-
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading bookings…'));
@@ -1706,7 +1708,7 @@
                         cells: [
                             Domus.Utils.escapeHtml(b.date || ''),
                             Domus.Utils.escapeHtml(formatAccount(b)),
-                            Domus.Utils.escapeHtml(formatAmount(b.amount))
+                            Domus.Utils.escapeHtml(Domus.Utils.formatAmount(b.amount))
                         ],
                         dataset: { navigate: 'bookingDetail', args: b.id }
                     }));
@@ -1727,7 +1729,7 @@
             const rows = (bookings || []).map(b => [
                 Domus.Utils.escapeHtml(b.date || ''),
                 Domus.Utils.escapeHtml(formatAccount(b)),
-                Domus.Utils.escapeHtml(formatAmount(b.amount))
+                Domus.Utils.escapeHtml(Domus.Utils.formatAmount(b.amount))
             ]);
             return Domus.UI.buildTable([
                 t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount')
