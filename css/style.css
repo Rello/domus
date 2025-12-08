@@ -94,6 +94,14 @@
     text-align: left;
 }
 
+.domus-table tr[data-navigate] {
+    cursor: pointer;
+}
+
+.domus-table tr[data-navigate]:hover {
+    background-color: #f8f8f8;
+}
+
 .domus-form label {
     display: flex;
     flex-direction: column;
@@ -240,6 +248,27 @@
 
 .domus-modal-large {
     max-width: 860px;
+}
+
+.domus-collapsible {
+    margin-top: 10px;
+}
+
+.domus-collapsible-toggle {
+    border: none;
+    background: #f0f0f0;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.domus-collapsible-toggle:hover {
+    background: #e6e6e6;
+}
+
+.domus-collapsible-body[hidden] {
+    display: none;
 }
 
 .domus-modal-header {
