@@ -139,6 +139,7 @@
                 return request('GET', `${path}?${params.toString()}`);
             },
             createTenancy: data => request('POST', '/tenancies', data),
+            changeTenancyConditions: (id, data) => request('POST', `/tenancies/${id}/change-conditions`, data),
             updateTenancy: (id, data) => request('PUT', `/tenancies/${id}`, data),
             deleteTenancy: id => request('DELETE', `/tenancies/${id}`),
             getBookings: filters => {
@@ -1561,7 +1562,7 @@
             ], rows);
         }
 
-        function openCreateModal(prefill = {}, onCreated) {
+        function openCreateModal(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title = t('domus', 'New tenancy'), successMessage = t('domus', 'Tenancy created.')) {
             Promise.all([
                 Domus.Api.getUnits(),
                 Domus.Api.getPartners()
@@ -1577,14 +1578,14 @@
                     }));
 
                     const modal = Domus.UI.openModal({
-                        title: t('domus', 'New tenancy'),
+                        title,
                         content: buildTenancyForm(unitOptions, partnerOptions, prefill)
                     });
-                    bindTenancyForm(modal, data => Domus.Api.createTenancy(data)
-                        .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Tenancy created.'), 'success');
+                    bindTenancyForm(modal, data => submitFn(data)
+                        .then(created => {
+                            Domus.UI.showNotification(successMessage, 'success');
                             modal.close();
-                            (onCreated || renderList)();
+                            (onCreated || renderList)(created);
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error')));
                 })
@@ -1616,6 +1617,7 @@
                         '<div class="domus-hero-actions">' +
                         '<button id="domus-add-tenancy-booking" class="primary" data-tenancy-id="' + id + '" data-unit-id="' + Domus.Utils.escapeHtml(tenancy.unitId) + '" data-property-id="' + Domus.Utils.escapeHtml(tenancy.propertyId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' +
                         (Domus.Role.isOwnerView() ? '<button id="domus-tenancy-report">' + Domus.Utils.escapeHtml(t('domus', 'Generate report')) + '</button>' : '') +
+                        '<button id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>' +
                         '<button id="domus-tenancy-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
                         '<button id="domus-tenancy-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
                         '</div>' +
@@ -1693,6 +1695,7 @@
             document.getElementById('domus-tenancy-report')?.addEventListener('click', () => {
                 Domus.Reports.createForTenancy(id, () => renderDetail(id));
             });
+            document.getElementById('domus-tenancy-change')?.addEventListener('click', () => openChangeConditionsModal(tenancy));
         }
 
         function bindTenancyForm(modalContext, onSubmit) {
@@ -1752,6 +1755,16 @@
                         .catch(err => Domus.UI.showNotification(err.message, 'error')));
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        function openChangeConditionsModal(tenancy) {
+            const today = new Date().toISOString().split('T')[0];
+            const prefill = Object.assign({}, tenancy, { startDate: today, endDate: '' });
+
+            openCreateModal(prefill, created => {
+                const targetId = created?.id || tenancy.id;
+                renderDetail(targetId);
+            }, data => Domus.Api.changeTenancyConditions(tenancy.id, data), t('domus', 'Change conditions'), t('domus', 'Conditions changed.'));
         }
 
         function buildTenancyForm(unitOptions, partnerOptions, tenancy) {
