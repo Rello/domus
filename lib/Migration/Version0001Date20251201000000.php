@@ -20,6 +20,7 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table = $schema->createTable('domus_properties');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 32]);
+            $table->addColumn('usage_role', 'string', ['notnull' => true, 'length' => 32, 'default' => 'manager']);
             $table->addColumn('name', 'string', ['notnull' => true, 'length' => 190]);
             $table->addColumn('street', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('zip', 'string', ['length' => 32, 'notnull' => false]);
@@ -31,6 +32,13 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_props_user');
+        }
+
+        if ($schema->hasTable('domus_properties')) {
+            $table = $schema->getTable('domus_properties');
+            if (!$table->hasColumn('usage_role')) {
+                $table->addColumn('usage_role', 'string', ['notnull' => true, 'length' => 32, 'default' => 'manager']);
+            }
         }
 
         if (!$schema->hasTable('domus_units')) {
