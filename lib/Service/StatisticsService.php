@@ -8,17 +8,47 @@ use Psr\Log\LoggerInterface;
 class StatisticsService {
     private array $unitStatColumns = [
         ['key' => 'year', 'label' => 'year', 'type' => 'year'],
-        ['key' => 'kaltmiete', 'label' => 'Kaltmiete', 'account' => '1000'],
-        ['key' => 'nebenkosten', 'label' => 'Nebenkosten', 'account' => '1001'],
-        [
-            'key' => 'ratio',
-            'label' => 'Ratio',
-            'rule' => [
-                ['op' => 'add', 'args' => ['1000', '1001']],
-                ['op' => 'div', 'args' => ['prev', '1000']],
-            ],
-        ],
-    ];
+        ['key' => 'rent', 'label' => 'Kaltmiete', 'account' => '1000'],
+		[
+			'key' => 'hgnu',
+			'label' => 'Nich umlagef.',
+			'rule' => [
+				['op' => 'add', 'args' => ['2001', '2004']],
+			],
+		],
+		['key' => 'zinsen', 'label' => 'Kreditzinsen', 'account' => '2006'],
+		[
+			'key' => 'gwb',
+			'label' => 'Gewinn Brutto',
+			'rule' => [
+				['op' => 'sub', 'args' => ['rent', 'hgnu']],
+				['op' => 'sub', 'args' => ['prev', 'zinsen']],
+			],
+		],
+		[
+			'key' => 'abschr',
+			'label' => 'Abschr. & sonstige',
+			'rule' => [
+				['op' => 'add', 'args' => ['2007', '2008']],
+			],
+		],
+		[
+			'key' => 'steuer',
+			'label' => 'Steuern',
+			'rule' => [
+				['op' => 'sub', 'args' => ['gwb', 'abschr']],
+				['op' => 'mul', 'args' => ['prev', '2009']],
+			],
+		],
+		[
+			'key' => 'gwn',
+			'label' => 'Gewinn Netto',
+			'rule' => [
+				['op' => 'sub', 'args' => ['gwb', 'steuer']],
+			],
+		],
+
+	];
 
     public function __construct(
         private BookingService $bookingService,
@@ -53,11 +83,11 @@ class StatisticsService {
                 continue;
             }
             if (isset($column['account'])) {
-                $row[$key] = $this->get($sums, (string)$column['account']);
+                $row[$key] = round($this->get($sums, (string)$column['account']), 2);
                 continue;
             }
             if (isset($column['rule'])) {
-                $row[$key] = $this->evalRule($sums, $column['rule']);
+                $row[$key] = round($this->evalRule($sums, $column['rule'], $row), 2);
                 continue;
             }
             $row[$key] = null;
@@ -96,33 +126,53 @@ class StatisticsService {
         return $sums;
     }
 
-    private function evalRule(array $sums, array $rule): float {
-        $prev = 0.0;
+	private function evalRule(array $sums, array $rule, array $computed = []): float {
+		$prev = 0.0;
 
-        foreach ($rule as $step) {
-            $op = $step['op'] ?? '';
-            $args = $step['args'] ?? [];
-            $values = array_map(function ($arg) use (&$prev, $sums) {
-                if ($arg === 'prev') {
-                    return $prev;
-                }
-                return $this->get($sums, (string)$arg);
-            }, $args);
+		foreach ($rule as $step) {
+			$op = $step['op'] ?? '';
+			$args = $step['args'] ?? [];
 
-            switch ($op) {
-                case 'add':
-                    $prev = $this->addValues(...$values);
-                    break;
-                case 'div':
-                    $prev = $this->divValues($values[0] ?? 0.0, $values[1] ?? 0.0);
-                    break;
-                default:
-                    throw new \InvalidArgumentException($this->l10n->t('Unsupported operation.'));
-            }
-        }
+			// Resolve args with precedence:
+			// 1) 'prev' special token -> last step result
+			// 2) previously computed column key present in $computed
+			// 3) account lookup in $sums
+			$values = array_map(function ($arg) use (&$prev, $sums, $computed) {
+				if ($arg === 'prev') {
+					return $prev;
+				}
+				// If arg refers to a previously computed column key, use its value
+				if (is_string($arg) && array_key_exists($arg, $computed)) {
+					return (float)($computed[$arg] ?? 0.0);
+				}
+				// Fallback: treat as account number / sum key
+				return $this->get($sums, (string)$arg);
+			}, $args);
 
-        return $prev;
-    }
+			switch ($op) {
+				case 'add':
+					// Step 1: addition
+					$prev = $this->addValues(...$values);
+					break;
+				case 'sub':
+					// Step 2: subtraction (left-to-right)
+					$prev = $this->subValues(...$values);
+					break;
+				case 'mul':
+					// Step 3: multiplication
+					$prev = $this->mulValues(...$values);
+					break;
+				case 'div':
+					// existing division behavior
+					$prev = $this->divValues($values[0] ?? 0.0, $values[1] ?? 0.0);
+					break;
+				default:
+					throw new \InvalidArgumentException($this->l10n->t('Unsupported operation.'));
+			}
+		}
+
+		return $prev;
+	}
 
     private function get(array $sums, string $nr): float {
         return (float)($sums[$nr] ?? 0.0);
@@ -130,6 +180,31 @@ class StatisticsService {
 
     private function addValues(float ...$values): float {
         return array_sum($values);
+    }
+
+    private function subValues(float ...$values): float {
+        // If no values provided, return 0.0 to remain consistent with other helpers
+        if (count($values) === 0) {
+            return 0.0;
+        }
+        // Subtract subsequent values from the first value (left-to-right)
+        $result = array_shift($values);
+        foreach ($values as $v) {
+            $result -= $v;
+        }
+        return $result;
+    }
+
+    private function mulValues(float ...$values): float {
+        // If no values provided, return 0.0 (consistent with add/div behaviour for empty input)
+        if (count($values) === 0) {
+            return 0.0;
+        }
+        $product = 1.0;
+        foreach ($values as $v) {
+            $product *= $v;
+        }
+        return $product;
     }
 
     private function divValues(float $a, float $b): float {
