@@ -81,7 +81,7 @@ class BookingMapper extends QBMapper {
         $qb->select('year')
             ->addSelect($groupColumn)
             ->addSelect('account')
-            ->addSelect($qb->createFunction('SUM(amount)') . ' AS total')
+            ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->groupBy('year')
