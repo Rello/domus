@@ -56,6 +56,11 @@ class UnitService {
         $unit->setLivingArea($data['livingArea'] ?? null);
         $unit->setUsableArea($data['usableArea'] ?? null);
         $unit->setUnitType($data['unitType'] ?? null);
+        $unit->setBuyDate($data['buyDate'] ?? null);
+        $unit->setTotalCosts($data['totalCosts'] ?? null);
+        $unit->setOfficialId($data['officialId'] ?? null);
+        $unit->setIban($data['iban'] ?? null);
+        $unit->setBic($data['bic'] ?? null);
         $unit->setNotes($data['notes'] ?? null);
         $unit->setCreatedAt($now);
         $unit->setUpdatedAt($now);
@@ -65,7 +70,7 @@ class UnitService {
 
     public function updateUnit(int $id, array $data, string $userId): Unit {
         $unit = $this->getUnitForUser($id, $userId);
-        $fields = ['label', 'unitNumber', 'landRegister', 'livingArea', 'usableArea', 'unitType', 'notes'];
+        $fields = ['label', 'unitNumber', 'landRegister', 'livingArea', 'usableArea', 'unitType', 'buyDate', 'totalCosts', 'officialId', 'iban', 'bic', 'notes'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
                 $setter = 'set' . ucfirst($field);

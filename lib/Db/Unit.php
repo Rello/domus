@@ -14,6 +14,11 @@ class Unit extends Entity implements JsonSerializable {
     protected $livingArea;
     protected $usableArea;
     protected $unitType;
+    protected $buyDate;
+    protected $totalCosts;
+    protected $officialId;
+    protected $iban;
+    protected $bic;
     protected $notes;
     protected $createdAt;
     protected $updatedAt;
@@ -40,6 +45,11 @@ class Unit extends Entity implements JsonSerializable {
             'livingArea' => $this->livingArea,
             'usableArea' => $this->usableArea,
             'unitType' => $this->unitType,
+            'buyDate' => $this->buyDate,
+            'totalCosts' => $this->totalCosts,
+            'officialId' => $this->officialId,
+            'iban' => $this->iban,
+            'bic' => $this->bic,
             'notes' => $this->notes,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,

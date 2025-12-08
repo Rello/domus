@@ -42,8 +42,8 @@ class UnitController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function create(int $propertyId, string $label, ?string $unitNumber = null, ?string $landRegister = null, ?string $livingArea = null, ?string $usableArea = null, ?string $unitType = null, ?string $notes = null): DataResponse {
-        $data = compact('propertyId', 'label', 'unitNumber', 'landRegister', 'livingArea', 'usableArea', 'unitType', 'notes');
+    public function create(int $propertyId, string $label, ?string $unitNumber = null, ?string $landRegister = null, ?string $livingArea = null, ?string $usableArea = null, ?string $unitType = null, ?string $buyDate = null, ?string $totalCosts = null, ?string $officialId = null, ?string $iban = null, ?string $bic = null, ?string $notes = null): DataResponse {
+        $data = compact('propertyId', 'label', 'unitNumber', 'landRegister', 'livingArea', 'usableArea', 'unitType', 'buyDate', 'totalCosts', 'officialId', 'iban', 'bic', 'notes');
         try {
             $unit = $this->unitService->createUnit($data, $this->getUserId());
             return new DataResponse($unit, Http::STATUS_CREATED);
@@ -55,7 +55,7 @@ class UnitController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function update(int $id, ?int $propertyId = null, ?string $label = null, ?string $unitNumber = null, ?string $landRegister = null, ?string $livingArea = null, ?string $usableArea = null, ?string $unitType = null, ?string $notes = null): DataResponse {
+    public function update(int $id, ?int $propertyId = null, ?string $label = null, ?string $unitNumber = null, ?string $landRegister = null, ?string $livingArea = null, ?string $usableArea = null, ?string $unitType = null, ?string $buyDate = null, ?string $totalCosts = null, ?string $officialId = null, ?string $iban = null, ?string $bic = null, ?string $notes = null): DataResponse {
         $data = array_filter([
             'propertyId' => $propertyId,
             'label' => $label,
@@ -64,6 +64,11 @@ class UnitController extends Controller {
             'livingArea' => $livingArea,
             'usableArea' => $usableArea,
             'unitType' => $unitType,
+            'buyDate' => $buyDate,
+            'totalCosts' => $totalCosts,
+            'officialId' => $officialId,
+            'iban' => $iban,
+            'bic' => $bic,
             'notes' => $notes,
         ], fn($value) => $value !== null);
         try {
