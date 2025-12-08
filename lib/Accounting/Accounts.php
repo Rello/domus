@@ -15,6 +15,7 @@ class Accounts {
 		'2007' => ['label' => 'Abschreibung'],
 		'2008' => ['label' => 'Sonstige Steuerabzüge'],
 		'2009' => ['label' => 'Steuersatz'],
+		'3000' => ['label' => 'Total Cost'],
     ];
 
     public static function all(): array {

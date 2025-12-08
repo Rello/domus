@@ -47,6 +47,13 @@ class StatisticsService {
 				['op' => 'sub', 'args' => ['gwb', 'steuer']],
 			],
 		],
+		[
+			'key' => 'netRentab',
+			'label' => 'Rentab. Netto',
+			'rule' => [
+				['op' => 'div', 'args' => ['gwn', '3000']],
+			],
+		],
 
 	];
 
