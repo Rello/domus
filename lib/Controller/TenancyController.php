@@ -60,6 +60,19 @@ class TenancyController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function changeConditions(int $id, string $startDate, string $baseRent, ?string $endDate = null, ?string $serviceCharge = null, ?int $serviceChargeAsPrepayment = 0, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
+        $data = compact('startDate', 'endDate', 'baseRent', 'serviceCharge', 'serviceChargeAsPrepayment', 'deposit', 'conditions', 'partnerIds');
+        try {
+            $tenancy = $this->tenancyService->changeConditions($id, $data, $this->getUserId());
+            return new DataResponse($tenancy, Http::STATUS_CREATED);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
     public function update(int $id, ?int $unitId = null, ?string $startDate = null, ?string $endDate = null, ?string $baseRent = null, ?string $serviceCharge = null, ?int $serviceChargeAsPrepayment = null, ?string $deposit = null, ?string $conditions = null, ?array $partnerIds = null): DataResponse {
         $data = array_filter([
             'unitId' => $unitId,

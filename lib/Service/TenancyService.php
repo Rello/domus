@@ -80,6 +80,33 @@ class TenancyService {
         return $inserted;
     }
 
+    public function changeConditions(int $id, array $data, string $userId): Tenancy {
+        $existing = $this->getTenancyForUser($id, $userId);
+
+        $mergedData = [
+            'unitId' => $existing->getUnitId(),
+            'startDate' => $data['startDate'] ?? null,
+            'endDate' => $data['endDate'] ?? null,
+            'baseRent' => $data['baseRent'] ?? null,
+            'serviceCharge' => $data['serviceCharge'] ?? null,
+            'serviceChargeAsPrepayment' => $data['serviceChargeAsPrepayment'] ?? 0,
+            'deposit' => $data['deposit'] ?? null,
+            'conditions' => $data['conditions'] ?? null,
+            'partnerIds' => $data['partnerIds'] ?? $existing->getPartnerIds(),
+        ];
+
+        $this->assertTenancyInput($mergedData, $userId);
+        $startDate = $this->parseDate($mergedData['startDate'] ?? null);
+
+        if ($startDate === null) {
+            throw new \InvalidArgumentException($this->l10n->t('Start date is required.'));
+        }
+
+        $this->closeOverlappingTenancies($existing, $mergedData['partnerIds'], $startDate, $userId);
+
+        return $this->createTenancy($mergedData, $userId);
+    }
+
     public function updateTenancy(int $id, array $data, string $userId): Tenancy {
         $tenancy = $this->getTenancyForUser($id, $userId);
         $this->assertTenancyInput($data + ['unitId' => $tenancy->getUnitId(), 'partnerIds' => $data['partnerIds'] ?? []], $userId);
@@ -271,6 +298,34 @@ class TenancyService {
         $partners = $tenancy->getPartners();
         if (!empty($partners)) {
             $tenancy->setPartnerName($partners[0]->getName());
+        }
+    }
+
+    private function closeOverlappingTenancies(Tenancy $reference, array $partnerIds, \DateTimeImmutable $newStartDate, string $userId): void {
+        $tenancies = $this->tenancyMapper->findByUser($userId, $reference->getUnitId());
+        $newEndDate = $newStartDate->modify('-1 day');
+
+        foreach ($tenancies as $tenancy) {
+            $relations = $this->partnerRelMapper->findForTenancy($tenancy->getId(), $userId);
+            $tenancyPartnerIds = array_map(fn(PartnerRel $relation) => $relation->getPartnerId(), $relations);
+
+            if (empty(array_intersect($partnerIds, $tenancyPartnerIds))) {
+                continue;
+            }
+
+            $existingStart = $this->parseDate($tenancy->getStartDate());
+            if ($existingStart === null || $existingStart > $newStartDate) {
+                continue;
+            }
+
+            $existingEnd = $this->parseDate($tenancy->getEndDate());
+            if ($existingEnd !== null && $existingEnd < $newStartDate) {
+                continue;
+            }
+
+            $tenancy->setEndDate($newEndDate->format('Y-m-d'));
+            $tenancy->setUpdatedAt(time());
+            $this->tenancyMapper->update($tenancy);
         }
     }
 }

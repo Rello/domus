@@ -35,6 +35,7 @@ return [
         ['name' => 'Tenancy#listByUnit', 'url' => '/units/{unitId}/tenancies', 'verb' => 'GET'],
         ['name' => 'Tenancy#listByPartner', 'url' => '/partners/{partnerId}/tenancies', 'verb' => 'GET'],
         ['name' => 'Tenancy#create', 'url' => '/tenancies', 'verb' => 'POST'],
+        ['name' => 'Tenancy#changeConditions', 'url' => '/tenancies/{id}/change-conditions', 'verb' => 'POST'],
         ['name' => 'Tenancy#update', 'url' => '/tenancies/{id}', 'verb' => 'PUT'],
         ['name' => 'Tenancy#destroy', 'url' => '/tenancies/{id}', 'verb' => 'DELETE'],
 
