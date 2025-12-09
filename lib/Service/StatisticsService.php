@@ -3,6 +3,7 @@
 namespace OCA\Domus\Service;
 
 use OCP\IL10N;
+use OCA\Domus\Db\UnitMapper;
 use Psr\Log\LoggerInterface;
 
 class StatisticsService {
@@ -40,18 +41,23 @@ class StatisticsService {
 				['op' => 'mul', 'args' => ['prev', '2009']],
 			],
 		],
-		[
-			'key' => 'gwn',
-			'label' => 'Gewinn Netto',
-			'rule' => [
-				['op' => 'sub', 'args' => ['gwb', 'steuer']],
-			],
-		],
-		[
-			'key' => 'netRentab',
-			'label' => 'Rentab. Netto',
-			'rule' => [
-				['op' => 'div', 'args' => ['gwn', '3000']],
+                [
+                        'key' => 'gwn',
+                        'label' => 'Gewinn Netto',
+                        'rule' => [
+                                ['op' => 'sub', 'args' => ['gwb', 'steuer']],
+                        ],
+                ],
+                [
+                        'key' => 'totalCost',
+                        'label' => 'Total Cost',
+                        'account' => '3000',
+                ],
+                [
+                        'key' => 'netRentab',
+                        'label' => 'Rentab. Netto',
+                        'rule' => [
+                                ['op' => 'div', 'args' => ['gwn', '3000']],
 			],
 		],
 
@@ -60,6 +66,7 @@ class StatisticsService {
     public function __construct(
         private BookingService $bookingService,
         private TenancyService $tenancyService,
+        private UnitMapper $unitMapper,
         private IL10N $l10n,
         private LoggerInterface $logger,
     ) {
@@ -84,7 +91,8 @@ class StatisticsService {
         $this->logger->info('StatisticsService: sums for unit extracted', ['sums' => $sums]);
 
         $tenancySums = $this->tenancyService->sumTenancyForYear($userId, $unitId, $year);
-        $mergedSums = $this->mergeSums($sums, $tenancySums);
+        $unitSums = $this->buildUnitSums($unitId, $userId);
+        $mergedSums = $this->mergeSums($sums, $tenancySums, $unitSums);
         $this->logger->info('StatisticsService: merged booking and tenancy sums', ['sums' => $mergedSums]);
 
         $row = $this->buildRowForYear($year, $definitions, $mergedSums);
@@ -92,7 +100,7 @@ class StatisticsService {
         $this->logger->info('StatisticsService: calculated statistics row', ['row' => $row]);
 
         return [
-            'columns' => array_map(fn(array $col) => ['key' => $col['key'], 'label' => $col['label']], $definitions),
+            'columns' => array_map(fn(array $col) => ['key' => $col['key'], 'label' => $col['label'], 'format' => $col['format'] ?? null], $definitions),
             'rows' => [$row],
         ];
     }
@@ -114,9 +122,11 @@ class StatisticsService {
         $perYearSums = $this->mapSumsByYear($grouped);
         $years = $this->collectYears($perYearSums, $this->tenancyService->getTenanciesForUnit($unitId, $userId));
 
-        $rows = array_map(function (int $year) use ($definitions, $perYearSums, $unitId, $userId) {
+        $unitSums = $this->buildUnitSums($unitId, $userId);
+
+        $rows = array_map(function (int $year) use ($definitions, $perYearSums, $unitId, $userId, $unitSums) {
             $tenancySums = $this->tenancyService->sumTenancyForYear($userId, $unitId, $year);
-            $mergedSums = $this->mergeSums($perYearSums[$year] ?? [], $tenancySums);
+            $mergedSums = $this->mergeSums($perYearSums[$year] ?? [], $tenancySums, $unitSums);
             return $this->buildRowForYear($year, $definitions, $mergedSums);
         }, $years);
 
@@ -125,7 +135,7 @@ class StatisticsService {
         ]);
 
         return [
-            'columns' => array_map(fn(array $col) => ['key' => $col['key'], 'label' => $col['label']], $definitions),
+            'columns' => array_map(fn(array $col) => ['key' => $col['key'], 'label' => $col['label'], 'format' => $col['format'] ?? null], $definitions),
             'rows' => $rows,
         ];
     }
@@ -138,8 +148,21 @@ class StatisticsService {
             if (!isset($column['label'])) {
                 $column['label'] = (string)$column['key'];
             }
+            if (!isset($column['format']) && isset($column['rule']) && $this->containsOperation($column['rule'], 'div')) {
+                $column['format'] = 'percentage';
+            }
             return $column;
         }, $columns);
+    }
+
+    private function containsOperation(array $rule, string $operation): bool {
+        foreach ($rule as $step) {
+            if (($step['op'] ?? null) === $operation) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function mapSums(array $rows): array {
@@ -300,6 +323,33 @@ class StatisticsService {
         }
 
         return $merged;
+    }
+
+    private function buildUnitSums(int $unitId, string $userId): array {
+        try {
+            $unit = $this->unitMapper->findForUser($unitId, $userId);
+        } catch (\Throwable $e) {
+            $this->logger->error('StatisticsService: failed to load unit while building sums', [
+                'unitId' => $unitId,
+                'exception' => $e,
+            ]);
+            return [];
+        }
+
+        if (!$unit) {
+            $this->logger->info('StatisticsService: unit not found while building sums', [
+                'unitId' => $unitId,
+                'userId' => $userId,
+            ]);
+            return [];
+        }
+
+        $totalCosts = $unit->getTotalCosts();
+        if ($totalCosts === null || $totalCosts === '') {
+            return [];
+        }
+
+        return ['3000' => (float)$totalCosts];
     }
 
     private function addValues(float ...$values): float {
