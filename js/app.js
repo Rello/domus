@@ -1053,10 +1053,23 @@
 
             const rows = sortedRows.map(row => columns.map(col => {
                 const value = row[col.key];
-                return Domus.Utils.escapeHtml(Domus.Utils.formatAmount(value));
+                return Domus.Utils.escapeHtml(formatStatValue(value, col.format));
             }));
 
             return Domus.UI.buildTable(headers, rows);
+        }
+
+        function formatStatValue(value, format) {
+            if (value === undefined || value === null) {
+                return '';
+            }
+
+            const numeric = Number(value);
+            if (format === 'percentage' && !Number.isNaN(numeric)) {
+                return `${(numeric * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+            }
+
+            return Domus.Utils.formatAmount(value);
         }
 
         function openCreateModal(defaults = {}, onCreated) {
