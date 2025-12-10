@@ -64,11 +64,6 @@ class StatisticsService {
                 foreach ($units as $unit) {
                         $row = $this->buildStatisticsRowForUnitYear($unit->getId(), $unit, $userId, $year, $definitions);
 
-                        // Explicitly return null values for identifier and size fields as requested
-                        $row['unitId'] = null;
-                        $row['label'] = null;
-                        $row['size'] = null;
-
                         $rows[] = $row;
                 }
 
