@@ -120,6 +120,14 @@
                 return request('GET', queryWithYear(path));
             },
             getUnitStatistics: (unitId) => request('GET', `/statistics/units/${unitId}`),
+            getUnitsStatisticsOverview: (propertyId) => {
+                const params = new URLSearchParams();
+                params.append('year', Domus.state.currentYear);
+                if (propertyId) {
+                    params.append('propertyId', propertyId);
+                }
+                return request('GET', `/statistics/units-overview?${params.toString()}`);
+            },
             createUnit: data => request('POST', '/units', data),
             updateUnit: (id, data) => request('PUT', `/units/${id}`, data),
             deleteUnit: id => request('DELETE', `/units/${id}`),
@@ -1001,23 +1009,18 @@
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading units…'));
-            Domus.Api.getUnits()
-                .then(units => {
+            Domus.Api.getUnitsStatisticsOverview()
+                .then(statistics => {
                     const header = '<div class="domus-toolbar">' +
                         '<button id="domus-unit-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New unit')) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
-                    const rows = (units || []).map(u => ({
-                        cells: [
-                            Domus.Utils.escapeHtml(u.label || ''),
-                            Domus.Utils.escapeHtml(u.unitNumber || ''),
-                            Domus.Utils.escapeHtml(u.unitType || '')
-                        ],
-                        dataset: { navigate: 'unitDetail', args: u.id }
-                    }));
-                    Domus.UI.renderContent(header + Domus.UI.buildTable([
-                        t('domus', 'Label'), t('domus', 'Number'), t('domus', 'Type')
-                    ], rows));
+
+                    const table = renderStatisticsTable(statistics, {
+                        buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null
+                    });
+
+                    Domus.UI.renderContent(header + table);
                     bindList();
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -1038,7 +1041,7 @@
             return Domus.UI.buildTable([t('domus', 'Label'), t('domus', 'Number'), t('domus', 'Type')], rows);
         }
 
-        function renderStatisticsTable(statistics) {
+        function renderStatisticsTable(statistics, options = {}) {
             if (!statistics) {
                 return '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No statistics available.')) + '</div>';
             }
@@ -1051,10 +1054,21 @@
                 sortedRows.sort((a, b) => (parseInt(b[yearColumn.key], 10) || 0) - (parseInt(a[yearColumn.key], 10) || 0));
             }
 
-            const rows = sortedRows.map(row => columns.map(col => {
-                const value = row[col.key];
-                return Domus.Utils.escapeHtml(formatStatValue(value, col.format));
-            }));
+            const rows = sortedRows.map(row => {
+                const cells = columns.map(col => {
+                    const value = row[col.key];
+                    return Domus.Utils.escapeHtml(formatStatValue(value, col.format));
+                });
+
+                if (typeof options.buildRowDataset === 'function') {
+                    const dataset = options.buildRowDataset(row) || null;
+                    if (dataset) {
+                        return { cells, dataset };
+                    }
+                }
+
+                return cells;
+            });
 
             return Domus.UI.buildTable(headers, rows);
         }

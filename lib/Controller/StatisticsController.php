@@ -33,6 +33,14 @@ class StatisticsController extends Controller {
         return new DataResponse($stats);
     }
 
+    #[NoAdminRequired]
+    public function unitsOverview(?int $year = null, ?int $propertyId = null): DataResponse {
+        $year = $year ?? (int)date('Y');
+        $stats = $this->statisticsService->unitOverview($year, $this->getUserId(), $propertyId);
+
+        return new DataResponse($stats);
+    }
+
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
     }
