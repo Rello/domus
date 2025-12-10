@@ -34,16 +34,58 @@
             }[ch]));
         }
 
-        function formatAmount(amount) {
+        function formatNumber(value, options = {}) {
+            if (value === undefined || value === null) return '';
+            const numeric = Number(value);
+            if (!Number.isNaN(numeric)) {
+                const {
+                    minimumFractionDigits = 2,
+                    maximumFractionDigits = 2,
+                    useGrouping = true
+                } = options;
+                return numeric.toLocaleString(undefined, { minimumFractionDigits, maximumFractionDigits, useGrouping });
+            }
+            return String(value);
+        }
+
+        function formatCurrency(amount) {
+            const formatted = formatNumber(amount, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return formatted ? `€ ${formatted}` : '';
+        }
+
+        function formatPercentage(value) {
+            if (value === undefined || value === null) return '';
+            const numeric = Number(value);
+            if (Number.isNaN(numeric)) return String(value);
+            return `${formatNumber(numeric * 100, { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}%`;
+        }
+
+        function formatYear(value) {
+            if (value === undefined || value === null) return '';
+            const numeric = Number(value);
+            if (Number.isNaN(numeric)) return String(value);
+            return Math.trunc(numeric).toString();
+        }
+
+        function formatDate(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return String(value);
+            }
+            return date.toLocaleDateString();
+        }
+
+        function formatAmount(amount, options = {}) {
             if (amount === undefined || amount === null) return '';
             const numeric = Number(amount);
             if (!Number.isNaN(numeric)) {
-                return numeric.toLocaleString();
+                return formatNumber(numeric, options);
             }
             return String(amount);
         }
 
-        return { escapeHtml, formatAmount };
+        return { escapeHtml, formatAmount, formatNumber, formatCurrency, formatPercentage, formatYear, formatDate };
     })();
 
     /**
@@ -325,6 +367,21 @@
             return { modalEl: modal, close: closeModal };
         }
 
+        function normalizeCell(cell) {
+            if (cell && typeof cell === 'object' && !Array.isArray(cell)) {
+                const content = cell.content !== undefined ? cell.content : (cell.value !== undefined ? cell.value : '');
+                const classes = [];
+                if (cell.className) classes.push(cell.className);
+                if (cell.alignRight) classes.push('domus-cell-number');
+                return {
+                    content,
+                    classAttr: classes.length ? ' class="' + Domus.Utils.escapeHtml(classes.join(' ')) + '"' : ''
+                };
+            }
+
+            return { content: cell, classAttr: '' };
+        }
+
         function buildTable(headers, rows) {
             let html = '<table class="domus-table">';
             html += '<thead><tr>' + headers.map(h => '<th>' + Domus.Utils.escapeHtml(h) + '</th>').join('') + '</tr></thead>';
@@ -344,7 +401,10 @@
                             dataAttrs += ' data-' + Domus.Utils.escapeHtml(key) + '="' + Domus.Utils.escapeHtml(String(value)) + '"';
                         });
                     }
-                    html += '<tr' + classes + dataAttrs + '>' + cells.map(cell => '<td>' + cell + '</td>').join('') + '</tr>';
+                    html += '<tr' + classes + dataAttrs + '>' + cells.map(cell => {
+                        const { content, classAttr } = normalizeCell(cell);
+                        return '<td' + classAttr + '>' + content + '</td>';
+                    }).join('') + '</tr>';
                 });
             }
             html += '</tbody></table>';
@@ -1057,7 +1117,15 @@
             const rows = sortedRows.map(row => {
                 const cells = columns.map(col => {
                     const value = row[col.key];
-                    return Domus.Utils.escapeHtml(formatStatValue(value, col.format));
+                    const columnFormat = col.format || (yearColumn && yearColumn.key === col.key ? 'year' : null);
+                    const formatted = formatStatValue(value, columnFormat);
+                    if (formatted && typeof formatted === 'object' && formatted.content !== undefined) {
+                        return {
+                            content: Domus.Utils.escapeHtml(formatted.content),
+                            alignRight: formatted.alignRight
+                        };
+                    }
+                    return Domus.Utils.escapeHtml(formatStatValue(value, columnFormat));
                 });
 
                 if (typeof options.buildRowDataset === 'function') {
@@ -1075,15 +1143,29 @@
 
         function formatStatValue(value, format) {
             if (value === undefined || value === null) {
-                return '';
+                return { content: '', alignRight: false };
             }
 
             const numeric = Number(value);
-            if (format === 'percentage' && !Number.isNaN(numeric)) {
-                return `${(numeric * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+            const isNumeric = !Number.isNaN(numeric);
+
+            if ((format === 'percentage' || format === 'ratio') && isNumeric) {
+                return { content: Domus.Utils.formatPercentage(numeric), alignRight: true };
             }
 
-            return Domus.Utils.formatAmount(value);
+            if (format === 'currency' && isNumeric) {
+                return { content: Domus.Utils.formatCurrency(numeric), alignRight: true };
+            }
+
+            if (format === 'year' && isNumeric) {
+                return { content: Domus.Utils.formatYear(numeric), alignRight: true };
+            }
+
+            if (isNumeric) {
+                return { content: Domus.Utils.formatNumber(numeric), alignRight: true };
+            }
+
+            return { content: String(value), alignRight: false };
         }
 
         function openCreateModal(defaults = {}, onCreated) {
@@ -1124,7 +1206,7 @@
                         { label: t('domus', 'Tenancies'), value: allTenancies.length, hint: t('domus', 'Active and historic') },
                         { label: t('domus', 'Bookings'), value: (bookings || []).length, hint: t('domus', 'Entries for the selected year') },
                         { label: t('domus', 'Living area'), value: unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '—', hint: t('domus', 'Reported size') },
-                        { label: t('domus', 'Year'), value: Domus.state.currentYear, hint: t('domus', 'Reporting context') }
+                        { label: t('domus', 'Year'), value: Domus.Utils.formatYear(Domus.state.currentYear), hint: t('domus', 'Reporting context') }
                     ]);
 
                     const hero = '<div class="domus-detail-hero">' +
@@ -1161,8 +1243,8 @@
                         { label: t('domus', 'Land register'), value: unit.landRegister },
                         { label: t('domus', 'Living area'), value: unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '' },
                         { label: t('domus', 'Usable area'), value: unit.usableArea ? `${Domus.Utils.formatAmount(unit.usableArea)} m²` : '' },
-                        { label: t('domus', 'Buy date'), value: unit.buyDate },
-                        { label: t('domus', 'Total costs'), value: unit.totalCosts ? Domus.Utils.formatAmount(unit.totalCosts) : '' },
+                        { label: t('domus', 'Buy date'), value: Domus.Utils.formatDate(unit.buyDate) },
+                        { label: t('domus', 'Total costs'), value: unit.totalCosts ? Domus.Utils.formatCurrency(unit.totalCosts) : '' },
                         { label: t('domus', 'Official ID'), value: unit.officialId },
                         { label: t('domus', 'IBAN'), value: unit.iban },
                         { label: t('domus', 'BIC'), value: unit.bic },
@@ -1641,14 +1723,14 @@
                 .then(tenancy => {
                     const partnerLabel = formatPartnerNames(tenancy.partners);
                     const stats = Domus.UI.buildStatCards([
-                        { label: t('domus', 'Base rent'), value: Domus.Utils.formatAmount(tenancy.baseRent), hint: t('domus', 'Monthly base rent') },
-                        { label: t('domus', 'Service charge'), value: Domus.Utils.formatAmount(tenancy.serviceCharge), hint: tenancy.serviceChargeAsPrepayment ? t('domus', 'As prepayment') : t('domus', 'Billed separately') },
-                        { label: t('domus', 'Deposit'), value: Domus.Utils.formatAmount(tenancy.deposit), hint: t('domus', 'Security deposit') },
+                        { label: t('domus', 'Base rent'), value: Domus.Utils.formatCurrency(tenancy.baseRent), hint: t('domus', 'Monthly base rent') },
+                        { label: t('domus', 'Service charge'), value: Domus.Utils.formatCurrency(tenancy.serviceCharge), hint: tenancy.serviceChargeAsPrepayment ? t('domus', 'As prepayment') : t('domus', 'Billed separately') },
+                        { label: t('domus', 'Deposit'), value: Domus.Utils.formatCurrency(tenancy.deposit), hint: t('domus', 'Security deposit') },
                         { label: t('domus', 'Bookings'), value: (tenancy.bookings || []).length, hint: t('domus', 'Entries for the selected year') }
                     ]);
 
                     const statusTag = tenancy.status ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(tenancy.status) + '</span>' : '';
-                    const heroMeta = [tenancy.startDate, tenancy.endDate].filter(Boolean).join(' • ');
+                    const heroMeta = [Domus.Utils.formatDate(tenancy.startDate), Domus.Utils.formatDate(tenancy.endDate)].filter(Boolean).join(' • ');
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-main">' +
                         '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(tenancy.unitLabel || `${t('domus', 'Tenancy')} #${id}`) + '</div>' +
@@ -1679,8 +1761,8 @@
                     const infoList = Domus.UI.buildInfoList([
                         { label: t('domus', 'Unit'), value: formatUnitLabel(tenancy) },
                         { label: t('domus', 'Partners'), value: partnerLabel || t('domus', 'None') },
-                        { label: t('domus', 'Start date'), value: tenancy.startDate },
-                        { label: t('domus', 'End date'), value: tenancy.endDate },
+                        { label: t('domus', 'Start date'), value: Domus.Utils.formatDate(tenancy.startDate) },
+                        { label: t('domus', 'End date'), value: Domus.Utils.formatDate(tenancy.endDate) },
                         { label: t('domus', 'Prepayment'), value: tenancy.serviceChargeAsPrepayment ? t('domus', 'Yes') : t('domus', 'No') }
                     ]);
 
@@ -1866,9 +1948,9 @@
                         '</div>';
                     const rows = (bookings || []).map(b => ({
                         cells: [
-                            Domus.Utils.escapeHtml(b.date || ''),
+                            Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
                             Domus.Utils.escapeHtml(formatAccount(b)),
-                            Domus.Utils.escapeHtml(Domus.Utils.formatAmount(b.amount))
+                            { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
                         ],
                         dataset: { navigate: 'bookingDetail', args: b.id }
                     }));
@@ -1887,9 +1969,9 @@
 
         function renderInline(bookings) {
             const rows = (bookings || []).map(b => [
-                Domus.Utils.escapeHtml(b.date || ''),
+                Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
                 Domus.Utils.escapeHtml(formatAccount(b)),
-                Domus.Utils.escapeHtml(Domus.Utils.formatAmount(b.amount))
+                { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
             ]);
             return Domus.UI.buildTable([
                 t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount')
@@ -1940,8 +2022,8 @@
                 .then(booking => {
                     const accountDisplay = formatAccount(booking);
                     const stats = Domus.UI.buildStatCards([
-                        { label: t('domus', 'Amount'), value: Domus.Utils.formatAmount(booking.amount), hint: t('domus', 'Recorded amount') },
-                        { label: t('domus', 'Date'), value: booking.date || '—', hint: t('domus', 'Booking date') },
+                        { label: t('domus', 'Amount'), value: Domus.Utils.formatCurrency(booking.amount), hint: t('domus', 'Recorded amount') },
+                        { label: t('domus', 'Date'), value: Domus.Utils.formatDate(booking.date) || '—', hint: t('domus', 'Booking date') },
                         { label: t('domus', 'Account'), value: accountDisplay || '—', hint: t('domus', 'Ledger reference') },
                         { label: t('domus', 'Tenancy'), value: booking.tenancyId ? `#${booking.tenancyId}` : t('domus', 'Unassigned'), hint: t('domus', 'Linked tenancy') }
                     ]);
@@ -1966,8 +2048,8 @@
                     });
                     const detailsHeader = Domus.UI.buildSectionHeader(t('domus', 'Details'));
                     const infoList = Domus.UI.buildInfoList([
-                        { label: t('domus', 'Date'), value: booking.date },
-                        { label: t('domus', 'Amount'), value: Domus.Utils.formatAmount(booking.amount) },
+                        { label: t('domus', 'Date'), value: Domus.Utils.formatDate(booking.date) },
+                        { label: t('domus', 'Amount'), value: Domus.Utils.formatCurrency(booking.amount) },
                         { label: t('domus', 'Account'), value: accountDisplay },
                         { label: t('domus', 'Property'), value: booking.propertyName || booking.propertyId },
                         { label: t('domus', 'Unit'), value: booking.unitLabel || booking.unitId },
