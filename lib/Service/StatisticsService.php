@@ -285,11 +285,20 @@ class StatisticsService {
 
         private function resolveUnitField(Unit $unit, string $field): mixed {
                 $method = 'get' . ucfirst($field);
-                if (!method_exists($unit, $method)) {
+
+                try {
+                        // Nextcloud entities expose fields via magic __call, so directly invoke
+                        // the getter and let __call resolve it when no concrete method exists.
+                        $value = $unit->$method();
+                } catch (\Throwable $e) {
+                        $this->logger->info('StatisticsService: failed to resolve unit field', [
+                                'field' => $field,
+                                'exception' => $e,
+                        ]);
+
                         return null;
                 }
 
-                $value = $unit->$method();
                 return is_numeric($value) ? (float)$value : $value;
         }
 
