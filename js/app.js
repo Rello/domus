@@ -382,9 +382,27 @@
             return { content: cell, classAttr: '' };
         }
 
+        function normalizeHeader(header) {
+            if (header && typeof header === 'object' && !Array.isArray(header)) {
+                const label = header.label !== undefined ? header.label : (header.content !== undefined ? header.content : '');
+                const classes = [];
+                if (header.className) classes.push(header.className);
+                if (header.alignRight) classes.push('domus-cell-number');
+                return {
+                    label,
+                    classAttr: classes.length ? ' class="' + Domus.Utils.escapeHtml(classes.join(' ')) + '"' : ''
+                };
+            }
+
+            return { label: header, classAttr: '' };
+        }
+
         function buildTable(headers, rows) {
             let html = '<table class="domus-table">';
-            html += '<thead><tr>' + headers.map(h => '<th>' + Domus.Utils.escapeHtml(h) + '</th>').join('') + '</tr></thead>';
+            html += '<thead><tr>' + headers.map(h => {
+                const { label, classAttr } = normalizeHeader(h);
+                return '<th' + classAttr + '>' + Domus.Utils.escapeHtml(label) + '</th>';
+            }).join('') + '</tr></thead>';
             html += '<tbody>';
             if (!rows || rows.length === 0) {
                 html += '<tr><td colspan="' + headers.length + '">' + Domus.Utils.escapeHtml(t('domus', 'No entries found.')) + '</td></tr>';
@@ -1109,25 +1127,43 @@
             }
 
             const columns = statistics.columns || [];
-            const headers = columns.map(col => Domus.Utils.escapeHtml(col.label || col.key || ''));
+            const rowsData = statistics.rows || [];
             const yearColumn = columns.find(col => (col.key || '').toLowerCase() === 'year' || (col.label || '').toLowerCase() === 'year');
-            const sortedRows = [...(statistics.rows || [])];
+
+            function shouldAlignRight(format, hasNumericValues) {
+                if (!format && !hasNumericValues) return false;
+                return ['currency', 'percentage', 'ratio', 'number', 'year'].includes(format || (hasNumericValues ? 'currency' : ''));
+            }
+
+            const columnMeta = columns.map(col => {
+                const columnFormat = col.format || (yearColumn && yearColumn.key === col.key ? 'year' : null);
+                const hasNumericValues = rowsData.some(row => {
+                    const value = row[col.key];
+                    return value !== undefined && value !== null && !Number.isNaN(Number(value));
+                });
+                return Object.assign({}, col, {
+                    format: columnFormat,
+                    alignRight: shouldAlignRight(columnFormat, hasNumericValues)
+                });
+            });
+
+            const headers = columnMeta.map(col => ({ label: col.label || col.key || '', alignRight: col.alignRight }));
+            const sortedRows = [...rowsData];
             if (yearColumn) {
                 sortedRows.sort((a, b) => (parseInt(b[yearColumn.key], 10) || 0) - (parseInt(a[yearColumn.key], 10) || 0));
             }
 
             const rows = sortedRows.map(row => {
-                const cells = columns.map(col => {
+                const cells = columnMeta.map((col, index) => {
                     const value = row[col.key];
-                    const columnFormat = col.format || (yearColumn && yearColumn.key === col.key ? 'year' : null);
-                    const formatted = formatStatValue(value, columnFormat, col.unit);
-                    if (formatted && typeof formatted === 'object' && formatted.content !== undefined) {
-                        return {
-                            content: Domus.Utils.escapeHtml(formatted.content),
-                            alignRight: formatted.alignRight
-                        };
+                    const formatted = formatStatValue(value, col.format, col.unit);
+                    if (formatted && formatted.alignRight && headers[index]) {
+                        headers[index].alignRight = true;
                     }
-                    return Domus.Utils.escapeHtml(formatStatValue(value, columnFormat, col.unit));
+                    return {
+                        content: Domus.Utils.escapeHtml(formatted.content),
+                        alignRight: formatted.alignRight
+                    };
                 });
 
                 if (typeof options.buildRowDataset === 'function') {

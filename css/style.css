@@ -94,6 +94,7 @@
     text-align: left;
 }
 
+.domus-table th.domus-cell-number,
 .domus-table td.domus-cell-number {
     text-align: right;
     white-space: nowrap;

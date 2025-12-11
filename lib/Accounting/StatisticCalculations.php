@@ -6,16 +6,15 @@ class StatisticCalculations {
     public static function unit(): array {
         return [
             ['key' => 'year', 'label' => 'year', 'type' => 'year'],
-            ['key' => 'rent', 'label' => 'Kaltmiete', 'account' => '1000', 'format' => 'currency'],
+            ['key' => 'rent', 'label' => 'Kaltmiete', 'account' => '1000'],
             [
                 'key' => 'hgnu',
                 'label' => 'Nich umlagef.',
                 'rule' => [
                     ['op' => 'add', 'args' => ['2001', '2004']],
                 ],
-                'format' => 'currency',
             ],
-            ['key' => 'zinsen', 'label' => 'Kreditzinsen', 'account' => '2006', 'format' => 'currency'],
+            ['key' => 'zinsen', 'label' => 'Kreditzinsen', 'account' => '2006'],
             [
                 'key' => 'gwb',
                 'label' => 'Gewinn Brutto',
@@ -23,7 +22,6 @@ class StatisticCalculations {
                     ['op' => 'sub', 'args' => ['rent', 'hgnu']],
                     ['op' => 'sub', 'args' => ['prev', 'zinsen']],
                 ],
-                'format' => 'currency',
             ],
             [
                 'key' => 'abschr',
@@ -31,7 +29,6 @@ class StatisticCalculations {
                 'rule' => [
                     ['op' => 'add', 'args' => ['2007', '2008']],
                 ],
-                'format' => 'currency',
             ],
             [
                 'key' => 'steuer',
@@ -40,7 +37,6 @@ class StatisticCalculations {
                     ['op' => 'sub', 'args' => ['gwb', 'abschr']],
                     ['op' => 'mul', 'args' => ['prev', '2009']],
                 ],
-                'format' => 'currency',
             ],
             [
                 'key' => 'gwn',
@@ -48,7 +44,6 @@ class StatisticCalculations {
                 'rule' => [
                     ['op' => 'sub', 'args' => ['gwb', 'steuer']],
                 ],
-                'format' => 'currency',
             ],
             [
                 'key' => 'netRentab',
@@ -66,7 +61,7 @@ class StatisticCalculations {
             ['key' => 'unitId', 'label' => 'Unit ID', 'source' => 'unit', 'field' => 'id', 'visible' => false],
             ['key' => 'label', 'label' => 'Unitlabel', 'source' => 'unit', 'field' => 'label'],
             ['key' => 'size', 'label' => 'Size', 'source' => 'unit', 'field' => 'livingArea', 'format' => 'number', 'unit' => 'm²'],
-            ['key' => 'rent', 'label' => 'Kaltmiete', 'account' => '1000', 'format' => 'currency'],
+            ['key' => 'rent', 'label' => 'Kaltmiete', 'account' => '1000'],
             [
                 'key' => 'hgnu',
                 'label' => 'Nich umlagef.',
@@ -74,9 +69,8 @@ class StatisticCalculations {
                     ['op' => 'add', 'args' => ['2001', '2004']],
                 ],
                 'visible' => false,
-                'format' => 'currency',
             ],
-            ['key' => 'zinsen', 'label' => 'Kreditzinsen', 'account' => '2006', 'visible' => false, 'format' => 'currency'],
+            ['key' => 'zinsen', 'label' => 'Kreditzinsen', 'account' => '2006', 'visible' => false],
             [
                 'key' => 'gwb',
                 'label' => 'Gewinn Brutto',
@@ -85,7 +79,6 @@ class StatisticCalculations {
                     ['op' => 'sub', 'args' => ['prev', 'zinsen']],
                 ],
                 'visible' => false,
-                'format' => 'currency',
             ],
             [
                 'key' => 'abschr',
@@ -94,7 +87,6 @@ class StatisticCalculations {
                     ['op' => 'add', 'args' => ['2007', '2008']],
                 ],
                 'visible' => false,
-                'format' => 'currency',
             ],
             [
                 'key' => 'steuer',
@@ -104,7 +96,6 @@ class StatisticCalculations {
                     ['op' => 'mul', 'args' => ['prev', '2009']],
                 ],
                 'visible' => false,
-                'format' => 'currency',
             ],
             [
                 'key' => 'gwn',
@@ -113,7 +104,6 @@ class StatisticCalculations {
                     ['op' => 'sub', 'args' => ['gwb', 'steuer']],
                 ],
                 'visible' => false,
-                'format' => 'currency',
             ],
             [
                 'key' => 'rentPerSqm',
