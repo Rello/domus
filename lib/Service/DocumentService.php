@@ -74,7 +74,9 @@ class DocumentService {
         try {
             $file = $targetFolder->newFile($uniqueName, $stream);
         } finally {
-            fclose($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
         }
 
         if (!$file instanceof File) {
@@ -261,7 +263,7 @@ class DocumentService {
     }
 
     private function sanitizeSegment(string $segment): string {
-        $clean = preg_replace('/[\\\/:*?"<>|]/', '-', $segment);
+        $clean = str_replace(['\\', '/', ':', '*', '?', '"', '<', '>', '|'], '-', $segment);
         $clean = trim((string)$clean, " \t\n\r\0\x0B-");
         return $clean === '' ? 'document' : $clean;
     }
