@@ -51,6 +51,7 @@ class StatisticCalculations {
                 'rule' => [
                     ['op' => 'div', 'args' => ['gwn', '3000']],
                 ],
+                'format' => 'percentage',
             ],
         ];
     }
@@ -59,7 +60,7 @@ class StatisticCalculations {
         return [
             ['key' => 'unitId', 'label' => 'Unit ID', 'source' => 'unit', 'field' => 'id', 'visible' => false],
             ['key' => 'label', 'label' => 'Unitlabel', 'source' => 'unit', 'field' => 'label'],
-            ['key' => 'size', 'label' => 'Size', 'source' => 'unit', 'field' => 'livingArea'],
+            ['key' => 'size', 'label' => 'Size', 'source' => 'unit', 'field' => 'livingArea', 'format' => 'number', 'unit' => 'm²'],
             ['key' => 'rent', 'label' => 'Kaltmiete', 'account' => '1000'],
             [
                 'key' => 'hgnu',
@@ -111,6 +112,7 @@ class StatisticCalculations {
                     ['op' => 'div', 'args' => ['rent', 'size']],
                 ],
                 'format' => 'number',
+                'unit' => '€/m²',
             ],
             [
                 'key' => 'netRentab',
@@ -118,6 +120,7 @@ class StatisticCalculations {
                 'rule' => [
                     ['op' => 'div', 'args' => ['gwn', '3000']],
                 ],
+                'format' => 'percentage',
             ],
         ];
     }

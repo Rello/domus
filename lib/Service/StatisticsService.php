@@ -348,7 +348,8 @@ class StatisticsService {
                 return array_values(array_map(fn(array $col) => [
                         'key' => $col['key'],
                         'label' => $col['label'],
-                        'format' => $col['format'] ?? null
+                        'format' => $col['format'] ?? null,
+                        'unit' => $col['unit'] ?? null,
                 ], array_filter($definitions, fn(array $definition) => $definition['visible'] ?? true)));
         }
 
