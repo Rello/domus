@@ -7,6 +7,7 @@ use OCA\Domus\Db\DocumentLinkMapper;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
+use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use OCP\IL10N;
 use OCP\IUploadFile;
@@ -26,17 +27,33 @@ class DocumentService {
         return $this->documentLinkMapper->findForEntity($userId, $entityType, $entityId);
     }
 
-    public function linkFile(string $userId, string $entityType, int $entityId, int $fileId): DocumentLink {
+    public function linkFile(
+        string $userId,
+        string $entityType,
+        int $entityId,
+        ?int $fileId = null,
+        ?string $path = null
+    ): DocumentLink {
         $this->assertEntityType($entityType);
-        $node = $this->getNodeById($userId, $fileId);
+
+        $node = null;
+        if ($fileId !== null) {
+            $node = $this->getNodeById($userId, $fileId);
+        }
+        if ($node === null && $path !== null) {
+            $node = $this->getNodeByPath($userId, $path);
+        }
         if (!$node) {
             throw new \RuntimeException($this->l10n->t('File not found.'));
+        }
+        if ($node instanceof Folder) {
+            throw new \RuntimeException($this->l10n->t('Please choose a file instead of a folder.'));
         }
         $link = new DocumentLink();
         $link->setUserId($userId);
         $link->setEntityType($entityType);
         $link->setEntityId($entityId);
-        $link->setFileId($fileId);
+        $link->setFileId($node->getId());
         $link->setFileName($node->getName());
         $link->setCreatedAt(time());
         return $this->documentLinkMapper->insert($link);
@@ -97,6 +114,20 @@ class DocumentService {
             }
         }
         return null;
+    }
+
+    private function getNodeByPath(string $userId, string $path): ?Node {
+        $relativePath = ltrim(trim($path), '/');
+        if ($relativePath === '' || str_contains($relativePath, '..')) {
+            return null;
+        }
+        try {
+            $userFolder = $this->rootFolder->getUserFolder($userId);
+            $node = $userFolder->get($relativePath);
+            return $node instanceof Node ? $node : null;
+        } catch (NotFoundException $e) {
+            return null;
+        }
     }
 
     private function ensureFolderHierarchy(string $userId, string $entityType, int $entityId, int $year) {

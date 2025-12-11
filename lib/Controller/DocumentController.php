@@ -32,9 +32,19 @@ class DocumentController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function link(string $entityType, int $entityId, int $fileId): DataResponse {
+    public function link(string $entityType, int $entityId): DataResponse {
         try {
-            $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $fileId);
+            $fileIdParam = $this->request->getParam('fileId');
+            $path = $this->request->getParam('path');
+
+            $fileId = $fileIdParam !== null ? (int)$fileIdParam : null;
+            $path = is_string($path) ? $path : null;
+
+            if ($fileId === null && ($path === null || $path === '')) {
+                return $this->validationError($this->l10n->t('No file selected.'));
+            }
+
+            $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $fileId, $path);
             return new DataResponse($link, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
