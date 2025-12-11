@@ -32,9 +32,27 @@ class DocumentController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function link(string $entityType, int $entityId, string $filePath): DataResponse {
+    public function link(string $entityType, int $entityId, string $filePath, ?int $year = null): DataResponse {
         try {
-            $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $filePath);
+            $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $filePath, $year);
+            return new DataResponse($link, Http::STATUS_CREATED);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
+    public function upload(string $entityType, int $entityId): DataResponse {
+        try {
+            $file = $this->request->getUploadedFile('file');
+            if (!$file) {
+                return $this->validationError($this->l10n->t('File is required.'));
+            }
+            $yearParam = $this->request->getParam('year');
+            $year = $yearParam !== null ? (int)$yearParam : null;
+            $link = $this->documentService->uploadAndLink($this->getUserId(), $entityType, $entityId, $file, $year);
             return new DataResponse($link, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());

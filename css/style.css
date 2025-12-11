@@ -500,6 +500,19 @@
     color: var(--color-main-text);
 }
 
+.domus-doc-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.domus-doc-picker {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .domus-dashboard .domus-back-button {
     margin-bottom: 12px;
 }

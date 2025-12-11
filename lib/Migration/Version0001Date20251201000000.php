@@ -148,11 +148,23 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
             $table->addColumn('entity_type', 'string', ['notnull' => true, 'length' => 32]);
             $table->addColumn('entity_id', 'bigint', ['notnull' => true]);
-            $table->addColumn('file_path', 'string', ['notnull' => true, 'length' => 512]);
+            $table->addColumn('file_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('file_name', 'string', ['notnull' => false, 'length' => 512]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_doc_user');
             $table->addIndex(['entity_type', 'entity_id'], 'domus_doc_rel');
+        } else {
+            $table = $schema->getTable('domus_docLinks');
+            if (!$table->hasColumn('file_id')) {
+                $table->addColumn('file_id', 'bigint', ['notnull' => true, 'default' => 0]);
+            }
+            if (!$table->hasColumn('file_name')) {
+                $table->addColumn('file_name', 'string', ['notnull' => false, 'length' => 512]);
+            }
+            if ($table->hasColumn('file_path')) {
+                $table->dropColumn('file_path');
+            }
         }
 
         if (!$schema->hasTable('domus_reports')) {
