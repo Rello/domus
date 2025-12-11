@@ -2635,7 +2635,7 @@
                     e.preventDefault();
                     OC.dialogs.filepicker(t('domus', 'Select file'), function(path) {
                         pickerInput.value = path;
-                    }, false, 'file', true, 1);
+                    }, false, '', true, 1);
                 });
             }
             if (focus === 'upload') {
