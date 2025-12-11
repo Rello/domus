@@ -1151,23 +1151,26 @@
             const numeric = Number(value);
             const isNumeric = !Number.isNaN(numeric);
 
+            const resolvedFormat = format || (isNumeric ? 'currency' : null);
+            const resolvedUnit = unit || (resolvedFormat === 'currency' ? '€' : null);
+
             const withUnit = (content) => {
-                if (!content) {
+                if (content === undefined || content === null || content === '') {
                     return content;
                 }
-                return unit ? `${content} ${unit}` : content;
+                return resolvedUnit ? `${content} ${resolvedUnit}` : content;
             };
 
-            if ((format === 'percentage' || format === 'ratio') && isNumeric) {
+            if ((resolvedFormat === 'percentage' || resolvedFormat === 'ratio') && isNumeric) {
                 return { content: withUnit(Domus.Utils.formatPercentage(numeric)), alignRight: true };
             }
 
-            if (format === 'currency' && isNumeric) {
+            if (resolvedFormat === 'currency' && isNumeric) {
                 const formatted = Domus.Utils.formatNumber(numeric, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 return { content: withUnit(formatted), alignRight: true };
             }
 
-            if (format === 'year' && isNumeric) {
+            if (resolvedFormat === 'year' && isNumeric) {
                 return { content: withUnit(Domus.Utils.formatYear(numeric)), alignRight: true };
             }
 
