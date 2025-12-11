@@ -516,7 +516,9 @@
             }
 
             const items = cards.map(card => {
-                const value = card.value === undefined || card.value === null ? '—' : Domus.Utils.formatAmount(card.value);
+                const value = card.value === undefined || card.value === null
+                    ? '—'
+                    : (card.formatValue === false ? card.value : Domus.Utils.formatAmount(card.value));
                 const hint = card.hint ? '<div class="domus-stat-hint">' + Domus.Utils.escapeHtml(card.hint) + '</div>' : '';
                 return '<div class="domus-stat-card">' +
                     '<div class="domus-stat-label">' + Domus.Utils.escapeHtml(card.label || '') + '</div>' +
@@ -862,10 +864,10 @@
 
                     const address = [property.street, property.city].filter(Boolean).join(', ');
                     const stats = Domus.UI.buildStatCards([
-                        { label: t('domus', 'Units'), value: (property.units || []).length, hint: t('domus', 'Total units in this property') },
-                        { label: t('domus', 'Bookings'), value: (property.bookings || []).length, hint: t('domus', 'Entries for the selected year') },
-                        { label: t('domus', 'Reports'), value: (property.reports || []).length, hint: t('domus', 'Available report downloads') },
-                        { label: t('domus', 'Year'), value: Domus.state.currentYear, hint: t('domus', 'Reporting context') }
+                        { label: t('domus', 'Units'), value: (property.units || []).length, hint: t('domus', 'Total units in this property'), formatValue: false },
+                        { label: t('domus', 'Bookings'), value: (property.bookings || []).length, hint: t('domus', 'Entries for the selected year'), formatValue: false },
+                        { label: t('domus', 'Reports'), value: (property.reports || []).length, hint: t('domus', 'Available report downloads'), formatValue: false },
+                        { label: t('domus', 'Year'), value: Domus.state.currentYear, hint: t('domus', 'Reporting context'), formatValue: false }
                     ]);
 
                     const hero = '<div class="domus-detail-hero">' +
@@ -1118,14 +1120,14 @@
                 const cells = columns.map(col => {
                     const value = row[col.key];
                     const columnFormat = col.format || (yearColumn && yearColumn.key === col.key ? 'year' : null);
-                    const formatted = formatStatValue(value, columnFormat);
+                    const formatted = formatStatValue(value, columnFormat, col.unit);
                     if (formatted && typeof formatted === 'object' && formatted.content !== undefined) {
                         return {
                             content: Domus.Utils.escapeHtml(formatted.content),
                             alignRight: formatted.alignRight
                         };
                     }
-                    return Domus.Utils.escapeHtml(formatStatValue(value, columnFormat));
+                    return Domus.Utils.escapeHtml(formatStatValue(value, columnFormat, col.unit));
                 });
 
                 if (typeof options.buildRowDataset === 'function') {
@@ -1141,7 +1143,7 @@
             return Domus.UI.buildTable(headers, rows);
         }
 
-        function formatStatValue(value, format) {
+        function formatStatValue(value, format, unit) {
             if (value === undefined || value === null) {
                 return { content: '', alignRight: false };
             }
@@ -1149,23 +1151,31 @@
             const numeric = Number(value);
             const isNumeric = !Number.isNaN(numeric);
 
+            const withUnit = (content) => {
+                if (!content) {
+                    return content;
+                }
+                return unit ? `${content} ${unit}` : content;
+            };
+
             if ((format === 'percentage' || format === 'ratio') && isNumeric) {
-                return { content: Domus.Utils.formatPercentage(numeric), alignRight: true };
+                return { content: withUnit(Domus.Utils.formatPercentage(numeric)), alignRight: true };
             }
 
             if (format === 'currency' && isNumeric) {
-                return { content: Domus.Utils.formatCurrency(numeric), alignRight: true };
+                const formatted = Domus.Utils.formatNumber(numeric, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return { content: withUnit(formatted), alignRight: true };
             }
 
             if (format === 'year' && isNumeric) {
-                return { content: Domus.Utils.formatYear(numeric), alignRight: true };
+                return { content: withUnit(Domus.Utils.formatYear(numeric)), alignRight: true };
             }
 
             if (isNumeric) {
-                return { content: Domus.Utils.formatNumber(numeric), alignRight: true };
+                return { content: withUnit(Domus.Utils.formatNumber(numeric)), alignRight: true };
             }
 
-            return { content: String(value), alignRight: false };
+            return { content: withUnit(String(value)), alignRight: false };
         }
 
         function openCreateModal(defaults = {}, onCreated) {
@@ -1203,10 +1213,10 @@
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
                     const subtitleParts = [unit.propertyName || '', unit.unitNumber].filter(Boolean);
                     const stats = Domus.UI.buildStatCards([
-                        { label: t('domus', 'Tenancies'), value: allTenancies.length, hint: t('domus', 'Active and historic') },
-                        { label: t('domus', 'Bookings'), value: (bookings || []).length, hint: t('domus', 'Entries for the selected year') },
+                        { label: t('domus', 'Tenancies'), value: allTenancies.length, hint: t('domus', 'Active and historic'), formatValue: false },
+                        { label: t('domus', 'Bookings'), value: (bookings || []).length, hint: t('domus', 'Entries for the selected year'), formatValue: false },
                         { label: t('domus', 'Living area'), value: unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '—', hint: t('domus', 'Reported size') },
-                        { label: t('domus', 'Year'), value: Domus.Utils.formatYear(Domus.state.currentYear), hint: t('domus', 'Reporting context') }
+                        { label: t('domus', 'Year'), value: Domus.Utils.formatYear(Domus.state.currentYear), hint: t('domus', 'Reporting context'), formatValue: false }
                     ]);
 
                     const hero = '<div class="domus-detail-hero">' +
@@ -1476,12 +1486,12 @@
         function renderDetail(id) {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading partner…'));
-            Domus.Api.get('/partners/' + id)
+                    Domus.Api.get('/partners/' + id)
                 .then(partner => {
                     const tenancies = partner.tenancies || [];
                     const stats = Domus.UI.buildStatCards([
-                        { label: t('domus', 'Tenancies'), value: tenancies.length, hint: t('domus', 'Linked contracts') },
-                        { label: t('domus', 'Reports'), value: (partner.reports || []).length, hint: t('domus', 'Available downloads') },
+                        { label: t('domus', 'Tenancies'), value: tenancies.length, hint: t('domus', 'Linked contracts'), formatValue: false },
+                        { label: t('domus', 'Reports'), value: (partner.reports || []).length, hint: t('domus', 'Available downloads'), formatValue: false },
                         { label: t('domus', 'Type'), value: partner.partnerType || '—', hint: t('domus', 'Partner category') }
                     ]);
 
@@ -1726,7 +1736,7 @@
                         { label: t('domus', 'Base rent'), value: Domus.Utils.formatCurrency(tenancy.baseRent), hint: t('domus', 'Monthly base rent') },
                         { label: t('domus', 'Service charge'), value: Domus.Utils.formatCurrency(tenancy.serviceCharge), hint: tenancy.serviceChargeAsPrepayment ? t('domus', 'As prepayment') : t('domus', 'Billed separately') },
                         { label: t('domus', 'Deposit'), value: Domus.Utils.formatCurrency(tenancy.deposit), hint: t('domus', 'Security deposit') },
-                        { label: t('domus', 'Bookings'), value: (tenancy.bookings || []).length, hint: t('domus', 'Entries for the selected year') }
+                        { label: t('domus', 'Bookings'), value: (tenancy.bookings || []).length, hint: t('domus', 'Entries for the selected year'), formatValue: false }
                     ]);
 
                     const statusTag = tenancy.status ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(tenancy.status) + '</span>' : '';
