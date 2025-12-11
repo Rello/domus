@@ -1145,7 +1145,7 @@
                         '<div class="domus-hero-actions">' +
                         '<button id="domus-add-tenancy" class="primary" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(t('domus', 'Add tenancy')) + '</button>' +
                         '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' +
-                        '<button id="domus-add-unit-buying-price">' + Domus.Utils.escapeHtml(t('domus', 'Add buying price')) + '</button>' +
+                        '<button id="domus-add-unit-buying-price" disabled title="' + Domus.Utils.escapeHtml(t('domus', 'Coming soon')) + '">' + Domus.Utils.escapeHtml(t('domus', 'Add buying price')) + '</button>' +
                         '<button id="domus-unit-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
                         '<button id="domus-unit-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
                         '</div>' +
@@ -1287,18 +1287,20 @@
 
         function buildUnitForm(propertyOptions, unit) {
             const selectedPropertyId = unit?.propertyId ? String(unit.propertyId) : '';
+            const buyDate = unit?.buyDate ? Domus.Utils.escapeHtml(unit.buyDate) : new Date().toISOString().split('T')[0];
+            const propertyLocked = Boolean(selectedPropertyId);
             return '<div class="domus-form">' +
                 '<form id="domus-unit-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + ' *<select name="propertyId" required>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + ' *<select name="propertyId"' + (propertyLocked ? ' disabled' : '') + ' required>' +
                 propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedPropertyId ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select></label>' +
+                '</select>' + (propertyLocked ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedPropertyId) + '">' : '') + '</label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Label')) + ' *<input name="label" required value="' + (unit?.label ? Domus.Utils.escapeHtml(unit.label) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit number')) + '<input name="unitNumber" value="' + (unit?.unitNumber ? Domus.Utils.escapeHtml(unit.unitNumber) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Land register')) + '<input name="landRegister" value="' + (unit?.landRegister ? Domus.Utils.escapeHtml(unit.landRegister) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit type')) + '<input name="unitType" value="' + (unit?.unitType ? Domus.Utils.escapeHtml(unit.unitType) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Living area')) + '<input name="livingArea" type="number" step="0.01" value="' + (unit?.livingArea ? Domus.Utils.escapeHtml(unit.livingArea) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Usable area')) + '<input name="usableArea" type="number" step="0.01" value="' + (unit?.usableArea ? Domus.Utils.escapeHtml(unit.usableArea) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Buy date')) + '<input name="buyDate" type="date" value="' + (unit?.buyDate ? Domus.Utils.escapeHtml(unit.buyDate) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Buy date')) + '<input name="buyDate" type="date" value="' + buyDate + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Total costs')) + '<input name="totalCosts" type="number" step="0.01" value="' + (unit?.totalCosts || unit?.totalCosts === 0 ? Domus.Utils.escapeHtml(unit.totalCosts) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Official ID')) + '<input name="officialId" value="' + (unit?.officialId ? Domus.Utils.escapeHtml(unit.officialId) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'IBAN')) + '<input name="iban" value="' + (unit?.iban ? Domus.Utils.escapeHtml(unit.iban) : '') + '"></label>' +
@@ -1830,15 +1832,17 @@
             }
             const partnerIds = (tn.partnerIds || []).map(String);
             const selectedUnitId = tn.unitId !== undefined && tn.unitId !== null ? String(tn.unitId) : '';
+            const startDate = tn.startDate ? Domus.Utils.escapeHtml(tn.startDate) : new Date().toISOString().split('T')[0];
+            const unitLocked = Boolean(selectedUnitId);
             return '<div class="domus-form">' +
                 '<form id="domus-tenancy-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + ' *<select name="unitId" required>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + ' *<select name="unitId"' + (unitLocked ? ' disabled' : '') + ' required>' +
                 unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (selectedUnitId === String(opt.value) ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select></label>' +
+                '</select>' + (unitLocked ? '<input type="hidden" name="unitId" value="' + Domus.Utils.escapeHtml(selectedUnitId) + '">' : '') + '</label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + ' *<select name="partnerIds" multiple required size="4">' +
                 partnerOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (partnerIds.includes(String(opt.value)) ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                 '</select></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Start date')) + ' *<input type="date" name="startDate" required value="' + (tn.startDate ? Domus.Utils.escapeHtml(tn.startDate) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Start date')) + ' *<input type="date" name="startDate" required value="' + startDate + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'End date')) + '<input type="date" name="endDate" value="' + (tn.endDate ? Domus.Utils.escapeHtml(tn.endDate) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Base rent')) + ' *<input type="number" step="0.01" name="baseRent" required value="' + (tn.baseRent ? Domus.Utils.escapeHtml(tn.baseRent) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Service charge')) + '<input type="number" step="0.01" name="serviceCharge" value="' + (tn.serviceCharge ? Domus.Utils.escapeHtml(tn.serviceCharge) : '') + '"></label>' +
@@ -2148,23 +2152,27 @@
             const selectedProperty = booking?.propertyId ? String(booking.propertyId) : '';
             const selectedUnit = booking?.unitId ? String(booking.unitId) : '';
             const selectedTenancy = booking?.tenancyId ? String(booking.tenancyId) : '';
+            const bookingDate = booking?.date ? Domus.Utils.escapeHtml(booking.date) : new Date().toISOString().split('T')[0];
+            const propertyLocked = Boolean(selectedProperty);
+            const unitLocked = Boolean(selectedUnit);
+            const tenancyLocked = Boolean(selectedTenancy);
             return '<div class="domus-form">' +
                 '<form id="domus-booking-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Date')) + ' *<input type="date" name="date" required value="' + (booking?.date ? Domus.Utils.escapeHtml(booking.date) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Date')) + ' *<input type="date" name="date" required value="' + bookingDate + '"></label>' +
                 '<div class="domus-booking-entries-wrapper">' +
                 '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Amounts')) + '</div>' +
                 '<div id="domus-booking-entries" class="domus-booking-entries" data-multi="' + (multiEntry ? '1' : '0') + '"></div>' +
                 '<div class="domus-booking-hint">' + Domus.Utils.escapeHtml(t('domus', 'Add multiple booking lines. A new row appears automatically when you enter an amount.')) + '</div>' +
                 '</div>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId">' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId"' + (propertyLocked ? ' disabled' : '') + '>' +
                 propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedProperty ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId">' +
+                '</select>' + (propertyLocked ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '') + '</label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId"' + (unitLocked ? ' disabled' : '') + '>' +
                 unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedUnit ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Tenancy')) + '<select name="tenancyId">' +
+                '</select>' + (unitLocked ? '<input type="hidden" name="unitId" value="' + Domus.Utils.escapeHtml(selectedUnit) + '">' : '') + '</label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Tenancy')) + '<select name="tenancyId"' + (tenancyLocked ? ' disabled' : '') + '>' +
                 tenancyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedTenancy ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select></label>' +
+                '</select>' + (tenancyLocked ? '<input type="hidden" name="tenancyId" value="' + Domus.Utils.escapeHtml(selectedTenancy) + '">' : '') + '</label>' +
                 '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-booking-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
