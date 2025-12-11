@@ -42,7 +42,7 @@ class UnitController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function create(int $propertyId, string $label, ?string $unitNumber = null, ?string $landRegister = null, ?string $livingArea = null, ?string $usableArea = null, ?string $unitType = null, ?string $buyDate = null, ?string $totalCosts = null, ?string $officialId = null, ?string $iban = null, ?string $bic = null, ?string $notes = null): DataResponse {
+    public function create(?int $propertyId, string $label, ?string $unitNumber = null, ?string $landRegister = null, ?string $livingArea = null, ?string $usableArea = null, ?string $unitType = null, ?string $buyDate = null, ?string $totalCosts = null, ?string $officialId = null, ?string $iban = null, ?string $bic = null, ?string $notes = null): DataResponse {
         $data = compact('propertyId', 'label', 'unitNumber', 'landRegister', 'livingArea', 'usableArea', 'unitType', 'buyDate', 'totalCosts', 'officialId', 'iban', 'bic', 'notes');
         try {
             $unit = $this->unitService->createUnit($data, $this->getUserId());
