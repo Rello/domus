@@ -1359,21 +1359,28 @@
         }
 
         function openCreateModal(defaults = {}, onCreated) {
-            const showPropertySelect = Domus.Role.isBuildingMgmtView();
-            const requireProperty = showPropertySelect;
-            const propertiesPromise = showPropertySelect ? Domus.Api.getProperties() : Promise.resolve([]);
-
-            propertiesPromise
+            Domus.Api.getProperties()
                 .then(properties => {
-                    const propertyOptions = showPropertySelect
-                        ? [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
-                            value: p.id,
-                            label: p.name || `${t('domus', 'Property')} #${p.id}`
-                        })))
-                        : [];
+                    const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
+                        value: p.id,
+                        label: p.name || `${t('domus', 'Property')} #${p.id}`
+                    })));
+                    const availableProperties = propertyOptions.slice(1);
+                    const firstPropertyId = availableProperties[0]?.value;
+
+                    if (!availableProperties.length) {
+                        Domus.UI.showNotification(t('domus', 'Create a property first before adding units.'), 'error');
+                        return;
+                    }
+
+                    const showPropertySelect = Domus.Role.isBuildingMgmtView() || availableProperties.length > 1;
+                    const requireProperty = true;
+                    const effectiveDefaults = Object.assign({ propertyId: firstPropertyId }, defaults);
+                    const defaultPropertyId = effectiveDefaults.propertyId;
+
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'New unit'),
-                        content: buildUnitForm(propertyOptions, defaults, { showPropertySelect, requireProperty })
+                        content: buildUnitForm(propertyOptions, effectiveDefaults, { showPropertySelect, requireProperty, defaultPropertyId })
                     });
                     bindUnitForm(modal, data => Domus.Api.createUnit(data)
                         .then(() => {
@@ -1521,23 +1528,23 @@
         }
 
         function openEditModal(id) {
-            const showPropertySelect = Domus.Role.isBuildingMgmtView();
-            const requireProperty = showPropertySelect;
-            const propertiesPromise = showPropertySelect ? Domus.Api.getProperties() : Promise.resolve([]);
             Promise.all([
                 Domus.Api.get('/units/' + id),
-                propertiesPromise
+                Domus.Api.getProperties()
             ])
                 .then(([unit, properties]) => {
-                    const propertyOptions = showPropertySelect
-                        ? [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
-                            value: p.id,
-                            label: p.name || `${t('domus', 'Property')} #${p.id}`
-                        })))
-                        : [];
+                    const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
+                        value: p.id,
+                        label: p.name || `${t('domus', 'Property')} #${p.id}`
+                    })));
+                    const availableProperties = propertyOptions.slice(1);
+                    const showPropertySelect = Domus.Role.isBuildingMgmtView() || availableProperties.length > 1;
+                    const requireProperty = true;
+                    const defaultPropertyId = unit.propertyId || availableProperties[0]?.value;
+
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'Edit unit'),
-                        content: buildUnitForm(propertyOptions, unit, { showPropertySelect, requireProperty })
+                        content: buildUnitForm(propertyOptions, unit, { showPropertySelect, requireProperty, defaultPropertyId })
                     });
                     bindUnitForm(modal, data => Domus.Api.updateUnit(id, data)
                         .then(() => {
@@ -1573,14 +1580,16 @@
 
 
         function buildUnitForm(propertyOptions, unit, options = {}) {
-            const selectedPropertyId = unit?.propertyId ? String(unit.propertyId) : '';
+            const selectedPropertyId = unit?.propertyId
+                ? String(unit.propertyId)
+                : (options.defaultPropertyId ? String(options.defaultPropertyId) : '');
             const showPropertySelect = options.showPropertySelect !== false && propertyOptions.length;
             const includeManagementExcludedFields = !Domus.Role.isBuildingMgmtView();
             const propertyInput = showPropertySelect
                 ? '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + (options.requireProperty ? ' *' : '') + '<select name="propertyId"' + (options.requireProperty ? ' required' : '') + '>' +
                 propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) ===selectedPropertyId ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                 '</select></label>'
-                : (unit?.propertyId ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(unit.propertyId) + '">' : '');
+                : (selectedPropertyId ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedPropertyId) + '">' : '');
 
             const fields = [
                 propertyInput,
