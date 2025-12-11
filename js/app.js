@@ -2276,8 +2276,8 @@
             const rows = Array.from(container.querySelectorAll('.domus-booking-entry'));
             rows.forEach(row => {
                 const account = row.querySelector('[data-role="account"]')?.value || '';
-                const amountValue = row.querySelector('[data-role="amount"]')?.value;
-                const hasAmount = amountValue !== undefined && amountValue !== null && amountValue !== '';
+                const amountValue = (row.querySelector('[data-role="amount"]')?.value || '').trim();
+                const hasAmount = amountValue !== '';
                 const hasAccount = account !== '';
 
                 if (!hasAmount && !hasAccount) {
@@ -2296,7 +2296,7 @@
                     error = t('domus', 'Enter a valid amount.');
                     return;
                 }
-                entries.push({ account, amount });
+                entries.push({ account, amount: amountValue });
             });
 
             if (!error && !entries.length) {
