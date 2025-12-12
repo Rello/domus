@@ -219,14 +219,14 @@
             createTenancyReport: (tenancyId) => request('POST', `/tenancies/${tenancyId}/reports/${Domus.state.currentYear}`),
             getDocuments: (entityType, entityId) => request('GET', `/documents/${entityType}/${entityId}`),
             linkDocument: (entityType, entityId, data) => request('POST', `/documents/${entityType}/${entityId}`, data),
-            uploadDocument: (entityType, entityId, file, year, fileName) => {
+            uploadDocument: (entityType, entityId, file, year, title) => {
                 const formData = new FormData();
                 formData.append('file', file);
                 if (year !== undefined && year !== null) {
                     formData.append('year', year);
                 }
-                if (fileName) {
-                    formData.append('fileName', fileName);
+                if (title) {
+                    formData.append('title', title);
                 }
                 const opts = {
                     method: 'POST',
@@ -2586,7 +2586,7 @@
                 '<hr>' +
                 '<form class="domus-form" data-doc-upload-form>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Upload from computer')) + '<input type="file" name="file" required></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'File name')) + '<input type="text" name="fileName" placeholder="' + Domus.Utils.escapeHtml(t('domus', 'Keep original name')) + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Title')) + '<input type="text" name="title" placeholder="' + Domus.Utils.escapeHtml(t('domus', 'Defaults to file name')) + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Year')) + '<input type="number" name="year" value="' + Domus.Utils.escapeHtml(year) + '" required></label>' +
                 '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Upload')) + '</button>' +
@@ -2668,10 +2668,12 @@
             });
 
             const uploadFileInput = uploadForm?.querySelector('input[name="file"]');
-            const uploadNameInput = uploadForm?.querySelector('input[name="fileName"]');
+            const uploadNameInput = uploadForm?.querySelector('input[name="title"]');
             uploadFileInput?.addEventListener('change', function() {
                 if (uploadNameInput && this.files && this.files[0]) {
-                    uploadNameInput.value = this.files[0].name;
+                    const originalName = this.files[0].name;
+                    const dotIndex = originalName.lastIndexOf('.');
+                    uploadNameInput.value = dotIndex > 0 ? originalName.substring(0, dotIndex) : originalName;
                 }
             });
 
@@ -2679,12 +2681,12 @@
                 e.preventDefault();
                 const file = uploadForm.file.files[0];
                 const year = Number(uploadForm.year.value);
-                const fileName = uploadForm.fileName.value.trim();
+                const title = uploadForm.title.value.trim();
                 if (!file) {
                     Domus.UI.showNotification(t('domus', 'Please choose a file to upload.'), 'error');
                     return;
                 }
-                Domus.Api.uploadDocument(entityType, entityId, file, year, fileName || undefined)
+                Domus.Api.uploadDocument(entityType, entityId, file, year, title || undefined)
                     .then(() => {
                         Domus.UI.showNotification(t('domus', 'Document uploaded.'), 'success');
                         modal.close();

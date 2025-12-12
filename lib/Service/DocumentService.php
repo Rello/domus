@@ -54,10 +54,10 @@ class DocumentService {
             throw new \InvalidArgumentException($this->l10n->t('Selected item is not a file.'));
         }
 
-        return $this->persistLink($userId, $entityType, $entityId, $node, $node->getName());
+        return $this->persistLink($userId, $entityType, $entityId, $node, null);
     }
 
-    public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null, ?string $desiredName = null): DocumentLink {
+    public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null, ?string $title = null): DocumentLink {
         $this->assertEntityType($entityType);
         if (!isset($uploadedFile['tmp_name']) || !is_readable($uploadedFile['tmp_name'])) {
             throw new \InvalidArgumentException($this->l10n->t('No file uploaded.'));
@@ -65,7 +65,7 @@ class DocumentService {
 
         $targetFolder = $this->ensureTargetFolder($userId, $entityType, $entityId, $year);
         $originalName = $uploadedFile['name'] ?? 'document';
-        $fileName = $this->buildFinalFileName($originalName, $desiredName);
+        $fileName = $this->buildFinalFileName($originalName);
         $uniqueName = $this->getUniqueFileName($targetFolder, $fileName);
         $stream = fopen($uploadedFile['tmp_name'], 'rb');
         if ($stream === false) {
@@ -84,7 +84,7 @@ class DocumentService {
             throw new \RuntimeException($this->l10n->t('Unable to create file.'));
         }
 
-        return $this->persistLink($userId, $entityType, $entityId, $file, $file->getName());
+        return $this->persistLink($userId, $entityType, $entityId, $file, $title);
     }
 
     public function unlink(string $userId, int $id): void {
@@ -95,13 +95,13 @@ class DocumentService {
         $this->documentLinkMapper->delete($link);
     }
 
-    private function persistLink(string $userId, string $entityType, int $entityId, File $file, string $fileName): DocumentLink {
+    private function persistLink(string $userId, string $entityType, int $entityId, File $file, ?string $title = null): DocumentLink {
         $link = new DocumentLink();
         $link->setUserId($userId);
         $link->setEntityType($entityType);
         $link->setEntityId($entityId);
         $link->setFileId($file->getId());
-        $link->setFileName($fileName);
+        $link->setFileName($this->buildDisplayTitle($file->getName(), $title));
         $link->setCreatedAt(time());
 
         $created = $this->documentLinkMapper->insert($link);
@@ -273,18 +273,19 @@ class DocumentService {
         return $this->sanitizeSegment($fileName);
     }
 
-    private function buildFinalFileName(string $originalName, ?string $desiredName): string {
-        $candidate = $desiredName !== null && trim($desiredName) !== '' ? $desiredName : $originalName;
-        $sanitized = $this->sanitizeFileName($candidate);
-        $providedExt = pathinfo($sanitized, PATHINFO_EXTENSION);
-        if ($providedExt === '') {
-            $originalExt = pathinfo($originalName, PATHINFO_EXTENSION);
-            if ($originalExt !== '') {
-                $sanitized .= '.' . $originalExt;
-            }
+    private function buildFinalFileName(string $originalName): string {
+        return $this->sanitizeFileName($originalName);
+    }
+
+    private function buildDisplayTitle(string $fileName, ?string $title = null): string {
+        $cleanTitle = $title !== null ? trim($title) : '';
+        if ($cleanTitle === '') {
+            $pathInfo = pathinfo($fileName);
+            $base = $pathInfo['filename'] ?? $fileName;
+            return $base !== '' ? $base : $fileName;
         }
 
-        return $sanitized;
+        return $cleanTitle;
     }
 
     private function normalizePath(string $path): string {

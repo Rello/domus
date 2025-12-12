@@ -41,8 +41,8 @@ class DocumentController extends Controller {
         }
         $yearParam = $this->request->getParam('year');
         $year = $yearParam !== null ? (int)$yearParam : null;
-        $fileName = $this->request->getParam('fileName');
-        $link = $this->documentService->uploadAndLink($this->getUserId(), $entityType, $entityId, $file, $year, $fileName);
+        $title = $this->request->getParam('title');
+        $link = $this->documentService->uploadAndLink($this->getUserId(), $entityType, $entityId, $file, $year, $title);
         return new DataResponse($link, Http::STATUS_CREATED);
     }
 
