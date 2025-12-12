@@ -508,6 +508,8 @@
             const container = document.createElement('div');
             container.className = 'domus-dropzone';
             container.tabIndex = 0;
+            container.setAttribute('role', 'button');
+            container.setAttribute('aria-label', options.label || t('domus', 'Select a file'));
 
             const input = document.createElement('input');
             input.type = 'file';
@@ -558,11 +560,10 @@
                 if (isChoosing) return;
                 isChoosing = true;
                 input.click();
-                setTimeout(() => { isChoosing = false; }, 200);
+                setTimeout(() => { isChoosing = false; }, 300);
             };
             container.addEventListener('click', triggerSelect);
-            area.addEventListener('click', triggerSelect);
-            area.addEventListener('keydown', (e) => {
+            container.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     triggerSelect(e);
                 }
