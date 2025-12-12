@@ -34,18 +34,11 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addIndex(['user_id'], 'domus_props_user');
         }
 
-        if ($schema->hasTable('domus_properties')) {
-            $table = $schema->getTable('domus_properties');
-            if (!$table->hasColumn('usage_role')) {
-                $table->addColumn('usage_role', 'string', ['notnull' => true, 'length' => 32, 'default' => 'manager']);
-            }
-        }
-
         if (!$schema->hasTable('domus_units')) {
             $table = $schema->createTable('domus_units');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
-            $table->addColumn('property_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('property_id', 'bigint', ['notnull' => false]);
             $table->addColumn('label', 'string', ['notnull' => true, 'length' => 190]);
             $table->addColumn('unit_number', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('land_register', 'string', ['length' => 190, 'notnull' => false]);
@@ -53,6 +46,11 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('usable_area', 'string', ['length' => 32, 'notnull' => false]);
             $table->addColumn('unit_type', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('notes', 'text', ['notnull' => false]);
+            $table->addColumn('buy_date', 'string', ['length' => 32, 'notnull' => false]);
+            $table->addColumn('total_costs', 'string', ['length' => 32, 'notnull' => false]);
+            $table->addColumn('official_id', 'string', ['length' => 190, 'notnull' => false]);
+            $table->addColumn('iban', 'string', ['length' => 64, 'notnull' => false]);
+            $table->addColumn('bic', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id']);
@@ -129,17 +127,6 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_book_user');
             $table->addIndex(['year'], 'domus_book_year');
-        } else {
-            $table = $schema->getTable('domus_bookings');
-            if (!$table->hasColumn('account')) {
-                $table->addColumn('account', 'integer', ['notnull' => true, 'default' => 0]);
-            }
-            if ($table->hasColumn('booking_type')) {
-                $table->dropColumn('booking_type');
-            }
-            if ($table->hasColumn('category')) {
-                $table->dropColumn('category');
-            }
         }
 
         if (!$schema->hasTable('domus_docLinks')) {
@@ -148,23 +135,12 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
             $table->addColumn('entity_type', 'string', ['notnull' => true, 'length' => 32]);
             $table->addColumn('entity_id', 'bigint', ['notnull' => true]);
-            $table->addColumn('file_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('file_id', 'bigint', ['notnull' => true, 'default' => 0]);
             $table->addColumn('file_name', 'string', ['notnull' => false, 'length' => 512]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_doc_user');
             $table->addIndex(['entity_type', 'entity_id'], 'domus_doc_rel');
-        } else {
-            $table = $schema->getTable('domus_docLinks');
-            if (!$table->hasColumn('file_id')) {
-                $table->addColumn('file_id', 'bigint', ['notnull' => true, 'default' => 0]);
-            }
-            if (!$table->hasColumn('file_name')) {
-                $table->addColumn('file_name', 'string', ['notnull' => false, 'length' => 512]);
-            }
-            if ($table->hasColumn('file_path')) {
-                $table->dropColumn('file_path');
-            }
         }
 
         if (!$schema->hasTable('domus_reports')) {
