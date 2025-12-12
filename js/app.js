@@ -512,12 +512,14 @@
             const input = document.createElement('input');
             input.type = 'file';
             input.name = options.name || 'file';
-            input.required = options.required !== false;
+            input.required = options.required === true;
             input.accept = options.accept || '';
             input.style.display = 'none';
 
             const area = document.createElement('div');
             area.className = 'domus-dropzone-area';
+            area.setAttribute('role', 'button');
+            area.setAttribute('tabindex', '0');
             area.innerHTML = '<strong>' + Domus.Utils.escapeHtml(options.label || t('domus', 'Drop a file here or click to select one')) + '</strong>';
 
             const fileName = document.createElement('div');
@@ -549,11 +551,22 @@
                 }
             }
 
+            let isChoosing = false;
             const triggerSelect = (e) => {
                 e?.preventDefault();
+                e?.stopPropagation();
+                if (isChoosing) return;
+                isChoosing = true;
                 input.click();
+                setTimeout(() => { isChoosing = false; }, 200);
             };
             container.addEventListener('click', triggerSelect);
+            area.addEventListener('click', triggerSelect);
+            area.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    triggerSelect(e);
+                }
+            });
 
             const preventAndHighlight = (e) => {
                 e.preventDefault();
@@ -2725,6 +2738,7 @@
             const selectedProperty = booking?.propertyId ? String(booking.propertyId) : '';
             const selectedUnit = booking?.unitId ? String(booking.unitId) : '';
             const selectedTenancy = booking?.tenancyId ? String(booking.tenancyId) : '';
+            const hideProperty = !booking && Domus.Role.getCurrentRole() === 'landlord';
             const tenancyLabel = Domus.Role.getTenancyLabels().singular;
             return '<div class="domus-form">' +
                 '<form id="domus-booking-form">' +
@@ -2736,9 +2750,10 @@
                 '<div id="domus-booking-entries" class="domus-booking-entries" data-multi="' + (multiEntry ? '1' : '0') + '"></div>' +
                 '<div class="domus-booking-hint">' + Domus.Utils.escapeHtml(t('domus', 'Add multiple booking lines. A new row appears automatically when you enter an amount.')) + '</div>' +
                 '</div>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId"' + (propertyLocked ? ' disabled' : '') + '>' +
-                propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedProperty ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select>' + (propertyLocked ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '') + '</label>' +
+                (hideProperty ? (selectedProperty ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '')
+                    : ('<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId"' + (propertyLocked ? ' disabled' : '') + '>' +
+                    propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedProperty ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                    '</select>' + (propertyLocked ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '') + '</label>')) +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId"' + (unitLocked ? ' disabled' : '') + '>' +
                 unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedUnit ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                 '</select></label>' +
