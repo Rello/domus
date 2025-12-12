@@ -29,8 +29,11 @@ class BookingMapper extends QBMapper {
             'account' => 'account',
         ];
         foreach ($fields as $key => $column) {
-            if (isset($filter[$key])) {
-                $qb->andWhere($qb->expr()->eq($column, $qb->createNamedParameter($filter[$key])));
+            if (array_key_exists($key, $filter) && $filter[$key] !== null) {
+                $qb->andWhere($qb->expr()->eq(
+                    $column,
+                    $qb->createNamedParameter($filter[$key], $qb::PARAM_INT)
+                ));
             }
         }
 
