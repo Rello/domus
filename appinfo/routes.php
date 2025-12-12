@@ -60,6 +60,7 @@ return [
         ['name' => 'Document#index', 'url' => '/documents/{entityType}/{entityId}', 'verb' => 'GET'],
         ['name' => 'Document#link', 'url' => '/documents/{entityType}/{entityId}', 'verb' => 'POST'],
         ['name' => 'Document#upload', 'url' => '/documents/{entityType}/{entityId}/upload', 'verb' => 'POST'],
+        ['name' => 'Document#attach', 'url' => '/documents/attach', 'verb' => 'POST'],
         ['name' => 'Document#destroy', 'url' => '/documents/{id}', 'verb' => 'DELETE'],
 
         // Dashboard

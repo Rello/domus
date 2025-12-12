@@ -589,7 +589,7 @@
     border: 1px dashed var(--color-border);
     border-radius: 8px;
     padding: 14px;
-    background: var(--color-background-dark);
+    background: var(--color-primary-element-light);
     display: grid;
     gap: 8px;
     align-items: center;
@@ -605,7 +605,7 @@
 .domus-dropzone:hover,
 .domus-dropzone.domus-dropzone-hover {
     border-color: var(--color-primary);
-    background: var(--color-primary-element-light);
+    background: var(--color-primary-element); 
 }
 
 .domus-dropzone-area {

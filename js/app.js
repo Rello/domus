@@ -507,6 +507,7 @@
         function createFileDropZone(options = {}) {
             const container = document.createElement('div');
             container.className = 'domus-dropzone';
+            container.tabIndex = 0;
 
             const input = document.createElement('input');
             input.type = 'file';
@@ -517,15 +518,7 @@
 
             const area = document.createElement('div');
             area.className = 'domus-dropzone-area';
-            area.innerHTML = '<strong>' + Domus.Utils.escapeHtml(options.label || t('domus', 'Drop a file here')) + '</strong>' +
-                '<span>' + Domus.Utils.escapeHtml(t('domus', 'or')) + '</span>';
-
-            const actions = document.createElement('div');
-            actions.className = 'domus-dropzone-actions';
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = options.buttonLabel || t('domus', 'Select file');
-            actions.appendChild(button);
+            area.innerHTML = '<strong>' + Domus.Utils.escapeHtml(options.label || t('domus', 'Drop a file here or click to select one')) + '</strong>';
 
             const fileName = document.createElement('div');
             fileName.className = 'domus-dropzone-filename muted';
@@ -533,7 +526,6 @@
 
             container.appendChild(input);
             container.appendChild(area);
-            container.appendChild(actions);
             container.appendChild(fileName);
 
             function updateFileName(file) {
@@ -551,8 +543,9 @@
                 updateFileName(files[0]);
             }
 
-            button.addEventListener('click', () => input.click());
-            area.addEventListener('click', () => input.click());
+            const triggerSelect = () => input.click();
+            container.addEventListener('click', triggerSelect);
+            area.addEventListener('click', triggerSelect);
 
             const preventAndHighlight = (e) => {
                 e.preventDefault();
@@ -594,7 +587,7 @@
                 input,
                 setFile: handleFiles,
                 reset: () => handleFiles(null),
-                focus: () => button.focus(),
+                focus: () => container.focus && container.focus(),
             };
         }
 
@@ -2454,6 +2447,16 @@
                 subtitle: t('domus', 'Attach one file for all booking entries.')
             });
             placeholder.appendChild(widget.root);
+
+            if (widget.pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
+                widget.pickerButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    OC.dialogs.filepicker(t('domus', 'Select file'), function(path) {
+                        widget.setPath(path);
+                    }, false, '', true, 1);
+                });
+            }
+
             return widget;
         }
 
@@ -3007,8 +3010,7 @@
 
             const dropZone = Domus.UI.createFileDropZone({
                 placeholder: t('domus', 'No file selected'),
-                label: t('domus', 'Drop file here'),
-                buttonLabel: t('domus', 'Select from computer')
+                label: t('domus', 'Drop file here or click to select one')
             });
             dropZone.element.classList.add('domus-dropzone-large');
 
