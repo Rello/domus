@@ -535,17 +535,25 @@
             function handleFiles(files) {
                 if (!files || !files.length) {
                     updateFileName(null);
+                    if (typeof options.onFileSelected === 'function') {
+                        options.onFileSelected(null);
+                    }
                     return;
                 }
                 const dt = new DataTransfer();
                 dt.items.add(files[0]);
                 input.files = dt.files;
                 updateFileName(files[0]);
+                if (typeof options.onFileSelected === 'function') {
+                    options.onFileSelected(files[0]);
+                }
             }
 
-            const triggerSelect = () => input.click();
+            const triggerSelect = (e) => {
+                e?.preventDefault();
+                input.click();
+            };
             container.addEventListener('click', triggerSelect);
-            area.addEventListener('click', triggerSelect);
 
             const preventAndHighlight = (e) => {
                 e.preventDefault();
@@ -2739,11 +2747,7 @@
                 '</select>' + (tenancyLocked ? '<input type="hidden" name="tenancyId" value="' + Domus.Utils.escapeHtml(selectedTenancy) + '">' : '') + '</label>' +
                 '</div>' +
                 '<div class="domus-booking-documents" id="domus-booking-documents">' +
-                '<div class="domus-section-header">' +
-                '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Document')) + '</h3>' +
-                '<span class="muted">' + Domus.Utils.escapeHtml(t('domus', 'Upload once, reuse for all linked bookings.')) + '</span>' +
-                '</div>' +
-                '<div class="domus-doc-attachment-placeholder"></div>' +
+                '<div class="domus-doc-attachment-placeholder domus-doc-attachment-shell"></div>' +
                 '</div>' +
                 '</div>' +
                 '<div class="domus-form-actions">' +
@@ -3008,9 +3012,28 @@
             header.appendChild(heading);
             header.appendChild(subtitle);
 
+            const syncUploadTitle = (file) => {
+                if (!uploadNameInput) return;
+                if (!file) {
+                    if (uploadNameInput.dataset.autoTitle === '1') {
+                        uploadNameInput.value = '';
+                        uploadNameInput.dataset.autoTitle = '';
+                    }
+                    return;
+                }
+                const originalName = file.name || '';
+                const dotIndex = originalName.lastIndexOf('.');
+                const baseName = dotIndex > 0 ? originalName.substring(0, dotIndex) : originalName;
+                if (!uploadNameInput.value || uploadNameInput.dataset.autoTitle === '1') {
+                    uploadNameInput.value = baseName;
+                    uploadNameInput.dataset.autoTitle = '1';
+                }
+            };
+
             const dropZone = Domus.UI.createFileDropZone({
                 placeholder: t('domus', 'No file selected'),
-                label: t('domus', 'Drop file here or click to select one')
+                label: t('domus', 'Drop file here or click to select one'),
+                onFileSelected: syncUploadTitle
             });
             dropZone.element.classList.add('domus-dropzone-large');
 
@@ -3032,6 +3055,7 @@
             uploadNameInput.type = 'text';
             uploadNameInput.name = 'title';
             uploadNameInput.placeholder = t('domus', 'Defaults to file name');
+            uploadNameInput.addEventListener('input', () => { uploadNameInput.dataset.autoTitle = ''; });
             uploadNameLabel.appendChild(uploadNameInput);
 
             let uploadYearInput = null;
@@ -3132,6 +3156,7 @@
                     updatePickerDisplay('');
                     dropZone.reset();
                     uploadNameInput.value = '';
+                    uploadNameInput.dataset.autoTitle = '';
                     if (uploadYearInput) uploadYearInput.value = defaultYear;
                 }
             };
