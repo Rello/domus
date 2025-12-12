@@ -175,6 +175,24 @@
     color: var(--color-text-maxcontrast);
 }
 
+.domus-booking-layout {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 16px;
+    align-items: start;
+}
+
+.domus-booking-main {
+    display: flex;
+    flex-direction: column;
+}
+
+.domus-booking-documents {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .domus-form-actions {
     display: flex;
     gap: 8px;
@@ -283,7 +301,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
+    z-index: 1000;
     padding: 20px;
 }
 
@@ -535,6 +553,126 @@
     align-items: center;
 }
 
+.domus-form-subsection {
+    margin: 12px 0;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-background-dark);
+}
+
+.domus-doc-attachment {
+    display: grid;
+    gap: 12px;
+}
+
+.domus-doc-attachment-shell {
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 10px;
+    background: #fff;
+}
+
+.domus-doc-block {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--color-main-background);
+}
+
+.domus-doc-block h4 {
+    margin: 0 0 4px;
+}
+
+.domus-doc-card {
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 14px;
+    background: var(--color-background-dark);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.domus-doc-header h4 {
+    margin: 0;
+}
+
+.domus-doc-header p {
+    margin: 4px 0 0;
+}
+
+.domus-dropzone {
+    border: 1px dashed #b7cffc;
+    border-radius: 8px;
+    padding: 14px;
+    background: #f6f9ff;
+    display: grid;
+    gap: 8px;
+    align-items: center;
+    cursor: pointer;
+}
+
+.domus-dropzone-large {
+    min-height: 180px;
+    justify-content: center;
+    text-align: center;
+}
+
+.domus-dropzone:hover,
+.domus-dropzone.domus-dropzone-hover {
+    border-color: var(--color-primary);
+    background: #eaf2ff;
+}
+
+.domus-dropzone-area {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.domus-dropzone-area strong {
+    font-weight: 700;
+}
+
+.domus-dropzone-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.domus-dropzone-filename {
+    font-size: 12px;
+}
+
+.domus-doc-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.domus-doc-picker-display {
+    font-size: 12px;
+}
+
+.domus-ghost {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+.domus-ghost:hover {
+    background: var(--color-background-hover);
+}
+
+.domus-doc-footer {
+    justify-content: flex-end;
+}
+
 .domus-dashboard .domus-back-button {
     margin-bottom: 12px;
 }
@@ -546,5 +684,9 @@
 
     .domus-hero-actions {
         justify-content: flex-start;
+    }
+
+    .domus-booking-layout {
+        grid-template-columns: 1fr;
     }
 }

@@ -56,6 +56,37 @@ class DocumentController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function attach(): DataResponse {
+        $targetsRaw = $this->request->getParam('targets');
+        $yearParam = $this->request->getParam('year');
+        $title = $this->request->getParam('title');
+        $uploadedFile = $this->request->getUploadedFile('file');
+        $filePath = $this->request->getParam('filePath');
+
+        if (!$targetsRaw) {
+            return $this->validationError($this->l10n->t('At least one target is required.'));
+        }
+
+        $targets = json_decode($targetsRaw, true);
+        if (!is_array($targets)) {
+            return $this->validationError($this->l10n->t('Invalid targets payload.'));
+        }
+
+        if (!$uploadedFile && !$filePath) {
+            return $this->validationError($this->l10n->t('Provide a file upload or an existing path.'));
+        }
+
+        $year = $yearParam !== null ? (int)$yearParam : null;
+
+        try {
+            $links = $this->documentService->attachToTargets($this->getUserId(), $targets, $uploadedFile, $filePath, $year, $title);
+            return new DataResponse($links, Http::STATUS_CREATED);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        }
+    }
+
+    #[NoAdminRequired]
     public function destroy(int $id): DataResponse {
         $this->documentService->unlink($this->getUserId(), $id);
         return new DataResponse([], Http::STATUS_NO_CONTENT);
