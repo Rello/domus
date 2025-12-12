@@ -595,6 +595,10 @@
                     const target = this.getAttribute('data-back');
                     const argsRaw = this.getAttribute('data-back-args') || '';
                     const args = argsRaw ? argsRaw.split(',').filter(Boolean) : [];
+                    if (window.history.length > 1) {
+                        window.history.back();
+                        return;
+                    }
                     Domus.Router.navigate(target, args);
                 });
             });
@@ -1113,6 +1117,7 @@
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
+                    Domus.UI.bindRowNavigation();
                     bindDetailActions(id, property);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -1278,11 +1283,14 @@
         }
 
         function renderListInline(units) {
-            const rows = (units || []).map(u => [
-                Domus.Utils.escapeHtml(u.label || ''),
-                Domus.Utils.escapeHtml(u.unitNumber || ''),
-                Domus.Utils.escapeHtml(u.unitType || '')
-            ]);
+            const rows = (units || []).map(u => ({
+                cells: [
+                    Domus.Utils.escapeHtml(u.label || ''),
+                    Domus.Utils.escapeHtml(u.unitNumber || ''),
+                    Domus.Utils.escapeHtml(u.unitType || '')
+                ],
+                dataset: u.id ? { navigate: 'unitDetail', args: u.id } : null
+            }));
             return Domus.UI.buildTable([t('domus', 'Label'), t('domus', 'Number'), t('domus', 'Type')], rows);
         }
 
@@ -1518,6 +1526,7 @@
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
+                    Domus.UI.bindRowNavigation();
                     bindDetailActions(id, unit);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -1956,12 +1965,15 @@
         }
 
         function renderInline(tenancies) {
-            const rows = (tenancies || []).map(tn => [
-                Domus.Utils.escapeHtml(formatUnitLabel(tn)),
-                Domus.Utils.escapeHtml(formatPartnerNames(tn.partners) || tn.partnerName || ''),
-                Domus.Utils.escapeHtml(tn.status || ''),
-                Domus.Utils.escapeHtml(tn.period || '')
-            ]);
+            const rows = (tenancies || []).map(tn => ({
+                cells: [
+                    Domus.Utils.escapeHtml(formatUnitLabel(tn)),
+                    Domus.Utils.escapeHtml(formatPartnerNames(tn.partners) || tn.partnerName || ''),
+                    Domus.Utils.escapeHtml(tn.status || ''),
+                    Domus.Utils.escapeHtml(tn.period || '')
+                ],
+                dataset: tn.id ? { navigate: 'tenancyDetail', args: tn.id } : null
+            }));
             return Domus.UI.buildTable([
                 t('domus', 'Unit'), t('domus', 'Partners'), t('domus', 'Status'), t('domus', 'Period')
             ], rows);
@@ -2081,6 +2093,7 @@
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
+                    Domus.UI.bindRowNavigation();
                     bindDetailActions(id, tenancy);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -2261,11 +2274,14 @@
         }
 
         function renderInline(bookings) {
-            const rows = (bookings || []).map(b => [
-                Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
-                Domus.Utils.escapeHtml(formatAccount(b)),
-                { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
-            ]);
+            const rows = (bookings || []).map(b => ({
+                cells: [
+                    Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
+                    Domus.Utils.escapeHtml(formatAccount(b)),
+                    { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
+                ],
+                dataset: b.id ? { navigate: 'bookingDetail', args: b.id } : null
+            }));
             return Domus.UI.buildTable([
                 t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount')
             ], rows);
