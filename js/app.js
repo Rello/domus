@@ -110,15 +110,39 @@
      */
     Domus.Api = (function() {
         const baseUrl = OC.generateUrl('/apps/domus');
+        const defaultJsonHeaders = {
+            'Content-Type': 'application/json',
+            'OCS-APIREQUEST': 'true',
+            requesttoken: OC.requestToken
+        };
+
+        function buildUrl(path, searchParams) {
+            if (!searchParams || searchParams.toString() === '') {
+                return path;
+            }
+            return `${path}?${searchParams.toString()}`;
+        }
+
+        function withYear(params = new URLSearchParams()) {
+            const next = new URLSearchParams(params);
+            next.set('year', Domus.state.currentYear);
+            return next;
+        }
+
+        function appendFilters(params, filters = {}) {
+            const next = new URLSearchParams(params);
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    next.append(key, value);
+                }
+            });
+            return next;
+        }
 
         function request(method, path, data) {
             const opts = {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'OCS-APIREQUEST': 'true',
-                    requesttoken: OC.requestToken
-                }
+                method,
+                headers: defaultJsonHeaders
             };
 
             if (data) {
@@ -141,8 +165,8 @@
             return response.text();
         }
 
-        function queryWithYear(path) {
-            return `${path}?year=${Domus.state.currentYear}`;
+        function buildYearUrl(path, params = new URLSearchParams()) {
+            return buildUrl(path, withYear(params));
         }
 
         return {
@@ -150,69 +174,51 @@
             post: (path, data) => request('POST', path, data),
             put: (path, data) => request('PUT', path, data),
             delete: path => request('DELETE', path),
-            getDashboardSummary: () => request('GET', queryWithYear('/dashboard/summary')),
-            getProperties: () => request('GET', queryWithYear('/properties')),
+            getDashboardSummary: () => request('GET', buildYearUrl('/dashboard/summary')),
+            getProperties: () => request('GET', buildYearUrl('/properties')),
             createProperty: data => request('POST', '/properties', data),
             updateProperty: (id, data) => request('PUT', `/properties/${id}`, data),
             deleteProperty: id => request('DELETE', `/properties/${id}`),
             getProperty: id => request('GET', `/properties/${id}`),
             getUnits: (propertyId) => {
                 const path = propertyId ? `/properties/${propertyId}/units` : '/units';
-                return request('GET', queryWithYear(path));
+                return request('GET', buildYearUrl(path));
             },
             getUnitStatistics: (unitId) => request('GET', `/statistics/units/${unitId}`),
             getUnitsStatisticsOverview: (propertyId) => {
-                const params = new URLSearchParams();
-                params.append('year', Domus.state.currentYear);
-                if (propertyId) {
-                    params.append('propertyId', propertyId);
-                }
-                return request('GET', `/statistics/units-overview?${params.toString()}`);
+                const params = propertyId ? appendFilters(new URLSearchParams(), { propertyId }) : new URLSearchParams();
+                return request('GET', buildYearUrl('/statistics/units-overview', params));
             },
             createUnit: data => request('POST', '/units', data),
             updateUnit: (id, data) => request('PUT', `/units/${id}`, data),
             deleteUnit: id => request('DELETE', `/units/${id}`),
             getPartners: (type) => {
-                const path = type ? `/partners?partnerType=${encodeURIComponent(type)}` : '/partners';
-                return request('GET', path);
+                const params = type ? appendFilters(new URLSearchParams(), { partnerType: type }) : null;
+                return request('GET', buildUrl('/partners', params));
             },
             createPartner: data => request('POST', '/partners', data),
             updatePartner: (id, data) => request('PUT', `/partners/${id}`, data),
             deletePartner: id => request('DELETE', `/partners/${id}`),
             getTenancies: filters => {
-                let path = '/tenancies';
-                const params = new URLSearchParams();
-                params.append('year', Domus.state.currentYear);
-                if (filters && filters.status) params.append('status', filters.status);
-                if (filters && filters.propertyId) params.append('propertyId', filters.propertyId);
-                return request('GET', `${path}?${params.toString()}`);
+                const params = appendFilters(withYear(), filters || {});
+                return request('GET', buildUrl('/tenancies', params));
             },
             createTenancy: data => request('POST', '/tenancies', data),
             changeTenancyConditions: (id, data) => request('POST', `/tenancies/${id}/change-conditions`, data),
             updateTenancy: (id, data) => request('PUT', `/tenancies/${id}`, data),
             deleteTenancy: id => request('DELETE', `/tenancies/${id}`),
             getBookings: filters => {
-                let path = '/bookings';
-                const params = new URLSearchParams();
-                params.append('year', Domus.state.currentYear);
-                if (filters) {
-                    Object.keys(filters).forEach(key => {
-                        if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
-                            params.append(key, filters[key]);
-                        }
-                    });
-                }
-                return request('GET', `${path}?${params.toString()}`);
+                const params = appendFilters(withYear(), filters || {});
+                return request('GET', buildUrl('/bookings', params));
             },
             createBooking: data => request('POST', '/bookings', data),
             updateBooking: (id, data) => request('PUT', `/bookings/${id}`, data),
             deleteBooking: id => request('DELETE', `/bookings/${id}`),
             getReports: (propertyId) => {
-                let path = '/reports';
                 if (propertyId) {
-                    path = `/properties/${propertyId}/reports/${Domus.state.currentYear}`;
+                    return request('GET', `/properties/${propertyId}/reports/${Domus.state.currentYear}`);
                 }
-                return request('GET', path);
+                return request('GET', '/reports');
             },
             createReport: (propertyId) => request('POST', `/properties/${propertyId}/reports/${Domus.state.currentYear}`),
             createTenancyReport: (tenancyId) => request('POST', `/tenancies/${tenancyId}/reports/${Domus.state.currentYear}`),
