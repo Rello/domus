@@ -2940,7 +2940,21 @@
                     };
                     const list = linked.length ? linked.map(link => {
                         const type = typeLabels[link.entityType] || link.entityType;
-                        const name = link.label || `${type} #${link.entityId}`;
+                        let name = link.label || `${type} #${link.entityId}`;
+
+                        if (link.entityType === 'booking' && link.booking) {
+                            const date = Domus.Utils.formatDate(link.booking.date);
+                            const accountNumber = link.booking.account !== undefined && link.booking.account !== null
+                                ? String(link.booking.account)
+                                : '';
+                            const account = [accountNumber, link.booking.accountLabel].filter(Boolean).join(' — ');
+                            const amount = Domus.Utils.formatCurrency(link.booking.amount);
+                            const parts = [date, account, amount].filter(Boolean).join(' | ');
+                            if (parts) {
+                                name = parts;
+                            }
+                        }
+
                         return '<li><strong>' + Domus.Utils.escapeHtml(type) + ':</strong> ' + Domus.Utils.escapeHtml(name) + '</li>';
                     }).join('') : '<li>' + Domus.Utils.escapeHtml(t('domus', 'No linked objects found.')) + '</li>';
 

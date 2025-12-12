@@ -2,6 +2,7 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Accounting\Accounts;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DocumentLink;
 use OCA\Domus\Db\DocumentLinkMapper;
@@ -137,12 +138,26 @@ class DocumentService {
     }
 
     private function mapLinkedEntity(string $userId, DocumentLink $link): array {
-        return [
+        $data = [
             'id' => $link->getId(),
             'entityType' => $link->getEntityType(),
             'entityId' => $link->getEntityId(),
             'label' => $this->resolveEntityLabel($userId, $link),
         ];
+
+        if ($link->getEntityType() === 'booking') {
+            $booking = $this->bookingMapper->findForUser($link->getEntityId(), $userId);
+            if ($booking) {
+                $data['booking'] = [
+                    'date' => $booking->getDate(),
+                    'account' => $booking->getAccount(),
+                    'accountLabel' => Accounts::label((string)$booking->getAccount()),
+                    'amount' => $booking->getAmount(),
+                ];
+            }
+        }
+
+        return $data;
     }
 
     private function resolveEntityLabel(string $userId, DocumentLink $link): string {
@@ -212,7 +227,37 @@ class DocumentService {
             return $this->l10n->t('Booking #%s', [$entityId]);
         }
 
-        $parts = array_filter([$booking->getDescription(), $booking->getYear()]);
+        $parts = [];
+
+        $date = $booking->getDate();
+        if ($date) {
+            try {
+                $dateObj = new \DateTimeImmutable($date);
+                $parts[] = $dateObj->format('Y-m-d');
+            } catch (\Exception $e) {
+                $parts[] = $date;
+            }
+        }
+
+        $account = $booking->getAccount();
+        $accountLabel = Accounts::label((string)$account);
+        if ($account !== null) {
+            $accountPart = (string)$account;
+            if ($accountLabel) {
+                $accountPart .= ' — ' . $accountLabel;
+            }
+            $parts[] = $accountPart;
+        }
+
+        $amount = $booking->getAmount();
+        if ($amount !== null && $amount !== '') {
+            $parts[] = '€ ' . number_format((float)$amount, 2, ',', '.');
+        }
+
+        if (!$parts) {
+            $parts = array_filter([$booking->getDescription(), $booking->getYear()]);
+        }
+
         return $parts ? implode(' — ', $parts) : $this->l10n->t('Booking #%s', [$entityId]);
     }
 
