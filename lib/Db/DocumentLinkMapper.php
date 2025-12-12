@@ -37,4 +37,17 @@ class DocumentLinkMapper extends QBMapper {
 
         return $this->findEntity($qb);
     }
+
+    /**
+     * @throws Exception
+     */
+    public function findByFileId(string $userId, int $fileId): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, $qb::PARAM_INT)));
+
+        return $this->findEntities($qb);
+    }
 }

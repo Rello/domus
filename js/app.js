@@ -217,6 +217,7 @@
             createReport: (propertyId) => request('POST', `/properties/${propertyId}/reports/${Domus.state.currentYear}`),
             createTenancyReport: (tenancyId) => request('POST', `/tenancies/${tenancyId}/reports/${Domus.state.currentYear}`),
             getDocuments: (entityType, entityId) => request('GET', `/documents/${entityType}/${entityId}`),
+            getDocumentDetail: (id) => request('GET', `/documents/${id}`),
             linkDocument: (entityType, entityId, data) => request('POST', `/documents/${entityType}/${entityId}`, data),
             attachDocumentToTargets: (payload) => {
                 const formData = new FormData();
@@ -2994,11 +2995,12 @@
                 .then(docs => {
                     const rows = (docs || []).map(doc => [
                         '<a class="domus-link" href="' + Domus.Utils.escapeHtml(doc.fileUrl || '#') + '">' + Domus.Utils.escapeHtml(doc.fileName || doc.fileUrl || doc.fileId || '') + '</a>',
+                        '<button class="domus-icon-button" data-doc-info="' + doc.id + '" title="' + Domus.Utils.escapeHtml(t('domus', 'Show linked objects')) + '">ℹ️</button>',
                         '<button class="domus-link" data-doc-id="' + doc.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Remove')) + '</button>'
                     ]);
                     const actions = showActions ? buildDocumentActions(entityType, entityId) : '';
                     const html = '<div id="' + containerId + '">' +
-                        Domus.UI.buildTable([t('domus', 'File'), ''], rows) + actions + '</div>';
+                        Domus.UI.buildTable([t('domus', 'File'), t('domus', 'Info'), ''], rows) + actions + '</div>';
                     const section = document.createElement('div');
                     section.innerHTML = html;
                     const placeholder = document.getElementById(containerId);
@@ -3206,6 +3208,12 @@
                 });
             });
 
+            document.querySelectorAll('#' + containerId + ' button[data-doc-info]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    openDetailModal(Number(this.getAttribute('data-doc-info')));
+                });
+            });
+
             if (showActions) {
                 document.querySelectorAll('#' + containerId + ' button[data-doc-link]').forEach(btn => {
                     btn.addEventListener('click', function() {
@@ -3292,6 +3300,50 @@
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
             });
+        }
+
+        function openDetailModal(documentId) {
+            Domus.Api.getDocumentDetail(documentId)
+                .then(detail => {
+                    const fileLink = detail.document?.fileUrl ? '<a class="domus-link" href="' + Domus.Utils.escapeHtml(detail.document.fileUrl) + '">' + Domus.Utils.escapeHtml(detail.document.fileName || detail.document.fileUrl || '') + '</a>' : Domus.Utils.escapeHtml(detail.document?.fileName || '');
+                    const linked = detail.linkedEntities || [];
+                    const typeLabels = {
+                        property: t('domus', 'Property'),
+                        unit: t('domus', 'Unit'),
+                        partner: t('domus', 'Partner'),
+                        tenancy: t('domus', 'Tenancy'),
+                        booking: t('domus', 'Booking'),
+                        report: t('domus', 'Report')
+                    };
+                    const list = linked.length ? linked.map(link => {
+                        const type = typeLabels[link.entityType] || link.entityType;
+                        let name = link.label || `${type} #${link.entityId}`;
+
+                        if (link.entityType === 'booking' && link.booking) {
+                            const date = Domus.Utils.formatDate(link.booking.date);
+                            const accountNumber = link.booking.account !== undefined && link.booking.account !== null
+                                ? String(link.booking.account)
+                                : '';
+                            const account = [accountNumber, link.booking.accountLabel].filter(Boolean).join(' — ');
+                            const amount = Domus.Utils.formatCurrency(link.booking.amount);
+                            const parts = [date, account, amount].filter(Boolean).join(' | ');
+                            if (parts) {
+                                name = parts;
+                            }
+                        }
+
+                        return '<li><strong>' + Domus.Utils.escapeHtml(type) + ':</strong> ' + Domus.Utils.escapeHtml(name) + '</li>';
+                    }).join('') : '<li>' + Domus.Utils.escapeHtml(t('domus', 'No linked objects found.')) + '</li>';
+
+                    Domus.UI.openModal({
+                        title: t('domus', 'Document links'),
+                        content: '<div class="domus-doc-detail">' +
+                            '<p><strong>' + Domus.Utils.escapeHtml(t('domus', 'File')) + ':</strong> ' + fileLink + '</p>' +
+                            '<ul>' + list + '</ul>' +
+                            '</div>'
+                    });
+                })
+                .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
         return { renderList, openLinkModal, createAttachmentWidget };
