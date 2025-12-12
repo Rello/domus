@@ -24,45 +24,36 @@ class DocumentController extends Controller {
 
     #[NoAdminRequired]
     public function index(string $entityType, int $entityId): DataResponse {
-        try {
-            return new DataResponse($this->documentService->listForEntity($this->getUserId(), $entityType, $entityId));
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        }
+        return new DataResponse($this->documentService->listForEntity($this->getUserId(), $entityType, $entityId));
     }
 
     #[NoAdminRequired]
-    public function link(string $entityType, int $entityId, string $filePath): DataResponse {
-        try {
-            $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $filePath);
-            return new DataResponse($link, Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
+    public function link(string $entityType, int $entityId, string $filePath, ?int $year = null): DataResponse {
+        $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $filePath, $year);
+        return new DataResponse($link, Http::STATUS_CREATED);
+    }
+
+    #[NoAdminRequired]
+    public function upload(string $entityType, int $entityId): DataResponse {
+        $file = $this->request->getUploadedFile('file');
+        if (!$file) {
+            return $this->validationError($this->l10n->t('File is required.'));
         }
+        $yearParam = $this->request->getParam('year');
+        $year = $yearParam !== null ? (int)$yearParam : null;
+        $title = $this->request->getParam('title');
+        $link = $this->documentService->uploadAndLink($this->getUserId(), $entityType, $entityId, $file, $year, $title);
+        return new DataResponse($link, Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
     public function destroy(int $id): DataResponse {
-        try {
-            $this->documentService->unlink($this->getUserId(), $id);
-            return new DataResponse([], Http::STATUS_NO_CONTENT);
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $this->documentService->unlink($this->getUserId(), $id);
+        return new DataResponse([], Http::STATUS_NO_CONTENT);
     }
 
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
-    }
-
-    private function notFound(): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $this->l10n->t('Resource not found.'),
-            'code' => 'NOT_FOUND',
-        ], Http::STATUS_NOT_FOUND);
     }
 
     private function validationError(string $message): DataResponse {

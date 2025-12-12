@@ -218,6 +218,25 @@
             createTenancyReport: (tenancyId) => request('POST', `/tenancies/${tenancyId}/reports/${Domus.state.currentYear}`),
             getDocuments: (entityType, entityId) => request('GET', `/documents/${entityType}/${entityId}`),
             linkDocument: (entityType, entityId, data) => request('POST', `/documents/${entityType}/${entityId}`, data),
+            uploadDocument: (entityType, entityId, file, year, title) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                if (year !== undefined && year !== null) {
+                    formData.append('year', year);
+                }
+                if (title) {
+                    formData.append('title', title);
+                }
+                const opts = {
+                    method: 'POST',
+                    headers: {
+                        'OCS-APIREQUEST': 'true',
+                        requesttoken: OC.requestToken
+                    },
+                    body: formData
+                };
+                return fetch(baseUrl + `/documents/${entityType}/${entityId}/upload`, opts).then(handleResponse);
+            },
             unlinkDocument: id => request('DELETE', `/documents/${id}`)
         };
     })();
@@ -1058,8 +1077,8 @@
                     const reportsHeader = showReportActions ? Domus.UI.buildSectionHeader(t('domus', 'Reports')) : '';
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-property-link-doc',
-                        title: t('domus', 'Link file'),
-                        label: t('domus', 'Link file'),
+                        title: t('domus', 'Add document'),
+                        label: t('domus', 'Add document'),
                         dataset: { entityType: 'property', entityId: id }
                     } : null);
 
@@ -1447,7 +1466,8 @@
                     const bookingsHeader = canManageBookings ? Domus.UI.buildSectionHeader(t('domus', 'Bookings')) : '';
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-unit-link-doc',
-                        title: t('domus', 'Link file'),
+                        title: t('domus', 'Add document'),
+                        label: t('domus', 'Add document'),
                         dataset: { entityType: 'unit', entityId: id }
                     } : null);
 
@@ -1761,7 +1781,8 @@
                     const reportsHeader = Domus.UI.buildSectionHeader(t('domus', 'Reports'));
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-partner-link-doc',
-                        title: t('domus', 'Link file'),
+                        title: t('domus', 'Add document'),
+                        label: t('domus', 'Add document'),
                         dataset: { entityType: 'partner', entityId: id }
                     } : null);
                     const infoList = Domus.UI.buildInfoList([
@@ -2019,7 +2040,8 @@
                     const bookingsHeader = canManageBookings ? Domus.UI.buildSectionHeader(t('domus', 'Bookings')) : '';
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-tenancy-link-doc',
-                        title: t('domus', 'Link file'),
+                        title: t('domus', 'Add document'),
+                        label: t('domus', 'Add document'),
                         dataset: { entityType: 'tenancy', entityId: id }
                     } : null);
                     const reportsHeader = Domus.UI.buildSectionHeader(t('domus', 'Reports'));
@@ -2326,7 +2348,8 @@
 
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), {
                         id: 'domus-booking-link-doc',
-                        title: t('domus', 'Link file'),
+                        title: t('domus', 'Add document'),
+                        label: t('domus', 'Add document'),
                         dataset: { entityType: 'booking', entityId: id }
                     });
                     const detailsHeader = Domus.UI.buildSectionHeader(t('domus', 'Details'));
@@ -2712,17 +2735,16 @@
     Domus.Documents = (function() {
         function renderList(entityType, entityId, options) {
             const containerId = `domus-documents-${entityType}-${entityId}`;
-            const allowManage = Domus.Role.hasCapability('manageDocuments');
-            const showLinkAction = allowManage && options?.showLinkAction;
+            const showActions = options?.showLinkAction;
             Domus.Api.getDocuments(entityType, entityId)
                 .then(docs => {
                     const rows = (docs || []).map(doc => [
-                        '<a class="domus-link" href="' + Domus.Utils.escapeHtml(doc.filePath || '#') + '">' + Domus.Utils.escapeHtml(doc.name || doc.filePath || '') + '</a>',
-                        allowManage ? '<button class="domus-link" data-doc-id="' + doc.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Remove')) + '</button>' : ''
+                        '<a class="domus-link" href="' + Domus.Utils.escapeHtml(doc.fileUrl || '#') + '">' + Domus.Utils.escapeHtml(doc.fileName || doc.fileUrl || doc.fileId || '') + '</a>',
+                        '<button class="domus-link" data-doc-id="' + doc.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Remove')) + '</button>'
                     ]);
+                    const actions = showActions ? buildDocumentActions(entityType, entityId) : '';
                     const html = '<div id="' + containerId + '">' +
-                        Domus.UI.buildTable([t('domus', 'File'), ''], rows) +
-                        (showLinkAction ? buildLinkAction(entityType, entityId) : '') + '</div>';
+                        Domus.UI.buildTable([t('domus', 'File'), ''], rows) + actions + '</div>';
                     const section = document.createElement('div');
                     section.innerHTML = html;
                     const placeholder = document.getElementById(containerId);
@@ -2731,32 +2753,51 @@
                     } else {
                         Domus.UI.renderContent(html);
                     }
-                    bindDocumentActions(entityType, entityId, containerId, showLinkAction);
+                    bindDocumentActions(entityType, entityId, containerId, showActions);
                 })
                 .catch(() => {
-                    const html = '<div id="' + containerId + '">' + t('domus', 'No documents found.') + (showLinkAction ? buildLinkAction(entityType, entityId) : '') + '</div>';
+                    const html = '<div id="' + containerId + '">' + t('domus', 'No documents found.') + (showActions ? buildDocumentActions(entityType, entityId) : '') + '</div>';
                     Domus.UI.renderContent(html);
                 });
             return '<div id="' + containerId + '">' + t('domus', 'Loading documents…') + '</div>';
         }
 
-        function buildLinkAction(entityType, entityId) {
-            return '<button class="primary" data-doc-link="' + Domus.Utils.escapeHtml(entityType + ':' + entityId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Link file')) + '</button>';
+        function buildDocumentActions(entityType, entityId) {
+            return '<div class="domus-doc-actions">' +
+                '<button class="primary" data-doc-upload="' + Domus.Utils.escapeHtml(entityType + ':' + entityId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Upload file')) + '</button>' +
+                '<button data-doc-link="' + Domus.Utils.escapeHtml(entityType + ':' + entityId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Link existing')) + '</button>' +
+                '</div>';
         }
 
-        function buildLinkForm(entityType, entityId) {
-            return '<form class="domus-form" data-doc-form>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Path in Nextcloud')) + '<input type="text" name="filePath" required></label>' +
+        function buildAddForms(entityType, entityId) {
+            const year = Domus.state.currentYear;
+            return '<div class="domus-doc-modal">' +
+                '<form class="domus-form" data-doc-form>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Path in Nextcloud')) + '<div class="domus-doc-picker">' +
+                '<input type="text" name="filePath" required readonly>' +
+                '<button type="button" data-doc-picker>' + Domus.Utils.escapeHtml(t('domus', 'Choose file')) + '</button>' +
+                '</div></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Year')) + '<input type="number" name="year" value="' + Domus.Utils.escapeHtml(year) + '" required></label>' +
                 '<input type="hidden" name="entityType" value="' + Domus.Utils.escapeHtml(entityType) + '">' +
                 '<input type="hidden" name="entityId" value="' + Domus.Utils.escapeHtml(entityId) + '">' +
                 '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Link file')) + '</button>' +
+                '</div>' +
+                '</form>' +
+                '<hr>' +
+                '<form class="domus-form" data-doc-upload-form>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Upload from computer')) + '<input type="file" name="file" required></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Title')) + '<input type="text" name="title" placeholder="' + Domus.Utils.escapeHtml(t('domus', 'Defaults to file name')) + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Year')) + '<input type="number" name="year" value="' + Domus.Utils.escapeHtml(year) + '" required></label>' +
+                '<div class="domus-form-actions">' +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Upload')) + '</button>' +
                 '<button type="button" data-doc-cancel>' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
                 '</div>' +
-                '</form>';
+                '</form>' +
+                '</div>';
         }
 
-        function bindDocumentActions(entityType, entityId, containerId, showLinkAction) {
+        function bindDocumentActions(entityType, entityId, containerId, showActions) {
             document.querySelectorAll('#' + containerId + ' button[data-doc-id]').forEach(btn => {
                 btn.addEventListener('click', function() {
                     Domus.Api.unlinkDocument(this.getAttribute('data-doc-id'))
@@ -2768,27 +2809,48 @@
                 });
             });
 
-            if (showLinkAction) {
+            if (showActions) {
                 document.querySelectorAll('#' + containerId + ' button[data-doc-link]').forEach(btn => {
                     btn.addEventListener('click', function() {
                         openLinkModal(entityType, entityId);
                     });
                 });
+                document.querySelectorAll('#' + containerId + ' button[data-doc-upload]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        openLinkModal(entityType, entityId, null, 'upload');
+                    });
+                });
             }
         }
 
-        function openLinkModal(entityType, entityId, onLinked) {
+        function openLinkModal(entityType, entityId, onLinked, focus = 'link') {
             const modal = Domus.UI.openModal({
                 title: t('domus', 'Link document'),
-                content: buildLinkForm(entityType, entityId)
+                content: buildAddForms(entityType, entityId)
             });
 
             const form = modal.modalEl.querySelector('form[data-doc-form]');
+            const uploadForm = modal.modalEl.querySelector('form[data-doc-upload-form]');
             const cancelBtn = modal.modalEl.querySelector('[data-doc-cancel]');
             cancelBtn?.addEventListener('click', modal.close);
+            const pickerBtn = modal.modalEl.querySelector('[data-doc-picker]');
+            const pickerInput = modal.modalEl.querySelector('input[name="filePath"]');
+            if (pickerBtn && pickerInput && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
+                pickerBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    OC.dialogs.filepicker(t('domus', 'Select file'), function(path) {
+                        pickerInput.value = path;
+                    }, false, '', true, 1);
+                });
+            }
+            if (focus === 'upload') {
+                uploadForm?.querySelector('input[name="file"]')?.focus();
+            } else {
+                pickerInput?.focus();
+            }
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
-                const data = { filePath: form.filePath.value };
+                const data = { filePath: form.filePath.value, year: Number(form.year.value) };
                 if (!data.filePath) {
                     Domus.UI.showNotification(t('domus', 'File path is required.'), 'error');
                     return;
@@ -2796,6 +2858,38 @@
                 Domus.Api.linkDocument(entityType, entityId, data)
                     .then(() => {
                         Domus.UI.showNotification(t('domus', 'Document linked.'), 'success');
+                        modal.close();
+                        if (onLinked) {
+                            onLinked();
+                        } else {
+                            renderList(entityType, entityId);
+                        }
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+
+            const uploadFileInput = uploadForm?.querySelector('input[name="file"]');
+            const uploadNameInput = uploadForm?.querySelector('input[name="title"]');
+            uploadFileInput?.addEventListener('change', function() {
+                if (uploadNameInput && this.files && this.files[0]) {
+                    const originalName = this.files[0].name;
+                    const dotIndex = originalName.lastIndexOf('.');
+                    uploadNameInput.value = dotIndex > 0 ? originalName.substring(0, dotIndex) : originalName;
+                }
+            });
+
+            uploadForm?.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const file = uploadForm.file.files[0];
+                const year = Number(uploadForm.year.value);
+                const title = uploadForm.title.value.trim();
+                if (!file) {
+                    Domus.UI.showNotification(t('domus', 'Please choose a file to upload.'), 'error');
+                    return;
+                }
+                Domus.Api.uploadDocument(entityType, entityId, file, year, title || undefined)
+                    .then(() => {
+                        Domus.UI.showNotification(t('domus', 'Document uploaded.'), 'success');
                         modal.close();
                         if (onLinked) {
                             onLinked();

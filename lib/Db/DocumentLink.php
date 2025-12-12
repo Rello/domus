@@ -9,12 +9,16 @@ class DocumentLink extends Entity implements JsonSerializable {
     protected $userId;
     protected $entityType;
     protected $entityId;
-    protected $filePath;
+    protected $fileId;
+    protected $fileName;
     protected $createdAt;
+
+    private ?string $fileUrl = null;
 
     public function __construct() {
         $this->addType('id', 'int');
         $this->addType('entityId', 'int');
+        $this->addType('fileId', 'int');
         $this->addType('createdAt', 'int');
     }
 
@@ -24,8 +28,14 @@ class DocumentLink extends Entity implements JsonSerializable {
             'userId' => $this->userId,
             'entityType' => $this->entityType,
             'entityId' => $this->entityId,
-            'filePath' => $this->filePath,
+            'fileId' => $this->fileId,
+            'fileName' => $this->fileName,
+            'fileUrl' => $this->fileUrl,
             'createdAt' => $this->createdAt,
         ];
+    }
+
+    public function setFileUrl(?string $fileUrl): void {
+        $this->fileUrl = $fileUrl;
     }
 }
