@@ -810,7 +810,18 @@
             }
         });
 
-        return { register, navigate };
+        function navigateFromHash() {
+            const parsed = parseHash();
+            if (parsed && routes[parsed.name]) {
+                Domus.state.currentView = parsed.name;
+                routes[parsed.name].apply(null, parsed.args);
+                Domus.Navigation.render();
+                return true;
+            }
+            return false;
+        }
+
+        return { register, navigate, navigateFromHash };
     })();
 
     /**
@@ -2932,8 +2943,9 @@
             });
 
             registerRoutes();
-            Domus.Navigation.render();
-            Domus.Router.navigate('dashboard');
+            if (!Domus.Router.navigateFromHash()) {
+                Domus.Router.navigate('dashboard');
+            }
         }
 
         function registerRoutes() {
