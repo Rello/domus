@@ -521,6 +521,71 @@
     align-items: center;
 }
 
+.domus-form-subsection {
+    margin: 12px 0;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-background-dark);
+}
+
+.domus-doc-attachment {
+    display: grid;
+    gap: 12px;
+}
+
+.domus-doc-block {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--color-main-background);
+}
+
+.domus-doc-block h4 {
+    margin: 0 0 4px;
+}
+
+.domus-dropzone {
+    border: 1px dashed var(--color-border);
+    border-radius: 8px;
+    padding: 14px;
+    background: var(--color-background-dark);
+    display: grid;
+    gap: 8px;
+    align-items: center;
+    cursor: pointer;
+}
+
+.domus-dropzone:hover,
+.domus-dropzone.domus-dropzone-hover {
+    border-color: var(--color-primary);
+    background: var(--color-primary-element-light);
+}
+
+.domus-dropzone-area {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.domus-dropzone-area strong {
+    font-weight: 700;
+}
+
+.domus-dropzone-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.domus-dropzone-filename {
+    font-size: 12px;
+}
+
+.domus-doc-footer {
+    justify-content: flex-end;
+}
+
 .domus-dashboard .domus-back-button {
     margin-bottom: 12px;
 }
