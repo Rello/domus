@@ -515,6 +515,20 @@
     margin-top: 12px;
 }
 
+.domus-icon-button {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.domus-icon-button:hover,
+.domus-icon-button:focus {
+    background: var(--color-background-hover);
+}
+
 .domus-doc-picker {
     display: flex;
     gap: 8px;

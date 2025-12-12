@@ -5,6 +5,7 @@ namespace OCA\Domus\Service;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DocumentLink;
 use OCA\Domus\Db\DocumentLinkMapper;
+use OCA\Domus\Db\PartnerMapper;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\UnitMapper;
@@ -28,6 +29,7 @@ class DocumentService {
         private UnitMapper $unitMapper,
         private TenancyMapper $tenancyMapper,
         private BookingMapper $bookingMapper,
+        private PartnerMapper $partnerMapper,
         private LoggerInterface $logger,
     ) {
     }
@@ -39,6 +41,30 @@ class DocumentService {
             $this->hydrateLink($link);
         }
         return $links;
+    }
+
+    public function getDocumentDetails(string $userId, int $id): array {
+        $link = $this->documentLinkMapper->findForUser($id, $userId);
+        if (!$link) {
+            throw new \RuntimeException($this->l10n->t('Document link not found.'));
+        }
+
+        $this->hydrateLink($link);
+        $fileId = $link->getFileId();
+        $linkedEntities = [];
+
+        if ($fileId !== null) {
+            $allLinks = $this->documentLinkMapper->findByFileId($userId, $fileId);
+            foreach ($allLinks as $item) {
+                $this->hydrateLink($item);
+                $linkedEntities[] = $this->mapLinkedEntity($userId, $item);
+            }
+        }
+
+        return [
+            'document' => $link,
+            'linkedEntities' => $linkedEntities,
+        ];
     }
 
     public function linkFile(string $userId, string $entityType, int $entityId, string $filePath, ?int $year = null): DocumentLink {
@@ -108,6 +134,86 @@ class DocumentService {
         $this->hydrateLink($created);
 
         return $created;
+    }
+
+    private function mapLinkedEntity(string $userId, DocumentLink $link): array {
+        return [
+            'id' => $link->getId(),
+            'entityType' => $link->getEntityType(),
+            'entityId' => $link->getEntityId(),
+            'label' => $this->resolveEntityLabel($userId, $link),
+        ];
+    }
+
+    private function resolveEntityLabel(string $userId, DocumentLink $link): string {
+        try {
+            return match ($link->getEntityType()) {
+                'property' => $this->resolvePropertyLabel($userId, $link->getEntityId()),
+                'unit' => $this->resolveUnitLabel($userId, $link->getEntityId()),
+                'partner' => $this->resolvePartnerLabel($userId, $link->getEntityId()),
+                'tenancy' => $this->resolveTenancyLabel($userId, $link->getEntityId()),
+                'booking' => $this->resolveBookingLabel($userId, $link->getEntityId()),
+                default => sprintf('%s #%d', ucfirst((string)$link->getEntityType()), $link->getEntityId()),
+            };
+        } catch (\Throwable $e) {
+            $this->logger->warning('Failed to resolve document link label', [
+                'entityType' => $link->getEntityType(),
+                'entityId' => $link->getEntityId(),
+                'message' => $e->getMessage(),
+            ]);
+            return sprintf('%s #%d', ucfirst((string)$link->getEntityType()), $link->getEntityId());
+        }
+    }
+
+    private function resolvePropertyLabel(string $userId, int $entityId): string {
+        $property = $this->propertyMapper->findForUser($entityId, $userId);
+        return $property?->getName() ?: $this->l10n->t('Property #%s', [$entityId]);
+    }
+
+    private function resolveUnitLabel(string $userId, int $entityId): string {
+        $unit = $this->unitMapper->findForUser($entityId, $userId);
+        if (!$unit) {
+            return $this->l10n->t('Unit #%s', [$entityId]);
+        }
+
+        $unitLabel = $unit->getLabel() ?: (string)$unit->getUnitNumber();
+        $propertyName = null;
+        if ($unit->getPropertyId()) {
+            $property = $this->propertyMapper->findForUser($unit->getPropertyId(), $userId);
+            $propertyName = $property?->getName();
+        }
+
+        $parts = array_filter([$unitLabel, $propertyName]);
+        return $parts ? implode(' — ', $parts) : $this->l10n->t('Unit #%s', [$entityId]);
+    }
+
+    private function resolvePartnerLabel(string $userId, int $entityId): string {
+        $partner = $this->partnerMapper->findForUser($entityId, $userId);
+        return $partner?->getName() ?: $this->l10n->t('Partner #%s', [$entityId]);
+    }
+
+    private function resolveTenancyLabel(string $userId, int $entityId): string {
+        $tenancy = $this->tenancyMapper->findForUser($entityId, $userId);
+        if (!$tenancy) {
+            return $this->l10n->t('Tenancy #%s', [$entityId]);
+        }
+
+        $partnerNames = array_map(static fn($partner) => $partner['name'] ?? null, $tenancy->getPartners());
+        $partnerNames = array_filter($partnerNames);
+        $unitLabel = $tenancy->getUnitLabel();
+        $parts = array_filter([$unitLabel, implode(', ', $partnerNames)]);
+
+        return $parts ? implode(' — ', $parts) : $this->l10n->t('Tenancy #%s', [$entityId]);
+    }
+
+    private function resolveBookingLabel(string $userId, int $entityId): string {
+        $booking = $this->bookingMapper->findForUser($entityId, $userId);
+        if (!$booking) {
+            return $this->l10n->t('Booking #%s', [$entityId]);
+        }
+
+        $parts = array_filter([$booking->getDescription(), $booking->getYear()]);
+        return $parts ? implode(' — ', $parts) : $this->l10n->t('Booking #%s', [$entityId]);
     }
 
     private function hydrateLink(DocumentLink $link): void {

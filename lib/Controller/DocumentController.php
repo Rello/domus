@@ -28,6 +28,15 @@ class DocumentController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function show(int $id): DataResponse {
+        try {
+            return new DataResponse($this->documentService->getDocumentDetails($this->getUserId(), $id));
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
     public function link(string $entityType, int $entityId, string $filePath, ?int $year = null): DataResponse {
         $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $filePath, $year);
         return new DataResponse($link, Http::STATUS_CREATED);
@@ -54,6 +63,14 @@ class DocumentController extends Controller {
 
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
+    }
+
+    private function notFound(): DataResponse {
+        return new DataResponse([
+            'status' => 'error',
+            'message' => $this->l10n->t('Resource not found.'),
+            'code' => 'NOT_FOUND',
+        ], Http::STATUS_NOT_FOUND);
     }
 
     private function validationError(string $message): DataResponse {
