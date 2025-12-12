@@ -39,17 +39,17 @@ class UnitService {
     }
 
     public function createUnit(array $data, string $userId): Unit {
-        if (!isset($data['propertyId'])) {
-            throw new \InvalidArgumentException($this->l10n->t('Property reference is required.'));
-        }
-        $property = $this->propertyMapper->findForUser((int)$data['propertyId'], $userId);
-        if (!$property) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+        $propertyId = $data['propertyId'] ?? null;
+        if ($propertyId !== null) {
+            $property = $this->propertyMapper->findForUser((int)$propertyId, $userId);
+            if (!$property) {
+                throw new \RuntimeException($this->l10n->t('Property not found.'));
+            }
         }
         $now = time();
         $unit = new Unit();
         $unit->setUserId($userId);
-        $unit->setPropertyId((int)$data['propertyId']);
+        $unit->setPropertyId($propertyId !== null ? (int)$propertyId : null);
         $unit->setLabel($data['label'] ?? '');
         $unit->setUnitNumber($data['unitNumber'] ?? null);
         $unit->setLandRegister($data['landRegister'] ?? null);
