@@ -87,6 +87,45 @@ class DocumentService {
         return $this->persistLink($userId, $entityType, $entityId, $file, $title);
     }
 
+    /**
+     * Attach a single upload or existing file to multiple targets without re-uploading.
+     *
+     * @param array $targets List of ['entityType' => string, 'entityId' => int]
+     * @return DocumentLink[]
+     */
+    public function attachToTargets(string $userId, array $targets, ?array $uploadedFile, ?string $filePath, ?int $year = null, ?string $title = null): array {
+        $normalizedTargets = $this->normalizeTargets($targets);
+
+        if (empty($normalizedTargets)) {
+            throw new \InvalidArgumentException($this->l10n->t('At least one valid target is required.'));
+        }
+
+        $links = [];
+
+        if ($uploadedFile && isset($uploadedFile['tmp_name'])) {
+            $primary = array_shift($normalizedTargets);
+            $primaryLink = $this->uploadAndLink($userId, $primary['entityType'], $primary['entityId'], $uploadedFile, $year, $title);
+            $links[] = $primaryLink;
+
+            $file = $this->getFileById($primaryLink->getFileId());
+            foreach ($normalizedTargets as $target) {
+                $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title);
+            }
+
+            return $links;
+        }
+
+        if ($filePath) {
+            $file = $this->getFileFromPath($userId, $filePath);
+            foreach ($normalizedTargets as $target) {
+                $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title);
+            }
+            return $links;
+        }
+
+        throw new \InvalidArgumentException($this->l10n->t('A file upload or existing path is required.'));
+    }
+
     public function unlink(string $userId, int $id): void {
         $link = $this->documentLinkMapper->findForUser($id, $userId);
         if (!$link) {
@@ -108,6 +147,48 @@ class DocumentService {
         $this->hydrateLink($created);
 
         return $created;
+    }
+
+    private function normalizeTargets(array $targets): array {
+        $normalized = [];
+        foreach ($targets as $target) {
+            $entityType = $target['entityType'] ?? null;
+            $entityId = isset($target['entityId']) ? (int)$target['entityId'] : null;
+            if (!$entityType || $entityId === null) {
+                continue;
+            }
+            $this->assertEntityType($entityType);
+            $key = $entityType . ':' . $entityId;
+            if (isset($normalized[$key])) {
+                continue;
+            }
+            $normalized[$key] = ['entityType' => $entityType, 'entityId' => $entityId];
+        }
+
+        return array_values($normalized);
+    }
+
+    private function getFileById(int $fileId): File {
+        $node = $this->rootFolder->getById($fileId)[0] ?? null;
+        if (!$node instanceof File) {
+            throw new \RuntimeException($this->l10n->t('Unable to locate stored file.'));
+        }
+        return $node;
+    }
+
+    private function getFileFromPath(string $userId, string $filePath): File {
+        $normalizedPath = $this->normalizePath($filePath);
+        $userFolder = $this->rootFolder->getUserFolder($userId);
+        if (!$userFolder->nodeExists($normalizedPath)) {
+            throw new \RuntimeException($this->l10n->t('File not found.'));
+        }
+
+        $node = $userFolder->get($normalizedPath);
+        if (!$node instanceof File) {
+            throw new \InvalidArgumentException($this->l10n->t('Selected item is not a file.'));
+        }
+
+        return $node;
     }
 
     private function hydrateLink(DocumentLink $link): void {
