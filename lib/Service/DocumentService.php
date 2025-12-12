@@ -57,14 +57,15 @@ class DocumentService {
         return $this->persistLink($userId, $entityType, $entityId, $node, $node->getName());
     }
 
-    public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null): DocumentLink {
+    public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null, ?string $desiredName = null): DocumentLink {
         $this->assertEntityType($entityType);
         if (!isset($uploadedFile['tmp_name']) || !is_readable($uploadedFile['tmp_name'])) {
             throw new \InvalidArgumentException($this->l10n->t('No file uploaded.'));
         }
 
         $targetFolder = $this->ensureTargetFolder($userId, $entityType, $entityId, $year);
-        $fileName = $this->sanitizeFileName($uploadedFile['name'] ?? 'document');
+        $originalName = $uploadedFile['name'] ?? 'document';
+        $fileName = $this->buildFinalFileName($originalName, $desiredName);
         $uniqueName = $this->getUniqueFileName($targetFolder, $fileName);
         $stream = fopen($uploadedFile['tmp_name'], 'rb');
         if ($stream === false) {
@@ -270,6 +271,20 @@ class DocumentService {
 
     private function sanitizeFileName(string $fileName): string {
         return $this->sanitizeSegment($fileName);
+    }
+
+    private function buildFinalFileName(string $originalName, ?string $desiredName): string {
+        $candidate = $desiredName !== null && trim($desiredName) !== '' ? $desiredName : $originalName;
+        $sanitized = $this->sanitizeFileName($candidate);
+        $providedExt = pathinfo($sanitized, PATHINFO_EXTENSION);
+        if ($providedExt === '') {
+            $originalExt = pathinfo($originalName, PATHINFO_EXTENSION);
+            if ($originalExt !== '') {
+                $sanitized .= '.' . $originalExt;
+            }
+        }
+
+        return $sanitized;
     }
 
     private function normalizePath(string $path): string {

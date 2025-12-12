@@ -287,6 +287,14 @@
     padding: 20px;
 }
 
+/* Ensure the Nextcloud file picker is not hidden behind Domus modals */
+#oc-dialog-filepicker,
+#oc-dialog-filepicker.oc-dialog,
+#oc-dialog-filepicker .oc-dialog-dim,
+.oc-dialog.ui-dialog {
+    z-index: 11050 !important;
+}
+
 .domus-modal {
     background: var(--color-main-background);
     border-radius: 10px;
