@@ -3002,6 +3002,14 @@
         function renderList(entityType, entityId, options) {
             const containerId = `domus-documents-${entityType}-${entityId}`;
             const showActions = options?.showLinkAction;
+
+            function updateContainer(html) {
+                const placeholder = document.getElementById(containerId);
+                if (placeholder) {
+                    placeholder.outerHTML = html;
+                }
+            }
+
             Domus.Api.getDocuments(entityType, entityId)
                 .then(docs => {
                     const rows = (docs || []).map(doc => [
@@ -3012,19 +3020,12 @@
                     const actions = showActions ? buildDocumentActions(entityType, entityId) : '';
                     const html = '<div id="' + containerId + '">' +
                         Domus.UI.buildTable([t('domus', 'File'), t('domus', 'Info'), ''], rows) + actions + '</div>';
-                    const section = document.createElement('div');
-                    section.innerHTML = html;
-                    const placeholder = document.getElementById(containerId);
-                    if (placeholder) {
-                        placeholder.outerHTML = html;
-                    } else {
-                        Domus.UI.renderContent(html);
-                    }
+                    updateContainer(html);
                     bindDocumentActions(entityType, entityId, containerId, showActions);
                 })
                 .catch(() => {
                     const html = '<div id="' + containerId + '">' + t('domus', 'No documents found.') + (showActions ? buildDocumentActions(entityType, entityId) : '') + '</div>';
-                    Domus.UI.renderContent(html);
+                    updateContainer(html);
                 });
             return '<div id="' + containerId + '">' + t('domus', 'Loading documents…') + '</div>';
         }

@@ -298,6 +298,8 @@ class DocumentService {
         }
 
         return $parts ? implode(' — ', $parts) : $this->l10n->t('Booking #%s', [$entityId]);
+    }
+
     private function normalizeTargets(array $targets): array {
         $normalized = [];
         foreach ($targets as $target) {
