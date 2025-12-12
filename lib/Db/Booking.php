@@ -31,6 +31,7 @@ class Booking extends Entity implements JsonSerializable {
         $this->addType('propertyId', 'int');
         $this->addType('unitId', 'int');
         $this->addType('tenancyId', 'int');
+        $this->addType('amount', 'float');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
     }
