@@ -64,14 +64,14 @@ class StatisticCalculations {
                 'key' => 'hausgeld',
                 'label' => 'Hausgeld (uml.) + Grundsteuer',
                 'rule' => [
-                    ['op' => 'add', 'args' => ['2000', '2006']],
+                    ['op' => 'add', 'args' => ['2000', '2005']],
                 ],
             ],
             [
                 'key' => 'saldo',
                 'label' => 'Saldo Mieter',
                 'rule' => [
-                    ['op' => 'sub', 'args' => ['1001', '2000', '2006']],
+                    ['op' => 'sub', 'args' => ['1001', '2000', '2005']],
                 ],
             ],
         ];
