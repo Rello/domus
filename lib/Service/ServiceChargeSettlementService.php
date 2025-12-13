@@ -195,9 +195,17 @@ class ServiceChargeSettlementService {
         $folderPath = sprintf('DomusApp/Nebenkosten/%d/%s', $year, $safeUnit);
         $folder = $userFolder->newFolder($folderPath, true);
         $fileName = sprintf('%s_%d.md', $safePartner, $year);
-        $file = $folder->newFile($fileName, $content);
+        $uniqueName = $fileName;
+        $suffix = 1;
 
-        return trim($folderPath . '/' . $fileName, '/');
+        while ($folder->nodeExists($uniqueName)) {
+            $uniqueName = sprintf('%s_%d_%d.md', $safePartner, $year, $suffix);
+            $suffix++;
+        }
+
+        $file = $folder->newFile($uniqueName, $content);
+
+        return trim($folderPath . '/' . $uniqueName, '/');
     }
 
     private function sanitizeSegment(string $segment): string {
