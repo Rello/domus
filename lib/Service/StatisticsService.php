@@ -18,42 +18,53 @@ class StatisticsService {
         ) {
         }
 
-        public function unitStatPerYear(int $unitId, string $userId, int $year, ?array $columns = null): array {
-                $definitions = $this->normalizeColumns($columns ?? StatisticCalculations::unit());
+        public function unitStatPerYear(int $unitId, string $userId, int $year): array {
                 $unit = $this->loadUnit($unitId, $userId);
 
-                $row = $this->buildStatisticsRowForUnitYear($unitId, $unit, $userId, $year, $definitions);
-
-                return [
-                        'columns' => $this->visibleColumns($definitions),
-                        'rows' => [$row],
+                $definitions = [
+                        'revenue' => $this->normalizeColumns(StatisticCalculations::unitRevenue()),
+                        'cost' => $this->normalizeColumns(StatisticCalculations::unitCost()),
                 ];
+
+                return $this->buildStatisticsTables($definitions, function (array $tableDefinitions) use ($unitId, $unit, $userId, $year) {
+                        return $this->buildStatisticsRowForUnitYear(
+                                $unitId,
+                                $unit,
+                                $userId,
+                                $year,
+                                $tableDefinitions,
+                        );
+                });
         }
 
         public function unitStatsAllYears(int $unitId, string $userId, ?array $columns = null): array {
-                $definitions = $this->normalizeColumns($columns ?? StatisticCalculations::unit());
                 $unit = $this->loadUnit($unitId, $userId);
+
+                $definitions = [
+                        'revenue' => $this->normalizeColumns(StatisticCalculations::unitRevenue()),
+                        'cost' => $this->normalizeColumns(StatisticCalculations::unitCost()),
+                ];
 
                 $grouped = $this->bookingService->sumByAccountGrouped($userId, null, 'unit', $unitId);
                 $perYearSums = $this->mapSumsByYear($grouped);
                 $years = $this->collectYears($perYearSums, $this->tenancyService->getTenanciesForUnit($unitId, $userId));
 
-                $rows = [];
+                $tables = $this->initializeStatisticsTables($definitions);
                 foreach ($years as $year) {
                         $tenancySums = $this->tenancyService->sumTenancyForYear($userId, $unitId, $year);
                         $unitSums = $this->buildUnitSums($unit);
                         $sums = $this->mergeSums($perYearSums[$year] ?? [], $tenancySums, $unitSums);
-                        $rows[] = $this->buildRowForYear($year, $definitions, $sums, ['unit' => $unit]);
+
+                        foreach ($definitions as $tableName => $tableDefinitions) {
+                                $tables[$tableName]['rows'][] = $this->buildRowForYear($year, $tableDefinitions, $sums, ['unit' => $unit]);
+                        }
                 }
 
                 $this->logger->info('StatisticsService: calculated statistics rows for all years', [
-                        'rows' => $rows,
+                        'tables' => $tables,
                 ]);
 
-                return [
-                        'columns' => $this->visibleColumns($definitions),
-                        'rows' => $rows,
-                ];
+                return $tables;
         }
 
         public function unitOverview(int $year, string $userId, ?int $propertyId = null): array {
@@ -300,6 +311,28 @@ class StatisticsService {
                 }
 
                 return is_numeric($value) ? (float)$value : $value;
+        }
+
+        private function initializeStatisticsTables(array $definitions): array {
+                $tables = [];
+                foreach ($definitions as $tableName => $tableDefinitions) {
+                        $tables[$tableName] = [
+                                'columns' => $this->visibleColumns($tableDefinitions),
+                                'rows' => [],
+                        ];
+                }
+
+                return $tables;
+        }
+
+        private function buildStatisticsTables(array $definitions, callable $rowFactory): array {
+                $tables = $this->initializeStatisticsTables($definitions);
+
+                foreach ($definitions as $tableName => $tableDefinitions) {
+                        $tables[$tableName]['rows'][] = $rowFactory($tableDefinitions);
+                }
+
+                return $tables;
         }
 
         private function buildStatisticsRowForUnitYear(int $unitId, ?Unit $unit, string $userId, int $year, array $definitions): array {

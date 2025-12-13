@@ -1632,8 +1632,12 @@
                         dataset: { entityType: 'unit', entityId: id }
                     } : null);
 
-                    const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Statistics'));
+                    const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'));
                     const isBuildingMgmt = Domus.Role.isBuildingMgmtView();
+                    const revenueTable = renderStatisticsTable(statistics ? statistics.revenue : null);
+                    const costTable = statistics && statistics.cost
+                        ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost) + '</div>'
+                        : '';
                     const infoItems = [
                         { label: t('domus', 'Property'), value: unit.propertyName || unit.propertyId },
                         { label: t('domus', 'Unit number'), value: unit.unitNumber },
@@ -1665,7 +1669,7 @@
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
                         Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
                         '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +
-                        renderStatisticsTable(statistics) + '</div></div>' +
+                        revenueTable + costTable + '</div></div>' +
                         (canManageBookings ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
                         Domus.Bookings.renderInline(bookings || []) + '</div></div>' : '') +
                         '</div>' +
