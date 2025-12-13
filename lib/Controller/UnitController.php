@@ -3,6 +3,7 @@
 namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
+use OCA\Domus\Service\ServiceChargeSettlementService;
 use OCA\Domus\Service\UnitService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -17,6 +18,7 @@ class UnitController extends Controller {
         IRequest $request,
         private IUserSession $userSession,
         private UnitService $unitService,
+        private ServiceChargeSettlementService $settlementService,
         private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
@@ -91,6 +93,28 @@ class UnitController extends Controller {
                 'message' => $e->getMessage(),
                 'code' => 'CONFLICT',
             ], Http::STATUS_CONFLICT);
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
+    public function listSettlements(int $id, ?int $year = null): DataResponse {
+        $targetYear = $year ?? ((int)date('Y') - 1);
+        try {
+            return new DataResponse($this->settlementService->listForUnit($this->getUserId(), $id, $targetYear));
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
+    public function createSettlement(int $id, int $year, int $partnerId): DataResponse {
+        try {
+            $result = $this->settlementService->createReport($this->getUserId(), $id, $year, $partnerId);
+            return new DataResponse($result, Http::STATUS_CREATED);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
         } catch (\Throwable $e) {
             return $this->notFound();
         }

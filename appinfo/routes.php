@@ -18,6 +18,8 @@ return [
         ['name' => 'Unit#create', 'url' => '/units', 'verb' => 'POST'],
         ['name' => 'Unit#update', 'url' => '/units/{id}', 'verb' => 'PUT'],
         ['name' => 'Unit#destroy', 'url' => '/units/{id}', 'verb' => 'DELETE'],
+        ['name' => 'Unit#listSettlements', 'url' => '/units/{id}/settlements', 'verb' => 'GET'],
+        ['name' => 'Unit#createSettlement', 'url' => '/units/{id}/settlements', 'verb' => 'POST'],
         // Statistics
         ['name' => 'Statistics#unit', 'url' => '/statistics/units/{unitId}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitPerYear', 'url' => '/statistics/units/{unitId}/{year}', 'verb' => 'GET'],

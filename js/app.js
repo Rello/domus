@@ -184,6 +184,14 @@
                 const path = propertyId ? `/properties/${propertyId}/units` : '/units';
                 return request('GET', buildYearUrl(path));
             },
+            getUnitSettlements: (unitId, year) => {
+                const params = new URLSearchParams();
+                if (year !== undefined && year !== null) {
+                    params.set('year', year);
+                }
+                return request('GET', buildUrl(`/units/${unitId}/settlements`, params));
+            },
+            createUnitSettlementReport: (unitId, payload) => request('POST', `/units/${unitId}/settlements`, payload),
             getUnitStatistics: (unitId) => request('GET', `/statistics/units/${unitId}`),
             getUnitsStatisticsOverview: (propertyId) => {
                 const params = propertyId ? appendFilters(new URLSearchParams(), { propertyId }) : new URLSearchParams();
@@ -1617,6 +1625,7 @@
                         [
                             (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" class="primary" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
                             (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' : ''),
+                            '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Nebenkostenabrechnung')) + '</button>',
                             '<button id="domus-unit-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>',
                             '<button id="domus-unit-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
                         ].filter(Boolean).join('') +
@@ -1721,6 +1730,9 @@
                     title: t('domus', 'Add buying price')
                 });
             });
+            document.getElementById('domus-unit-service-charge')?.addEventListener('click', () => {
+                Domus.UnitSettlements.openModal(id, () => renderDetail(id));
+            });
             document.getElementById('domus-unit-link-doc')?.addEventListener('click', () => {
                 Domus.Documents.openLinkModal('unit', id, () => renderDetail(id));
             });
@@ -1822,6 +1834,132 @@
         }
 
         return { renderList, renderDetail, renderListInline, openCreateModal };
+    })();
+
+    Domus.UnitSettlements = (function() {
+        function openModal(unitId, onComplete) {
+            const defaultYear = (new Date()).getFullYear() - 1;
+            let selectedYear = defaultYear;
+            let selectedGroup = null;
+            let settlements = [];
+
+            const container = document.createElement('div');
+            container.innerHTML = '<div class="domus-form">'
+                + '<label>' + Domus.Utils.escapeHtml(t('domus', 'Year')) + ' '
+                + '<select id="domus-settlement-year"></select>'
+                + '</label>'
+                + '</div>'
+                + '<div class="domus-table" id="domus-settlement-table"></div>'
+                + '<div class="domus-modal-footer">'
+                + '<button id="domus-create-settlement" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Abrechnung erstellen')) + '</button>'
+                + '</div>';
+
+            const modal = Domus.UI.openModal({
+                title: t('domus', 'Nebenkostenabrechnung'),
+                content: container,
+                size: 'large'
+            });
+
+            const yearSelect = container.querySelector('#domus-settlement-year');
+            const tableContainer = container.querySelector('#domus-settlement-table');
+            const createBtn = container.querySelector('#domus-create-settlement');
+
+            yearSelect.innerHTML = buildYearOptions(defaultYear).map(y => '<option value="' + y + '">' + Domus.Utils.escapeHtml(y) + '</option>').join('');
+            yearSelect.value = String(defaultYear);
+
+            yearSelect.addEventListener('change', () => {
+                selectedYear = parseInt(yearSelect.value, 10);
+                loadSettlements();
+            });
+
+            createBtn.addEventListener('click', () => {
+                if (!selectedGroup) {
+                    Domus.UI.showNotification(t('domus', 'Select a partner first.'), 'error');
+                    return;
+                }
+                const selected = settlements.find(item => item.groupId === selectedGroup);
+                if (!selected) {
+                    Domus.UI.showNotification(t('domus', 'Select a partner first.'), 'error');
+                    return;
+                }
+                createBtn.disabled = true;
+                Domus.Api.createUnitSettlementReport(unitId, { year: selectedYear, partnerId: selected.partnerId })
+                    .then(() => {
+                        Domus.UI.showNotification(t('domus', 'Settlement report created.'), 'success');
+                        modal.close();
+                        onComplete?.();
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'))
+                    .finally(() => { createBtn.disabled = false; });
+            });
+
+            function buildYearOptions(defaultYear) {
+                const current = (new Date()).getFullYear();
+                const years = [];
+                for (let i = 0; i < 6; i++) {
+                    years.push(current - i);
+                }
+                if (!years.includes(defaultYear)) {
+                    years.push(defaultYear);
+                }
+                return years.sort((a, b) => b - a);
+            }
+
+            function renderTable() {
+                if (!settlements.length) {
+                    tableContainer.innerHTML = '<div>' + Domus.Utils.escapeHtml(t('domus', 'No settlements for the selected year.')) + '</div>';
+                    return;
+                }
+
+                const rows = settlements.map((entry, idx) => {
+                    const radio = '<input type="radio" name="domus-settlement-select" value="' + Domus.Utils.escapeHtml(entry.groupId) + '" ' + (selectedGroup === entry.groupId || (!selectedGroup && idx === 0) ? 'checked' : '') + '>';
+                    return [
+                        radio,
+                        Domus.Utils.escapeHtml(entry.partnerName || ''),
+                        Domus.Utils.formatCurrency(entry.serviceCharge),
+                        Domus.Utils.formatCurrency(entry.houseFee),
+                        Domus.Utils.formatCurrency(entry.propertyTax),
+                        Domus.Utils.formatCurrency(entry.saldo)
+                    ];
+                });
+
+                tableContainer.innerHTML = Domus.UI.buildTable([
+                    '',
+                    t('domus', 'Partner'),
+                    t('domus', 'Nebenkosten (1001)'),
+                    t('domus', 'Hausgeld (2000)'),
+                    t('domus', 'Grundsteuer (2005)'),
+                    t('domus', 'Saldo')
+                ], rows);
+
+                const radios = tableContainer.querySelectorAll('input[name="domus-settlement-select"]');
+                radios.forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        selectedGroup = radio.value;
+                    });
+                });
+                if (!selectedGroup && settlements[0]) {
+                    selectedGroup = settlements[0].groupId;
+                }
+            }
+
+            function loadSettlements() {
+                tableContainer.innerHTML = '<div>' + Domus.Utils.escapeHtml(t('domus', 'Loading…')) + '</div>';
+                Domus.Api.getUnitSettlements(unitId, selectedYear)
+                    .then(data => {
+                        settlements = (data || []).map(item => Object.assign({ groupId: item.groupId || String(item.partnerId) }, item));
+                        selectedGroup = settlements[0]?.groupId || null;
+                        renderTable();
+                    })
+                    .catch(err => {
+                        tableContainer.innerHTML = '<div class="domus-error">' + Domus.Utils.escapeHtml(err.message || t('domus', 'An error occurred')) + '</div>';
+                    });
+            }
+
+            loadSettlements();
+        }
+
+        return { openModal };
     })();
 
     /**
