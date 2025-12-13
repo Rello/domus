@@ -91,8 +91,8 @@ class ServiceChargeSettlementService {
         $content = $this->buildReportMarkdown($partner->getName(), $partner->getStreet(), $partner->getZip(), $partner->getCity(), $partner->getCountry(), $year, $entry);
 
         $targets = [
-            ['entityType' => 'partner', 'entityId' => $partnerId],
             ['entityType' => 'unit', 'entityId' => $unitId],
+            ['entityType' => 'partner', 'entityId' => $partnerId],
         ];
         foreach ($entry['tenancyIds'] as $tenancyId) {
             $targets[] = ['entityType' => 'tenancy', 'entityId' => $tenancyId];
@@ -111,7 +111,7 @@ class ServiceChargeSettlementService {
             $content,
             $year,
             $this->l10n->t('Nebenkostenabrechnung %d', [$year]),
-            $this->l10n->t('Service Charges')
+            $this->l10n->t('Nebenkostenabrechnung')
         );
 
         $links = $creation['links'];
