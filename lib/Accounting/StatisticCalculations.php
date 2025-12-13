@@ -3,7 +3,7 @@
 namespace OCA\Domus\Accounting;
 
 class StatisticCalculations {
-    public static function unit(): array {
+    public static function unitRevenue(): array {
         return [
             ['key' => 'year', 'label' => 'year', 'type' => 'year'],
             ['key' => 'rent', 'label' => 'Kaltmiete', 'account' => '1000'],
@@ -52,6 +52,27 @@ class StatisticCalculations {
                     ['op' => 'div', 'args' => ['gwn', '3000']],
                 ],
                 'format' => 'percentage',
+            ],
+        ];
+    }
+
+    public static function unitCost(): array {
+        return [
+            ['key' => 'year', 'label' => 'year', 'type' => 'year'],
+            ['key' => 'tenancyNebenkosten', 'label' => 'Nebenkosten', 'account' => '1001'],
+            [
+                'key' => 'hausgeld',
+                'label' => 'Hausgeld (uml.) + Grundsteuer',
+                'rule' => [
+                    ['op' => 'add', 'args' => ['2000', '2005']],
+                ],
+            ],
+            [
+                'key' => 'saldo',
+                'label' => 'Saldo Mieter',
+                'rule' => [
+                    ['op' => 'sub', 'args' => ['1001', '2000', '2005']],
+                ],
             ],
         ];
     }
