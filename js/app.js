@@ -1953,6 +1953,10 @@
                     } : null);
                     const infoList = Domus.UI.buildInfoList([
                         { label: t('domus', 'Type'), value: partner.partnerType },
+                        { label: t('domus', 'Street'), value: partner.street },
+                        { label: t('domus', 'ZIP'), value: partner.zip },
+                        { label: t('domus', 'City'), value: partner.city },
+                        { label: t('domus', 'Country'), value: partner.country },
                         { label: t('domus', 'Email'), value: partner.email },
                         { label: t('domus', 'Phone'), value: partner.phone }
                     ]);
@@ -2052,6 +2056,10 @@
                 '<option value="tenant"' + (defaultPartnerType === 'tenant' ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(t('domus', 'Tenant')) + '</option>' +
                 '<option value="owner"' + (defaultPartnerType === 'owner' ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(t('domus', 'Owner')) + '</option>' +
                 '</select></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Street')) + '<input name="street" value="' + (partner?.street ? Domus.Utils.escapeHtml(partner.street) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'ZIP')) + '<input name="zip" value="' + (partner?.zip ? Domus.Utils.escapeHtml(partner.zip) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'City')) + '<input name="city" value="' + (partner?.city ? Domus.Utils.escapeHtml(partner.city) : '') + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Country')) + '<input name="country" value="' + (partner?.country ? Domus.Utils.escapeHtml(partner.country) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Email')) + '<input name="email" type="email" value="' + (partner?.email ? Domus.Utils.escapeHtml(partner.email) : '') + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Phone')) + '<input name="phone" value="' + (partner?.phone ? Domus.Utils.escapeHtml(partner.phone) : '') + '"></label>' +
                 '<div class="domus-form-actions">' +
