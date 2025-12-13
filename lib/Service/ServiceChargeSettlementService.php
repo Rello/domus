@@ -194,12 +194,12 @@ class ServiceChargeSettlementService {
         $userFolder = $this->rootFolder->getUserFolder($userId);
         $folderPath = sprintf('DomusApp/Nebenkosten/%d/%s', $year, $safeUnit);
         $folder = $userFolder->newFolder($folderPath, true);
-        $fileName = sprintf('%s_%d.md', $safePartner, $year);
+        $fileName = sprintf('%s_%s_%d.md', $safeUnit, $safePartner, $year);
         $uniqueName = $fileName;
         $suffix = 1;
 
         while ($folder->nodeExists($uniqueName)) {
-            $uniqueName = sprintf('%s_%d_%d.md', $safePartner, $year, $suffix);
+            $uniqueName = sprintf('%s_%s_%d_%d.md', $safeUnit, $safePartner, $year, $suffix);
             $suffix++;
         }
 
