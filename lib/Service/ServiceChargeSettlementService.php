@@ -5,7 +5,6 @@ namespace OCA\Domus\Service;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\PartnerMapper;
 use OCA\Domus\Db\UnitMapper;
-use OCP\Files\IRootFolder;
 use OCP\IL10N;
 
 class ServiceChargeSettlementService {
@@ -17,7 +16,6 @@ class ServiceChargeSettlementService {
         private BookingMapper $bookingMapper,
         private PartnerMapper $partnerMapper,
         private UnitMapper $unitMapper,
-        private IRootFolder $rootFolder,
         private DocumentService $documentService,
         private IL10N $l10n,
     ) {
@@ -91,7 +89,6 @@ class ServiceChargeSettlementService {
         }
 
         $content = $this->buildReportMarkdown($partner->getName(), $partner->getStreet(), $partner->getZip(), $partner->getCity(), $partner->getCountry(), $year, $entry);
-        $filePath = $this->storeReportFile($userId, $unit->getLabel() ?: (string)$unit->getUnitNumber(), $year, $partner->getName(), $content);
 
         $targets = [
             ['entityType' => 'partner', 'entityId' => $partnerId],
@@ -101,14 +98,23 @@ class ServiceChargeSettlementService {
             $targets[] = ['entityType' => 'tenancy', 'entityId' => $tenancyId];
         }
 
-        $links = $this->documentService->attachToTargets(
+        $fileName = sprintf('%s_%s_%d.md',
+            $unit->getLabel() ?: (string)$unit->getUnitNumber(),
+            $partner->getName(),
+            $year
+        );
+
+        $creation = $this->documentService->createContentForTargets(
             $userId,
             $targets,
-            null,
-            $filePath,
+            $fileName,
+            $content,
             $year,
-            $this->l10n->t('Nebenkostenabrechnung %d', [$year])
+            $this->l10n->t('Nebenkostenabrechnung %d', [$year]),
+            $this->l10n->t('Service Charges')
         );
+
+        $links = $creation['links'];
 
         return [
             'entry' => $entry,
@@ -188,29 +194,4 @@ class ServiceChargeSettlementService {
         return implode("\n", $lines) . "\n";
     }
 
-    private function storeReportFile(string $userId, ?string $unitLabel, int $year, string $partnerName, string $content): string {
-        $safeUnit = $this->sanitizeSegment($unitLabel ?: $this->l10n->t('Unit'));
-        $safePartner = $this->sanitizeSegment($partnerName);
-        $userFolder = $this->rootFolder->getUserFolder($userId);
-        $folderPath = sprintf('DomusApp/Nebenkosten/%d/%s', $year, $safeUnit);
-        $folder = $userFolder->newFolder($folderPath, true);
-        $fileName = sprintf('%s_%s_%d.md', $safeUnit, $safePartner, $year);
-        $uniqueName = $fileName;
-        $suffix = 1;
-
-        while ($folder->nodeExists($uniqueName)) {
-            $uniqueName = sprintf('%s_%s_%d_%d.md', $safeUnit, $safePartner, $year, $suffix);
-            $suffix++;
-        }
-
-        $file = $folder->newFile($uniqueName, $content);
-
-        return trim($folderPath . '/' . $uniqueName, '/');
-    }
-
-    private function sanitizeSegment(string $segment): string {
-        $clean = str_replace(['\\', '/', ':', '*', '?', '"', '<', '>', '|'], '-', $segment);
-        $clean = trim((string)$clean, " \t\n\r\0\x0B-");
-        return $clean === '' ? 'document' : $clean;
-    }
 }

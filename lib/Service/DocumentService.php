@@ -84,13 +84,13 @@ class DocumentService {
         return $this->persistLink($userId, $entityType, $entityId, $node, null);
     }
 
-    public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null, ?string $title = null): DocumentLink {
+    public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null, ?string $title = null, ?string $typeFolder = null): DocumentLink {
         $this->assertEntityType($entityType);
         if (!isset($uploadedFile['tmp_name']) || !is_readable($uploadedFile['tmp_name'])) {
             throw new \InvalidArgumentException($this->l10n->t('No file uploaded.'));
         }
 
-        $targetFolder = $this->ensureTargetFolder($userId, $entityType, $entityId, $year);
+        $targetFolder = $this->ensureTargetFolder($userId, $entityType, $entityId, $year, $typeFolder);
         $originalName = $uploadedFile['name'] ?? 'document';
         $fileName = $this->buildFinalFileName($originalName);
         $uniqueName = $this->getUniqueFileName($targetFolder, $fileName);
@@ -120,7 +120,7 @@ class DocumentService {
      * @param array $targets List of ['entityType' => string, 'entityId' => int]
      * @return DocumentLink[]
      */
-    public function attachToTargets(string $userId, array $targets, ?array $uploadedFile, ?string $filePath, ?int $year = null, ?string $title = null): array {
+    public function attachToTargets(string $userId, array $targets, ?array $uploadedFile, ?string $filePath, ?int $year = null, ?string $title = null, ?string $typeFolder = null): array {
         $normalizedTargets = $this->normalizeTargets($targets);
 
         if (empty($normalizedTargets)) {
@@ -131,7 +131,7 @@ class DocumentService {
 
         if ($uploadedFile && isset($uploadedFile['tmp_name'])) {
             $primary = array_shift($normalizedTargets);
-            $primaryLink = $this->uploadAndLink($userId, $primary['entityType'], $primary['entityId'], $uploadedFile, $year, $title);
+            $primaryLink = $this->uploadAndLink($userId, $primary['entityType'], $primary['entityId'], $uploadedFile, $year, $title, $typeFolder);
             $links[] = $primaryLink;
 
             $file = $this->getFileById($primaryLink->getFileId());
@@ -319,6 +319,36 @@ class DocumentService {
         return array_values($normalized);
     }
 
+    public function createContentForTargets(string $userId, array $targets, string $fileName, string $content, ?int $year = null, ?string $title = null, ?string $typeFolder = null): array {
+        $normalizedTargets = $this->normalizeTargets($targets);
+
+        if (empty($normalizedTargets)) {
+            throw new \InvalidArgumentException($this->l10n->t('At least one valid target is required.'));
+        }
+
+        $primary = array_shift($normalizedTargets);
+        $targetFolder = $this->ensureTargetFolder($userId, $primary['entityType'], $primary['entityId'], $year, $typeFolder);
+
+        $finalName = $this->getUniqueFileName($targetFolder, $this->buildFinalFileName($fileName));
+        $file = $targetFolder->newFile($finalName, $content);
+
+        if (!$file instanceof File) {
+            throw new \RuntimeException($this->l10n->t('Unable to create file.'));
+        }
+
+        $links = [];
+        $links[] = $this->persistLink($userId, $primary['entityType'], $primary['entityId'], $file, $title);
+
+        foreach ($normalizedTargets as $target) {
+            $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title);
+        }
+
+        return [
+            'links' => $links,
+            'filePath' => $file->getPath(),
+        ];
+    }
+
     private function getFileById(int $fileId): File {
         $node = $this->rootFolder->getById($fileId)[0] ?? null;
         if (!$node instanceof File) {
@@ -359,18 +389,17 @@ class DocumentService {
         }
     }
 
-    private function ensureTargetFolder(string $userId, string $entityType, int $entityId, ?int $year = null): Folder {
+    private function ensureTargetFolder(string $userId, string $entityType, int $entityId, ?int $year = null, ?string $typeFolder = null): Folder {
         $context = $this->resolveStorageContext($userId, $entityType, $entityId, $year);
         $userFolder = $this->rootFolder->getUserFolder($userId);
 
-        $propertyFolderName = $this->sanitizeSegment($context['propertyFolder']);
-        $unitFolderName = $context['unitFolder'] ? $this->sanitizeSegment($context['unitFolder']) : null;
-
-        $propertyFolder = $this->getOrCreateFolder($userFolder, $propertyFolderName);
-        $unitFolder = $unitFolderName ? $this->getOrCreateFolder($propertyFolder, $unitFolderName) : $propertyFolder;
+        $baseFolder = $this->getOrCreateFolder($userFolder, 'DomusApp');
+        $propertyFolder = $this->getOrCreateFolder($baseFolder, $this->sanitizeSegment($context['propertyFolder']));
+        $unitFolder = $this->getOrCreateFolder($propertyFolder, $this->sanitizeSegment($context['unitFolder']));
         $yearFolder = $this->getOrCreateFolder($unitFolder, (string)$context['year']);
+        $typeSegment = $this->resolveTypeFolder($entityType, $typeFolder);
 
-        return $yearFolder;
+        return $this->getOrCreateFolder($yearFolder, $typeSegment);
     }
 
     private function resolveStorageContext(string $userId, string $entityType, int $entityId, ?int $year): array {
@@ -383,8 +412,8 @@ class DocumentService {
                         throw new \RuntimeException($this->l10n->t('Property not found.'));
                     }
                     return [
-                        'propertyFolder' => $this->buildFolderName('Property', $property->getName(), $property->getId()),
-                        'unitFolder' => 'Property',
+                        'propertyFolder' => $property->getName() ?: $this->l10n->t('Property'),
+                        'unitFolder' => $this->l10n->t('General'),
                         'year' => $targetYear,
                     ];
                 case 'unit':
@@ -397,8 +426,8 @@ class DocumentService {
                         throw new \RuntimeException($this->l10n->t('Property not found.'));
                     }
                     return [
-                        'propertyFolder' => $this->buildFolderName('Property', $property->getName(), $property->getId()),
-                        'unitFolder' => $this->buildFolderName('Unit', $unit->getLabel() ?: (string)$unit->getUnitNumber(), $unit->getId()),
+                        'propertyFolder' => $property->getName() ?: $this->l10n->t('Property'),
+                        'unitFolder' => $unit->getLabel() ?: (string)$unit->getUnitNumber(),
                         'year' => $targetYear,
                     ];
                 case 'tenancy':
@@ -419,8 +448,8 @@ class DocumentService {
                         $tenancyYear = (int)date('Y', strtotime((string)$tenancy->getStartDate()));
                     }
                     return [
-                        'propertyFolder' => $this->buildFolderName('Property', $property->getName(), $property->getId()),
-                        'unitFolder' => $this->buildFolderName('Unit', $unit->getLabel() ?: (string)$unit->getUnitNumber(), $unit->getId()),
+                        'propertyFolder' => $property->getName() ?: $this->l10n->t('Property'),
+                        'unitFolder' => $unit->getLabel() ?: (string)$unit->getUnitNumber(),
                         'year' => $tenancyYear,
                     ];
                 case 'booking':
@@ -429,15 +458,12 @@ class DocumentService {
                         throw new \RuntimeException($this->l10n->t('Booking not found.'));
                     }
                     $property = $booking->getPropertyId() ? $this->propertyMapper->findForUser($booking->getPropertyId(), $userId) : null;
-                    $unitFolder = null;
-                    $propertyFolder = $this->l10n->t('General');
-                    if ($property) {
-                        $propertyFolder = $this->buildFolderName('Property', $property->getName(), $property->getId());
-                    }
+                    $propertyFolder = $property?->getName() ?: $this->l10n->t('General');
+                    $unitFolder = $this->l10n->t('General');
                     if ($booking->getUnitId()) {
                         $unit = $this->unitMapper->findForUser($booking->getUnitId(), $userId);
                         if ($unit) {
-                            $unitFolder = $this->buildFolderName('Unit', $unit->getLabel() ?: (string)$unit->getUnitNumber(), $unit->getId());
+                            $unitFolder = $unit->getLabel() ?: (string)$unit->getUnitNumber();
                         }
                     }
                     return [
@@ -455,11 +481,6 @@ class DocumentService {
         } catch (\Throwable $e) {
             throw $e;
         }
-    }
-
-    private function buildFolderName(string $prefix, ?string $name, int $id): string {
-        $safeName = $this->sanitizeSegment($name ?: strtolower($prefix));
-        return sprintf('%s_%d_%s', $prefix, $id, $safeName);
     }
 
     private function getOrCreateFolder(Folder $baseFolder, string $name): Folder {
@@ -493,6 +514,11 @@ class DocumentService {
         } while ($folder->nodeExists($candidate));
 
         return $candidate;
+    }
+
+    private function resolveTypeFolder(string $entityType, ?string $typeFolder): string {
+        $label = $typeFolder ?: ucfirst($entityType);
+        return $this->sanitizeSegment($label);
     }
 
     private function sanitizeSegment(string $segment): string {
