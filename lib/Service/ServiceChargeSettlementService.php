@@ -9,7 +9,7 @@ use OCP\Files\IRootFolder;
 use OCP\IL10N;
 
 class ServiceChargeSettlementService {
-    private const HOUSE_FEE_ACCOUNT = '2001';
+    private const HOUSE_FEE_ACCOUNT = '2000';
     private const PROPERTY_TAX_ACCOUNT = '2005';
 
     public function __construct(
@@ -26,12 +26,15 @@ class ServiceChargeSettlementService {
     public function listForUnit(string $userId, int $unitId, int $year): array {
         $tenancies = $this->tenancyService->listTenancies($userId, $unitId);
         $entries = [];
+        $unitCharges = $this->sumBookingsForUnit($userId, $unitId, $year);
 
         foreach ($tenancies as $tenancy) {
             $months = $this->calculateMonthsWithinYear($tenancy->getStartDate(), $tenancy->getEndDate(), $year);
             if ($months <= 0) {
                 continue;
             }
+
+            $chargeShare = $months / 12;
 
             $partnerId = $tenancy->getPartnerIds()[0] ?? null;
             if ($partnerId === null) {
@@ -53,12 +56,10 @@ class ServiceChargeSettlementService {
             }
 
             $serviceCharge = $months * (float)($tenancy->getServiceCharge() ?? 0.0);
-            $bookingSums = $this->sumBookingsForTenancy($userId, $tenancy->getId(), $year);
-
             $entries[$key]['tenancyIds'][] = $tenancy->getId();
             $entries[$key]['serviceCharge'] += $serviceCharge;
-            $entries[$key]['houseFee'] += $bookingSums['houseFee'];
-            $entries[$key]['propertyTax'] += $bookingSums['propertyTax'];
+            $entries[$key]['houseFee'] += $unitCharges['houseFee'] * $chargeShare;
+            $entries[$key]['propertyTax'] += $unitCharges['propertyTax'] * $chargeShare;
             $entries[$key]['saldo'] = $entries[$key]['serviceCharge'] - $entries[$key]['houseFee'] - $entries[$key]['propertyTax'];
         }
 
@@ -146,8 +147,8 @@ class ServiceChargeSettlementService {
             + ($periodEnd->format('n') - $periodStart->format('n')) + 1;
     }
 
-    private function sumBookingsForTenancy(string $userId, int $tenancyId, int $year): array {
-        $bookings = $this->bookingMapper->findByUser($userId, ['tenancyId' => $tenancyId, 'year' => $year]);
+    private function sumBookingsForUnit(string $userId, int $unitId, int $year): array {
+        $bookings = $this->bookingMapper->findByUser($userId, ['unitId' => $unitId, 'year' => $year]);
         $houseFee = 0.0;
         $propertyTax = 0.0;
 
@@ -180,7 +181,7 @@ class ServiceChargeSettlementService {
         $lines[] = '| ' . $this->l10n->t('Position') . ' | ' . $this->l10n->t('Amount') . ' |';
         $lines[] = '| --- | ---: |';
         $lines[] = sprintf('| %s (1001) | %.2f € |', $this->l10n->t('Nebenkosten'), $entry['serviceCharge']);
-        $lines[] = sprintf('| %s (2001) | %.2f € |', $this->l10n->t('Hausgeld'), $entry['houseFee']);
+        $lines[] = sprintf('| %s (2000) | %.2f € |', $this->l10n->t('Hausgeld'), $entry['houseFee']);
         $lines[] = sprintf('| %s (2005) | %.2f € |', $this->l10n->t('Grundsteuer'), $entry['propertyTax']);
         $lines[] = sprintf('| %s | %.2f € |', $this->l10n->t('Saldo'), $entry['saldo']);
 

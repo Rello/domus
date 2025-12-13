@@ -1923,7 +1923,7 @@
                     '',
                     t('domus', 'Partner'),
                     t('domus', 'Nebenkosten (1001)'),
-                    t('domus', 'Hausgeld (2001)'),
+                    t('domus', 'Hausgeld (2000)'),
                     t('domus', 'Grundsteuer (2005)'),
                     t('domus', 'Saldo')
                 ], rows);
