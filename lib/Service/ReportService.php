@@ -8,7 +8,6 @@ use OCA\Domus\Db\Report;
 use OCA\Domus\Db\ReportMapper;
 use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\UnitMapper;
-use OCP\Files\IRootFolder;
 use OCP\IL10N;
 
 class ReportService {
@@ -18,7 +17,7 @@ class ReportService {
         private TenancyMapper $tenancyMapper,
         private UnitMapper $unitMapper,
         private BookingMapper $bookingMapper,
-        private IRootFolder $rootFolder,
+        private DocumentService $documentService,
         private IL10N $l10n,
     ) {
     }
@@ -57,13 +56,23 @@ class ReportService {
         $bookings = $this->bookingMapper->findByUser($userId, ['propertyId' => $propertyId, 'year' => $year]);
         [$income, $expense] = $this->splitIncomeExpense($bookings);
         $content = $this->buildMarkdown($property->getName(), $year, $income, $expense);
-        $filePath = $this->storeReportFile($userId, $property->getName(), $year, $content);
+
+        $fileName = sprintf('%s_%d.md', $property->getName(), $year);
+        $creation = $this->documentService->createContentForTargets(
+            $userId,
+            [['entityType' => 'property', 'entityId' => $propertyId]],
+            $fileName,
+            $content,
+            $year,
+            $this->l10n->t('Abrechnung %d', [$year]),
+            $this->l10n->t('Reports')
+        );
 
         $report = new Report();
         $report->setUserId($userId);
         $report->setYear($year);
         $report->setPropertyId($propertyId);
-        $report->setFilePath($filePath);
+        $report->setFilePath($creation['filePath']);
         $report->setCreatedAt(time());
         $saved = $this->reportMapper->insert($report);
         $saved->setDownloadUrl($this->getDownloadUrl($saved, $userId));
@@ -87,14 +96,24 @@ class ReportService {
         $tenancyName = $unitLabel ? $this->l10n->t('Tenancy for %s', [$unitLabel]) : $this->l10n->t('Tenancy #%d', [$tenancyId]);
 
         $content = $this->buildMarkdown($tenancyName, $year, $income, $expense);
-        $filePath = $this->storeReportFile($userId, $tenancyName, $year, $content, 'Tenancies');
+
+        $fileName = sprintf('%s_%d.md', $tenancyName, $year);
+        $creation = $this->documentService->createContentForTargets(
+            $userId,
+            [['entityType' => 'tenancy', 'entityId' => $tenancyId]],
+            $fileName,
+            $content,
+            $year,
+            $this->l10n->t('Abrechnung %d', [$year]),
+            $this->l10n->t('Reports')
+        );
 
         $report = new Report();
         $report->setUserId($userId);
         $report->setYear($year);
         $report->setTenancyId($tenancyId);
         $report->setUnitId($tenancy->getUnitId());
-        $report->setFilePath($filePath);
+        $report->setFilePath($creation['filePath']);
         $report->setCreatedAt(time());
         $saved = $this->reportMapper->insert($report);
         $saved->setDownloadUrl($this->getDownloadUrl($saved, $userId));
@@ -111,19 +130,6 @@ class ReportService {
             "* Einnahmen: " . number_format($income, 2, '.', '') . "\n" .
             "* Ausgaben: " . number_format($expense, 2, '.', '') . "\n" .
             "* Ergebnis: " . number_format($result, 2, '.', '') . "\n";
-    }
-
-    private function storeReportFile(string $userId, string $entityName, int $year, string $content, ?string $folder = null): string {
-        $userFolder = $this->rootFolder->getUserFolder($userId);
-        $folderPath = 'DomusApp/Abrechnungen/' . $year . '/';
-        if ($folder) {
-            $folderPath .= $folder . '/';
-        }
-        $folderPath .= $entityName;
-        $folder = $userFolder->newFolder($folderPath, true);
-        $fileName = time() . '-Abrechnung.md';
-        $file = $folder->newFile($fileName, $content);
-        return $file->getPath();
     }
 
     private function splitIncomeExpense(array $bookings): array {

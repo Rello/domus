@@ -5,7 +5,6 @@ namespace OCA\Domus\Service;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\PartnerMapper;
 use OCA\Domus\Db\UnitMapper;
-use OCP\Files\IRootFolder;
 use OCP\IL10N;
 
 class ServiceChargeSettlementService {
@@ -17,7 +16,6 @@ class ServiceChargeSettlementService {
         private BookingMapper $bookingMapper,
         private PartnerMapper $partnerMapper,
         private UnitMapper $unitMapper,
-        private IRootFolder $rootFolder,
         private DocumentService $documentService,
         private IL10N $l10n,
     ) {
@@ -35,6 +33,7 @@ class ServiceChargeSettlementService {
             }
 
             $chargeShare = $months / 12;
+            $monthsWithinYear = min($months, 12);
 
             $partnerId = $tenancy->getPartnerIds()[0] ?? null;
             if ($partnerId === null) {
@@ -48,6 +47,7 @@ class ServiceChargeSettlementService {
                     'partnerId' => $partnerId,
                     'partnerName' => $tenancy->getPartnerName() ?: $this->l10n->t('Unknown partner'),
                     'tenancyIds' => [],
+                    'months' => 0,
                     'serviceCharge' => 0.0,
                     'houseFee' => 0.0,
                     'propertyTax' => 0.0,
@@ -57,6 +57,7 @@ class ServiceChargeSettlementService {
 
             $serviceCharge = $months * (float)($tenancy->getServiceCharge() ?? 0.0);
             $entries[$key]['tenancyIds'][] = $tenancy->getId();
+            $entries[$key]['months'] = min(12, $entries[$key]['months'] + $monthsWithinYear);
             $entries[$key]['serviceCharge'] += $serviceCharge;
             $entries[$key]['houseFee'] += $unitCharges['houseFee'] * $chargeShare;
             $entries[$key]['propertyTax'] += $unitCharges['propertyTax'] * $chargeShare;
@@ -91,24 +92,32 @@ class ServiceChargeSettlementService {
         }
 
         $content = $this->buildReportMarkdown($partner->getName(), $partner->getStreet(), $partner->getZip(), $partner->getCity(), $partner->getCountry(), $year, $entry);
-        $filePath = $this->storeReportFile($userId, $unit->getLabel() ?: (string)$unit->getUnitNumber(), $year, $partner->getName(), $content);
 
         $targets = [
-            ['entityType' => 'partner', 'entityId' => $partnerId],
             ['entityType' => 'unit', 'entityId' => $unitId],
+            ['entityType' => 'partner', 'entityId' => $partnerId],
         ];
         foreach ($entry['tenancyIds'] as $tenancyId) {
             $targets[] = ['entityType' => 'tenancy', 'entityId' => $tenancyId];
         }
 
-        $links = $this->documentService->attachToTargets(
+        $fileName = sprintf('%s_%s_%d.md',
+            $unit->getLabel() ?: (string)$unit->getUnitNumber(),
+            $partner->getName(),
+            $year
+        );
+
+        $creation = $this->documentService->createContentForTargets(
             $userId,
             $targets,
-            null,
-            $filePath,
+            $fileName,
+            $content,
             $year,
-            $this->l10n->t('Nebenkostenabrechnung %d', [$year])
+            $this->l10n->t('Nebenkostenabrechnung %d', [$year]),
+            $this->l10n->t('Nebenkostenabrechnung')
         );
+
+        $links = $creation['links'];
 
         return [
             'entry' => $entry,
@@ -166,6 +175,13 @@ class ServiceChargeSettlementService {
     }
 
     private function buildReportMarkdown(string $partnerName, ?string $street, ?string $zip, ?string $city, ?string $country, int $year, array $entry): string {
+
+		$saldo = $entry['saldo'];
+
+		$title = $saldo >= 0
+			? $this->l10n->t('Guthaben')
+			: $this->l10n->t('Nachzahlung');
+
         $lines = [
             sprintf('# %s %d', $this->l10n->t('Nebenkostenabrechnung'), $year),
             '',
@@ -178,39 +194,26 @@ class ServiceChargeSettlementService {
         }
 
         $lines[] = '';
+        $lines[] = sprintf('%s %d %s', $this->l10n->t('Zeitraum'), (int)($entry['months'] ?? 0), $this->l10n->t('Monate'));
+        $lines[] = '';
         $lines[] = '| ' . $this->l10n->t('Position') . ' | ' . $this->l10n->t('Amount') . ' |';
         $lines[] = '| --- | ---: |';
-        $lines[] = sprintf('| %s (1001) | %.2f € |', $this->l10n->t('Nebenkosten'), $entry['serviceCharge']);
-        $lines[] = sprintf('| %s (2000) | %.2f € |', $this->l10n->t('Hausgeld'), $entry['houseFee']);
-        $lines[] = sprintf('| %s (2005) | %.2f € |', $this->l10n->t('Grundsteuer'), $entry['propertyTax']);
-        $lines[] = sprintf('| %s | %.2f € |', $this->l10n->t('Saldo'), $entry['saldo']);
+        $lines[] = sprintf('| %s | %.2f € |', $this->l10n->t('Nebenkosten bezahlt'), $entry['serviceCharge']);
+
+        $houseFeeLabel = $this->l10n->t('Hausgeld');
+        $propertyTaxLabel = $this->l10n->t('Grundsteuer');
+
+        if (($entry['months'] ?? 0) < 12) {
+            $anteilig = $this->l10n->t('anteilig');
+            $houseFeeLabel .= ' (' . $anteilig . ')';
+            $propertyTaxLabel .= ' (' . $anteilig . ')';
+        }
+
+        $lines[] = sprintf('| - %s | %.2f € |', $houseFeeLabel, $entry['houseFee']);
+        $lines[] = sprintf('| - %s | %.2f € |', $propertyTaxLabel, $entry['propertyTax']);
+		$lines[] = sprintf('| **%s** | **%.2f €** |', $title, abs($saldo));
 
         return implode("\n", $lines) . "\n";
     }
 
-    private function storeReportFile(string $userId, ?string $unitLabel, int $year, string $partnerName, string $content): string {
-        $safeUnit = $this->sanitizeSegment($unitLabel ?: $this->l10n->t('Unit'));
-        $safePartner = $this->sanitizeSegment($partnerName);
-        $userFolder = $this->rootFolder->getUserFolder($userId);
-        $folderPath = sprintf('DomusApp/Nebenkosten/%d/%s', $year, $safeUnit);
-        $folder = $userFolder->newFolder($folderPath, true);
-        $fileName = sprintf('%s_%s_%d.md', $safeUnit, $safePartner, $year);
-        $uniqueName = $fileName;
-        $suffix = 1;
-
-        while ($folder->nodeExists($uniqueName)) {
-            $uniqueName = sprintf('%s_%s_%d_%d.md', $safeUnit, $safePartner, $year, $suffix);
-            $suffix++;
-        }
-
-        $file = $folder->newFile($uniqueName, $content);
-
-        return trim($folderPath . '/' . $uniqueName, '/');
-    }
-
-    private function sanitizeSegment(string $segment): string {
-        $clean = str_replace(['\\', '/', ':', '*', '?', '"', '<', '>', '|'], '-', $segment);
-        $clean = trim((string)$clean, " \t\n\r\0\x0B-");
-        return $clean === '' ? 'document' : $clean;
-    }
 }
