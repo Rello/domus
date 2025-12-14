@@ -128,6 +128,86 @@
     min-height: 90px;
 }
 
+.domus-form-table {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) 1fr;
+    column-gap: 18px;
+    row-gap: 12px;
+}
+
+.domus-form-row {
+    display: contents;
+}
+
+.domus-form-row-full > .domus-form-label,
+.domus-form-row-full > .domus-form-value {
+    grid-column: 1 / -1;
+}
+
+.domus-form-label {
+    font-weight: 600;
+    color: var(--color-text-maxcontrast);
+    line-height: 1.3;
+}
+
+.domus-form-label .domus-form-help {
+    margin-top: 4px;
+    font-weight: 400;
+}
+
+.domus-form-help {
+    color: var(--color-text-maxcontrast);
+    font-size: 12px;
+}
+
+.domus-form-value {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.domus-form-value input,
+.domus-form-value select,
+.domus-form-value textarea {
+    width: 100%;
+}
+
+.domus-form-value-text {
+    padding: 9px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: #f8f8f8;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.domus-form-value-text:empty::after {
+    content: '—';
+    color: var(--color-text-maxcontrast);
+}
+
+.domus-form-section {
+    grid-column: 1 / -1;
+    font-weight: 700;
+    color: var(--color-text-maxcontrast);
+    margin-top: 4px;
+}
+
+@media (max-width: 720px) {
+    .domus-form-table {
+        grid-template-columns: 1fr;
+    }
+
+    .domus-form-label {
+        margin-bottom: -4px;
+    }
+
+    .domus-form-value-text {
+        min-height: 36px;
+    }
+}
+
 .domus-booking-entries-wrapper {
     margin-bottom: 12px;
 }
@@ -197,6 +277,8 @@
     display: flex;
     gap: 8px;
     margin-top: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 .domus-detail-sidebar button {
