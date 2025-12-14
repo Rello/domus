@@ -33,6 +33,7 @@ class ServiceChargeSettlementService {
             }
 
             $chargeShare = $months / 12;
+            $monthsWithinYear = min($months, 12);
 
             $partnerId = $tenancy->getPartnerIds()[0] ?? null;
             if ($partnerId === null) {
@@ -46,6 +47,7 @@ class ServiceChargeSettlementService {
                     'partnerId' => $partnerId,
                     'partnerName' => $tenancy->getPartnerName() ?: $this->l10n->t('Unknown partner'),
                     'tenancyIds' => [],
+                    'months' => 0,
                     'serviceCharge' => 0.0,
                     'houseFee' => 0.0,
                     'propertyTax' => 0.0,
@@ -55,6 +57,7 @@ class ServiceChargeSettlementService {
 
             $serviceCharge = $months * (float)($tenancy->getServiceCharge() ?? 0.0);
             $entries[$key]['tenancyIds'][] = $tenancy->getId();
+            $entries[$key]['months'] = min(12, $entries[$key]['months'] + $monthsWithinYear);
             $entries[$key]['serviceCharge'] += $serviceCharge;
             $entries[$key]['houseFee'] += $unitCharges['houseFee'] * $chargeShare;
             $entries[$key]['propertyTax'] += $unitCharges['propertyTax'] * $chargeShare;
@@ -184,11 +187,23 @@ class ServiceChargeSettlementService {
         }
 
         $lines[] = '';
+        $lines[] = sprintf('%s %d %s', $this->l10n->t('Zeitraum'), (int)($entry['months'] ?? 0), $this->l10n->t('Monate'));
+        $lines[] = '';
         $lines[] = '| ' . $this->l10n->t('Position') . ' | ' . $this->l10n->t('Amount') . ' |';
         $lines[] = '| --- | ---: |';
         $lines[] = sprintf('| %s (1001) | %.2f € |', $this->l10n->t('Nebenkosten'), $entry['serviceCharge']);
-        $lines[] = sprintf('| %s (2000) | %.2f € |', $this->l10n->t('Hausgeld'), $entry['houseFee']);
-        $lines[] = sprintf('| %s (2005) | %.2f € |', $this->l10n->t('Grundsteuer'), $entry['propertyTax']);
+
+        $houseFeeLabel = $this->l10n->t('Hausgeld');
+        $propertyTaxLabel = $this->l10n->t('Grundsteuer');
+
+        if (($entry['months'] ?? 0) < 12) {
+            $anteilig = $this->l10n->t('anteilig');
+            $houseFeeLabel .= ' (' . $anteilig . ')';
+            $propertyTaxLabel .= ' (' . $anteilig . ')';
+        }
+
+        $lines[] = sprintf('| %s (2000) | %.2f € |', $houseFeeLabel, $entry['houseFee']);
+        $lines[] = sprintf('| %s (2005) | %.2f € |', $propertyTaxLabel, $entry['propertyTax']);
         $lines[] = sprintf('| %s | %.2f € |', $this->l10n->t('Saldo'), $entry['saldo']);
 
         return implode("\n", $lines) . "\n";
