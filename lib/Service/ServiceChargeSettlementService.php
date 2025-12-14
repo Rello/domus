@@ -175,6 +175,13 @@ class ServiceChargeSettlementService {
     }
 
     private function buildReportMarkdown(string $partnerName, ?string $street, ?string $zip, ?string $city, ?string $country, int $year, array $entry): string {
+
+		$saldo = $entry['saldo'];
+
+		$title = $saldo >= 0
+			? $this->l10n->t('Guthaben')
+			: $this->l10n->t('Nachzahlung');
+
         $lines = [
             sprintf('# %s %d', $this->l10n->t('Nebenkostenabrechnung'), $year),
             '',
@@ -191,7 +198,7 @@ class ServiceChargeSettlementService {
         $lines[] = '';
         $lines[] = '| ' . $this->l10n->t('Position') . ' | ' . $this->l10n->t('Amount') . ' |';
         $lines[] = '| --- | ---: |';
-        $lines[] = sprintf('| %s (1001) | %.2f € |', $this->l10n->t('Nebenkosten'), $entry['serviceCharge']);
+        $lines[] = sprintf('| %s | %.2f € |', $this->l10n->t('Nebenkosten bezahlt'), $entry['serviceCharge']);
 
         $houseFeeLabel = $this->l10n->t('Hausgeld');
         $propertyTaxLabel = $this->l10n->t('Grundsteuer');
@@ -202,9 +209,9 @@ class ServiceChargeSettlementService {
             $propertyTaxLabel .= ' (' . $anteilig . ')';
         }
 
-        $lines[] = sprintf('| %s (2000) | %.2f € |', $houseFeeLabel, $entry['houseFee']);
-        $lines[] = sprintf('| %s (2005) | %.2f € |', $propertyTaxLabel, $entry['propertyTax']);
-        $lines[] = sprintf('| %s | %.2f € |', $this->l10n->t('Saldo'), $entry['saldo']);
+        $lines[] = sprintf('| - %s | %.2f € |', $houseFeeLabel, $entry['houseFee']);
+        $lines[] = sprintf('| - %s | %.2f € |', $propertyTaxLabel, $entry['propertyTax']);
+		$lines[] = sprintf('| **%s** | **%.2f €** |', $title, abs($saldo));
 
         return implode("\n", $lines) . "\n";
     }
