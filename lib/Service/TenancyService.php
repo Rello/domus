@@ -262,15 +262,20 @@ class TenancyService {
 
     private function hydratePartners(Tenancy $tenancy, string $userId): void {
         $relations = $this->partnerRelMapper->findForTenancy($tenancy->getId(), $userId);
-        $partnerIds = [];
+        $partnerIds = array_values(array_unique(array_map(fn(PartnerRel $relation) => $relation->getPartnerId(), $relations)));
+
+        $partnersById = [];
+        foreach ($this->partnerMapper->findForUserByIds($partnerIds, $userId) as $partner) {
+            $partnersById[$partner->getId()] = $partner;
+        }
+
         $partners = [];
-        foreach ($relations as $relation) {
-            $partnerIds[] = $relation->getPartnerId();
-            $partner = $this->partnerMapper->findForUser($relation->getPartnerId(), $userId);
-            if ($partner) {
-                $partners[] = $partner;
+        foreach ($partnerIds as $partnerId) {
+            if (isset($partnersById[$partnerId])) {
+                $partners[] = $partnersById[$partnerId];
             }
         }
+
         $tenancy->setPartnerIds($partnerIds);
         $tenancy->setPartners($partners);
     }
