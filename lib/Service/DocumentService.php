@@ -421,12 +421,15 @@ class DocumentService {
                     if (!$unit) {
                         throw new \RuntimeException($this->l10n->t('Unit not found.'));
                     }
-                    $property = $this->propertyMapper->findForUser($unit->getPropertyId(), $userId);
-                    if (!$property) {
-                        throw new \RuntimeException($this->l10n->t('Property not found.'));
+                    $property = null;
+                    if ($unit->getPropertyId() !== null) {
+                        $property = $this->propertyMapper->findForUser($unit->getPropertyId(), $userId);
+                        if (!$property) {
+                            throw new \RuntimeException($this->l10n->t('Property not found.'));
+                        }
                     }
                     return [
-                        'propertyFolder' => $property->getName() ?: $this->l10n->t('Property'),
+                        'propertyFolder' => $property?->getName() ?: $this->l10n->t('General'),
                         'unitFolder' => $unit->getLabel() ?: (string)$unit->getUnitNumber(),
                         'year' => $targetYear,
                     ];
@@ -439,16 +442,19 @@ class DocumentService {
                     if (!$unit) {
                         throw new \RuntimeException($this->l10n->t('Unit not found.'));
                     }
-                    $property = $this->propertyMapper->findForUser($unit->getPropertyId(), $userId);
-                    if (!$property) {
-                        throw new \RuntimeException($this->l10n->t('Property not found.'));
+                    $property = null;
+                    if ($unit->getPropertyId() !== null) {
+                        $property = $this->propertyMapper->findForUser($unit->getPropertyId(), $userId);
+                        if (!$property) {
+                            throw new \RuntimeException($this->l10n->t('Property not found.'));
+                        }
                     }
                     $tenancyYear = $targetYear;
                     if ($year === null && $tenancy->getStartDate()) {
                         $tenancyYear = (int)date('Y', strtotime((string)$tenancy->getStartDate()));
                     }
                     return [
-                        'propertyFolder' => $property->getName() ?: $this->l10n->t('Property'),
+                        'propertyFolder' => $property?->getName() ?: $this->l10n->t('General'),
                         'unitFolder' => $unit->getLabel() ?: (string)$unit->getUnitNumber(),
                         'year' => $tenancyYear,
                     ];
