@@ -3031,7 +3031,6 @@
             Domus.Api.getBookings()
                 .then(bookings => {
                     const toolbar = '<div class="domus-toolbar">' +
-                        '<button id="domus-booking-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New booking')) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
                     const rows = (bookings || []).map(b => ({
@@ -3051,7 +3050,6 @@
         }
 
         function bindList() {
-            document.getElementById('domus-booking-create')?.addEventListener('click', () => openCreateModal());
             Domus.UI.bindRowNavigation();
         }
 
