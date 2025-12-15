@@ -373,7 +373,7 @@
         }
 
         function openModal(options) {
-            const { title, content, size } = options || {};
+            const { title, content, size, headerActions = [] } = options || {};
             const backdrop = document.createElement('div');
             backdrop.className = 'domus-modal-backdrop';
 
@@ -387,12 +387,27 @@
             header.className = 'domus-modal-header';
             const heading = document.createElement('h3');
             heading.textContent = title || '';
+            const actionsEl = document.createElement('div');
+            actionsEl.className = 'domus-modal-header-actions';
+            (headerActions || []).forEach(action => {
+                if (!action) return;
+                if (typeof action === 'string') {
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = action;
+                    actionsEl.appendChild(wrapper);
+                    return;
+                }
+                if (action instanceof Node) {
+                    actionsEl.appendChild(action);
+                }
+            });
             const closeBtn = document.createElement('button');
             closeBtn.type = 'button';
             closeBtn.className = 'domus-modal-close';
             closeBtn.setAttribute('aria-label', t('domus', 'Close modal'));
             closeBtn.innerHTML = '&times;';
             header.appendChild(heading);
+            header.appendChild(actionsEl);
             header.appendChild(closeBtn);
 
             const body = document.createElement('div');
@@ -428,6 +443,17 @@
             });
 
             return { modalEl: modal, close: closeModal };
+        }
+
+        function buildModalAction(label, onClick) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = label || '';
+            btn.className = 'domus-modal-action';
+            if (typeof onClick === 'function') {
+                btn.addEventListener('click', onClick);
+            }
+            return btn;
         }
 
         function normalizeCell(cell) {
@@ -738,6 +764,38 @@
             return '<dl class="domus-info-list">' + rows + '</dl>';
         }
 
+        function buildFormSection(title) {
+            if (!title) {
+                return '';
+            }
+            return '<div class="domus-form-section">' + Domus.Utils.escapeHtml(title) + '</div>';
+        }
+
+        function buildFormRow(row) {
+            if (!row) {
+                return '';
+            }
+
+            const labelText = row.label ? Domus.Utils.escapeHtml(row.label) + (row.required ? ' *' : '') : '';
+            const helpText = row.helpText ? '<div class="domus-form-help">' + Domus.Utils.escapeHtml(row.helpText) + '</div>' : '';
+            const label = '<div class="domus-form-label">' + labelText + helpText + '</div>';
+            const value = '<div class="domus-form-value">' + (row.content || '') + '</div>';
+            const classes = ['domus-form-row'];
+            if (row.fullWidth) {
+                classes.push('domus-form-row-full');
+            }
+
+            return '<div class="' + classes.join(' ') + '">' + label + value + '</div>';
+        }
+
+        function buildFormTable(rows) {
+            const content = (rows || []).filter(Boolean).join('');
+            if (!content) {
+                return '';
+            }
+            return '<div class="domus-form-table">' + content + '</div>';
+        }
+
         function bindBackButtons() {
             document.querySelectorAll('button[data-back]').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -769,7 +827,11 @@
             bindCollapsibles,
             buildStatCards,
             buildInfoList,
+            buildFormSection,
+            buildFormRow,
+            buildFormTable,
             openModal,
+            buildModalAction,
             createFileDropZone
         };
     })();
@@ -1205,7 +1267,9 @@
             Domus.Api.getProperty(id)
                 .then(property => {
 
-                    const address = [property.street, property.city].filter(Boolean).join(', ');
+                    const cityLine = [property.zip, property.city].filter(Boolean).join(' ');
+                    const addressParts = [property.street, cityLine, property.country].filter(Boolean);
+                    const address = addressParts.length ? addressParts.join(', ') : (property.address || '');
                     const showBookingFeatures = Domus.Role.hasCapability('manageBookings');
                     const showReportActions = Domus.Role.hasCapability('manageReports');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
@@ -1218,20 +1282,17 @@
 
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-main">' +
-                        '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(property.type || t('domus', 'Property')) + '</div>' +
+                        (property.description ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(property.description) + '</div>' : '') +
                         '<h2>' + Domus.Utils.escapeHtml(property.name || '') + '</h2>' +
                         '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(address) + '</p>' +
-                        '<div class="domus-hero-tags">' +
-                        (property.usageRole ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(property.usageRole) + '</span>' : '') +
-                        (property.city ? '<span class="domus-badge domus-badge-muted">' + Domus.Utils.escapeHtml(property.city) + '</span>' : '') +
-                        '</div>' +
+                        (property.type ? '<div class="domus-hero-tags"><span class="domus-badge">' + Domus.Utils.escapeHtml(property.type) + '</span></div>' : '') +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         [
                             '<button id="domus-add-unit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add unit')) + '</button>',
                             showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' : '',
                             showReportActions ? '<button id="domus-property-report">' + Domus.Utils.escapeHtml(t('domus', 'Generate report')) + '</button>' : '',
-                            '<button id="domus-property-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>',
+                            '<button id="domus-property-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
                             '<button id="domus-property-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
                         ].filter(Boolean).join('') +
                         '</div>' +
@@ -1285,11 +1346,9 @@
         }
 
         function bindDetailActions(id) {
-            const editBtn = document.getElementById('domus-property-edit');
+            const detailsBtn = document.getElementById('domus-property-details');
             const deleteBtn = document.getElementById('domus-property-delete');
-            if (editBtn) {
-                editBtn.addEventListener('click', () => openEditModal(id));
-            }
+            detailsBtn?.addEventListener('click', () => openPropertyModal(id, 'view'));
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', () => {
                     if (confirm(t('domus', 'Delete property?'))) {
@@ -1319,11 +1378,25 @@
         }
 
         function openEditModal(id) {
+            openPropertyModal(id, 'edit');
+        }
+
+        function openPropertyModal(id, mode = 'edit') {
             Domus.Api.getProperty(id)
                 .then(property => {
-                    const modal = Domus.UI.openModal({
-                        title: t('domus', 'Edit property'),
-                        content: buildPropertyForm(property)
+                    let modal;
+                    const headerActions = [];
+                    if (mode === 'view') {
+                        headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
+                            modal?.close();
+                            openPropertyModal(id, 'edit');
+                        }));
+                    }
+
+                    modal = Domus.UI.openModal({
+                        title: mode === 'view' ? t('domus', 'Property details') : t('domus', 'Edit property'),
+                        content: buildPropertyForm(property, { mode }),
+                        headerActions
                     });
                     bindPropertyForm(modal, data => Domus.Api.updateProperty(id, data)
                         .then(() => {
@@ -1331,68 +1404,104 @@
                             modal.close();
                             renderDetail(id);
                         })
-                        .catch(err => Domus.UI.showNotification(err.message, 'error')));
+                        .catch(err => Domus.UI.showNotification(err.message, 'error')),
+                    { mode });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
-        function bindPropertyForm(modalContext, onSubmit) {
+
+        function bindPropertyForm(modalContext, onSubmit, options = {}) {
             const form = modalContext.modalEl.querySelector('#domus-property-form');
+            const mode = options.mode || 'edit';
             const cancelBtn = modalContext.modalEl.querySelector('#domus-property-cancel');
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', modalContext.close);
-            }
-            if (form) {
-                form.addEventListener('submit', function(e) {
+            const closeBtn = modalContext.modalEl.querySelector('#domus-property-close');
+
+            if (mode === 'view') {
+                closeBtn?.addEventListener('click', modalContext.close);
+                form?.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    const data = formToObject(form);
-                    if (!data.name) {
-                        Domus.UI.showNotification(t('domus', 'Name is required.'), 'error');
-                        return;
-                    }
-                    onSubmit(data);
+                    modalContext.close();
                 });
+                return;
             }
+
+            cancelBtn?.addEventListener('click', modalContext.close);
+            form?.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const data = formToObject(form);
+                if (!data.name) {
+                    Domus.UI.showNotification(t('domus', 'Name is required.'), 'error');
+                    return;
+                }
+                onSubmit(data);
+            });
         }
 
-        function buildPropertyForm(property) {
+        function buildPropertyForm(property, options = {}) {
             const prop = property || {};
-            return '<div class="domus-form">' +
-                '<form id="domus-property-form">' +
-                buildTextInput('name', t('domus', 'Name'), true, prop.name) +
-                buildSelect('usageRole', t('domus', 'Usage role'), [
+            const mode = options.mode || 'edit';
+            const isView = mode === 'view';
+
+            function renderDisplay(value) {
+                const safeValue = value || value === 0 ? String(value) : '';
+                return '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(safeValue) + '</div>';
+            }
+
+            function inputField(name, label, value, opts = {}) {
+                const required = opts.required && !isView;
+                const attrs = [`name="${Domus.Utils.escapeHtml(name)}"`];
+                if (opts.type) attrs.push(`type="${Domus.Utils.escapeHtml(opts.type)}"`);
+                if (required) attrs.push('required');
+                if (isView) attrs.push('disabled');
+                const content = opts.isTextarea
+                    ? `<textarea ${attrs.join(' ')}>${value ? Domus.Utils.escapeHtml(String(value)) : ''}</textarea>`
+                    : `<input ${attrs.join(' ')} value="${value ? Domus.Utils.escapeHtml(String(value)) : ''}">`;
+                return Domus.UI.buildFormRow({
+                    label,
+                    required,
+                    content: isView ? renderDisplay(value) : content
+                });
+            }
+
+            function selectField(name, label, options, selected) {
+                const current = selected || options[0]?.value;
+                const content = isView
+                    ? renderDisplay(options.find(opt => opt.value === current)?.label || current)
+                    : '<select name="' + Domus.Utils.escapeHtml(name) + '">' +
+                    options.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (opt.value === current ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                    '</select>';
+                return Domus.UI.buildFormRow({ label, content: content });
+            }
+
+            const rows = [
+                inputField('name', t('domus', 'Name'), prop.name || '', { required: true }),
+                selectField('usageRole', t('domus', 'Usage role'), [
                     { value: 'manager', label: t('domus', 'Manager') },
                     { value: 'landlord', label: t('domus', 'Landlord') }
-                ], prop.usageRole) +
-                buildTextInput('street', t('domus', 'Street'), false, prop.street) +
-                buildTextInput('zip', t('domus', 'ZIP'), false, prop.zip) +
-                buildTextInput('city', t('domus', 'City'), false, prop.city) +
-                buildTextInput('country', t('domus', 'Country'), false, prop.country || 'DE') +
-                buildTextInput('type', t('domus', 'Type'), false, prop.type) +
-                buildTextarea('description', t('domus', 'Description'), prop.description) +
-                '<div class="domus-form-actions">' +
+                ], prop.usageRole),
+                inputField('street', t('domus', 'Street'), prop.street || ''),
+                inputField('zip', t('domus', 'ZIP'), prop.zip || ''),
+                inputField('city', t('domus', 'City'), prop.city || ''),
+                inputField('country', t('domus', 'Country'), prop.country || 'DE'),
+                inputField('type', t('domus', 'Type'), prop.type || ''),
+                inputField('description', t('domus', 'Description'), prop.description || '', { isTextarea: true, fullWidth: true })
+            ];
+
+            const actions = isView
+                ? '<div class="domus-form-actions"><button type="button" id="domus-property-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
+                : '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-property-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '</div>' +
+                '</div>';
+
+            return '<div class="domus-form">' +
+                '<form id="domus-property-form" data-mode="' + Domus.Utils.escapeHtml(mode) + '">' +
+                Domus.UI.buildFormTable(rows) +
+                actions +
                 '</form>' +
                 '</div>';
         }
-
-        function buildTextInput(name, label, required, value) {
-            return '<label>' + Domus.Utils.escapeHtml(label) + (required ? ' *' : '') +
-                '<input type="text" name="' + name + '" ' + (required ? 'required' : '') + ' value="' +
-                (value ? Domus.Utils.escapeHtml(value) : '') + '"></label>';
-        }
-
-        function buildSelect(name, label, options, selected) {
-            const opts = options.map(opt => '<option value="' + opt.value + '"' + (selected === opt.value ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('');
-            return '<label>' + Domus.Utils.escapeHtml(label) + '<select name="' + name + '">' + opts + '</select></label>';
-        }
-
-        function buildTextarea(name, label, value) {
-            return '<label>' + Domus.Utils.escapeHtml(label) + '<textarea name="' + name + '">' + (value ? Domus.Utils.escapeHtml(value) : '') + '</textarea></label>';
-        }
-
         function formToObject(form) {
             const obj = {};
             Array.prototype.forEach.call(form.elements, function(el) {
@@ -1603,7 +1712,26 @@
                     const canManageBookings = Domus.Role.hasCapability('manageBookings') && unitDetailConfig.showBookings;
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
-                    const subtitleParts = [unit.propertyName || '', unit.unitNumber].filter(Boolean);
+                    const livingAreaLabel = unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '';
+                    const kickerParts = [livingAreaLabel, unit.notes].filter(Boolean);
+                    const kicker = kickerParts.length ? kickerParts.join(' | ') : '';
+                    const street = unit.street || unit.propertyStreet;
+                    const zip = unit.zip || unit.propertyZip;
+                    const city = unit.city || unit.propertyCity;
+                    const country = unit.country || unit.propertyCountry;
+                    const addressParts = [];
+                    if (unit.address) {
+                        addressParts.push(unit.address);
+                    }
+                    const cityLine = [zip, city].filter(Boolean).join(' ');
+                    if (street || cityLine || country) {
+                        if (street) addressParts.push(street);
+                        if (cityLine) addressParts.push(cityLine);
+                        if (country) addressParts.push(country);
+                    } else if (unit.address) {
+                        addressParts.push(unit.address);
+                    }
+                    const addressLine = addressParts.join(', ');
                     const stats = Domus.UI.buildStatCards([
                         { label: tenancyLabels.plural, value: allTenancies.length, hint: t('domus', 'Active and historic'), formatValue: false },
                         { label: t('domus', 'Bookings'), value: (bookings || []).length, hint: t('domus', 'Entries for the selected year'), formatValue: false },
@@ -1613,20 +1741,17 @@
 
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-main">' +
-                        '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(unit.unitType || t('domus', 'Unit')) + '</div>' +
+                        (kicker ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(kicker) + '</div>' : '') +
                         '<h2>' + Domus.Utils.escapeHtml(unit.label || '') + '</h2>' +
-                        '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(subtitleParts.join(' • ')) + '</p>' +
-                        '<div class="domus-hero-tags">' +
-                        (unit.propertyName ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(unit.propertyName) + '</span>' : '') +
-                        (unit.unitNumber ? '<span class="domus-badge domus-badge-muted">' + Domus.Utils.escapeHtml(unit.unitNumber) + '</span>' : '') +
-                        '</div>' +
+                        (addressLine ? '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(addressLine) + '</p>' : '') +
+                        (unit.unitType ? '<div class="domus-hero-tags"><span class="domus-badge">' + Domus.Utils.escapeHtml(unit.unitType) + '</span></div>' : '') +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         [
                             (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" class="primary" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
                             (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' : ''),
                             '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Nebenkostenabrechnung')) + '</button>',
-                            '<button id="domus-unit-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>',
+                            '<button id="domus-unit-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
                             '<button id="domus-unit-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
                         ].filter(Boolean).join('') +
                         '</div>' +
@@ -1642,32 +1767,10 @@
                     } : null);
 
                     const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'));
-                    const isBuildingMgmt = Domus.Role.isBuildingMgmtView();
                     const revenueTable = renderStatisticsTable(statistics ? statistics.revenue : null);
                     const costTable = statistics && statistics.cost
                         ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost) + '</div>'
                         : '';
-                    const infoItems = [
-                        { label: t('domus', 'Property'), value: unit.propertyName || unit.propertyId },
-                        { label: t('domus', 'Unit number'), value: unit.unitNumber },
-                        { label: t('domus', 'Unit type'), value: unit.unitType },
-                        { label: t('domus', 'Living area'), value: unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '' },
-                        { label: t('domus', 'Description'), value: unit.notes }
-                    ];
-
-                    if (!isBuildingMgmt) {
-                        infoItems.splice(3, 0, { label: t('domus', 'Land register'), value: unit.landRegister });
-                        infoItems.splice(5, 0, { label: t('domus', 'Usable area'), value: unit.usableArea ? `${Domus.Utils.formatAmount(unit.usableArea)} m²` : '' });
-                        infoItems.push(
-                            { label: t('domus', 'Buy date'), value: Domus.Utils.formatDate(unit.buyDate) },
-                            { label: t('domus', 'Total costs'), value: unit.totalCosts ? Domus.Utils.formatCurrency(unit.totalCosts) : '' },
-                            { label: t('domus', 'Official ID'), value: unit.officialId },
-                            { label: t('domus', 'IBAN'), value: unit.iban },
-                            { label: t('domus', 'BIC'), value: unit.bic }
-                        );
-                    }
-
-                    const infoList = Domus.UI.buildInfoList(infoItems);
 
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('units') +
@@ -1683,8 +1786,6 @@
                         Domus.Bookings.renderInline(bookings || []) + '</div></div>' : '') +
                         '</div>' +
                         '<div class="domus-dashboard-side">' +
-                        '<div class="domus-panel">' + '<div class="domus-panel-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Unit details')) + '</h3></div>' +
-                        '<div class="domus-panel-body">' + infoList + '</div></div>' +
                         '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
                         Domus.Documents.renderList('unit', id, { showLinkAction: documentActionsEnabled }) + '</div></div>' +
                         '</div>' +
@@ -1699,10 +1800,10 @@
         }
 
         function bindDetailActions(id, unit) {
-            const editBtn = document.getElementById('domus-unit-edit');
+            const detailsBtn = document.getElementById('domus-unit-details');
             const deleteBtn = document.getElementById('domus-unit-delete');
 
-            editBtn?.addEventListener('click', () => openEditModal(id));
+            detailsBtn?.addEventListener('click', () => openUnitModal(id, 'view'));
             deleteBtn?.addEventListener('click', () => {
                 if (!confirm(t('domus', 'Delete unit?'))) {
                     return;
@@ -1739,6 +1840,10 @@
         }
 
         function openEditModal(id) {
+            openUnitModal(id, 'edit');
+        }
+
+        function openUnitModal(id, mode = 'edit') {
             Promise.all([
                 Domus.Api.get('/units/' + id),
                 Domus.Api.getProperties()
@@ -1753,9 +1858,19 @@
                     const requireProperty = true;
                     const defaultPropertyId = unit.propertyId || availableProperties[0]?.value;
 
-                    const modal = Domus.UI.openModal({
-                        title: t('domus', 'Edit unit'),
-                        content: buildUnitForm(propertyOptions, unit, { showPropertySelect, requireProperty, defaultPropertyId })
+                    let modal;
+                    const headerActions = [];
+                    if (mode === 'view') {
+                        headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
+                            modal?.close();
+                            openUnitModal(id, 'edit');
+                        }));
+                    }
+
+                    modal = Domus.UI.openModal({
+                        title: mode === 'view' ? t('domus', 'Unit details') : t('domus', 'Edit unit'),
+                        content: buildUnitForm(propertyOptions, unit, { showPropertySelect, requireProperty, defaultPropertyId, mode }),
+                        headerActions
                     });
                     bindUnitForm(modal, data => Domus.Api.updateUnit(id, data)
                         .then(() => {
@@ -1764,14 +1879,26 @@
                             renderDetail(id);
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error')),
-                    { requireProperty });
+                    { requireProperty, mode });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
         function bindUnitForm(modalContext, onSubmit, options = {}) {
             const form = modalContext.modalEl.querySelector('#domus-unit-form');
+            const mode = options.mode || 'edit';
             const cancel = modalContext.modalEl.querySelector('#domus-unit-cancel');
+            const closeBtn = modalContext.modalEl.querySelector('#domus-unit-close');
+
+            if (mode === 'view') {
+                closeBtn?.addEventListener('click', modalContext.close);
+                form?.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    modalContext.close();
+                });
+                return;
+            }
+
             cancel?.addEventListener('click', modalContext.close);
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -1785,50 +1912,148 @@
                     Domus.UI.showNotification(t('domus', 'Label is required.'), 'error');
                     return;
                 }
-                onSubmit(data);
+                onSubmit?.(data);
             });
         }
 
+
         function buildUnitForm(propertyOptions, unit, options = {}) {
+            const mode = options.mode || 'edit';
+            const isView = mode === 'view';
             const selectedPropertyId = unit?.propertyId
                 ? String(unit.propertyId)
                 : (options.defaultPropertyId ? String(options.defaultPropertyId) : '');
             const showPropertySelect = options.showPropertySelect !== false && propertyOptions.length;
             const includeManagementExcludedFields = !Domus.Role.isBuildingMgmtView();
-            const propertyInput = showPropertySelect
-                ? '<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + (options.requireProperty ? ' *' : '') + '<select name="propertyId"' + (options.requireProperty ? ' required' : '') + '>' +
-                propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) ===selectedPropertyId ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select></label>'
-                : (selectedPropertyId ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedPropertyId) + '">' : '');
+            const hiddenFields = [];
 
-            const fields = [
-                propertyInput,
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Label')) + ' *<input name="label" required value="' + (unit?.label ? Domus.Utils.escapeHtml(unit.label) : '') + '"></label>',
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit number')) + '<input name="unitNumber" value="' + (unit?.unitNumber ? Domus.Utils.escapeHtml(unit.unitNumber) : '') + '"></label>',
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit type')) + '<input name="unitType" value="' + (unit?.unitType ? Domus.Utils.escapeHtml(unit.unitType) : '') + '"></label>',
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Living area')) + '<input name="livingArea" type="number" step="0.01" value="' + (unit?.livingArea ? Domus.Utils.escapeHtml(unit.livingArea) : '') + '"></label>',
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Description')) + '<textarea name="notes">' + (unit?.notes ? Domus.Utils.escapeHtml(unit.notes) : '') + '</textarea></label>'
-            ];
+            const propertyMap = propertyOptions.reduce((map, opt) => {
+                if (opt && opt.value !== undefined) {
+                    map[String(opt.value)] = opt.label;
+                }
+                return map;
+            }, {});
+
+            function displayValue(value, formatter) {
+                if (value === undefined || value === null || value === '') {
+                    return '';
+                }
+                const resolved = typeof formatter === 'function' ? formatter(value) : value;
+                return resolved === undefined || resolved === null ? '' : resolved;
+            }
+
+            function renderDisplay(value, formatter) {
+                const resolved = displayValue(value, formatter);
+                const text = typeof resolved === 'string' ? resolved : (resolved || resolved === 0 ? String(resolved) : '');
+                const escaped = Domus.Utils.escapeHtml(text).replace(/\n/g, '<br>');
+                return '<div class="domus-form-value-text">' + escaped + '</div>';
+            }
+
+            function inputField(name, label, value, options = {}) {
+                const id = `domus-unit-${name}`;
+                const required = options.required && !isView;
+                const attrs = [
+                    `name="${Domus.Utils.escapeHtml(name)}"`,
+                    `id="${Domus.Utils.escapeHtml(id)}"`
+                ];
+                if (options.type) attrs.push(`type="${Domus.Utils.escapeHtml(options.type)}"`);
+                if (options.step) attrs.push(`step="${Domus.Utils.escapeHtml(options.step)}"`);
+                if (required) attrs.push('required');
+                if (isView) attrs.push('disabled');
+                const escapedValue = value || value === 0 ? Domus.Utils.escapeHtml(String(value)) : '';
+                const content = options.isTextarea
+                    ? `<textarea ${attrs.join(' ')}>${escapedValue}</textarea>`
+                    : `<input ${attrs.join(' ')} value="${escapedValue}">`;
+
+                const viewContent = renderDisplay(value, options.viewFormatter);
+                return Domus.UI.buildFormRow({
+                    label,
+                    required: required,
+                    content: isView ? viewContent : content
+                });
+            }
+
+            const rows = [];
+
+            if (showPropertySelect) {
+                const propertyLabel = propertyMap[selectedPropertyId] || unit?.propertyName || selectedPropertyId;
+                const content = isView
+                    ? renderDisplay(propertyLabel)
+                    : '<select name="propertyId" id="domus-unit-property"' + (options.requireProperty ? ' required' : '') + (isView ? ' disabled' : '') + '>' +
+                    propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedPropertyId ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                    '</select>';
+                rows.push(Domus.UI.buildFormRow({
+                    label: t('domus', 'Property'),
+                    required: options.requireProperty && !isView,
+                    content
+                }));
+            } else if (selectedPropertyId) {
+                hiddenFields.push('<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedPropertyId) + '">');
+            }
+
+            rows.push(
+                inputField('label', t('domus', 'Label'), unit?.label || '', { required: true }),
+                inputField('unitNumber', t('domus', 'Unit number'), unit?.unitNumber || ''),
+                inputField('unitType', t('domus', 'Unit type'), unit?.unitType || '')
+            );
 
             if (includeManagementExcludedFields) {
-                fields.splice(3, 0, '<label>' + Domus.Utils.escapeHtml(t('domus', 'Land register')) + '<input name="landRegister" value="' + (unit?.landRegister ? Domus.Utils.escapeHtml(unit.landRegister) : '') + '"></label>');
-                fields.splice(6, 0, '<label>' + Domus.Utils.escapeHtml(t('domus', 'Usable area')) + '<input name="usableArea" type="number" step="0.01" value="' + (unit?.usableArea ? Domus.Utils.escapeHtml(unit.usableArea) : '') + '"></label>');
-                fields.push(
-                    '<label>' + Domus.Utils.escapeHtml(t('domus', 'Buy date')) + '<input name="buyDate" type="date" value="' + (unit?.buyDate ? Domus.Utils.escapeHtml(unit.buyDate) : '') + '"></label>',
-                    '<label>' + Domus.Utils.escapeHtml(t('domus', 'Total costs')) + '<input name="totalCosts" type="number" step="0.01" value="' + (unit?.totalCosts || unit?.totalCosts === 0 ? Domus.Utils.escapeHtml(unit.totalCosts) : '') + '"></label>',
-                    '<label>' + Domus.Utils.escapeHtml(t('domus', 'Official ID')) + '<input name="officialId" value="' + (unit?.officialId ? Domus.Utils.escapeHtml(unit.officialId) : '') + '"></label>',
-                    '<label>' + Domus.Utils.escapeHtml(t('domus', 'IBAN')) + '<input name="iban" value="' + (unit?.iban ? Domus.Utils.escapeHtml(unit.iban) : '') + '"></label>',
-                    '<label>' + Domus.Utils.escapeHtml(t('domus', 'BIC')) + '<input name="bic" value="' + (unit?.bic ? Domus.Utils.escapeHtml(unit.bic) : '') + '"></label>'
+                rows.push(inputField('landRegister', t('domus', 'Land register'), unit?.landRegister || ''));
+            }
+
+            rows.push(
+                inputField('livingArea', t('domus', 'Living area'), unit?.livingArea || '', {
+                    type: 'number',
+                    step: '0.01',
+                    viewFormatter: (val) => `${Domus.Utils.formatAmount(val)} m²`
+                })
+            );
+
+            if (includeManagementExcludedFields) {
+                rows.push(
+                    inputField('usableArea', t('domus', 'Usable area'), unit?.usableArea || '', {
+                        type: 'number',
+                        step: '0.01',
+                        viewFormatter: (val) => `${Domus.Utils.formatAmount(val)} m²`
+                    })
                 );
             }
 
-            return '<div class="domus-form">' +
-                '<form id="domus-unit-form">' +
-                fields.filter(Boolean).join('') +
-                '<div class="domus-form-actions">' +
+            rows.push(
+                inputField('notes', t('domus', 'Description'), unit?.notes || '', {
+                    isTextarea: true
+                })
+            );
+
+            if (includeManagementExcludedFields) {
+                rows.push(
+                    inputField('buyDate', t('domus', 'Buy date'), unit?.buyDate || '', {
+                        type: 'date',
+                        viewFormatter: Domus.Utils.formatDate
+                    }),
+                    inputField('totalCosts', t('domus', 'Total costs'), unit?.totalCosts || '', {
+                        type: 'number',
+                        step: '0.01',
+                        viewFormatter: Domus.Utils.formatCurrency
+                    }),
+                    inputField('officialId', t('domus', 'Official ID'), unit?.officialId || ''),
+                    inputField('iban', t('domus', 'IBAN'), unit?.iban || ''),
+                    inputField('bic', t('domus', 'BIC'), unit?.bic || '')
+                );
+            }
+
+            const actions = isView
+                ? '<div class="domus-form-actions"><button type="button" id="domus-unit-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
+                : '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-unit-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '</div>' +
+                '</div>';
+
+            return '<div class="domus-form">' +
+                '<form id="domus-unit-form" data-mode="' + Domus.Utils.escapeHtml(mode) + '">' +
+                hiddenFields.join('') +
+                Domus.UI.buildFormTable(rows) +
+                actions +
                 '</form>' +
                 '</div>';
         }
@@ -2067,7 +2292,7 @@
                         { label: t('domus', 'Type'), value: partner.partnerType || '—', hint: t('domus', 'Partner category') }
                     ]);
 
-                    const contactMeta = [partner.email, partner.phone].filter(Boolean).join(' • ');
+                    const contactMeta = [partner.phone, partner.email].filter(Boolean).join(' • ');
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-main">' +
                         '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(partner.partnerType || t('domus', 'Partner')) + '</div>' +
@@ -2076,7 +2301,7 @@
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         (canManageTenancies && tenancyLabels.action ? '<button id="domus-add-partner-tenancy" class="primary" data-partner-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : '') +
-                        '<button id="domus-partner-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
+                        '<button id="domus-partner-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>' +
                         '<button id="domus-partner-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
                         '</div>' +
                         '</div>';
@@ -2126,10 +2351,10 @@
         }
 
         function bindDetailActions(id) {
-            const editBtn = document.getElementById('domus-partner-edit');
+            const detailsBtn = document.getElementById('domus-partner-details');
             const deleteBtn = document.getElementById('domus-partner-delete');
 
-            editBtn?.addEventListener('click', () => openEditModal(id));
+            detailsBtn?.addEventListener('click', () => openPartnerModal(id, 'view'));
             deleteBtn?.addEventListener('click', () => {
                 if (!confirm(t('domus', 'Delete partner?'))) {
                     return;
@@ -2152,11 +2377,25 @@
         }
 
         function openEditModal(id) {
+            openPartnerModal(id, 'edit');
+        }
+
+        function openPartnerModal(id, mode = 'edit') {
             Domus.Api.get('/partners/' + id)
                 .then(partner => {
-                    const modal = Domus.UI.openModal({
-                        title: t('domus', 'Edit partner'),
-                        content: buildPartnerForm(partner)
+                    let modal;
+                    const headerActions = [];
+                    if (mode === 'view') {
+                        headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
+                            modal?.close();
+                            openPartnerModal(id, 'edit');
+                        }));
+                    }
+
+                    modal = Domus.UI.openModal({
+                        title: mode === 'view' ? t('domus', 'Partner details') : t('domus', 'Edit partner'),
+                        content: buildPartnerForm(partner, { mode }),
+                        headerActions
                     });
                     bindPartnerForm(modal, data => Domus.Api.updatePartner(id, data)
                         .then(() => {
@@ -2164,14 +2403,27 @@
                             modal.close();
                             renderDetail(id);
                         })
-                        .catch(err => Domus.UI.showNotification(err.message, 'error')));
+                        .catch(err => Domus.UI.showNotification(err.message, 'error')),
+                    { mode });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
-        function bindPartnerForm(modalContext, onSubmit) {
+        function bindPartnerForm(modalContext, onSubmit, options = {}) {
             const form = modalContext.modalEl.querySelector('#domus-partner-form');
+            const mode = options.mode || 'edit';
             const cancel = modalContext.modalEl.querySelector('#domus-partner-cancel');
+            const closeBtn = modalContext.modalEl.querySelector('#domus-partner-close');
+
+            if (mode === 'view') {
+                closeBtn?.addEventListener('click', modalContext.close);
+                form?.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    modalContext.close();
+                });
+                return;
+            }
+
             cancel?.addEventListener('click', modalContext.close);
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -2185,25 +2437,63 @@
             });
         }
 
-        function buildPartnerForm(partner) {
+        function buildPartnerForm(partner, options = {}) {
+            const mode = options.mode || 'edit';
+            const isView = mode === 'view';
             const defaultPartnerType = partner?.partnerType || 'tenant';
-            return '<div class="domus-form">' +
-                '<form id="domus-partner-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Name')) + ' *<input name="name" required value="' + (partner?.name ? Domus.Utils.escapeHtml(partner.name) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Type')) + '<select name="partnerType">' +
-                '<option value="tenant"' + (defaultPartnerType === 'tenant' ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(t('domus', 'Tenant')) + '</option>' +
-                '<option value="owner"' + (defaultPartnerType === 'owner' ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(t('domus', 'Owner')) + '</option>' +
-                '</select></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Street')) + '<input name="street" value="' + (partner?.street ? Domus.Utils.escapeHtml(partner.street) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'ZIP')) + '<input name="zip" value="' + (partner?.zip ? Domus.Utils.escapeHtml(partner.zip) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'City')) + '<input name="city" value="' + (partner?.city ? Domus.Utils.escapeHtml(partner.city) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Country')) + '<input name="country" value="' + (partner?.country ? Domus.Utils.escapeHtml(partner.country) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Email')) + '<input name="email" type="email" value="' + (partner?.email ? Domus.Utils.escapeHtml(partner.email) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Phone')) + '<input name="phone" value="' + (partner?.phone ? Domus.Utils.escapeHtml(partner.phone) : '') + '"></label>' +
-                '<div class="domus-form-actions">' +
+
+            function renderDisplay(value) {
+                const safeValue = value || value === 0 ? String(value) : '';
+                return '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(safeValue) + '</div>';
+            }
+
+            function inputField(name, label, value, opts = {}) {
+                const required = opts.required && !isView;
+                const attrs = [`name="${Domus.Utils.escapeHtml(name)}"`];
+                if (opts.type) attrs.push(`type="${Domus.Utils.escapeHtml(opts.type)}"`);
+                if (required) attrs.push('required');
+                if (isView) attrs.push('disabled');
+                const content = opts.isTextarea
+                    ? `<textarea ${attrs.join(' ')}>${value ? Domus.Utils.escapeHtml(String(value)) : ''}</textarea>`
+                    : `<input ${attrs.join(' ')} value="${value ? Domus.Utils.escapeHtml(String(value)) : ''}">`;
+                return Domus.UI.buildFormRow({ label, required, content: isView ? renderDisplay(value) : content });
+            }
+
+            function selectField(name, label, options, selected) {
+                const current = selected || options[0]?.value;
+                const content = isView
+                    ? renderDisplay(options.find(opt => opt.value === current)?.label || current)
+                    : '<select name="' + Domus.Utils.escapeHtml(name) + '">' +
+                    options.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (opt.value === current ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                    '</select>';
+                return Domus.UI.buildFormRow({ label, content });
+            }
+
+            const rows = [
+                inputField('name', t('domus', 'Name'), partner?.name || '', { required: true }),
+                selectField('partnerType', t('domus', 'Type'), [
+                    { value: 'tenant', label: t('domus', 'Tenant') },
+                    { value: 'owner', label: t('domus', 'Owner') }
+                ], defaultPartnerType),
+                inputField('street', t('domus', 'Street'), partner?.street || ''),
+                inputField('zip', t('domus', 'ZIP'), partner?.zip || ''),
+                inputField('city', t('domus', 'City'), partner?.city || ''),
+                inputField('country', t('domus', 'Country'), partner?.country || ''),
+                inputField('email', t('domus', 'Email'), partner?.email || '', { type: 'email' }),
+                inputField('phone', t('domus', 'Phone'), partner?.phone || '')
+            ];
+
+            const actions = isView
+                ? '<div class="domus-form-actions"><button type="button" id="domus-partner-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
+                : '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-partner-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '</div>' +
+                '</div>';
+
+            return '<div class="domus-form">' +
+                '<form id="domus-partner-form" data-mode="' + Domus.Utils.escapeHtml(mode) + '">' +
+                Domus.UI.buildFormTable(rows) +
+                actions +
                 '</form>' +
                 '</div>';
         }
@@ -2346,7 +2636,7 @@
                             (canManageBookings ? '<button id="domus-add-tenancy-booking" class="primary" data-tenancy-id="' + id + '" data-unit-id="' + Domus.Utils.escapeHtml(tenancy.unitId) + '" data-property-id="' + Domus.Utils.escapeHtml(tenancy.propertyId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' : ''),
                             (canManageReports ? '<button id="domus-tenancy-report">' + Domus.Utils.escapeHtml(t('domus', 'Generate report')) + '</button>' : ''),
                             '<button id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>',
-                            '<button id="domus-tenancy-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>',
+                            '<button id="domus-tenancy-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
                             '<button id="domus-tenancy-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
                         ].filter(Boolean).join('') +
                         '</div>' +
@@ -2403,7 +2693,7 @@
         }
 
         function bindDetailActions(id, tenancy) {
-            document.getElementById('domus-tenancy-edit')?.addEventListener('click', () => openEditModal(id, tenancy));
+            document.getElementById('domus-tenancy-details')?.addEventListener('click', () => openTenancyModal(id, tenancy, 'view'));
             document.getElementById('domus-tenancy-delete')?.addEventListener('click', () => {
                 if (!confirm(t('domus', 'Delete tenancy?'))) {
                     return;
@@ -2432,6 +2722,16 @@
         function bindTenancyForm(modalContext, onSubmit) {
             const form = modalContext.modalEl.querySelector('#domus-tenancy-form');
             const cancel = modalContext.modalEl.querySelector('#domus-tenancy-cancel');
+            const closeBtn = modalContext.modalEl.querySelector('#domus-tenancy-close');
+            const mode = (form?.getAttribute('data-mode')) || 'edit';
+            if (mode === 'view') {
+                closeBtn?.addEventListener('click', modalContext.close);
+                form?.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    modalContext.close();
+                });
+                return;
+            }
             cancel?.addEventListener('click', modalContext.close);
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -2459,6 +2759,10 @@
         }
 
         function openEditModal(id, tenancy) {
+            openTenancyModal(id, tenancy, 'edit');
+        }
+
+        function openTenancyModal(id, tenancy, mode = 'edit') {
             Promise.all([
                 Domus.Api.getUnits(),
                 Domus.Api.getPartners()
@@ -2473,9 +2777,19 @@
                         label: p.name || `${t('domus', 'Partner')} #${p.id}`
                     }));
 
-                    const modal = Domus.UI.openModal({
-                        title: t('domus', 'Edit tenancy'),
-                        content: buildTenancyForm(unitOptions, partnerOptions, tenancy)
+                    let modal;
+                    const headerActions = [];
+                    if (mode === 'view') {
+                        headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
+                            modal?.close();
+                            openTenancyModal(id, tenancy, 'edit');
+                        }));
+                    }
+
+                    modal = Domus.UI.openModal({
+                        title: mode === 'view' ? t('domus', 'Tenancy details') : t('domus', 'Edit tenancy'),
+                        content: buildTenancyForm(unitOptions, partnerOptions, tenancy, { mode }),
+                        headerActions
                     });
                     bindTenancyForm(modal, data => Domus.Api.updateTenancy(id, data)
                         .then(() => {
@@ -2483,7 +2797,8 @@
                             modal.close();
                             renderDetail(id);
                         })
-                        .catch(err => Domus.UI.showNotification(err.message, 'error')));
+                        .catch(err => Domus.UI.showNotification(err.message, 'error')),
+                    { mode });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
@@ -2498,8 +2813,10 @@
             }, data => Domus.Api.changeTenancyConditions(tenancy.id, data), t('domus', 'Change conditions'), t('domus', 'Conditions changed.'));
         }
 
-        function buildTenancyForm(unitOptions, partnerOptions, tenancy) {
+        function buildTenancyForm(unitOptions, partnerOptions, tenancy, options = {}) {
             const tn = tenancy || {};
+            const mode = options.mode || 'edit';
+            const isView = mode === 'view';
             if (tn.partnerId && !tn.partnerIds) {
                 tn.partnerIds = [tn.partnerId];
             }
@@ -2507,25 +2824,70 @@
             const selectedUnitId = tn.unitId !== undefined && tn.unitId !== null ? String(tn.unitId) : '';
             const startDate = tn.startDate ? Domus.Utils.escapeHtml(tn.startDate) : new Date().toISOString().split('T')[0];
             const unitLocked = Boolean(selectedUnitId);
-            return '<div class="domus-form">' +
-                '<form id="domus-tenancy-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + ' *<select name="unitId"' + (unitLocked ? ' disabled' : '') + ' required>' +
+
+            function renderDisplay(value) {
+                const safeValue = value || value === 0 ? String(value) : '';
+                return '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(safeValue) + '</div>';
+            }
+
+            function selectDisplay(options, selected) {
+                const found = options.find(opt => String(opt.value) === String(selected));
+                return renderDisplay(found?.label || selected);
+            }
+
+            function inputField(name, label, value, opts = {}) {
+                const required = opts.required && !isView;
+                const attrs = [`name="${Domus.Utils.escapeHtml(name)}"`];
+                if (opts.type) attrs.push(`type="${Domus.Utils.escapeHtml(opts.type)}"`);
+                if (opts.step) attrs.push(`step="${Domus.Utils.escapeHtml(opts.step)}"`);
+                if (required) attrs.push('required');
+                if (isView || opts.disabled) attrs.push('disabled');
+                const content = opts.isTextarea
+                    ? `<textarea ${attrs.join(' ')}>${value ? Domus.Utils.escapeHtml(String(value)) : ''}</textarea>`
+                    : `<input ${attrs.join(' ')} value="${value ? Domus.Utils.escapeHtml(String(value)) : ''}">`;
+                return Domus.UI.buildFormRow({ label, required, content: isView ? renderDisplay(value) : content });
+            }
+
+            const unitSelect = isView
+                ? selectDisplay(unitOptions, selectedUnitId)
+                : '<select name="unitId"' + (unitLocked ? ' disabled' : '') + ' required>' +
                 unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (selectedUnitId === String(opt.value) ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select>' + (unitLocked ? '<input type="hidden" name="unitId" value="' + Domus.Utils.escapeHtml(selectedUnitId) + '">' : '') + '</label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + ' *<select name="partnerIds" multiple required size="4">' +
+                '</select>' + (unitLocked ? '<input type="hidden" name="unitId" value="' + Domus.Utils.escapeHtml(selectedUnitId) + '">' : '');
+
+            const partnerSelect = isView
+                ? renderDisplay(partnerOptions.filter(opt => partnerIds.includes(String(opt.value))).map(opt => opt.label).join(', '))
+                : '<select name="partnerIds" multiple required size="4">' +
                 partnerOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (partnerIds.includes(String(opt.value)) ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Start date')) + ' *<input type="date" name="startDate" required value="' + startDate + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'End date')) + '<input type="date" name="endDate" value="' + (tn.endDate ? Domus.Utils.escapeHtml(tn.endDate) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Base rent')) + ' *<input type="number" step="0.01" name="baseRent" required value="' + (tn.baseRent ? Domus.Utils.escapeHtml(tn.baseRent) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Service charge')) + '<input type="number" step="0.01" name="serviceCharge" value="' + (tn.serviceCharge ? Domus.Utils.escapeHtml(tn.serviceCharge) : '') + '"></label>' +
-                '<label class="domus-inline-label"><input type="checkbox" name="serviceChargeAsPrepayment" ' + (tn.serviceChargeAsPrepayment ? 'checked' : '') + '> ' + Domus.Utils.escapeHtml(t('domus', 'Service charge as prepayment')) + '</label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Deposit')) + '<input type="number" step="0.01" name="deposit" value="' + (tn.deposit ? Domus.Utils.escapeHtml(tn.deposit) : '') + '"></label>' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Conditions')) + '<textarea name="conditions">' + (tn.conditions ? Domus.Utils.escapeHtml(tn.conditions) : '') + '</textarea></label>' +
-                '<div class="domus-form-actions">' +
+                '</select>';
+
+            const rows = [
+                Domus.UI.buildFormRow({ label: t('domus', 'Unit'), required: !isView, content: unitSelect }),
+                Domus.UI.buildFormRow({ label: t('domus', 'Partners'), required: !isView, content: partnerSelect }),
+                inputField('startDate', t('domus', 'Start date'), startDate, { type: 'date', required: true }),
+                inputField('endDate', t('domus', 'End date'), tn.endDate || '', { type: 'date' }),
+                inputField('baseRent', t('domus', 'Base rent'), tn.baseRent || '', { type: 'number', step: '0.01', required: true, viewFormatter: Domus.Utils.formatCurrency }),
+                inputField('serviceCharge', t('domus', 'Service charge'), tn.serviceCharge || '', { type: 'number', step: '0.01' }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Service charge as prepayment'),
+                    content: isView
+                        ? renderDisplay(tn.serviceChargeAsPrepayment ? t('domus', 'Yes') : t('domus', 'No'))
+                        : '<label class="domus-inline-label"><input type="checkbox" name="serviceChargeAsPrepayment" ' + (tn.serviceChargeAsPrepayment ? 'checked' : '') + '> ' + Domus.Utils.escapeHtml(t('domus', 'Service charge as prepayment')) + '</label>'
+                }),
+                inputField('deposit', t('domus', 'Deposit'), tn.deposit || '', { type: 'number', step: '0.01' }),
+                inputField('conditions', t('domus', 'Conditions'), tn.conditions || '', { isTextarea: true, fullWidth: true })
+            ];
+
+            const actions = isView
+                ? '<div class="domus-form-actions"><button type="button" id="domus-tenancy-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
+                : '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-tenancy-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '</div>' +
+                '</div>';
+
+            return '<div class="domus-form">' +
+                '<form id="domus-tenancy-form" data-mode="' + Domus.Utils.escapeHtml(mode) + '">' +
+                Domus.UI.buildFormTable(rows) +
+                actions +
                 '</form>' +
                 '</div>';
         }
