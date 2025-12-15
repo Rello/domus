@@ -2707,7 +2707,6 @@
             Domus.Api.get('/tenancies/' + id)
                 .then(tenancy => {
                     const tenancyLabels = Domus.Role.getTenancyLabels();
-                    const canManageBookings = Domus.Role.hasCapability('manageBookings');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const partnerLabel = formatPartnerNames(tenancy.partners);
                     const stats = Domus.UI.buildStatCards([
@@ -2735,7 +2734,6 @@
                         '</div>' +
                         '</div>';
 
-                    const bookingsHeader = canManageBookings ? Domus.UI.buildSectionHeader(t('domus', 'Bookings')) : '';
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-tenancy-link-doc',
                         title: t('domus', 'Add document'),
@@ -2765,8 +2763,6 @@
                         Domus.Partners.renderInline(tenancy.partners || []) + '</div></div>' +
                         '<div class="domus-panel">' + conditionsHeader + '<div class="domus-panel-body">' +
                         '<p>' + Domus.Utils.escapeHtml(tenancy.conditions || t('domus', 'No conditions provided.')) + '</p></div></div>' +
-                        (canManageBookings ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
-                        Domus.Bookings.renderInline(tenancy.bookings || []) + '</div></div>' : '') +
                         '</div>' +
                         '<div class="domus-dashboard-side">' +
                         '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
