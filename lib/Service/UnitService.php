@@ -22,8 +22,10 @@ class UnitService {
     ) {
     }
 
-    public function listUnitsForUser(string $userId, ?int $propertyId = null): array {
-        $units = $this->unitMapper->findByUser($userId, $propertyId);
+    public function listUnitsForUser(string $userId, ?int $propertyId = null, string $role = 'landlord'): array {
+        $isBuildingManagement = $this->permissionService->isBuildingManagement($role);
+        $propertyFilter = $isBuildingManagement ? $propertyId : null;
+        $units = $this->unitMapper->findByUser($userId, $propertyFilter, !$isBuildingManagement);
         foreach ($units as $unit) {
             $this->enrichWithTenancies($unit, $userId);
         }

@@ -26,10 +26,10 @@ class UnitController extends Controller {
                 parent::__construct(Application::APP_ID, $request);
         }
 
-	#[NoAdminRequired]
-	public function index(?int $propertyId = null): DataResponse {
-		return new DataResponse($this->unitService->listUnitsForUser($this->getUserId(), $propertyId));
-	}
+        #[NoAdminRequired]
+        public function index(?int $propertyId = null): DataResponse {
+                return new DataResponse($this->unitService->listUnitsForUser($this->getUserId(), $propertyId, $this->getRole()));
+        }
 
 	#[NoAdminRequired]
 	public function listByProperty(int $propertyId): DataResponse {
