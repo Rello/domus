@@ -131,8 +131,8 @@
 .domus-form-table {
     display: grid;
     grid-template-columns: minmax(180px, 240px) 1fr;
-    column-gap: 18px;
-    row-gap: 12px;
+    column-gap: 16px;
+    row-gap: 8px;
 }
 
 .domus-form-row {
@@ -163,7 +163,7 @@
 .domus-form-value {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .domus-form-value input,
@@ -404,7 +404,7 @@
     border: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
-    max-height: 90vh;
+    max-height: 88vh;
 }
 
 .domus-modal-large {
@@ -436,8 +436,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 16px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--color-border);
+    gap: 10px;
 }
 
 .domus-modal-header h3 {
@@ -453,8 +454,26 @@
     color: var(--color-text-maxcontrast);
 }
 
+.domus-modal-header-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.domus-modal-header button.domus-modal-action {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: var(--color-background-dark);
+    cursor: pointer;
+}
+
+.domus-modal-header button.domus-modal-action:hover {
+    background: var(--color-background-hover);
+}
+
 .domus-modal-body {
-    padding: 16px;
+    padding: 12px 14px 14px;
     overflow-y: auto;
 }
 
