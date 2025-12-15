@@ -1429,7 +1429,8 @@
                 Domus.Units.openCreateModal({ propertyId: id, lockProperty: true }, () => renderDetail(id));
             });
             document.getElementById('domus-add-booking')?.addEventListener('click', () => {
-                Domus.Bookings.openCreateModal({ propertyId: id }, () => renderDetail(id));
+                const bookingFormConfig = Domus.Role.isBuildingMgmtView() ? { restrictUnitsToProperty: true } : {};
+                Domus.Bookings.openCreateModal({ propertyId: id }, () => renderDetail(id), bookingFormConfig);
             });
             document.getElementById('domus-property-report')?.addEventListener('click', () => {
                 Domus.Reports.createForProperty(id, () => renderDetail(id));
@@ -1916,13 +1917,15 @@
             });
             document.getElementById('domus-add-unit-booking')?.addEventListener('click', () => {
                 Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id), {
-                    accountFilter: (nr) => String(nr).startsWith('2')
+                    accountFilter: (nr) => String(nr).startsWith('2'),
+                    hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
                 });
             });
             document.getElementById('domus-add-unit-buying-price')?.addEventListener('click', () => {
                 Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id), {
                     accountFilter: (nr) => String(nr).startsWith('3'),
-                    title: t('domus', 'Add buying price')
+                    title: t('domus', 'Add buying price'),
+                    hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
                 });
             });
             document.getElementById('domus-unit-service-charge')?.addEventListener('click', () => {
@@ -2704,8 +2707,6 @@
             Domus.Api.get('/tenancies/' + id)
                 .then(tenancy => {
                     const tenancyLabels = Domus.Role.getTenancyLabels();
-                    const canManageBookings = Domus.Role.hasCapability('manageBookings');
-                    const canManageReports = Domus.Role.hasCapability('manageReports');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const partnerLabel = formatPartnerNames(tenancy.partners);
                     const stats = Domus.UI.buildStatCards([
@@ -2726,8 +2727,6 @@
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         [
-                            (canManageBookings ? '<button id="domus-add-tenancy-booking" class="primary" data-tenancy-id="' + id + '" data-unit-id="' + Domus.Utils.escapeHtml(tenancy.unitId) + '" data-property-id="' + Domus.Utils.escapeHtml(tenancy.propertyId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' : ''),
-                            (canManageReports ? '<button id="domus-tenancy-report">' + Domus.Utils.escapeHtml(t('domus', 'Generate report')) + '</button>' : ''),
                             '<button id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>',
                             '<button id="domus-tenancy-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
                             '<button id="domus-tenancy-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
@@ -2735,14 +2734,12 @@
                         '</div>' +
                         '</div>';
 
-                    const bookingsHeader = canManageBookings ? Domus.UI.buildSectionHeader(t('domus', 'Bookings')) : '';
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-tenancy-link-doc',
                         title: t('domus', 'Add document'),
                         label: t('domus', 'Add document'),
                         dataset: { entityType: 'tenancy', entityId: id }
                     } : null);
-                    const reportsHeader = Domus.UI.buildSectionHeader(t('domus', 'Reports'));
                     const detailsHeader = Domus.UI.buildSectionHeader(t('domus', 'Details'));
                     const partnersHeader = Domus.UI.buildSectionHeader(t('domus', 'Partners'));
                     const conditionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Conditions'));
@@ -2766,14 +2763,10 @@
                         Domus.Partners.renderInline(tenancy.partners || []) + '</div></div>' +
                         '<div class="domus-panel">' + conditionsHeader + '<div class="domus-panel-body">' +
                         '<p>' + Domus.Utils.escapeHtml(tenancy.conditions || t('domus', 'No conditions provided.')) + '</p></div></div>' +
-                        (canManageBookings ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
-                        Domus.Bookings.renderInline(tenancy.bookings || []) + '</div></div>' : '') +
                         '</div>' +
                         '<div class="domus-dashboard-side">' +
                         '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
                         Domus.Documents.renderList('tenancy', id, { showLinkAction: documentActionsEnabled }) + '</div></div>' +
-                        '<div class="domus-panel">' + reportsHeader + '<div class="domus-panel-body">' +
-                        Domus.Reports.renderInline(tenancy.reports || [], null, id) + '</div></div>' +
                         '</div>' +
                         '</div>' +
                         '</div>';
@@ -2800,14 +2793,8 @@
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
             });
 
-            document.getElementById('domus-add-tenancy-booking')?.addEventListener('click', () => {
-                Domus.Bookings.openCreateModal({ tenancyId: id, unitId: tenancy.unitId, propertyId: tenancy.propertyId }, () => renderDetail(id));
-            });
             document.getElementById('domus-tenancy-link-doc')?.addEventListener('click', () => {
                 Domus.Documents.openLinkModal('tenancy', id, () => renderDetail(id));
-            });
-            document.getElementById('domus-tenancy-report')?.addEventListener('click', () => {
-                Domus.Reports.createForTenancy(id, () => renderDetail(id));
             });
             document.getElementById('domus-tenancy-change')?.addEventListener('click', () => openChangeConditionsModal(tenancy));
         }
@@ -3028,7 +3015,6 @@
             Domus.Api.getBookings()
                 .then(bookings => {
                     const toolbar = '<div class="domus-toolbar">' +
-                        '<button id="domus-booking-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New booking')) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
                     const rows = (bookings || []).map(b => ({
@@ -3048,7 +3034,6 @@
         }
 
         function bindList() {
-            document.getElementById('domus-booking-create')?.addEventListener('click', () => openCreateModal());
             Domus.UI.bindRowNavigation();
         }
 
@@ -3090,7 +3075,6 @@
             (bookingIds || []).forEach(id => targets.push({ entityType: 'booking', entityId: id }));
             if (metadata?.unitId) targets.push({ entityType: 'unit', entityId: metadata.unitId });
             if (metadata?.propertyId) targets.push({ entityType: 'property', entityId: metadata.propertyId });
-            if (metadata?.tenancyId) targets.push({ entityType: 'tenancy', entityId: metadata.tenancyId });
 
             const uniqueTargets = dedupeTargets(targets);
             if (!uniqueTargets.length) {
@@ -3143,33 +3127,37 @@
         }
 
         function openCreateModal(defaults = {}, onCreated, formConfig = {}) {
-            const accountFilter = formConfig.accountFilter;
+            const accountFilter = formConfig.accountFilter !== undefined
+                ? formConfig.accountFilter
+                : (Domus.Role.isBuildingMgmtView()
+                    ? (nr) => String(nr).startsWith('4')
+                    : (Domus.Role.getCurrentRole() === 'landlord'
+                        ? (nr) => String(nr).startsWith('2')
+                        : null));
             const title = formConfig.title || t('domus', 'New booking');
             const successMessage = formConfig.successMessage || t('domus', 'Booking created.');
 
             Promise.all([
                 Domus.Api.getProperties(),
-                Domus.Api.getUnits(),
-                Domus.Api.getTenancies()
+                Domus.Api.getUnits()
             ])
-                .then(([properties, units, tenancies]) => {
+                .then(([properties, units]) => {
                     const accountOptions = Domus.Accounts.toOptions(true, accountFilter);
                     const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
                         value: p.id,
                         label: p.name || `${t('domus', 'Property')} #${p.id}`
                     })));
-                    const unitOptions = [{ value: '', label: t('domus', 'Select unit') }].concat((units || []).map(u => ({
+                    const effectiveUnits = (formConfig.restrictUnitsToProperty && defaults.propertyId)
+                        ? (units || []).filter(u => String(u.propertyId) === String(defaults.propertyId))
+                        : (units || []);
+                    const unitOptions = [{ value: '', label: t('domus', 'Select unit') }].concat(effectiveUnits.map(u => ({
                         value: u.id,
                         label: u.label || `${t('domus', 'Unit')} #${u.id}`
-                    })));
-                    const tenancyOptions = [{ value: '', label: t('domus', 'Select tenancy') }].concat((tenancies || []).map(tn => ({
-                        value: tn.id,
-                        label: tn.unitLabel || `${t('domus', 'Tenancy')} #${tn.id}`
                     })));
 
                     const modal = Domus.UI.openModal({
                         title,
-                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions, tenancyOptions }, defaults, { multiEntry: true }),
+                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, defaults, { multiEntry: true, hidePropertyField: formConfig.hidePropertyField }),
                         size: 'large'
                     });
                     const docWidget = mountBookingDocumentWidget(modal.modalEl);
@@ -3206,8 +3194,7 @@
                     const stats = Domus.UI.buildStatCards([
                         { label: t('domus', 'Amount'), value: Domus.Utils.formatCurrency(booking.amount), hint: t('domus', 'Recorded amount') },
                         { label: t('domus', 'Date'), value: Domus.Utils.formatDate(booking.date) || '—', hint: t('domus', 'Booking date') },
-                        { label: t('domus', 'Account'), value: accountDisplay || '—', hint: t('domus', 'Ledger reference') },
-                        { label: t('domus', 'Tenancy'), value: booking.tenancyId ? `#${booking.tenancyId}` : t('domus', 'Unassigned'), hint: t('domus', 'Linked tenancy') }
+                        { label: t('domus', 'Account'), value: accountDisplay || '—', hint: t('domus', 'Ledger reference') }
                     ]);
 
                     const heroMeta = [booking.propertyName || booking.propertyId, booking.unitLabel || booking.unitId].filter(Boolean).join(' • ');
@@ -3236,7 +3223,6 @@
                         { label: t('domus', 'Account'), value: accountDisplay },
                         { label: t('domus', 'Property'), value: booking.propertyName || booking.propertyId },
                         { label: t('domus', 'Unit'), value: booking.unitLabel || booking.unitId },
-                        { label: t('domus', 'Tenancy'), value: booking.tenancyId ? `#${booking.tenancyId}` : '' },
                         { label: t('domus', 'Description'), value: booking.description }
                     ]);
 
@@ -3288,10 +3274,9 @@
             Promise.all([
                 Domus.Api.get('/bookings/' + id),
                 Domus.Api.getProperties(),
-                Domus.Api.getUnits(),
-                Domus.Api.getTenancies()
+                Domus.Api.getUnits()
             ])
-                .then(([booking, properties, units, tenancies]) => {
+                .then(([booking, properties, units]) => {
                     const accountOptions = Domus.Accounts.toOptions();
                     const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
                         value: p.id,
@@ -3301,14 +3286,10 @@
                         value: u.id,
                         label: u.label || `${t('domus', 'Unit')} #${u.id}`
                     })));
-                    const tenancyOptions = [{ value: '', label: t('domus', 'Select tenancy') }].concat((tenancies || []).map(tn => ({
-                        value: tn.id,
-                        label: tn.unitLabel || `${t('domus', 'Tenancy')} #${tn.id}`
-                    })));
 
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'Edit booking'),
-                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions, tenancyOptions }, booking, { multiEntry: false }),
+                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, booking, { multiEntry: false }),
                         size: 'large'
                     });
                     const docWidget = mountBookingDocumentWidget(modal.modalEl);
@@ -3379,8 +3360,8 @@
                     Domus.UI.showNotification(t('domus', 'Date is required.'), 'error');
                     return;
                 }
-                if (!formData.propertyId && !formData.unitId && !formData.tenancyId) {
-                    Domus.UI.showNotification(t('domus', 'Select a related property, unit, or tenancy.'), 'error');
+                if (!formData.propertyId && !formData.unitId) {
+                    Domus.UI.showNotification(t('domus', 'Select a related property or unit.'), 'error');
                     return;
                 }
 
@@ -3390,17 +3371,14 @@
         }
 
         function buildBookingForm(options, booking, formOptions = {}) {
-            const { accountOptions, propertyOptions, unitOptions, tenancyOptions } = options;
+            const { accountOptions, propertyOptions, unitOptions } = options;
             const multiEntry = formOptions.multiEntry !== undefined ? formOptions.multiEntry : !booking;
             const bookingDate = booking?.date ? Domus.Utils.escapeHtml(booking.date) : '';
             const propertyLocked = Boolean(booking?.propertyId) || Boolean(formOptions.lockProperty);
             const unitLocked = Boolean(booking?.unitId) || Boolean(formOptions.lockUnit);
-            const tenancyLocked = Boolean(booking?.tenancyId) || Boolean(formOptions.lockTenancy);
             const selectedProperty = booking?.propertyId ? String(booking.propertyId) : '';
             const selectedUnit = booking?.unitId ? String(booking.unitId) : '';
-            const selectedTenancy = booking?.tenancyId ? String(booking.tenancyId) : '';
-            const hideProperty = !booking && Domus.Role.getCurrentRole() === 'landlord';
-            const tenancyLabel = Domus.Role.getTenancyLabels().singular;
+            const hideProperty = formOptions.hidePropertyField || (!booking && Domus.Role.getCurrentRole() === 'landlord');
             return '<div class="domus-form">' +
                 '<form id="domus-booking-form">' +
                 '<div class="domus-booking-layout">' +
@@ -3418,9 +3396,6 @@
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId"' + (unitLocked ? ' disabled' : '') + '>' +
                 unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedUnit ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                 '</select></label>' +
-                '<label>' + Domus.Utils.escapeHtml(tenancyLabel) + '<select name="tenancyId">' +
-                tenancyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedTenancy ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select>' + (tenancyLocked ? '<input type="hidden" name="tenancyId" value="' + Domus.Utils.escapeHtml(selectedTenancy) + '">' : '') + '</label>' +
                 '</div>' +
                 '<div class="domus-booking-documents" id="domus-booking-documents">' +
                 '<div class="domus-doc-attachment-placeholder domus-doc-attachment-shell"></div>' +
