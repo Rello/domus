@@ -3145,7 +3145,13 @@
         }
 
         function openCreateModal(defaults = {}, onCreated, formConfig = {}) {
-            const accountFilter = formConfig.accountFilter;
+            const accountFilter = formConfig.accountFilter !== undefined
+                ? formConfig.accountFilter
+                : (Domus.Role.isBuildingMgmtView()
+                    ? (nr) => String(nr).startsWith('4')
+                    : (Domus.Role.getCurrentRole() === 'landlord'
+                        ? (nr) => String(nr).startsWith('2')
+                        : null));
             const title = formConfig.title || t('domus', 'New booking');
             const successMessage = formConfig.successMessage || t('domus', 'Booking created.');
 
