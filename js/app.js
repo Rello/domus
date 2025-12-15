@@ -2708,7 +2708,6 @@
                 .then(tenancy => {
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const canManageBookings = Domus.Role.hasCapability('manageBookings');
-                    const canManageReports = Domus.Role.hasCapability('manageReports');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const partnerLabel = formatPartnerNames(tenancy.partners);
                     const stats = Domus.UI.buildStatCards([
@@ -2729,8 +2728,6 @@
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         [
-                            (canManageBookings ? '<button id="domus-add-tenancy-booking" class="primary" data-tenancy-id="' + id + '" data-unit-id="' + Domus.Utils.escapeHtml(tenancy.unitId) + '" data-property-id="' + Domus.Utils.escapeHtml(tenancy.propertyId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' : ''),
-                            (canManageReports ? '<button id="domus-tenancy-report">' + Domus.Utils.escapeHtml(t('domus', 'Generate report')) + '</button>' : ''),
                             '<button id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>',
                             '<button id="domus-tenancy-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
                             '<button id="domus-tenancy-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
@@ -2745,7 +2742,6 @@
                         label: t('domus', 'Add document'),
                         dataset: { entityType: 'tenancy', entityId: id }
                     } : null);
-                    const reportsHeader = Domus.UI.buildSectionHeader(t('domus', 'Reports'));
                     const detailsHeader = Domus.UI.buildSectionHeader(t('domus', 'Details'));
                     const partnersHeader = Domus.UI.buildSectionHeader(t('domus', 'Partners'));
                     const conditionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Conditions'));
@@ -2775,8 +2771,6 @@
                         '<div class="domus-dashboard-side">' +
                         '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
                         Domus.Documents.renderList('tenancy', id, { showLinkAction: documentActionsEnabled }) + '</div></div>' +
-                        '<div class="domus-panel">' + reportsHeader + '<div class="domus-panel-body">' +
-                        Domus.Reports.renderInline(tenancy.reports || [], null, id) + '</div></div>' +
                         '</div>' +
                         '</div>' +
                         '</div>';
@@ -2803,14 +2797,8 @@
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
             });
 
-            document.getElementById('domus-add-tenancy-booking')?.addEventListener('click', () => {
-                Domus.Bookings.openCreateModal({ unitId: tenancy.unitId, propertyId: tenancy.propertyId }, () => renderDetail(id));
-            });
             document.getElementById('domus-tenancy-link-doc')?.addEventListener('click', () => {
                 Domus.Documents.openLinkModal('tenancy', id, () => renderDetail(id));
-            });
-            document.getElementById('domus-tenancy-report')?.addEventListener('click', () => {
-                Domus.Reports.createForTenancy(id, () => renderDetail(id));
             });
             document.getElementById('domus-tenancy-change')?.addEventListener('click', () => openChangeConditionsModal(tenancy));
         }
