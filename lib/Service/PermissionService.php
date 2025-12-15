@@ -35,7 +35,7 @@ class PermissionService {
     }
 
     public function assertPartnerTypeForRole(string $role, string $partnerType): void {
-        $expectedType = $this->isBuildingManagement($role) ? 'owner' : 'tenant';
+        $expectedType = $this->getAllowedPartnerType($role);
         if ($partnerType !== $expectedType) {
             throw new \InvalidArgumentException($this->l10n->t('Partner type does not match the current role.'));
         }
@@ -43,6 +43,15 @@ class PermissionService {
 
     public function assertPartnerMatchesRole(string $role, string $partnerType): void {
         $this->assertPartnerTypeForRole($role, $partnerType);
+    }
+
+    public function filterPartnerListType(?string $type, string $role): string {
+        $allowedType = $this->getAllowedPartnerType($role);
+        if ($type === null || $type === '') {
+            return $allowedType;
+        }
+        $this->assertPartnerTypeForRole($role, $type);
+        return $type;
     }
 
     public function guardTenancyFinancialFields(string $role, array $payload): array {
@@ -62,5 +71,9 @@ class PermissionService {
         $payload['deposit'] = null;
 
         return $payload;
+    }
+
+    private function getAllowedPartnerType(string $role): string {
+        return $this->isBuildingManagement($role) ? 'owner' : 'tenant';
     }
 }

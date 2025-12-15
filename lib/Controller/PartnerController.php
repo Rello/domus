@@ -26,7 +26,13 @@ class PartnerController extends Controller {
 
     #[NoAdminRequired]
     public function index(?string $type = null): DataResponse {
-        return new DataResponse($this->partnerService->listPartners($this->getUserId(), $type));
+        try {
+            $role = $this->getRole();
+            $filteredType = $this->permissionService->filterPartnerListType($type, $role);
+            return new DataResponse($this->partnerService->listPartners($this->getUserId(), $filteredType));
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        }
     }
 
     #[NoAdminRequired]
