@@ -14,7 +14,7 @@ class UnitMapper extends QBMapper {
     /**
      * @throws Exception
      */
-    public function findByUser(string $userId, ?int $propertyId = null): array {
+    public function findByUser(string $userId, ?int $propertyId = null, bool $onlyWithoutProperty = false): array {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
@@ -22,6 +22,8 @@ class UnitMapper extends QBMapper {
 
         if ($propertyId !== null) {
             $qb->andWhere($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
+        } elseif ($onlyWithoutProperty) {
+            $qb->andWhere($qb->expr()->isNull('property_id'));
         }
 
         return $this->findEntities($qb);

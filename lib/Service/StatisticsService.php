@@ -13,6 +13,7 @@ class StatisticsService {
                 private BookingService $bookingService,
                 private TenancyService $tenancyService,
                 private UnitMapper $unitMapper,
+                private PermissionService $permissionService,
                 private IL10N $l10n,
                 private LoggerInterface $logger,
         ) {
@@ -67,9 +68,11 @@ class StatisticsService {
                 return $tables;
         }
 
-        public function unitOverview(int $year, string $userId, ?int $propertyId = null): array {
+        public function unitOverview(int $year, string $userId, ?int $propertyId = null, string $role = 'landlord'): array {
                 $definitions = $this->normalizeColumns(StatisticCalculations::unitOverview());
-                $units = $this->unitMapper->findByUser($userId, $propertyId);
+                $isBuildingManagement = $this->permissionService->isBuildingManagement($role);
+                $propertyFilter = $isBuildingManagement ? $propertyId : null;
+                $units = $this->unitMapper->findByUser($userId, $propertyFilter, !$isBuildingManagement);
                 $rows = [];
 
                 foreach ($units as $unit) {

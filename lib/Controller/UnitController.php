@@ -5,6 +5,7 @@ namespace OCA\Domus\Controller;
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\ServiceChargeSettlementService;
 use OCA\Domus\Service\UnitService;
+use OCA\Domus\Service\PermissionService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
@@ -16,18 +17,19 @@ use OCP\IUserSession;
 class UnitController extends Controller {
 	public function __construct(
 		IRequest                               $request,
-		private IUserSession                   $userSession,
-		private UnitService                    $unitService,
-		private ServiceChargeSettlementService $settlementService,
-		private IL10N                          $l10n,
-	) {
-		parent::__construct(Application::APP_ID, $request);
-	}
+                private IUserSession                   $userSession,
+                private UnitService                    $unitService,
+                private ServiceChargeSettlementService $settlementService,
+                private PermissionService              $permissionService,
+                private IL10N                          $l10n,
+        ) {
+                parent::__construct(Application::APP_ID, $request);
+        }
 
-	#[NoAdminRequired]
-	public function index(?int $propertyId = null): DataResponse {
-		return new DataResponse($this->unitService->listUnitsForUser($this->getUserId(), $propertyId));
-	}
+        #[NoAdminRequired]
+        public function index(?int $propertyId = null): DataResponse {
+                return new DataResponse($this->unitService->listUnitsForUser($this->getUserId(), $propertyId, $this->getRole()));
+        }
 
 	#[NoAdminRequired]
 	public function listByProperty(int $propertyId): DataResponse {
@@ -59,11 +61,11 @@ class UnitController extends Controller {
 						   ?string $notes = null
 	): DataResponse {
 		$data = compact('propertyId', 'label', 'unitNumber', 'landRegister', 'livingArea', 'usableArea', 'unitType', 'buyDate', 'totalCosts', 'officialId', 'iban', 'bic', 'notes');
-		try {
-			$unit = $this->unitService->createUnit($data, $this->getUserId());
-			return new DataResponse($unit, Http::STATUS_CREATED);
-		} catch (\InvalidArgumentException $e) {
-			return $this->validationError($e->getMessage());
+                try {
+                        $unit = $this->unitService->createUnit($data, $this->getUserId(), $this->getRole());
+                        return new DataResponse($unit, Http::STATUS_CREATED);
+                } catch (\InvalidArgumentException $e) {
+                        return $this->validationError($e->getMessage());
 		} catch (\Throwable $e) {
 			return $this->notFound();
 		}
@@ -100,11 +102,11 @@ class UnitController extends Controller {
 			'bic' => $bic,
 			'notes' => $notes,
 		], fn($value) => $value !== null);
-		try {
-			return new DataResponse($this->unitService->updateUnit($id, $data, $this->getUserId()));
-		} catch (\InvalidArgumentException $e) {
-			return $this->validationError($e->getMessage());
-		} catch (\Throwable $e) {
+                try {
+                        return new DataResponse($this->unitService->updateUnit($id, $data, $this->getUserId(), $this->getRole()));
+                } catch (\InvalidArgumentException $e) {
+                        return $this->validationError($e->getMessage());
+                } catch (\Throwable $e) {
 			return $this->notFound();
 		}
 	}
@@ -141,9 +143,13 @@ class UnitController extends Controller {
 		return new DataResponse($result, Http::STATUS_CREATED);
 	}
 
-	private function getUserId(): string {
-		return $this->userSession->getUser()?->getUID() ?? '';
-	}
+        private function getUserId(): string {
+                return $this->userSession->getUser()?->getUID() ?? '';
+        }
+
+        private function getRole(): string {
+                return $this->permissionService->getRoleFromRequest($this->request);
+        }
 
 	private function notFound(): DataResponse {
 		return new DataResponse([
