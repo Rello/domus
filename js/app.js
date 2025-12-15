@@ -1268,7 +1268,8 @@
                 .then(property => {
 
                     const cityLine = [property.zip, property.city].filter(Boolean).join(' ');
-                    const address = [property.street, cityLine, property.country].filter(Boolean).join(', ');
+                    const addressParts = [property.street, cityLine, property.country].filter(Boolean);
+                    const address = addressParts.length ? addressParts.join(', ') : (property.address || '');
                     const showBookingFeatures = Domus.Role.hasCapability('manageBookings');
                     const showReportActions = Domus.Role.hasCapability('manageReports');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
@@ -1281,13 +1282,10 @@
 
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-main">' +
-                        '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(property.type || t('domus', 'Property')) + '</div>' +
+                        (property.description ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(property.description) + '</div>' : '') +
                         '<h2>' + Domus.Utils.escapeHtml(property.name || '') + '</h2>' +
                         '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(address) + '</p>' +
-                        '<div class="domus-hero-tags">' +
-                        (property.usageRole ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(property.usageRole) + '</span>' : '') +
-                        (property.city ? '<span class="domus-badge domus-badge-muted">' + Domus.Utils.escapeHtml(property.city) + '</span>' : '') +
-                        '</div>' +
+                        (property.type ? '<div class="domus-hero-tags"><span class="domus-badge">' + Domus.Utils.escapeHtml(property.type) + '</span></div>' : '') +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         [
@@ -1726,10 +1724,12 @@
                         addressParts.push(unit.address);
                     }
                     const cityLine = [zip, city].filter(Boolean).join(' ');
-                    if (!addressParts.length) {
+                    if (street || cityLine || country) {
                         if (street) addressParts.push(street);
                         if (cityLine) addressParts.push(cityLine);
                         if (country) addressParts.push(country);
+                    } else if (unit.address) {
+                        addressParts.push(unit.address);
                     }
                     const addressLine = addressParts.join(', ');
                     const stats = Domus.UI.buildStatCards([
@@ -2292,7 +2292,7 @@
                         { label: t('domus', 'Type'), value: partner.partnerType || '—', hint: t('domus', 'Partner category') }
                     ]);
 
-                    const contactMeta = [partner.email, partner.phone].filter(Boolean).join(' • ');
+                    const contactMeta = [partner.phone, partner.email].filter(Boolean).join(' • ');
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-main">' +
                         '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(partner.partnerType || t('domus', 'Partner')) + '</div>' +
