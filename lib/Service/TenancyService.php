@@ -23,6 +23,7 @@ class TenancyService {
         private BookingMapper $bookingMapper,
         private ReportMapper $reportMapper,
         private ReportService $reportService,
+        private PermissionService $permissionService,
         private LoggerInterface $logger,
         private IL10N $l10n,
     ) {
@@ -58,8 +59,9 @@ class TenancyService {
         return $tenancy;
     }
 
-    public function createTenancy(array $data, string $userId): Tenancy {
-        $this->assertTenancyInput($data, $userId);
+    public function createTenancy(array $data, string $userId, string $role): Tenancy {
+        $data = $this->permissionService->guardTenancyFinancialFields($role, $data);
+        $this->assertTenancyInput($data, $userId, $role);
         $now = time();
         $tenancy = new Tenancy();
         $tenancy->setUserId($userId);
@@ -75,12 +77,12 @@ class TenancyService {
         $tenancy->setUpdatedAt($now);
 
         $inserted = $this->tenancyMapper->insert($tenancy);
-        $this->syncPartnerRelations($inserted, $data['partnerIds'] ?? [], $userId);
+        $this->syncPartnerRelations($inserted, $data['partnerIds'] ?? [], $userId, $role);
         $this->hydratePartners($inserted, $userId);
         return $inserted;
     }
 
-    public function changeConditions(int $id, array $data, string $userId): Tenancy {
+    public function changeConditions(int $id, array $data, string $userId, string $role): Tenancy {
         $existing = $this->getTenancyForUser($id, $userId);
 
         $mergedData = [
@@ -95,7 +97,8 @@ class TenancyService {
             'partnerIds' => $data['partnerIds'] ?? $existing->getPartnerIds(),
         ];
 
-        $this->assertTenancyInput($mergedData, $userId);
+        $mergedData = $this->permissionService->guardTenancyFinancialFields($role, $mergedData);
+        $this->assertTenancyInput($mergedData, $userId, $role);
         $startDate = $this->parseDate($mergedData['startDate'] ?? null);
 
         if ($startDate === null) {
@@ -104,12 +107,13 @@ class TenancyService {
 
         $this->closeOverlappingTenancies($existing, $mergedData['partnerIds'], $startDate, $userId);
 
-        return $this->createTenancy($mergedData, $userId);
+        return $this->createTenancy($mergedData, $userId, $role);
     }
 
-    public function updateTenancy(int $id, array $data, string $userId): Tenancy {
+    public function updateTenancy(int $id, array $data, string $userId, string $role): Tenancy {
         $tenancy = $this->getTenancyForUser($id, $userId);
-        $this->assertTenancyInput($data + ['unitId' => $tenancy->getUnitId(), 'partnerIds' => $data['partnerIds'] ?? []], $userId);
+        $data = $this->permissionService->guardTenancyFinancialFields($role, $data);
+        $this->assertTenancyInput($data + ['unitId' => $tenancy->getUnitId(), 'partnerIds' => $data['partnerIds'] ?? []], $userId, $role);
         foreach (['unitId', 'startDate', 'endDate', 'baseRent', 'serviceCharge', 'serviceChargeAsPrepayment', 'deposit', 'conditions'] as $field) {
             if (array_key_exists($field, $data)) {
                 $setter = 'set' . ucfirst($field);
@@ -119,7 +123,7 @@ class TenancyService {
         $tenancy->setUpdatedAt(time());
         $updated = $this->tenancyMapper->update($tenancy);
         if (isset($data['partnerIds'])) {
-            $this->syncPartnerRelations($updated, $data['partnerIds'], $userId);
+            $this->syncPartnerRelations($updated, $data['partnerIds'], $userId, $role);
         }
         $this->hydratePartners($updated, $userId);
         return $updated;
@@ -223,19 +227,22 @@ class TenancyService {
         return $sums;
     }
 
-    private function assertTenancyInput(array $data, string $userId): void {
+    private function assertTenancyInput(array $data, string $userId, string $role): void {
         if (!isset($data['unitId'])) {
             throw new \InvalidArgumentException($this->l10n->t('Unit is required.'));
         }
         if (!isset($data['startDate']) || !preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', (string)$data['startDate'])) {
             throw new \InvalidArgumentException($this->l10n->t('Start date is required.'));
         }
-        if (!isset($data['baseRent'])) {
+        if (!isset($data['baseRent']) && !$this->permissionService->isBuildingManagement($role)) {
             throw new \InvalidArgumentException($this->l10n->t('Base rent is required.'));
         }
         $unit = $this->unitMapper->findForUser((int)$data['unitId'], $userId);
         if (!$unit) {
             throw new \RuntimeException($this->l10n->t('Unit not found.'));
+        }
+        if ($this->permissionService->isBuildingManagement($role) && $unit->getPropertyId() === null) {
+            throw new \InvalidArgumentException($this->l10n->t('Property is required for building management tenancies.'));
         }
         if (isset($data['partnerIds'])) {
             foreach ($data['partnerIds'] as $partnerId) {
@@ -243,13 +250,18 @@ class TenancyService {
                 if (!$partner) {
                     throw new \RuntimeException($this->l10n->t('Partner not found.'));
                 }
+                $this->permissionService->assertPartnerMatchesRole($role, $partner->getPartnerType());
             }
         }
     }
 
-    private function syncPartnerRelations(Tenancy $tenancy, array $partnerIds, string $userId): void {
+    private function syncPartnerRelations(Tenancy $tenancy, array $partnerIds, string $userId, string $role): void {
         $this->partnerRelMapper->deleteForRelation('tenancy', $tenancy->getId(), $userId);
         foreach ($partnerIds as $partnerId) {
+            $partner = $this->partnerMapper->findForUser((int)$partnerId, $userId);
+            if ($partner) {
+                $this->permissionService->assertPartnerMatchesRole($role, $partner->getPartnerType());
+            }
             $relation = new PartnerRel();
             $relation->setUserId($userId);
             $relation->setType('tenancy');

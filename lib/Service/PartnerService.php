@@ -13,6 +13,7 @@ class PartnerService {
         private PartnerMapper $partnerMapper,
         private PartnerRelMapper $partnerRelMapper,
         private TenancyService $tenancyService,
+        private PermissionService $permissionService,
         private IL10N $l10n,
     ) {
     }
@@ -30,10 +31,11 @@ class PartnerService {
         return $partner;
     }
 
-    public function createPartner(array $data, string $userId): Partner {
+    public function createPartner(array $data, string $userId, string $role): Partner {
         if (!in_array($data['partnerType'] ?? '', ['tenant', 'owner'], true)) {
             throw new \InvalidArgumentException($this->l10n->t('Invalid partner type.'));
         }
+        $this->permissionService->assertPartnerTypeForRole($role, $data['partnerType']);
         if (!isset($data['name']) || trim((string)$data['name']) === '') {
             throw new \InvalidArgumentException($this->l10n->t('Partner name is required.'));
         }
@@ -56,10 +58,14 @@ class PartnerService {
         return $this->partnerMapper->insert($partner);
     }
 
-    public function updatePartner(int $id, array $data, string $userId): Partner {
+    public function updatePartner(int $id, array $data, string $userId, string $role): Partner {
         $partner = $this->getPartnerForUser($id, $userId);
         if (isset($data['partnerType']) && !in_array($data['partnerType'], ['tenant', 'owner'], true)) {
             throw new \InvalidArgumentException($this->l10n->t('Invalid partner type.'));
+        }
+        $targetType = $data['partnerType'] ?? $partner->getPartnerType();
+        if ($targetType) {
+            $this->permissionService->assertPartnerTypeForRole($role, $targetType);
         }
         $fields = ['partnerType', 'name', 'street', 'zip', 'city', 'country', 'email', 'phone', 'customerRef', 'notes', 'ncUserId'];
         foreach ($fields as $field) {

@@ -17,6 +17,7 @@ class UnitService {
         private TenancyMapper $tenancyMapper,
         private PartnerRelMapper $partnerRelMapper,
         private TenancyService $tenancyService,
+        private PermissionService $permissionService,
         private IL10N $l10n,
     ) {
     }
@@ -38,8 +39,9 @@ class UnitService {
         return $unit;
     }
 
-    public function createUnit(array $data, string $userId): Unit {
+    public function createUnit(array $data, string $userId, string $role): Unit {
         $propertyId = $data['propertyId'] ?? null;
+        $this->permissionService->assertPropertyRequirement($role, $propertyId ? (int)$propertyId : null);
         if ($propertyId !== null) {
             $property = $this->propertyMapper->findForUser((int)$propertyId, $userId);
             if (!$property) {
@@ -68,8 +70,11 @@ class UnitService {
         return $this->unitMapper->insert($unit);
     }
 
-    public function updateUnit(int $id, array $data, string $userId): Unit {
+    public function updateUnit(int $id, array $data, string $userId, string $role): Unit {
         $unit = $this->getUnitForUser($id, $userId);
+        if ($this->permissionService->isBuildingManagement($role) && $unit->getPropertyId() === null && !isset($data['propertyId'])) {
+            throw new \InvalidArgumentException($this->l10n->t('Property is required for building management.'));
+        }
         $fields = ['label', 'unitNumber', 'landRegister', 'livingArea', 'usableArea', 'unitType', 'buyDate', 'totalCosts', 'officialId', 'iban', 'bic', 'notes'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
@@ -78,6 +83,7 @@ class UnitService {
             }
         }
         if (isset($data['propertyId'])) {
+            $this->permissionService->assertPropertyRequirement($role, (int)$data['propertyId']);
             $property = $this->propertyMapper->findForUser((int)$data['propertyId'], $userId);
             if (!$property) {
                 throw new \RuntimeException($this->l10n->t('Property not found.'));

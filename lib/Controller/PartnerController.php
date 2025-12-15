@@ -4,6 +4,7 @@ namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\PartnerService;
+use OCA\Domus\Service\PermissionService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
@@ -17,6 +18,7 @@ class PartnerController extends Controller {
         IRequest $request,
         private IUserSession $userSession,
         private PartnerService $partnerService,
+        private PermissionService $permissionService,
         private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
@@ -40,7 +42,7 @@ class PartnerController extends Controller {
     public function create(string $partnerType, string $name, ?string $street = null, ?string $zip = null, ?string $city = null, ?string $country = null, ?string $email = null, ?string $phone = null, ?string $customerRef = null, ?string $notes = null, ?string $ncUserId = null): DataResponse {
         $data = compact('partnerType', 'name', 'street', 'zip', 'city', 'country', 'email', 'phone', 'customerRef', 'notes', 'ncUserId');
         try {
-            $partner = $this->partnerService->createPartner($data, $this->getUserId());
+            $partner = $this->partnerService->createPartner($data, $this->getUserId(), $this->getRole());
             return new DataResponse($partner, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
@@ -63,7 +65,7 @@ class PartnerController extends Controller {
             'ncUserId' => $ncUserId,
         ], fn($value) => $value !== null);
         try {
-            return new DataResponse($this->partnerService->updatePartner($id, $data, $this->getUserId()));
+            return new DataResponse($this->partnerService->updatePartner($id, $data, $this->getUserId(), $this->getRole()));
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
         } catch (\Throwable $e) {
@@ -89,6 +91,10 @@ class PartnerController extends Controller {
 
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
+    }
+
+    private function getRole(): string {
+        return $this->permissionService->getRoleFromRequest($this->request);
     }
 
     private function notFound(): DataResponse {

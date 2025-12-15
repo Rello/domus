@@ -4,6 +4,7 @@ namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\TenancyService;
+use OCA\Domus\Service\PermissionService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
@@ -17,6 +18,7 @@ class TenancyController extends Controller {
         IRequest $request,
         private IUserSession $userSession,
         private TenancyService $tenancyService,
+        private PermissionService $permissionService,
         private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
@@ -47,10 +49,10 @@ class TenancyController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function create(int $unitId, string $startDate, string $baseRent, ?string $endDate = null, ?string $serviceCharge = null, ?int $serviceChargeAsPrepayment = 0, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
+    public function create(int $unitId, string $startDate, ?string $baseRent = null, ?string $endDate = null, ?string $serviceCharge = null, ?int $serviceChargeAsPrepayment = 0, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
         $data = compact('unitId', 'startDate', 'endDate', 'baseRent', 'serviceCharge', 'serviceChargeAsPrepayment', 'deposit', 'conditions', 'partnerIds');
         try {
-            $tenancy = $this->tenancyService->createTenancy($data, $this->getUserId());
+            $tenancy = $this->tenancyService->createTenancy($data, $this->getUserId(), $this->getRole());
             return new DataResponse($tenancy, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
@@ -60,10 +62,10 @@ class TenancyController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function changeConditions(int $id, string $startDate, string $baseRent, ?string $endDate = null, ?string $serviceCharge = null, ?int $serviceChargeAsPrepayment = 0, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
+    public function changeConditions(int $id, string $startDate, ?string $baseRent = null, ?string $endDate = null, ?string $serviceCharge = null, ?int $serviceChargeAsPrepayment = 0, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
         $data = compact('startDate', 'endDate', 'baseRent', 'serviceCharge', 'serviceChargeAsPrepayment', 'deposit', 'conditions', 'partnerIds');
         try {
-            $tenancy = $this->tenancyService->changeConditions($id, $data, $this->getUserId());
+            $tenancy = $this->tenancyService->changeConditions($id, $data, $this->getUserId(), $this->getRole());
             return new DataResponse($tenancy, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
@@ -86,7 +88,7 @@ class TenancyController extends Controller {
             'partnerIds' => $partnerIds,
         ], fn($value) => $value !== null);
         try {
-            return new DataResponse($this->tenancyService->updateTenancy($id, $data, $this->getUserId()));
+            return new DataResponse($this->tenancyService->updateTenancy($id, $data, $this->getUserId(), $this->getRole()));
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
         } catch (\Throwable $e) {
@@ -106,6 +108,10 @@ class TenancyController extends Controller {
 
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
+    }
+
+    private function getRole(): string {
+        return $this->permissionService->getRoleFromRequest($this->request);
     }
 
     private function notFound(): DataResponse {
