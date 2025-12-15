@@ -1526,6 +1526,13 @@
      * Units view
      */
     Domus.Units = (function() {
+        function formatPartnerNames(partners) {
+            return (partners || [])
+                .map(p => p.name)
+                .filter(Boolean)
+                .join(', ');
+        }
+
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading units…'));
@@ -1712,6 +1719,20 @@
                     const canManageBookings = Domus.Role.hasCapability('manageBookings') && unitDetailConfig.showBookings;
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
+                    const currentTenancy = (unit.activeTenancies || [])
+                        .slice()
+                        .sort((a, b) => {
+                            const aDate = new Date(a?.startDate || 0);
+                            const bDate = new Date(b?.startDate || 0);
+                            return (bDate.getTime() || 0) - (aDate.getTime() || 0);
+                        })[0];
+                    const currentTenantName = currentTenancy ?
+                        (formatPartnerNames(currentTenancy.partners) || currentTenancy.partnerName || '') : '';
+                    const currentBaseRent = currentTenancy?.baseRent;
+                    const previousYear = Domus.state.currentYear - 1;
+                    const rentabilityRow = (statistics?.revenue?.rows || [])
+                        .find(row => Number(row.year) === previousYear);
+                    const rentabilityValue = rentabilityRow?.netRentab;
                     const livingAreaLabel = unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '';
                     const kickerParts = [livingAreaLabel, unit.notes].filter(Boolean);
                     const kicker = kickerParts.length ? kickerParts.join(' | ') : '';
@@ -1733,8 +1754,18 @@
                     }
                     const addressLine = addressParts.join(', ');
                     const stats = Domus.UI.buildStatCards([
-                        { label: tenancyLabels.plural, value: allTenancies.length, hint: t('domus', 'Active and historic'), formatValue: false },
-                        { label: t('domus', 'Bookings'), value: (bookings || []).length, hint: t('domus', 'Entries for the selected year'), formatValue: false },
+                        {
+                            label: t('domus', 'Current Tenancy'),
+                            value: `Kaltmiete: ${Domus.Utils.formatCurrency(currentBaseRent) || '—'}`,
+                            hint: currentTenantName || '—',
+                            formatValue: false
+                        },
+                        {
+                            label: t('domus', 'Rentability'),
+                            value: Domus.Utils.formatPercentage(rentabilityValue) || '—',
+                            hint: '',
+                            formatValue: false
+                        },
                         { label: t('domus', 'Living area'), value: unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '—', hint: t('domus', 'Reported size') },
                         { label: t('domus', 'Year'), value: Domus.Utils.formatYear(Domus.state.currentYear), hint: t('domus', 'Reporting context'), formatValue: false }
                     ]);
