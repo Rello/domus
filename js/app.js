@@ -1845,7 +1845,7 @@
                         [
                             (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" class="primary" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
                             (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' : ''),
-                            '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Nebenkostenabrechnung')) + '</button>',
+                            '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>',
                             '<button id="domus-unit-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
                             '<button id="domus-unit-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
                         ].filter(Boolean).join('') +
@@ -2168,7 +2168,7 @@
                 + '</div>';
 
             const modal = Domus.UI.openModal({
-                title: t('domus', 'Nebenkostenabrechnung'),
+                title: t('domus', 'Utility Bill Statement'),
                 content: container,
                 size: 'large'
             });
@@ -2239,9 +2239,9 @@
                 tableContainer.innerHTML = Domus.UI.buildTable([
                     '',
                     t('domus', 'Partner'),
-                    t('domus', 'Nebenkosten (1001)'),
-                    t('domus', 'Hausgeld (2000)'),
-                    t('domus', 'Grundsteuer (2005)'),
+                    t('domus', 'Utility costs'),
+                    t('domus', 'Maintenance fee'),
+                    t('domus', 'Property tax'),
                     t('domus', 'Saldo')
                 ], rows);
 

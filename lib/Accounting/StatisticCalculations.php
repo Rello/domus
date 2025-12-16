@@ -5,19 +5,19 @@ namespace OCA\Domus\Accounting;
 class StatisticCalculations {
     public static function unitRevenue(): array {
         return [
-            ['key' => 'year', 'label' => 'year', 'type' => 'year'],
-            ['key' => 'rent', 'label' => 'Kaltmiete', 'account' => '1000'],
+            ['key' => 'year', 'label' => 'Year', 'type' => 'year'],
+            ['key' => 'rent', 'label' => 'Base rent', 'account' => '1000'],
             [
                 'key' => 'hgnu',
-                'label' => 'Nich umlagef.',
+                'label' => 'Maintenance fee (non-allocable)',
                 'rule' => [
                     ['op' => 'add', 'args' => ['2001', '2004']],
                 ],
             ],
-            ['key' => 'zinsen', 'label' => 'Kreditzinsen', 'account' => '2006'],
+            ['key' => 'zinsen', 'label' => 'Loan Interest', 'account' => '2006'],
             [
                 'key' => 'gwb',
-                'label' => 'Gewinn Brutto',
+                'label' => 'Gross profit',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['rent', 'hgnu']],
                     ['op' => 'sub', 'args' => ['prev', 'zinsen']],
@@ -25,14 +25,14 @@ class StatisticCalculations {
             ],
             [
                 'key' => 'abschr',
-                'label' => 'Abschr. & sonstige',
+                'label' => 'Depreciation & others',
                 'rule' => [
                     ['op' => 'add', 'args' => ['2007', '2008']],
                 ],
             ],
             [
                 'key' => 'steuer',
-                'label' => 'Steuern',
+                'label' => 'Taxes',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['gwb', 'abschr']],
                     ['op' => 'mul', 'args' => ['prev', '2009']],
@@ -40,14 +40,14 @@ class StatisticCalculations {
             ],
             [
                 'key' => 'gwn',
-                'label' => 'Gewinn Netto',
+                'label' => 'Net profit',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['gwb', 'steuer']],
                 ],
             ],
             [
                 'key' => 'netRentab',
-                'label' => 'Rentab. Netto',
+                'label' => 'Rentability',
                 'rule' => [
                     ['op' => 'div', 'args' => ['gwn', '3000']],
                 ],
@@ -59,17 +59,17 @@ class StatisticCalculations {
     public static function unitCost(): array {
         return [
             ['key' => 'year', 'label' => 'year', 'type' => 'year'],
-            ['key' => 'tenancyNebenkosten', 'label' => 'Nebenkosten', 'account' => '1001'],
+            ['key' => 'tenancyUtility', 'label' => 'Utility costs', 'account' => '1001'],
             [
-                'key' => 'hausgeld',
-                'label' => 'Hausgeld (uml.) + Grundsteuer',
+                'key' => 'maintFee',
+                'label' => 'Maint. fee (allocable) & property tax',
                 'rule' => [
                     ['op' => 'add', 'args' => ['2000', '2005']],
                 ],
             ],
             [
                 'key' => 'saldo',
-                'label' => 'Saldo Mieter',
+                'label' => 'Saldo tenant',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['1001', '2000', '2005']],
                 ],
@@ -80,21 +80,21 @@ class StatisticCalculations {
     public static function unitOverview(): array {
         return [
             ['key' => 'unitId', 'label' => 'Unit ID', 'source' => 'unit', 'field' => 'id', 'visible' => false],
-            ['key' => 'label', 'label' => 'Unitlabel', 'source' => 'unit', 'field' => 'label'],
+            ['key' => 'label', 'label' => 'Unit', 'source' => 'unit', 'field' => 'label'],
             ['key' => 'size', 'label' => 'Size', 'source' => 'unit', 'field' => 'livingArea', 'format' => 'number', 'unit' => 'm²'],
-            ['key' => 'rent', 'label' => 'Kaltmiete', 'account' => '1000'],
+            ['key' => 'rent', 'label' => 'Base rent', 'account' => '1000'],
             [
                 'key' => 'hgnu',
-                'label' => 'Nich umlagef.',
+                'label' => 'Non-allocable',
                 'rule' => [
                     ['op' => 'add', 'args' => ['2001', '2004']],
                 ],
                 'visible' => false,
             ],
-            ['key' => 'zinsen', 'label' => 'Kreditzinsen', 'account' => '2006', 'visible' => false],
+            ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2006', 'visible' => false],
             [
                 'key' => 'gwb',
-                'label' => 'Gewinn Brutto',
+                'label' => 'Gross profit',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['rent', 'hgnu']],
                     ['op' => 'sub', 'args' => ['prev', 'zinsen']],
@@ -111,7 +111,7 @@ class StatisticCalculations {
             ],
             [
                 'key' => 'steuer',
-                'label' => 'Steuern',
+                'label' => 'Taxes',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['gwb', 'abschr']],
                     ['op' => 'mul', 'args' => ['prev', '2009']],
@@ -137,7 +137,7 @@ class StatisticCalculations {
             ],
             [
                 'key' => 'netRentab',
-                'label' => 'Rentab. Netto',
+                'label' => 'Rentability',
                 'rule' => [
                     ['op' => 'div', 'args' => ['gwn', '3000']],
                 ],

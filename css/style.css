@@ -173,11 +173,10 @@
 }
 
 .domus-form-value-text {
-    padding: 9px 10px;
+    padding: 5px 10px;
     border: 1px solid var(--color-border);
     border-radius: 6px;
     background: #f8f8f8;
-    min-height: 40px;
     display: flex;
     align-items: center;
 }

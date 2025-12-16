@@ -2,31 +2,41 @@
 
 namespace OCA\Domus\Accounting;
 
+use OCP\IL10N;
+
 class Accounts {
     private const ACCOUNTS = [
-        '1000' => ['label' => 'Kaltmiete'],
-        '1001' => ['label' => 'Nebenkosten'],
-		'2000' => ['label' => 'Hausgeld umlagefägig'],
-		'2001' => ['label' => 'Hausgelt n. umlagefähig'],
-		'2003' => ['label' => 'Zuführ. Rücklage'],
-		'2004' => ['label' => 'Sonstige Kosten'],
-		'2005' => ['label' => 'Grundsteuer'],
-		'2006' => ['label' => 'Kreditzinsen'],
-		'2007' => ['label' => 'Abschreibung'],
-		'2008' => ['label' => 'Sonstige Steuerabzüge'],
-		'2009' => ['label' => 'Steuersatz'],
-		'3000' => ['label' => 'Total Cost'],
-    ];
+		'1000' => 'Base rent',
+		'1001' => 'Utility costs',
+		'2000' => 'Maintenance fee (allocable)',
+		'2001' => 'Maintenance fee (non-allocable)',
+		'2003' => 'Reserve fund allocation',
+		'2004' => 'Other costs',
+		'2005' => 'Property tax',
+		'2006' => 'Loan interest',
+		'2007' => 'Depreciation',
+		'2008' => 'Other tax deductions',
+		'2009' => 'Tax rate',
+		'3000' => 'Total cost',
+		];
 
-    public static function all(): array {
-        return self::ACCOUNTS;
-    }
+	public static function all(?IL10N $l10n = null): array {
+		$accounts = [];
+
+		foreach (self::ACCOUNTS as $number => $label) {
+			$accounts[$number] = ['label' => $l10n ? $l10n->t($label) : $label];
+		}
+
+		return $accounts;
+	}
 
     public static function exists(string $nr): bool {
         return array_key_exists($nr, self::ACCOUNTS);
     }
 
-    public static function label(string $nr): string {
-        return self::ACCOUNTS[$nr]['label'] ?? '';
+	public static function label(string $nr, ?IL10N $l10n = null): string {
+		$label = self::ACCOUNTS[$nr] ?? '';
+
+		return $label !== '' && $l10n ? $l10n->t($label) : $label;
     }
 }

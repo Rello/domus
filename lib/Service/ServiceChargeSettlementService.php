@@ -113,8 +113,8 @@ class ServiceChargeSettlementService {
             $fileName,
             $content,
             $year,
-            $this->l10n->t('Nebenkostenabrechnung %d', [$year]),
-            $this->l10n->t('Nebenkostenabrechnung')
+            $this->l10n->t('Utility Bill Statement %d', [$year]),
+            $this->l10n->t('Utility Bill Statement')
         );
 
         $links = $creation['links'];
