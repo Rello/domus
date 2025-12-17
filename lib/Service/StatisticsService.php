@@ -95,6 +95,9 @@ class StatisticsService {
                         if (!isset($column['label'])) {
                                 $column['label'] = (string)$column['key'];
                         }
+
+                        $column['label'] = $this->l10n->t((string)$column['label']);
+
                         if (!isset($column['visible'])) {
                                 $column['visible'] = true;
                         }

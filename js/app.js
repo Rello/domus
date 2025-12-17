@@ -313,7 +313,7 @@
 
             const opts = entries.map(([nr, data]) => ({
                 value: nr,
-                label: data && data.label ? `${nr} – ${data.label}` : nr
+                label: data && data.label ? data.label : nr
             }));
             if (includePlaceholder) {
                 return [{ value: '', label: t('domus', 'Select account') }].concat(opts);
