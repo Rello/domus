@@ -20,10 +20,10 @@ class PageController extends Controller {
     }
 
     #[NoAdminRequired]
-	#[NoCSRFRequired]
+        #[NoCSRFRequired]
     public function index(): TemplateResponse {
         return new TemplateResponse(Application::APP_ID, 'main', [
-            'accounts' => Accounts::all(),
+            'accounts' => Accounts::all($this->l10n),
         ]);
     }
 }

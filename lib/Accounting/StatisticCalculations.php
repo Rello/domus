@@ -14,7 +14,7 @@ class StatisticCalculations {
                     ['op' => 'add', 'args' => ['2001', '2004']],
                 ],
             ],
-            ['key' => 'zinsen', 'label' => 'Loan Interest', 'account' => '2006'],
+            ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2006'],
             [
                 'key' => 'gwb',
                 'label' => 'Gross profit',
@@ -58,7 +58,7 @@ class StatisticCalculations {
 
     public static function unitCost(): array {
         return [
-            ['key' => 'year', 'label' => 'year', 'type' => 'year'],
+            ['key' => 'year', 'label' => 'Year', 'type' => 'year'],
             ['key' => 'tenancyUtility', 'label' => 'Utility costs', 'account' => '1001'],
             [
                 'key' => 'maintFee',
