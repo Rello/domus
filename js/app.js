@@ -1102,9 +1102,11 @@
             const ul = document.createElement('ul');
             ul.className = 'domus-nav';
 
+            const activeView = getActiveView();
+
             getMenuItems().forEach(item => {
                 const li = document.createElement('li');
-                li.className = Domus.state.currentView === item.view ? 'active' : '';
+                li.className = activeView === item.view ? 'active' : '';
                 const link = document.createElement('a');
                 link.href = '#';
                 link.textContent = item.label;
@@ -1141,6 +1143,18 @@
 
         function getMenuItems() {
             return Domus.Role.getNavigationItems();
+        }
+
+        function getActiveView() {
+            const viewMap = {
+                propertyDetail: 'properties',
+                unitDetail: 'units',
+                partnerDetail: 'partners',
+                tenancyDetail: 'tenancies',
+                bookingDetail: 'bookings'
+            };
+
+            return viewMap[Domus.state.currentView] || Domus.state.currentView;
         }
 
         return { render };

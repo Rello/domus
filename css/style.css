@@ -93,12 +93,16 @@
     padding: 10px;
     border-bottom: 1px solid var(--color-border);
     text-align: left;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .domus-table th.domus-cell-number,
 .domus-table td.domus-cell-number {
     text-align: right;
     white-space: nowrap;
+    word-break: normal;
+    overflow-wrap: normal;
 }
 
 .domus-table tr[data-navigate] {
