@@ -1217,9 +1217,15 @@
         function render() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Dashboard') }));
-            Domus.Api.getDashboardSummary()
-                .then(data => {
-                    const html = buildHeader() + buildContent(data || {});
+
+            const summaryPromise = Domus.Api.getDashboardSummary();
+            const unitsPromise = Domus.Role.isTenantView() || Domus.Role.isBuildingMgmtView()
+                ? Promise.resolve(null)
+                : Domus.Api.getUnitsStatisticsOverview();
+
+            Promise.all([summaryPromise, unitsPromise])
+                .then(([data, unitsOverview]) => {
+                    const html = buildHeader() + buildContent(data || {}, unitsOverview);
                     Domus.UI.renderContent(html);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -1230,52 +1236,50 @@
             return '<div class="domus-toolbar">' + filter + '</div>';
         }
 
-        function buildContent(data) {
+        function buildContent(data, unitsOverview) {
             if (Domus.Role.isTenantView()) {
                 return buildTenantDashboard(data);
             }
             if (Domus.Role.isBuildingMgmtView()) {
                 return buildBuildingMgmtDashboard(data);
             }
-            return buildLandlordDashboard(data);
+            return buildLandlordDashboard(data, unitsOverview);
         }
 
-        function buildLandlordDashboard(data) {
+        function buildLandlordDashboard(data, unitsOverview) {
             const tenancyLabels = Domus.Role.getTenancyLabels();
             const cards = [
-                { label: t('domus', 'Properties'), value: data.propertyCount || 0 },
                 { label: t('domus', 'Units'), value: data.unitCount || 0 },
                 { label: tenancyLabels.plural, value: data.tenancyCount || 0 },
-                { label: t('domus', 'Open bookings'), value: data.bookingCount || 0 }
+                { label: t('domus', 'Monthly income'), value: data.monthlyBaseRentSum || 0, formatter: Domus.Utils.formatCurrency }
             ];
 
-            const cardHtml = cards.map(card => '<div class="domus-card"><div class="domus-card-title">' +
-                Domus.Utils.escapeHtml(card.label) + '</div><div class="domus-card-value">' +
-                Domus.Utils.escapeHtml(card.value.toString()) + '</div></div>').join('');
+            const cardHtml = cards.map(card => {
+                const renderedValue = card.formatter ? card.formatter(card.value) : card.value;
+                const safeValue = renderedValue === undefined || renderedValue === null ? '' : renderedValue.toString();
+                return '<div class="domus-card"><div class="domus-card-title">' +
+                    Domus.Utils.escapeHtml(card.label) + '</div><div class="domus-card-value">' +
+                    Domus.Utils.escapeHtml(safeValue) + '</div></div>';
+            }).join('');
 
-            const propertyRows = (data.properties || []).map(p => ({
-                cells: [
-                    Domus.Utils.escapeHtml(p.name || ''),
-                    Domus.Utils.escapeHtml(p.city || ''),
-                    Domus.Utils.escapeHtml((p.unitCount || 0).toString())
-                ],
-                dataset: { navigate: 'propertyDetail', args: p.id }
-            }));
-
-            const table = Domus.UI.buildTable([
-                t('domus', 'Name'), t('domus', 'City'), t('domus', 'Units')
-            ], propertyRows);
+            const table = unitsOverview
+                ? Domus.Units.renderStatisticsTable(unitsOverview, {
+                    buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null
+                })
+                : '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Units') })) + '</div>';
 
             setTimeout(Domus.UI.bindRowNavigation, 0);
 
             return '<div class="domus-cards">' + cardHtml + '</div>' +
-                '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Properties overview')) + '</h2>' + table;
+                '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Units overview')) + '</h2>' + table;
         }
 
         function buildBuildingMgmtDashboard(data) {
             const cards = [
                 { label: t('domus', 'Properties'), value: data.propertyCount || 0 },
-                { label: t('domus', 'Units'), value: data.unitCount || 0 }
+                { label: t('domus', 'Units'), value: data.unitCount || 0 },
+                { label: t('domus', 'Managed owners'), value: data.tenancyCount || 0 },
+                { label: t('domus', 'Bookings this year'), value: data.bookingCount || 0 }
             ];
 
             const cardHtml = cards.map(card => '<div class="domus-card"><div class="domus-card-title">' +

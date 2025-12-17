@@ -26,7 +26,7 @@ class DashboardService {
         $bookings = $this->bookingMapper->findByUser($userId, ['year' => $year]);
 
         $rentSum = 0.0;
-        foreach ($tenancies as $tenancy) {
+        foreach ($activeTenancies as $tenancy) {
             $rentSum += (float)$tenancy->getBaseRent();
         }
 
