@@ -444,11 +444,52 @@
             return { modalEl: modal, close: closeModal };
         }
 
-        function buildModalAction(label, onClick) {
+        function createIconButton(iconClass, label, options = {}) {
             const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = label || '';
-            btn.className = 'domus-modal-action';
+            const classes = ['domus-icon-only-button'];
+            if (options.className) {
+                classes.push(options.className);
+            }
+            btn.className = classes.join(' ');
+            btn.type = options.type || 'button';
+            if (options.id) {
+                btn.id = options.id;
+            }
+            if (label) {
+                btn.setAttribute('aria-label', label);
+                btn.title = options.title || label;
+            }
+            if (options.dataset) {
+                Object.entries(options.dataset).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        btn.dataset[key] = value;
+                    }
+                });
+            }
+
+            const icon = document.createElement('span');
+            icon.className = ['domus-icon', iconClass].filter(Boolean).join(' ');
+            icon.setAttribute('aria-hidden', 'true');
+            btn.appendChild(icon);
+
+            const hiddenLabel = document.createElement('span');
+            hiddenLabel.className = 'domus-visually-hidden';
+            hiddenLabel.textContent = label || '';
+            btn.appendChild(hiddenLabel);
+
+            if (typeof options.onClick === 'function') {
+                btn.addEventListener('click', options.onClick);
+            }
+
+            return btn;
+        }
+
+        function buildIconButton(iconClass, label, options = {}) {
+            return createIconButton(iconClass, label, options).outerHTML;
+        }
+
+        function buildModalAction(label, onClick, iconClass = 'domus-icon-edit') {
+            const btn = createIconButton(iconClass, label, { className: 'domus-modal-action' });
             if (typeof onClick === 'function') {
                 btn.addEventListener('click', onClick);
             }
@@ -830,6 +871,8 @@
             buildFormRow,
             buildFormTable,
             openModal,
+            buildIconButton,
+            createIconButton,
             buildModalAction,
             createFileDropZone
         };
@@ -843,10 +886,10 @@
             landlord: {
                 label: t('domus', 'Landlord'),
                 navigation: [
-                    { view: 'dashboard', label: t('domus', 'Dashboard') },
-                    { view: 'units', label: t('domus', 'Units') },
-                    { view: 'partners', label: t('domus', 'Partners') },
-                    { view: 'bookings', label: t('domus', 'Bookings') }
+                    { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
+                    { view: 'units', label: t('domus', 'Units'), icon: 'domus-icon-unit' },
+                    { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
+                    { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' }
                 ],
                 tenancyLabels: { singular: t('domus', 'Tenancy'), plural: t('domus', 'Tenancies'), action: t('domus', 'Add {entity}', { entity: t('domus', 'Tenancy') }) },
                 capabilities: { manageTenancies: true, manageBookings: true, manageDocuments: true },
@@ -855,10 +898,10 @@
             buildingMgmt: {
                 label: t('domus', 'Building Mgmt'),
                 navigation: [
-                    { view: 'dashboard', label: t('domus', 'Dashboard') },
-                    { view: 'properties', label: t('domus', 'Properties') },
-                    { view: 'partners', label: t('domus', 'Partners') },
-                    { view: 'bookings', label: t('domus', 'Bookings') }
+                    { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
+                    { view: 'properties', label: t('domus', 'Properties'), icon: 'domus-icon-property' },
+                    { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
+                    { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' }
                 ],
                 tenancyLabels: { singular: t('domus', 'Owner'), plural: t('domus', 'Owners'), action: t('domus', 'Add {entity}', { entity: t('domus', 'Owner') }) },
                 capabilities: { manageTenancies: true, manageBookings: true, manageDocuments: true },
@@ -867,8 +910,8 @@
             tenant: {
                 label: t('domus', 'Tenant'),
                 navigation: [
-                    { view: 'dashboard', label: t('domus', 'Dashboard') },
-                    { view: 'tenancies', label: t('domus', 'My tenancies') }
+                    { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
+                    { view: 'tenancies', label: t('domus', 'My tenancies'), icon: 'domus-icon-tenancy' }
                 ],
                 tenancyLabels: { singular: t('domus', 'Tenancy'), plural: t('domus', 'My tenancies'), action: null },
                 capabilities: { manageTenancies: false, manageBookings: false, manageDocuments: false },
@@ -911,7 +954,8 @@
             return (getRoleConfig().navigation || []).map(item => ({
                 view: item.view,
                 label: typeof item.label === 'function' ? item.label() : item.label,
-                args: item.args
+                args: item.args,
+                icon: item.icon
             }));
         }
 
@@ -1109,7 +1153,13 @@
                 li.className = activeView === item.view ? 'active' : '';
                 const link = document.createElement('a');
                 link.href = '#';
-                link.textContent = item.label;
+                const icon = document.createElement('span');
+                icon.className = ['domus-icon', 'domus-nav-icon', item.icon].filter(Boolean).join(' ');
+                icon.setAttribute('aria-hidden', 'true');
+                const label = document.createElement('span');
+                label.textContent = item.label;
+                link.appendChild(icon);
+                link.appendChild(label);
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
                     Domus.Router.navigate(item.view, item.args || []);
@@ -1341,6 +1391,14 @@
                     const address = addressParts.length ? addressParts.join(', ') : (property.address || '');
                     const showBookingFeatures = Domus.Role.hasCapability('manageBookings');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
+                    const standardActions = [
+                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-property-details' }),
+                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-property-delete' })
+                    ];
+                    const contextActions = [
+                        '<button id="domus-add-unit">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>',
+                        showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : ''
+                    ].filter(Boolean);
                     const stats = Domus.UI.buildStatCards([
                         { label: t('domus', 'Units'), value: (property.units || []).length, hint: t('domus', 'Total units in this property'), formatValue: false },
                         { label: t('domus', 'Bookings'), value: (property.bookings || []).length, hint: t('domus', 'Entries for the selected year'), formatValue: false },
@@ -1348,19 +1406,18 @@
                     ]);
 
                     const hero = '<div class="domus-detail-hero">' +
+                        '<div class="domus-hero-content">' +
+                        '<div class="domus-hero-indicator"><span class="domus-icon domus-icon-property" aria-hidden="true"></span></div>' +
                         '<div class="domus-hero-main">' +
                         (property.description ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(property.description) + '</div>' : '') +
                         '<h2>' + Domus.Utils.escapeHtml(property.name || '') + '</h2>' +
                         '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(address) + '</p>' +
                         (property.type ? '<div class="domus-hero-tags"><span class="domus-badge">' + Domus.Utils.escapeHtml(property.type) + '</span></div>' : '') +
                         '</div>' +
+                        '</div>' +
                         '<div class="domus-hero-actions">' +
-                        [
-                            '<button id="domus-add-unit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>',
-                            showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : '',
-                            '<button id="domus-property-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
-                            '<button id="domus-property-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
-                        ].filter(Boolean).join('') +
+                        (standardActions.length ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + standardActions.join('') + '</div>' : '') +
+                        (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
 
@@ -1831,22 +1888,29 @@
                         { label: t('domus', 'Living area'), value: unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '—', hint: t('domus', 'Reported size') },
                         { label: t('domus', 'Year'), value: Domus.Utils.formatYear(Domus.state.currentYear), hint: t('domus', 'Reporting context'), formatValue: false }
                     ]);
+                    const standardActions = [
+                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-unit-details' }),
+                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-unit-delete' })
+                    ];
+                    const contextActions = [
+                        (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
+                        (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : ''),
+                        '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>'
+                    ].filter(Boolean);
 
                     const hero = '<div class="domus-detail-hero">' +
+                        '<div class="domus-hero-content">' +
+                        '<div class="domus-hero-indicator"><span class="domus-icon domus-icon-unit" aria-hidden="true"></span></div>' +
                         '<div class="domus-hero-main">' +
                         (kicker ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(kicker) + '</div>' : '') +
                         '<h2>' + Domus.Utils.escapeHtml(unit.label || '') + '</h2>' +
                         (addressLine ? '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(addressLine) + '</p>' : '') +
                         (unit.unitType ? '<div class="domus-hero-tags"><span class="domus-badge">' + Domus.Utils.escapeHtml(unit.unitType) + '</span></div>' : '') +
                         '</div>' +
+                        '</div>' +
                         '<div class="domus-hero-actions">' +
-                        [
-                            (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" class="primary" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
-                            (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : ''),
-                            '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>',
-                            '<button id="domus-unit-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
-                            '<button id="domus-unit-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
-                        ].filter(Boolean).join('') +
+                        (standardActions.length ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + standardActions.join('') + '</div>' : '') +
+                        (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
 
@@ -2376,18 +2440,27 @@
                         { label: tenancyLabels.plural, value: tenancies.length, hint: t('domus', 'Linked contracts'), formatValue: false },
                         { label: t('domus', 'Type'), value: partner.partnerType || '—', hint: t('domus', 'Partner category') }
                     ]);
+                    const standardActions = [
+                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-partner-details' }),
+                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-partner-delete' })
+                    ];
+                    const contextActions = [
+                        (canManageTenancies && tenancyLabels.action ? '<button id="domus-add-partner-tenancy" data-partner-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : '')
+                    ].filter(Boolean);
 
                     const contactMeta = [partner.phone, partner.email].filter(Boolean).join(' • ');
                     const hero = '<div class="domus-detail-hero">' +
+                        '<div class="domus-hero-content">' +
+                        '<div class="domus-hero-indicator"><span class="domus-icon domus-icon-partner" aria-hidden="true"></span></div>' +
                         '<div class="domus-hero-main">' +
                         '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(partner.partnerType || t('domus', 'Partner')) + '</div>' +
                         '<h2>' + Domus.Utils.escapeHtml(partner.name || '') + '</h2>' +
                         (contactMeta ? '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(contactMeta) + '</p>' : '') +
                         '</div>' +
+                        '</div>' +
                         '<div class="domus-hero-actions">' +
-                        (canManageTenancies && tenancyLabels.action ? '<button id="domus-add-partner-tenancy" class="primary" data-partner-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : '') +
-                        '<button id="domus-partner-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>' +
-                        '<button id="domus-partner-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
+                        (standardActions.length ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + standardActions.join('') + '</div>' : '') +
+                        (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
 
@@ -2708,22 +2781,29 @@
                         { label: t('domus', 'Service charge'), value: Domus.Utils.formatCurrency(tenancy.serviceCharge), hint: t('domus', 'Service charge') },
                         { label: t('domus', 'Deposit'), value: Domus.Utils.formatCurrency(tenancy.deposit), hint: t('domus', 'Security deposit') }
                     ]);
+                    const standardActions = [
+                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-tenancy-details' }),
+                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-tenancy-delete' })
+                    ];
+                    const contextActions = [
+                        '<button id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>'
+                    ];
 
                     const statusTag = tenancy.status ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(tenancy.status) + '</span>' : '';
                     const heroMeta = [Domus.Utils.formatDate(tenancy.startDate), Domus.Utils.formatDate(tenancy.endDate)].filter(Boolean).join(' • ');
                     const hero = '<div class="domus-detail-hero">' +
+                        '<div class="domus-hero-content">' +
+                        '<div class="domus-hero-indicator"><span class="domus-icon domus-icon-tenancy" aria-hidden="true"></span></div>' +
                         '<div class="domus-hero-main">' +
                         '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(tenancy.unitLabel || `${tenancyLabels.singular} #${id}`) + '</div>' +
                         '<h2>' + Domus.Utils.escapeHtml(tenancyLabels.singular) + ' #' + Domus.Utils.escapeHtml(id) + '</h2>' +
                         (heroMeta ? '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(heroMeta) + '</p>' : '') +
                         '<div class="domus-hero-tags">' + statusTag + '</div>' +
                         '</div>' +
+                        '</div>' +
                         '<div class="domus-hero-actions">' +
-                        [
-                            '<button id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>',
-                            '<button id="domus-tenancy-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
-                            '<button id="domus-tenancy-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
-                        ].filter(Boolean).join('') +
+                        (standardActions.length ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + standardActions.join('') + '</div>' : '') +
+                        (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
 
@@ -3181,17 +3261,23 @@
                         { label: t('domus', 'Date'), value: Domus.Utils.formatDate(booking.date) || '—', hint: t('domus', 'Booking date') },
                         { label: t('domus', 'Account'), value: accountDisplay || '—', hint: t('domus', 'Ledger reference') }
                     ]);
+                    const standardActions = [
+                        Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), { id: 'domus-booking-edit' }),
+                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-booking-delete' })
+                    ];
 
                     const heroMeta = [booking.propertyName || booking.propertyId, booking.unitLabel || booking.unitId].filter(Boolean).join(' • ');
                     const hero = '<div class="domus-detail-hero">' +
+                        '<div class="domus-hero-content">' +
+                        '<div class="domus-hero-indicator"><span class="domus-icon domus-icon-booking" aria-hidden="true"></span></div>' +
                         '<div class="domus-hero-main">' +
                         '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(t('domus', 'Booking')) + '</div>' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Booking')) + ' #' + Domus.Utils.escapeHtml(id) + '</h2>' +
                         (heroMeta ? '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(heroMeta) + '</p>' : '') +
                         '</div>' +
+                        '</div>' +
                         '<div class="domus-hero-actions">' +
-                        '<button id="domus-booking-edit">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
-                        '<button id="domus-booking-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
+                        (standardActions.length ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + standardActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
 
