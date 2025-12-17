@@ -297,10 +297,6 @@
         const accounts = readAccounts();
         Domus.accounts = accounts;
 
-        function translateLabel(label) {
-            return label ? t('domus', label) : '';
-        }
-
         function toOptions(includePlaceholder = true, filterFn = null) {
             let entries = Object.entries(accounts);
             if (typeof filterFn === 'function') {
@@ -308,7 +304,7 @@
             }
 
             const opts = entries.map(([nr, data]) => {
-                const translated = translateLabel(data && data.label ? data.label : '');
+                const translated = data && data.label ? data.label : '';
                 return {
                     value: nr,
                     label: translated || nr
@@ -322,7 +318,7 @@
 
         function label(accountNr) {
             const raw = accounts && accounts[accountNr] && accounts[accountNr].label;
-            return translateLabel(raw);
+            return raw || '';
         }
 
         return { toOptions, label };

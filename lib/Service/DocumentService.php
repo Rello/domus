@@ -190,7 +190,7 @@ class DocumentService {
                 $data['booking'] = [
                     'date' => $booking->getDate(),
                     'account' => $booking->getAccount(),
-                    'accountLabel' => Accounts::label((string)$booking->getAccount()),
+                    'accountLabel' => Accounts::label((string)$booking->getAccount(), $this->l10n),
                     'amount' => $booking->getAmount(),
                 ];
             }
@@ -279,7 +279,7 @@ class DocumentService {
         }
 
         $account = $booking->getAccount();
-        $accountLabel = Accounts::label((string)$account);
+        $accountLabel = Accounts::label((string)$account, $this->l10n);
         if ($account !== null) {
             $accountPart = (string)$account;
             if ($accountLabel) {
