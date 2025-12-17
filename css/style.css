@@ -8,6 +8,7 @@
 
 #app-navigation {
     border-right: 1px solid var(--color-border);
+    width: 200px !important;
 }
 
 .domus-nav {
@@ -775,6 +776,29 @@
 
 .domus-dashboard .domus-back-button {
     margin-bottom: 12px;
+}
+
+.domus-icon-booking {
+    background-image: url(../img/booking.svg);
+    filter: var(--background-invert-if-dark);
+}
+
+.domus-icon-dashboard {
+    background-image: url(../img/dashboard.svg);
+    filter: var(--background-invert-if-dark);
+}
+
+.domus-icon-partner {
+    background-image: url(../img/partner.svg);
+    filter: var(--background-invert-if-dark);
+}
+.domus-icon-property {
+    background-image: url(../img/property.svg);
+    filter: var(--background-invert-if-dark);
+}
+.domus-icon-unit {
+    background-image: url(../img/units.svg);
+    filter: var(--background-invert-if-dark);
 }
 
 @media (max-width: 1000px) {
