@@ -862,6 +862,10 @@
     margin-bottom: 12px;
 }
 
+.domus-icon-back {
+    background-image: url(../img/back.svg);
+}
+
 .domus-icon-booking {
     background-image: url(../img/booking.svg);
 }

@@ -739,7 +739,13 @@
 
         function buildBackButton(targetView, args) {
             const serializedArgs = (args || []).join(',');
-            return '<button class="domus-back-button" data-back="' + Domus.Utils.escapeHtml(targetView) + '" data-back-args="' + Domus.Utils.escapeHtml(serializedArgs) + '">' + Domus.Utils.escapeHtml(t('domus', 'Back')) + '</button>';
+            return buildIconButton('domus-icon-back', t('domus', 'Back'), {
+                className: 'domus-back-button',
+                dataset: {
+                    back: targetView,
+                    backArgs: serializedArgs
+                }
+            });
         }
 
         function buildSectionHeader(title, action) {
