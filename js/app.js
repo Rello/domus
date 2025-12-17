@@ -853,7 +853,7 @@
                     { view: 'bookings', label: t('domus', 'Bookings') },
                     { view: 'reports', label: t('domus', 'Reports') }
                 ],
-                tenancyLabels: { singular: t('domus', 'Tenancy'), plural: t('domus', 'Tenancies'), action: t('domus', 'Add tenancy') },
+                tenancyLabels: { singular: t('domus', 'Tenancy'), plural: t('domus', 'Tenancies'), action: t('domus', 'Add {entity}', { entity: t('domus', 'Tenancy') }) },
                 capabilities: { manageTenancies: true, manageBookings: true, manageDocuments: true, manageReports: true },
                 unitDetail: { showBookings: true, showTenancyActions: true }
             },
@@ -866,7 +866,7 @@
                     { view: 'bookings', label: t('domus', 'Bookings') },
                     { view: 'reports', label: t('domus', 'Reports') }
                 ],
-                tenancyLabels: { singular: t('domus', 'Owner'), plural: t('domus', 'Owners'), action: t('domus', 'Add owner') },
+                tenancyLabels: { singular: t('domus', 'Owner'), plural: t('domus', 'Owners'), action: t('domus', 'Add {entity}', { entity: t('domus', 'Owner') }) },
                 capabilities: { manageTenancies: true, manageBookings: true, manageDocuments: true, manageReports: true },
                 unitDetail: { showBookings: true, showTenancyActions: true }
             },
@@ -926,7 +926,7 @@
             const defaults = {
                 singular: t('domus', 'Tenancy'),
                 plural: t('domus', 'Tenancies'),
-                action: t('domus', 'Add tenancy')
+                action: t('domus', 'Add {entity}', { entity: t('domus', 'Tenancy') })
             };
             const labels = getRoleConfig().tenancyLabels || {};
             return {
@@ -1159,7 +1159,7 @@
     Domus.Dashboard = (function() {
         function render() {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading dashboard…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Dashboard') }));
             Domus.Api.getDashboardSummary()
                 .then(data => {
                     const html = buildHeader() + buildContent(data || {});
@@ -1276,11 +1276,11 @@
     Domus.Properties = (function() {
         function renderList() {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading properties…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Properties') }));
             Domus.Api.getProperties()
                 .then(properties => {
                     const header = '<div class="domus-toolbar">' +
-                        '<button id="domus-property-create-btn" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New property')) + '</button>' +
+                        '<button id="domus-property-create-btn" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Property') })) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
                     const rows = (properties || []).map(p => ({
@@ -1311,12 +1311,12 @@
 
         function openCreateModal() {
             const modal = Domus.UI.openModal({
-                title: t('domus', 'New property'),
+                title: t('domus', 'Add {entity}', { entity: t('domus', 'Property') }),
                 content: buildPropertyForm()
             });
             bindPropertyForm(modal, data => Domus.Api.createProperty(data)
                 .then(() => {
-                    Domus.UI.showNotification(t('domus', 'Property created.'), 'success');
+                    Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Property') }), 'success');
                     modal.close();
                     renderList();
                 })
@@ -1325,7 +1325,7 @@
 
         function renderDetail(id) {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading property…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Property') }));
             Domus.Api.getProperty(id)
                 .then(property => {
 
@@ -1351,8 +1351,8 @@
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         [
-                            '<button id="domus-add-unit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add unit')) + '</button>',
-                            showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' : '',
+                            '<button id="domus-add-unit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>',
+                            showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : '',
                             showReportActions ? '<button id="domus-property-report">' + Domus.Utils.escapeHtml(t('domus', 'Generate report')) + '</button>' : '',
                             '<button id="domus-property-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
                             '<button id="domus-property-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
@@ -1365,8 +1365,8 @@
                     const reportsHeader = showReportActions ? Domus.UI.buildSectionHeader(t('domus', 'Reports')) : '';
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-property-link-doc',
-                        title: t('domus', 'Add document'),
-                        label: t('domus', 'Add document'),
+                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
+                        label: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
                         dataset: { entityType: 'property', entityId: id }
                     } : null);
 
@@ -1413,10 +1413,10 @@
             detailsBtn?.addEventListener('click', () => openPropertyModal(id, 'view'));
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', () => {
-                    if (confirm(t('domus', 'Delete property?'))) {
+                    if (confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Property') }))) {
                         Domus.Api.deleteProperty(id)
                             .then(() => {
-                                Domus.UI.showNotification(t('domus', 'Property deleted.'), 'success');
+                                Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Property') }), 'success');
                                 Domus.UI.renderSidebar('');
                                 renderList();
                             })
@@ -1457,13 +1457,13 @@
                     }
 
                     modal = Domus.UI.openModal({
-                        title: mode === 'view' ? t('domus', 'Property details') : t('domus', 'Edit property'),
+                        title: mode === 'view' ? t('domus', 'Property details') : t('domus', 'Edit {entity}', { entity: t('domus', 'Property') }),
                         content: buildPropertyForm(property, { mode }),
                         headerActions
                     });
                     bindPropertyForm(modal, data => Domus.Api.updateProperty(id, data)
                         .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Property updated.'), 'success');
+                            Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Property') }), 'success');
                             modal.close();
                             renderDetail(id);
                         })
@@ -1598,11 +1598,11 @@
 
         function renderList() {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading units…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Units') }));
             Domus.Api.getUnitsStatisticsOverview()
                 .then(statistics => {
                     const header = '<div class="domus-toolbar">' +
-                        '<button id="domus-unit-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New unit')) + '</button>' +
+                        '<button id="domus-unit-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
 
@@ -1636,7 +1636,7 @@
 
         function renderStatisticsTable(statistics, options = {}) {
             if (!statistics) {
-                return '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No statistics available.')) + '</div>';
+                return '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Statistics') })) + '</div>';
             }
 
             const columns = statistics.columns || [];
@@ -1752,12 +1752,12 @@
                     const defaultPropertyId = effectiveDefaults.propertyId;
 
                     const modal = Domus.UI.openModal({
-                        title: t('domus', 'New unit'),
+                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }),
                         content: buildUnitForm(propertyOptions, effectiveDefaults, { showPropertySelect, requireProperty, defaultPropertyId })
                     });
                     bindUnitForm(modal, data => Domus.Api.createUnit(data)
                         .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Unit created.'), 'success');
+                            Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Unit') }), 'success');
                             modal.close();
                             (onCreated || renderList)();
                         })
@@ -1769,7 +1769,7 @@
 
         function renderDetail(id) {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading unit…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Unit') }));
             Promise.all([
                 Domus.Api.get('/units/' + id),
                 Domus.Api.getUnitStatistics(id).catch(() => null),
@@ -1844,7 +1844,7 @@
                         '<div class="domus-hero-actions">' +
                         [
                             (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" class="primary" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
-                            (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add booking')) + '</button>' : ''),
+                            (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : ''),
                             '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>',
                             '<button id="domus-unit-details">' + Domus.Utils.escapeHtml(t('domus', 'Details')) + '</button>',
                             '<button id="domus-unit-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
@@ -1856,8 +1856,8 @@
                     const bookingsHeader = canManageBookings ? Domus.UI.buildSectionHeader(t('domus', 'Bookings')) : '';
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-unit-link-doc',
-                        title: t('domus', 'Add document'),
-                        label: t('domus', 'Add document'),
+                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
+                        label: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
                         dataset: { entityType: 'unit', entityId: id }
                     } : null);
 
@@ -1900,12 +1900,12 @@
 
             detailsBtn?.addEventListener('click', () => openUnitModal(id, 'view'));
             deleteBtn?.addEventListener('click', () => {
-                if (!confirm(t('domus', 'Delete unit?'))) {
+                if (!confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Unit') }))) {
                     return;
                 }
                 Domus.Api.deleteUnit(id)
                     .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Unit deleted.'), 'success');
+                        Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Unit') }), 'success');
                         Domus.UI.renderSidebar('');
                         renderList();
                     })
@@ -1924,7 +1924,7 @@
             document.getElementById('domus-add-unit-buying-price')?.addEventListener('click', () => {
                 Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id), {
                     accountFilter: (nr) => String(nr).startsWith('3'),
-                    title: t('domus', 'Add buying price'),
+                    title: t('domus', 'Add {entity}', { entity: t('domus', 'Buying price') }),
                     hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
                 });
             });
@@ -1966,13 +1966,13 @@
                     }
 
                     modal = Domus.UI.openModal({
-                        title: mode === 'view' ? t('domus', 'Unit details') : t('domus', 'Edit unit'),
+                        title: mode === 'view' ? t('domus', 'Unit details') : t('domus', 'Edit {entity}', { entity: t('domus', 'Unit') }),
                         content: buildUnitForm(propertyOptions, unit, { showPropertySelect, requireProperty, defaultPropertyId, mode }),
                         headerActions
                     });
                     bindUnitForm(modal, data => Domus.Api.updateUnit(id, data)
                         .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Unit updated.'), 'success');
+                            Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Unit') }), 'success');
                             modal.close();
                             renderDetail(id);
                         })
@@ -2198,7 +2198,7 @@
                 createBtn.disabled = true;
                 Domus.Api.createUnitSettlementReport(unitId, { year: selectedYear, partnerId: selected.partnerId })
                     .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Settlement report created.'), 'success');
+                        Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Report') }), 'success');
                         modal.close();
                         onComplete?.();
                     })
@@ -2294,13 +2294,13 @@
 
         function renderList() {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading partners…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Partners') }));
             const allowedType = Domus.Permission.getPartnerListFilter();
             const allowedLabel = allowedType === 'owner' ? t('domus', 'Owner') : t('domus', 'Tenant');
             Domus.Api.getPartners(allowedType)
                 .then(partners => {
                     const toolbar = '<div class="domus-toolbar">' +
-                        '<button id="domus-partner-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'New partner')) + '</button>' +
+                        '<button id="domus-partner-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Partner') })) + '</button>' +
                         '<label class="domus-inline-label">' + Domus.Utils.escapeHtml(t('domus', 'Type')) + ' <select id="domus-partner-filter">' +
                         '<option value="' + Domus.Utils.escapeHtml(allowedType) + '">' + Domus.Utils.escapeHtml(allowedLabel) + '</option>' +
                         '</select></label>' +
@@ -2353,12 +2353,12 @@
 
         function openCreateModal() {
             const modal = Domus.UI.openModal({
-                title: t('domus', 'New partner'),
+                title: t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }),
                 content: buildPartnerForm()
             });
             bindPartnerForm(modal, data => Domus.Api.createPartner(data)
                 .then(() => {
-                    Domus.UI.showNotification(t('domus', 'Partner created.'), 'success');
+                    Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Partner') }), 'success');
                     modal.close();
                     renderList();
                 })
@@ -2367,7 +2367,7 @@
 
         function renderDetail(id) {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading partner…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Partner') }));
             Domus.Api.get('/partners/' + id)
                 .then(partner => {
                     const tenancies = partner.tenancies || [];
@@ -2398,8 +2398,8 @@
                     const reportsHeader = Domus.UI.buildSectionHeader(t('domus', 'Reports'));
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-partner-link-doc',
-                        title: t('domus', 'Add document'),
-                        label: t('domus', 'Add document'),
+                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
+                        label: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
                         dataset: { entityType: 'partner', entityId: id }
                     } : null);
                     const infoList = Domus.UI.buildInfoList([
@@ -2444,12 +2444,12 @@
 
             detailsBtn?.addEventListener('click', () => openPartnerModal(id, 'view'));
             deleteBtn?.addEventListener('click', () => {
-                if (!confirm(t('domus', 'Delete partner?'))) {
+                if (!confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Partner') }))) {
                     return;
                 }
                 Domus.Api.deletePartner(id)
                     .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Partner deleted.'), 'success');
+                        Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Partner') }), 'success');
                         Domus.UI.renderSidebar('');
                         renderList();
                     })
@@ -2481,13 +2481,13 @@
                     }
 
                     modal = Domus.UI.openModal({
-                        title: mode === 'view' ? t('domus', 'Partner details') : t('domus', 'Edit partner'),
+                        title: mode === 'view' ? t('domus', 'Partner details') : t('domus', 'Edit {entity}', { entity: t('domus', 'Partner') }),
                         content: buildPartnerForm(partner, { mode }),
                         headerActions
                     });
                     bindPartnerForm(modal, data => Domus.Api.updatePartner(id, data)
                         .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Partner updated.'), 'success');
+                            Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Partner') }), 'success');
                             modal.close();
                             renderDetail(id);
                         })
@@ -2619,7 +2619,7 @@
 
         function renderList() {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading tenancies…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().plural }));
             Domus.Api.getTenancies()
                 .then(tenancies => {
                     const tenancyLabels = Domus.Role.getTenancyLabels();
@@ -2669,8 +2669,8 @@
 
         function openCreateModal(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage) {
             const tenancyLabels = Domus.Role.getTenancyLabels();
-            const effectiveTitle = title || `${t('domus', 'New')} ${tenancyLabels.singular}`;
-            const effectiveSuccessMessage = successMessage || `${tenancyLabels.singular} created.`;
+            const effectiveTitle = title || t('domus', 'Add {entity}', { entity: tenancyLabels.singular });
+            const effectiveSuccessMessage = successMessage || t('domus', '{entity} created.', { entity: Domus.Role.getTenancyLabels().singular });
             Promise.all([
                 Domus.Api.getUnits(),
                 Domus.Api.getPartners(Domus.Permission.getTenancyPartnerFilter())
@@ -2703,7 +2703,7 @@
 
         function renderDetail(id) {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading tenancy…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().singular }));
             Domus.Api.get('/tenancies/' + id)
                 .then(tenancy => {
                     const tenancyLabels = Domus.Role.getTenancyLabels();
@@ -2736,8 +2736,8 @@
 
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-tenancy-link-doc',
-                        title: t('domus', 'Add document'),
-                        label: t('domus', 'Add document'),
+                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
+                        label: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
                         dataset: { entityType: 'tenancy', entityId: id }
                     } : null);
                     const detailsHeader = Domus.UI.buildSectionHeader(t('domus', 'Details'));
@@ -2781,12 +2781,12 @@
         function bindDetailActions(id, tenancy) {
             document.getElementById('domus-tenancy-details')?.addEventListener('click', () => openTenancyModal(id, tenancy, 'view'));
             document.getElementById('domus-tenancy-delete')?.addEventListener('click', () => {
-                if (!confirm(t('domus', 'Delete tenancy?'))) {
+                if (!confirm(t('domus', 'Delete {entity}?', { entity: Domus.Role.getTenancyLabels().singular }))) {
                     return;
                 }
                 Domus.Api.deleteTenancy(id)
                     .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Tenancy deleted.'), 'success');
+                        Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: Domus.Role.getTenancyLabels().singular }), 'success');
                         Domus.UI.renderSidebar('');
                         renderList();
                     })
@@ -2879,13 +2879,13 @@
                     }
 
                     modal = Domus.UI.openModal({
-                        title: mode === 'view' ? t('domus', 'Tenancy details') : t('domus', 'Edit tenancy'),
+                        title: mode === 'view' ? t('domus', 'Tenancy details') : t('domus', 'Edit {entity}', { entity: Domus.Role.getTenancyLabels().singular }),
                         content: buildTenancyForm(unitOptions, partnerOptions, tenancy, { mode, hideFinancialFields: Domus.Permission.hideTenancyFinancialFields() }),
                         headerActions
                     });
                     bindTenancyForm(modal, data => Domus.Api.updateTenancy(id, data)
                         .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Tenancy updated.'), 'success');
+                            Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: Domus.Role.getTenancyLabels().singular }), 'success');
                             modal.close();
                             renderDetail(id);
                         })
@@ -3011,7 +3011,7 @@
 
         function renderList() {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading bookings…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Bookings') }));
             Domus.Api.getBookings()
                 .then(bookings => {
                     const toolbar = '<div class="domus-toolbar">' +
@@ -3134,8 +3134,8 @@
                     : (Domus.Role.getCurrentRole() === 'landlord'
                         ? (nr) => String(nr).startsWith('2')
                         : null));
-            const title = formConfig.title || t('domus', 'New booking');
-            const successMessage = formConfig.successMessage || t('domus', 'Booking created.');
+            const title = formConfig.title || t('domus', 'Add {entity}', { entity: t('domus', 'Booking') });
+            const successMessage = formConfig.successMessage || t('domus', '{entity} created.', { entity: t('domus', 'Booking') });
 
             Promise.all([
                 Domus.Api.getProperties(),
@@ -3187,7 +3187,7 @@
 
         function renderDetail(id) {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading booking…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Booking') }));
             Domus.Api.get('/bookings/' + id)
                 .then(booking => {
                     const accountDisplay = formatAccount(booking);
@@ -3212,8 +3212,8 @@
 
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), {
                         id: 'domus-booking-link-doc',
-                        title: t('domus', 'Add document'),
-                        label: t('domus', 'Add document'),
+                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
+                        label: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
                         dataset: { entityType: 'booking', entityId: id }
                     });
                     const detailsHeader = Domus.UI.buildSectionHeader(t('domus', 'Details'));
@@ -3253,12 +3253,12 @@
 
             editBtn?.addEventListener('click', () => openEditModal(id));
             deleteBtn?.addEventListener('click', () => {
-                if (!confirm(t('domus', 'Delete booking?'))) {
+                if (!confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Booking') }))) {
                     return;
                 }
                 Domus.Api.deleteBooking(id)
                     .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Booking deleted.'), 'success');
+                        Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Booking') }), 'success');
                         Domus.UI.renderSidebar('');
                         renderList();
                     })
@@ -3288,7 +3288,7 @@
                     })));
 
                     const modal = Domus.UI.openModal({
-                        title: t('domus', 'Edit booking'),
+                        title: t('domus', 'Edit {entity}', { entity: t('domus', 'Booking') }),
                         content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, booking, { multiEntry: false }),
                         size: 'large'
                     });
@@ -3296,7 +3296,7 @@
                     bindBookingForm(modal, data => Domus.Api.updateBooking(id, Object.assign({}, data.metadata, data.entries[0] || {}))
                         .then(() => attachDocumentsToEntities([id], data.metadata, data.document))
                         .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Booking updated.'), 'success');
+                            Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Booking') }), 'success');
                             modal.close();
                             renderDetail(id);
                         })
@@ -3506,7 +3506,7 @@
             const entries = [];
             let error = null;
             if (!container) {
-                return { entries: [], error: t('domus', 'No booking lines available.') };
+                return { entries: [], error: t('domus', 'No {entity} available.', { entity: t('domus', 'Booking lines') }) };
             }
 
             const rows = Array.from(container.querySelectorAll('.domus-booking-entry'));
@@ -3555,7 +3555,7 @@
     Domus.Reports = (function() {
         function renderList() {
             Domus.UI.renderSidebar('');
-            Domus.UI.showLoading(t('domus', 'Loading reports…'));
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Reports') }));
             Domus.Api.getReports()
                 .then(reports => {
                     const toolbar = '<div class="domus-toolbar">' + Domus.UI.buildYearFilter(renderList) + '</div>';
@@ -3583,7 +3583,7 @@
             if (!propertyId || !Domus.Role.hasCapability('manageReports')) return;
             Domus.Api.createReport(propertyId)
                 .then(() => {
-                    Domus.UI.showNotification(t('domus', 'Report created.'), 'success');
+                    Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Report') }), 'success');
                     onComplete?.();
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
@@ -3593,7 +3593,7 @@
             if (!tenancyId || !Domus.Role.hasCapability('manageReports')) return;
             Domus.Api.createTenancyReport(tenancyId)
                 .then(() => {
-                    Domus.UI.showNotification(t('domus', 'Report created.'), 'success');
+                    Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Report') }), 'success');
                     onComplete?.();
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
@@ -3631,10 +3631,10 @@
                     bindDocumentActions(entityType, entityId, containerId, showActions);
                 })
                 .catch(() => {
-                    const html = '<div id="' + containerId + '">' + t('domus', 'No documents found.') + (showActions ? buildDocumentActions(entityType, entityId) : '') + '</div>';
+                    const html = '<div id="' + containerId + '">' + t('domus', 'No {entity} found.', { entity: t('domus', 'Documents') }) + (showActions ? buildDocumentActions(entityType, entityId) : '') + '</div>';
                     updateContainer(html);
                 });
-            return '<div id="' + containerId + '">' + t('domus', 'Loading documents…') + '</div>';
+            return '<div id="' + containerId + '">' + t('domus', 'Loading {entity}…', { entity: t('domus', 'Documents') }) + '</div>';
         }
 
         function buildDocumentActions(entityType, entityId) {
@@ -3952,7 +3952,7 @@
                         }
 
                         return '<li><strong>' + Domus.Utils.escapeHtml(type) + ':</strong> ' + Domus.Utils.escapeHtml(name) + '</li>';
-                    }).join('') : '<li>' + Domus.Utils.escapeHtml(t('domus', 'No linked objects found.')) + '</li>';
+                    }).join('') : '<li>' + Domus.Utils.escapeHtml(t('domus', 'No {entity} found.', { entity: t('domus', 'Linked objects') })) + '</li>';
 
                     Domus.UI.openModal({
                         title: t('domus', 'Document links'),
