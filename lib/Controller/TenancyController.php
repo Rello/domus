@@ -49,8 +49,8 @@ class TenancyController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function create(int $unitId, string $startDate, ?string $baseRent = null, ?string $endDate = null, ?string $serviceCharge = null, ?int $serviceChargeAsPrepayment = 0, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
-        $data = compact('unitId', 'startDate', 'endDate', 'baseRent', 'serviceCharge', 'serviceChargeAsPrepayment', 'deposit', 'conditions', 'partnerIds');
+    public function create(int $unitId, string $startDate, ?string $baseRent = null, ?string $endDate = null, ?string $serviceCharge = null, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
+        $data = compact('unitId', 'startDate', 'endDate', 'baseRent', 'serviceCharge', 'deposit', 'conditions', 'partnerIds');
         try {
             $tenancy = $this->tenancyService->createTenancy($data, $this->getUserId(), $this->getRole());
             return new DataResponse($tenancy, Http::STATUS_CREATED);
@@ -62,8 +62,8 @@ class TenancyController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function changeConditions(int $id, string $startDate, ?string $baseRent = null, ?string $endDate = null, ?string $serviceCharge = null, ?int $serviceChargeAsPrepayment = 0, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
-        $data = compact('startDate', 'endDate', 'baseRent', 'serviceCharge', 'serviceChargeAsPrepayment', 'deposit', 'conditions', 'partnerIds');
+    public function changeConditions(int $id, string $startDate, ?string $baseRent = null, ?string $endDate = null, ?string $serviceCharge = null, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
+        $data = compact('startDate', 'endDate', 'baseRent', 'serviceCharge', 'deposit', 'conditions', 'partnerIds');
         try {
             $tenancy = $this->tenancyService->changeConditions($id, $data, $this->getUserId(), $this->getRole());
             return new DataResponse($tenancy, Http::STATUS_CREATED);
@@ -75,14 +75,13 @@ class TenancyController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function update(int $id, ?int $unitId = null, ?string $startDate = null, ?string $endDate = null, ?string $baseRent = null, ?string $serviceCharge = null, ?int $serviceChargeAsPrepayment = null, ?string $deposit = null, ?string $conditions = null, ?array $partnerIds = null): DataResponse {
+    public function update(int $id, ?int $unitId = null, ?string $startDate = null, ?string $endDate = null, ?string $baseRent = null, ?string $serviceCharge = null, ?string $deposit = null, ?string $conditions = null, ?array $partnerIds = null): DataResponse {
         $data = array_filter([
             'unitId' => $unitId,
             'startDate' => $startDate,
             'endDate' => $endDate,
             'baseRent' => $baseRent,
             'serviceCharge' => $serviceCharge,
-            'serviceChargeAsPrepayment' => $serviceChargeAsPrepayment,
             'deposit' => $deposit,
             'conditions' => $conditions,
             'partnerIds' => $partnerIds,

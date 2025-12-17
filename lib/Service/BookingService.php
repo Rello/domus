@@ -6,7 +6,6 @@ use OCA\Domus\Accounting\Accounts;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\PropertyMapper;
-use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCP\IL10N;
 
@@ -15,7 +14,6 @@ class BookingService {
         private BookingMapper $bookingMapper,
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
-        private TenancyMapper $tenancyMapper,
         private IL10N $l10n,
     ) {
     }
@@ -43,7 +41,6 @@ class BookingService {
         $booking->setYear((int)substr($data['date'], 0, 4));
         $booking->setPropertyId($data['propertyId'] ?? null);
         $booking->setUnitId($data['unitId'] ?? null);
-        $booking->setTenancyId($data['tenancyId'] ?? null);
         $booking->setDescription($data['description'] ?? null);
         $booking->setCreatedAt($now);
         $booking->setUpdatedAt($now);
@@ -61,7 +58,6 @@ class BookingService {
             'amount' => 'setAmount',
             'propertyId' => 'setPropertyId',
             'unitId' => 'setUnitId',
-            'tenancyId' => 'setTenancyId',
             'description' => 'setDescription',
         ];
 
@@ -96,7 +92,7 @@ class BookingService {
         if (!Accounts::exists((string)$data['account'])) {
             throw new \InvalidArgumentException($this->l10n->t('Account is invalid.'));
         }
-        if (!isset($data['propertyId']) && !isset($data['unitId']) && !isset($data['tenancyId'])) {
+        if (!isset($data['propertyId']) && !isset($data['unitId'])) {
             throw new \InvalidArgumentException($this->l10n->t('At least one relation is required.'));
         }
         if (isset($data['propertyId']) && !$this->propertyMapper->findForUser((int)$data['propertyId'], $userId)) {
@@ -104,9 +100,6 @@ class BookingService {
         }
         if (isset($data['unitId']) && !$this->unitMapper->findForUser((int)$data['unitId'], $userId)) {
             throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
-        if (isset($data['tenancyId']) && !$this->tenancyMapper->findForUser((int)$data['tenancyId'], $userId)) {
-            throw new \RuntimeException($this->l10n->t('Tenancy not found.'));
         }
     }
 

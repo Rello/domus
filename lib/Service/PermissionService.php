@@ -59,7 +59,7 @@ class PermissionService {
             return $payload;
         }
 
-        foreach (['baseRent', 'serviceCharge', 'serviceChargeAsPrepayment', 'deposit'] as $field) {
+        foreach (['baseRent', 'serviceCharge', 'deposit'] as $field) {
             if (array_key_exists($field, $payload) && $payload[$field] !== null && $payload[$field] !== '') {
                 throw new \InvalidArgumentException($this->l10n->t('Field %s cannot be set for building management.', [$field]));
             }
@@ -67,7 +67,6 @@ class PermissionService {
 
         $payload['baseRent'] = '0';
         $payload['serviceCharge'] = null;
-        $payload['serviceChargeAsPrepayment'] = 0;
         $payload['deposit'] = null;
 
         return $payload;

@@ -43,12 +43,11 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('unit_number', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('land_register', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('living_area', 'string', ['length' => 32, 'notnull' => false]);
-            $table->addColumn('usable_area', 'string', ['length' => 32, 'notnull' => false]);
             $table->addColumn('unit_type', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('notes', 'text', ['notnull' => false]);
             $table->addColumn('buy_date', 'string', ['length' => 32, 'notnull' => false]);
             $table->addColumn('total_costs', 'string', ['length' => 32, 'notnull' => false]);
-            $table->addColumn('official_id', 'string', ['length' => 190, 'notnull' => false]);
+            $table->addColumn('tax_id', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('iban', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('bic', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
@@ -100,7 +99,6 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('end_date', 'string', ['notnull' => false, 'length' => 32]);
             $table->addColumn('base_rent', 'string', ['notnull' => true, 'length' => 32]);
             $table->addColumn('service_charge', 'string', ['notnull' => false, 'length' => 32]);
-            $table->addColumn('service_charge_as_prepayment', 'integer', ['notnull' => true, 'default' => 0]);
             $table->addColumn('deposit', 'string', ['notnull' => false, 'length' => 32]);
             $table->addColumn('conditions', 'text', ['notnull' => false]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
@@ -120,7 +118,6 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('year', 'integer', ['notnull' => true]);
             $table->addColumn('property_id', 'bigint', ['notnull' => false]);
             $table->addColumn('unit_id', 'bigint', ['notnull' => false]);
-            $table->addColumn('tenancy_id', 'bigint', ['notnull' => false]);
             $table->addColumn('description', 'text', ['notnull' => false]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
@@ -141,22 +138,6 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_doc_user');
             $table->addIndex(['entity_type', 'entity_id'], 'domus_doc_rel');
-        }
-
-        if (!$schema->hasTable('domus_reports')) {
-            $table = $schema->createTable('domus_reports');
-            $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
-            $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
-            $table->addColumn('year', 'integer', ['notnull' => true]);
-            $table->addColumn('property_id', 'bigint', ['notnull' => true]);
-            $table->addColumn('unit_id', 'bigint', ['notnull' => false]);
-            $table->addColumn('tenancy_id', 'bigint', ['notnull' => false]);
-            $table->addColumn('partner_id', 'bigint', ['notnull' => false]);
-            $table->addColumn('file_path', 'string', ['notnull' => true, 'length' => 512]);
-            $table->addColumn('created_at', 'bigint', ['notnull' => true]);
-            $table->setPrimaryKey(['id']);
-            $table->addIndex(['user_id'], 'domus_rep_user');
-            $table->addIndex(['property_id'], 'domus_rep_prop');
         }
 
         return $schema;
