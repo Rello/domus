@@ -1808,14 +1808,14 @@
                     const stats = Domus.UI.buildStatCards([
                         {
                             label: t('domus', 'Current Tenancy'),
-                            value: `Kaltmiete: ${Domus.Utils.formatCurrency(currentBaseRent) || '—'}`,
-                            hint: currentTenantName || '—',
+                            value: Domus.Utils.formatCurrency(currentBaseRent) || '—',
+                            hint: t('domus', 'Base rent') || '—',
                             formatValue: false
                         },
                         {
-                            label: t('domus', 'Rentability'),
+                            label: ' ',
                             value: Domus.Utils.formatPercentage(rentabilityValue) || '—',
-                            hint: '',
+                            hint: t('domus', 'Rentability'),
                             formatValue: false
                         },
                         { label: t('domus', 'Living area'), value: unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '—', hint: t('domus', 'Reported size') },
