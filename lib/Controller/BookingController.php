@@ -23,12 +23,11 @@ class BookingController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function index(?int $year = null, ?int $propertyId = null, ?int $unitId = null, ?int $tenancyId = null): DataResponse {
+    public function index(?int $year = null, ?int $propertyId = null, ?int $unitId = null): DataResponse {
         $filter = array_filter([
             'year' => $year,
             'propertyId' => $propertyId,
             'unitId' => $unitId,
-            'tenancyId' => $tenancyId,
         ], fn($value) => $value !== null);
         return new DataResponse($this->bookingService->listBookings($this->getUserId(), $filter));
     }
@@ -43,8 +42,8 @@ class BookingController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function create(int $account, string $date, string $amount, ?int $propertyId = null, ?int $unitId = null, ?int $tenancyId = null, ?string $description = null): DataResponse {
-        $data = compact('account', 'date', 'amount', 'propertyId', 'unitId', 'tenancyId', 'description');
+    public function create(int $account, string $date, string $amount, ?int $propertyId = null, ?int $unitId = null, ?string $description = null): DataResponse {
+        $data = compact('account', 'date', 'amount', 'propertyId', 'unitId', 'description');
         try {
             $booking = $this->bookingService->createBooking($data, $this->getUserId());
             return new DataResponse($booking, Http::STATUS_CREATED);
@@ -56,14 +55,13 @@ class BookingController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function update(int $id, ?int $account = null, ?string $date = null, ?string $amount = null, ?int $propertyId = null, ?int $unitId = null, ?int $tenancyId = null, ?string $description = null): DataResponse {
+    public function update(int $id, ?int $account = null, ?string $date = null, ?string $amount = null, ?int $propertyId = null, ?int $unitId = null, ?string $description = null): DataResponse {
         $data = array_filter([
             'account' => $account,
             'date' => $date,
             'amount' => $amount,
             'propertyId' => $propertyId,
             'unitId' => $unitId,
-            'tenancyId' => $tenancyId,
             'description' => $description,
         ], fn($value) => $value !== null);
         try {

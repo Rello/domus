@@ -49,15 +49,6 @@ return [
         ['name' => 'Booking#update', 'url' => '/bookings/{id}', 'verb' => 'PUT'],
         ['name' => 'Booking#destroy', 'url' => '/bookings/{id}', 'verb' => 'DELETE'],
 
-        // Reports
-        ['name' => 'Report#index', 'url' => '/reports', 'verb' => 'GET'],
-        ['name' => 'Report#show', 'url' => '/reports/{id}', 'verb' => 'GET'],
-        ['name' => 'Report#listForPropertyYear', 'url' => '/properties/{propertyId}/reports/{year}', 'verb' => 'GET'],
-        ['name' => 'Report#generateForPropertyYear', 'url' => '/properties/{propertyId}/reports/{year}', 'verb' => 'POST'],
-        ['name' => 'Report#listForTenancyYear', 'url' => '/tenancies/{tenancyId}/reports/{year}', 'verb' => 'GET'],
-        ['name' => 'Report#generateForTenancyYear', 'url' => '/tenancies/{tenancyId}/reports/{year}', 'verb' => 'POST'],
-        ['name' => 'Report#download', 'url' => '/reports/{id}/download', 'verb' => 'GET'],
-
         // Documents
         ['name' => 'Document#index', 'url' => '/documents/{entityType}/{entityId}', 'verb' => 'GET'],
         ['name' => 'Document#show', 'url' => '/documents/{id}', 'verb' => 'GET'],

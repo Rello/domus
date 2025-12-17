@@ -12,7 +12,6 @@ class Tenancy extends Entity implements JsonSerializable {
     protected $endDate;
     protected $baseRent;
     protected $serviceCharge;
-    protected $serviceChargeAsPrepayment;
     protected $deposit;
     protected $conditions;
     protected $createdAt;
@@ -25,12 +24,10 @@ class Tenancy extends Entity implements JsonSerializable {
     protected ?string $period = null;
     protected ?string $partnerName = null;
     protected array $bookings = [];
-    protected array $reports = [];
 
     public function __construct() {
         $this->addType('id', 'int');
         $this->addType('unitId', 'int');
-        $this->addType('serviceChargeAsPrepayment', 'int');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
     }
@@ -44,7 +41,6 @@ class Tenancy extends Entity implements JsonSerializable {
             'endDate' => $this->endDate,
             'baseRent' => $this->baseRent,
             'serviceCharge' => $this->serviceCharge,
-            'serviceChargeAsPrepayment' => $this->serviceChargeAsPrepayment,
             'deposit' => $this->deposit,
             'conditions' => $this->conditions,
             'createdAt' => $this->createdAt,
@@ -56,7 +52,6 @@ class Tenancy extends Entity implements JsonSerializable {
             'period' => $this->period,
             'partnerName' => $this->partnerName,
             'bookings' => $this->bookings,
-            'reports' => $this->reports,
         ];
     }
 
@@ -116,11 +111,4 @@ class Tenancy extends Entity implements JsonSerializable {
         return $this->bookings;
     }
 
-    public function setReports(array $reports): void {
-        $this->reports = $reports;
-    }
-
-    public function getReports(): array {
-        return $this->reports;
-    }
 }

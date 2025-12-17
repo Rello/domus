@@ -7,10 +7,7 @@ use OCA\Domus\Db\PartnerRel;
 use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Db\Tenancy;
 use OCA\Domus\Db\TenancyMapper;
-use OCA\Domus\Db\BookingMapper;
-use OCA\Domus\Db\ReportMapper;
 use OCA\Domus\Db\UnitMapper;
-use OCA\Domus\Service\ReportService;
 use Psr\Log\LoggerInterface;
 use OCP\IL10N;
 
@@ -20,9 +17,6 @@ class TenancyService {
         private UnitMapper $unitMapper,
         private PartnerMapper $partnerMapper,
         private PartnerRelMapper $partnerRelMapper,
-        private BookingMapper $bookingMapper,
-        private ReportMapper $reportMapper,
-        private ReportService $reportService,
         private PermissionService $permissionService,
         private LoggerInterface $logger,
         private IL10N $l10n,
@@ -54,8 +48,6 @@ class TenancyService {
         $tenancy->setStatus($this->getStatus($tenancy, new \DateTimeImmutable('today')));
         $this->hydrateUnit($tenancy, $userId);
         $this->hydrateDerivedFields($tenancy);
-        $tenancy->setBookings($this->bookingMapper->findByUser($userId, ['tenancyId' => $tenancy->getId()]));
-        $this->hydrateReports($tenancy, $userId);
         return $tenancy;
     }
 
@@ -70,7 +62,6 @@ class TenancyService {
         $tenancy->setEndDate($data['endDate'] ?? null);
         $tenancy->setBaseRent($data['baseRent']);
         $tenancy->setServiceCharge($data['serviceCharge'] ?? null);
-        $tenancy->setServiceChargeAsPrepayment((int)($data['serviceChargeAsPrepayment'] ?? 0));
         $tenancy->setDeposit($data['deposit'] ?? null);
         $tenancy->setConditions($data['conditions'] ?? null);
         $tenancy->setCreatedAt($now);
@@ -91,7 +82,6 @@ class TenancyService {
             'endDate' => $data['endDate'] ?? null,
             'baseRent' => $data['baseRent'] ?? null,
             'serviceCharge' => $data['serviceCharge'] ?? null,
-            'serviceChargeAsPrepayment' => $data['serviceChargeAsPrepayment'] ?? 0,
             'deposit' => $data['deposit'] ?? null,
             'conditions' => $data['conditions'] ?? null,
             'partnerIds' => $data['partnerIds'] ?? $existing->getPartnerIds(),
@@ -114,7 +104,7 @@ class TenancyService {
         $tenancy = $this->getTenancyForUser($id, $userId);
         $data = $this->permissionService->guardTenancyFinancialFields($role, $data);
         $this->assertTenancyInput($data + ['unitId' => $tenancy->getUnitId(), 'partnerIds' => $data['partnerIds'] ?? []], $userId, $role);
-        foreach (['unitId', 'startDate', 'endDate', 'baseRent', 'serviceCharge', 'serviceChargeAsPrepayment', 'deposit', 'conditions'] as $field) {
+        foreach (['unitId', 'startDate', 'endDate', 'baseRent', 'serviceCharge', 'deposit', 'conditions'] as $field) {
             if (array_key_exists($field, $data)) {
                 $setter = 'set' . ucfirst($field);
                 $tenancy->$setter($data[$field] !== '' ? $data[$field] : null);
@@ -297,14 +287,6 @@ class TenancyService {
         if ($unit) {
             $tenancy->setUnitLabel($unit->getLabel());
         }
-    }
-
-    private function hydrateReports(Tenancy $tenancy, string $userId): void {
-        $reports = $this->reportMapper->findByUser($userId, null, null, $tenancy->getId());
-        foreach ($reports as $report) {
-            $report->setDownloadUrl($this->reportService->getDownloadUrl($report, $userId));
-        }
-        $tenancy->setReports($reports);
     }
 
     private function hydrateDerivedFields(Tenancy $tenancy): void {

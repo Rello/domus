@@ -13,7 +13,6 @@ class Booking extends Entity implements JsonSerializable {
     protected $year;
     protected $propertyId;
     protected $unitId;
-    protected $tenancyId;
     protected $description;
     protected $createdAt;
     protected $updatedAt;
@@ -30,7 +29,6 @@ class Booking extends Entity implements JsonSerializable {
         $this->addType('year', 'int');
         $this->addType('propertyId', 'int');
         $this->addType('unitId', 'int');
-        $this->addType('tenancyId', 'int');
         $this->addType('amount', 'float');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
@@ -46,7 +44,6 @@ class Booking extends Entity implements JsonSerializable {
             'year' => $this->year,
             'propertyId' => $this->propertyId,
             'unitId' => $this->unitId,
-            'tenancyId' => $this->tenancyId,
             'description' => $this->description,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,

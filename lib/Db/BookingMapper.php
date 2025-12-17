@@ -25,7 +25,6 @@ class BookingMapper extends QBMapper {
             'year' => 'year',
             'propertyId' => 'property_id',
             'unitId' => 'unit_id',
-            'tenancyId' => 'tenancy_id',
             'account' => 'account',
         ];
         foreach ($fields as $key => $column) {

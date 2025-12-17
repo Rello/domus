@@ -58,11 +58,10 @@ class UnitService {
         $unit->setUnitNumber($data['unitNumber'] ?? null);
         $unit->setLandRegister($data['landRegister'] ?? null);
         $unit->setLivingArea($data['livingArea'] ?? null);
-        $unit->setUsableArea($data['usableArea'] ?? null);
         $unit->setUnitType($data['unitType'] ?? null);
         $unit->setBuyDate($data['buyDate'] ?? null);
         $unit->setTotalCosts($data['totalCosts'] ?? null);
-        $unit->setOfficialId($data['officialId'] ?? null);
+        $unit->setTaxId($data['taxId'] ?? null);
         $unit->setIban($data['iban'] ?? null);
         $unit->setBic($data['bic'] ?? null);
         $unit->setNotes($data['notes'] ?? null);
@@ -77,7 +76,7 @@ class UnitService {
         if ($this->permissionService->isBuildingManagement($role) && $unit->getPropertyId() === null && !isset($data['propertyId'])) {
             throw new \InvalidArgumentException($this->l10n->t('Property is required for building management.'));
         }
-        $fields = ['label', 'unitNumber', 'landRegister', 'livingArea', 'usableArea', 'unitType', 'buyDate', 'totalCosts', 'officialId', 'iban', 'bic', 'notes'];
+        $fields = ['label', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
                 $setter = 'set' . ucfirst($field);
