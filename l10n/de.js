@@ -139,7 +139,7 @@ OC.L10N.register(
         "Reported size": "Gemeldete Fläche",
         "Reporting context": "Berichtskontext",
         "Reports": "Berichte",
-        "Revenue": "Einnahmen",
+        "Revenue": "Ergebnis",
         "Saldo": "Saldo",
         "Save": "Speichern",
         "Security deposit": "Mietsicherheit",
