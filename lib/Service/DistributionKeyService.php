@@ -77,16 +77,7 @@ class DistributionKeyService {
         $validTo = $data['validTo'] !== null ? trim((string)$data['validTo']) : null;
         $this->assertDateRange($validFrom, $validTo);
 
-        $configJson = $data['configJson'] ?? null;
-        if ($configJson !== null && trim((string)$configJson) !== '') {
-            $decoded = json_decode((string)$configJson, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \InvalidArgumentException($this->l10n->t('Invalid distribution configuration.'));
-            }
-            $configJson = json_encode($decoded);
-        } else {
-            $configJson = null;
-        }
+        $configJson = $this->normalizeConfigJson($data['configJson'] ?? null);
 
         $now = time();
         $key = new DistributionKey();
@@ -181,5 +172,26 @@ class DistributionKeyService {
 
     private function isValidDate(?string $date): bool {
         return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1;
+    }
+
+    private function normalizeConfigJson($rawConfig): ?string {
+        if ($rawConfig === null) {
+            return null;
+        }
+        $rawString = trim((string)$rawConfig);
+        if ($rawString === '') {
+            return null;
+        }
+
+        $normalized = str_replace([
+            '“', '”', '„', '‟', '«', '»'
+        ], '"', $rawString);
+
+        $decoded = json_decode($normalized, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \InvalidArgumentException($this->l10n->t('Invalid distribution configuration.'));
+        }
+
+        return json_encode($decoded);
     }
 }
