@@ -33,7 +33,7 @@ class DashboardService {
         $unitIds = array_map(fn($unit) => $unit->getId(), $units);
 
         $tenancies = $this->tenancyService->listTenancies($userId);
-        $partnerType = $isBuildingManagement ? 'owner' : 'tenant';
+        $partnerType = $isBuildingManagement ? 'owner' : null;
         $tenancies = $this->filterTenanciesForRole($tenancies, $partnerType, $unitIds, !$isBuildingManagement);
         $activeTenancies = array_filter($tenancies, function (Tenancy $tenancy) {
             $status = $tenancy->getStatus();
@@ -87,7 +87,7 @@ class DashboardService {
         ];
     }
 
-    private function filterTenanciesForRole(array $tenancies, string $expectedPartnerType, array $unitIds, bool $allowPartnerless): array {
+    private function filterTenanciesForRole(array $tenancies, ?string $expectedPartnerType, array $unitIds, bool $allowPartnerless): array {
         $unitScope = array_map('intval', $unitIds);
 
         return array_values(array_filter($tenancies, function (Tenancy $tenancy) use ($expectedPartnerType, $unitScope, $allowPartnerless) {
@@ -96,6 +96,10 @@ class DashboardService {
             }
 
             $partners = $tenancy->getPartners();
+            if ($expectedPartnerType === null) {
+                return true;
+            }
+
             if (empty($partners)) {
                 return $allowPartnerless;
             }
