@@ -2212,7 +2212,7 @@
                 '</div>';
         }
 
-        return { renderList, renderDetail, renderListInline, openCreateModal };
+        return { renderList, renderDetail, renderListInline, renderStatisticsTable, openCreateModal };
     })();
 
     Domus.UnitSettlements = (function() {
