@@ -26,14 +26,15 @@ class DashboardService {
         $propertyIds = array_map(fn($property) => $property->getId(), $properties);
 
         $units = $this->unitMapper->findByUser($userId);
-        if ($isBuildingManagement) {
-            $units = array_filter($units, fn($unit) => $unit->getPropertyId() !== null);
-        }
+        $units = array_filter($units, function ($unit) use ($isBuildingManagement) {
+            $hasProperty = $unit->getPropertyId() !== null;
+            return $isBuildingManagement ? $hasProperty : !$hasProperty;
+        });
         $unitIds = array_map(fn($unit) => $unit->getId(), $units);
 
         $tenancies = $this->tenancyService->listTenancies($userId);
         $partnerType = $isBuildingManagement ? 'owner' : 'tenant';
-        $tenancies = $this->filterTenanciesForRole($tenancies, $partnerType, $unitIds, $isBuildingManagement);
+        $tenancies = $this->filterTenanciesForRole($tenancies, $partnerType, $unitIds, !$isBuildingManagement);
         $activeTenancies = array_filter($tenancies, function (Tenancy $tenancy) {
             $status = $tenancy->getStatus();
             if ($status !== null) {
@@ -86,15 +87,17 @@ class DashboardService {
         ];
     }
 
-    private function filterTenanciesForRole(array $tenancies, string $expectedPartnerType, array $unitIds, bool $requirePropertyBoundUnits): array {
-        return array_values(array_filter($tenancies, function (Tenancy $tenancy) use ($expectedPartnerType, $unitIds, $requirePropertyBoundUnits) {
-            if ($requirePropertyBoundUnits && !in_array($tenancy->getUnitId(), $unitIds, true)) {
+    private function filterTenanciesForRole(array $tenancies, string $expectedPartnerType, array $unitIds, bool $allowPartnerless): array {
+        $unitScope = array_map('intval', $unitIds);
+
+        return array_values(array_filter($tenancies, function (Tenancy $tenancy) use ($expectedPartnerType, $unitScope, $allowPartnerless) {
+            if (!empty($unitScope) && !in_array((int)$tenancy->getUnitId(), $unitScope, true)) {
                 return false;
             }
 
             $partners = $tenancy->getPartners();
             if (empty($partners)) {
-                return !$requirePropertyBoundUnits;
+                return $allowPartnerless;
             }
 
             foreach ($partners as $partner) {
