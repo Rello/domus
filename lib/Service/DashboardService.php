@@ -2,9 +2,10 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\PropertyMapper;
-use OCA\Domus\Db\TenancyMapper;
+use OCA\Domus\Db\Tenancy;
 use OCA\Domus\Db\UnitMapper;
 use OCP\IL10N;
 
@@ -12,21 +13,45 @@ class DashboardService {
     public function __construct(
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
-        private TenancyMapper $tenancyMapper,
+        private TenancyService $tenancyService,
         private BookingMapper $bookingMapper,
+        private PermissionService $permissionService,
         private IL10N $l10n,
     ) {
     }
 
-    public function getSummary(string $userId, int $year): array {
+    public function getSummary(string $userId, int $year, string $role = 'landlord'): array {
+        $isBuildingManagement = $this->permissionService->isBuildingManagement($role);
         $properties = $this->propertyMapper->findByUser($userId);
+        $propertyIds = array_map(fn($property) => $property->getId(), $properties);
+
         $units = $this->unitMapper->findByUser($userId);
-        $tenancies = $this->tenancyMapper->findByUser($userId);
-        $activeTenancies = array_filter($tenancies, fn($t) => $t->getEndDate() === null || $t->getEndDate() >= date('Y-m-d'));
+        $units = array_filter($units, function ($unit) use ($isBuildingManagement) {
+            $hasProperty = $unit->getPropertyId() !== null;
+            return $isBuildingManagement ? $hasProperty : !$hasProperty;
+        });
+        $unitIds = array_map(fn($unit) => $unit->getId(), $units);
+
+        $tenancies = $this->tenancyService->listTenancies($userId);
+        $partnerType = $isBuildingManagement ? 'owner' : null;
+        $tenancies = $this->filterTenanciesForRole($tenancies, $partnerType, $unitIds, !$isBuildingManagement);
+        $activeTenancies = array_filter($tenancies, function (Tenancy $tenancy) {
+            $status = $tenancy->getStatus();
+            if ($status !== null) {
+                return in_array($status, ['active', 'future'], true);
+            }
+
+            $endDate = $tenancy->getEndDate();
+            return $endDate === null || $endDate >= date('Y-m-d');
+        });
+
         $bookings = $this->bookingMapper->findByUser($userId, ['year' => $year]);
+        if ($isBuildingManagement) {
+            $bookings = array_filter($bookings, fn(Booking $booking) => $this->bookingMatchesManagedScope($booking, $propertyIds, $unitIds));
+        }
 
         $rentSum = 0.0;
-        foreach ($tenancies as $tenancy) {
+        foreach ($activeTenancies as $tenancy) {
             $rentSum += (float)$tenancy->getBaseRent();
         }
 
@@ -41,7 +66,7 @@ class DashboardService {
             }
         }
 
-        $propertyOverview = array_map(function($property) use ($userId) {
+        $propertyOverview = array_map(function ($property) use ($userId) {
             $unitCount = $this->unitMapper->countByProperty($property->getId(), $userId);
             return [
                 'id' => $property->getId(),
@@ -60,5 +85,47 @@ class DashboardService {
             'monthlyBaseRentSum' => number_format($rentSum, 2, '.', ''),
             'annualResult' => number_format($income - $expense, 2, '.', ''),
         ];
+    }
+
+    private function filterTenanciesForRole(array $tenancies, ?string $expectedPartnerType, array $unitIds, bool $allowPartnerless): array {
+        $unitScope = array_map('intval', $unitIds);
+
+        return array_values(array_filter($tenancies, function (Tenancy $tenancy) use ($expectedPartnerType, $unitScope, $allowPartnerless) {
+            if (!empty($unitScope) && !in_array((int)$tenancy->getUnitId(), $unitScope, true)) {
+                return false;
+            }
+
+            $partners = $tenancy->getPartners();
+            if ($expectedPartnerType === null) {
+                return true;
+            }
+
+            if (empty($partners)) {
+                return $allowPartnerless;
+            }
+
+            foreach ($partners as $partner) {
+                if ($partner->getPartnerType() === $expectedPartnerType) {
+                    return true;
+                }
+            }
+
+            return false;
+        }));
+    }
+
+    private function bookingMatchesManagedScope(Booking $booking, array $propertyIds, array $unitIds): bool {
+        $propertyId = $booking->getPropertyId();
+        $unitId = $booking->getUnitId();
+
+        if ($propertyId !== null && in_array($propertyId, $propertyIds, true)) {
+            return true;
+        }
+
+        if ($unitId !== null && in_array($unitId, $unitIds, true)) {
+            return true;
+        }
+
+        return false;
     }
 }
