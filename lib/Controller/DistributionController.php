@@ -4,6 +4,7 @@ namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\DistributionKeyService;
+use OCA\Domus\Service\DistributionService;
 use OCA\Domus\Service\PermissionService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -18,6 +19,7 @@ class DistributionController extends Controller {
         IRequest $request,
         private IUserSession $userSession,
         private DistributionKeyService $distributionKeyService,
+        private DistributionService $distributionService,
         private PermissionService $permissionService,
         private IL10N $l10n,
     ) {
@@ -63,6 +65,22 @@ class DistributionController extends Controller {
     public function listByUnit(int $unitId): DataResponse {
         try {
             return new DataResponse($this->distributionKeyService->listForUnit($unitId, $this->getUserId(), $this->getRole()));
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
+    public function previewBooking(int $bookingId): DataResponse {
+        try {
+            $role = $this->getRole();
+            if (!$this->permissionService->isBuildingManagement($role)) {
+                return $this->validationError($this->l10n->t('Distribution preview is only available for building management.'));
+            }
+            $preview = $this->distributionService->calculatePreview($bookingId, $this->getUserId());
+            return new DataResponse($preview);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
         } catch (\Throwable $e) {
             return $this->notFound();
         }
