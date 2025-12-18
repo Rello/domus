@@ -4,6 +4,7 @@ namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\DashboardService;
+use OCA\Domus\Service\PermissionService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
@@ -15,6 +16,7 @@ class DashboardController extends Controller {
         IRequest $request,
         private IUserSession $userSession,
         private DashboardService $dashboardService,
+        private PermissionService $permissionService,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -22,10 +24,14 @@ class DashboardController extends Controller {
     #[NoAdminRequired]
     public function summary(?int $year = null): DataResponse {
         $year = $year ?? (int)date('Y');
-        return new DataResponse($this->dashboardService->getSummary($this->getUserId(), $year));
+        return new DataResponse($this->dashboardService->getSummary($this->getUserId(), $year, $this->getRole()));
     }
 
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
+    }
+
+    private function getRole(): string {
+        return $this->permissionService->getRoleFromRequest($this->request);
     }
 }
