@@ -42,8 +42,18 @@ class BookingController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function create(int $account, string $date, string $amount, ?int $propertyId = null, ?int $unitId = null, ?string $description = null): DataResponse {
-        $data = compact('account', 'date', 'amount', 'propertyId', 'unitId', 'description');
+    public function create(
+        int $account,
+        string $date,
+        string $amount,
+        ?int $propertyId = null,
+        ?int $unitId = null,
+        ?string $description = null,
+        ?int $distributionKeyId = null,
+        ?string $periodFrom = null,
+        ?string $periodTo = null,
+    ): DataResponse {
+        $data = compact('account', 'date', 'amount', 'propertyId', 'unitId', 'description', 'distributionKeyId', 'periodFrom', 'periodTo');
         try {
             $booking = $this->bookingService->createBooking($data, $this->getUserId());
             return new DataResponse($booking, Http::STATUS_CREATED);
@@ -55,7 +65,18 @@ class BookingController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function update(int $id, ?int $account = null, ?string $date = null, ?string $amount = null, ?int $propertyId = null, ?int $unitId = null, ?string $description = null): DataResponse {
+    public function update(
+        int $id,
+        ?int $account = null,
+        ?string $date = null,
+        ?string $amount = null,
+        ?int $propertyId = null,
+        ?int $unitId = null,
+        ?string $description = null,
+        ?int $distributionKeyId = null,
+        ?string $periodFrom = null,
+        ?string $periodTo = null,
+    ): DataResponse {
         $data = array_filter([
             'account' => $account,
             'date' => $date,
@@ -63,6 +84,9 @@ class BookingController extends Controller {
             'propertyId' => $propertyId,
             'unitId' => $unitId,
             'description' => $description,
+            'distributionKeyId' => $distributionKeyId,
+            'periodFrom' => $periodFrom,
+            'periodTo' => $periodTo,
         ], fn($value) => $value !== null);
         try {
             return new DataResponse($this->bookingService->updateBooking($id, $data, $this->getUserId()));
