@@ -28,7 +28,7 @@ class Version0003Date20251203000000 extends SimpleMigrationStep {
             $table->addColumn('valid_to', 'string', ['notnull' => false, 'length' => 32]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
-            $table->setPrimaryKey(['id']);
+            $table->setPrimaryKey(['id'], 'domus_dk_pk');
             $table->addIndex(['user_id'], 'domus_dist_keys_user');
             $table->addIndex(['property_id'], 'domus_dist_keys_prop');
         }
@@ -44,7 +44,7 @@ class Version0003Date20251203000000 extends SimpleMigrationStep {
             $table->addColumn('valid_to', 'string', ['notnull' => false, 'length' => 32]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
-            $table->setPrimaryKey(['id']);
+            $table->setPrimaryKey(['id'], 'domus_dku_pk');
             $table->addIndex(['user_id'], 'domus_dku_user');
             $table->addIndex(['distribution_key_id'], 'domus_dku_key');
             $table->addIndex(['unit_id'], 'domus_dku_unit');
