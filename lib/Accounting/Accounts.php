@@ -40,6 +40,9 @@ class Accounts {
             '2008' => $l10n ? $l10n->t('Other tax deductions') : 'Other tax deductions',
             '2009' => $l10n ? $l10n->t('Tax rate') : 'Tax rate',
             '3000' => $l10n ? $l10n->t('Total cost') : 'Total cost',
-        ];
+			'4000' => $l10n ? $l10n->t('Maintenance1') : 'Maintenance1',
+			'4001' => $l10n ? $l10n->t('Maintenance2') : 'Maintenance2',
+			'4002' => $l10n ? $l10n->t('Maintenance3') : 'Maintenance3',
+			'4003' => $l10n ? $l10n->t('Maintenance4') : 'Maintenance4',];
     }
 }

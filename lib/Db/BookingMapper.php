@@ -55,6 +55,19 @@ class BookingMapper extends QBMapper {
     /**
      * @throws Exception
      */
+    public function findBySourceProperty(int $bookingId, string $userId): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('source_property_booking_id', $qb->createNamedParameter($bookingId, $qb::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        return $this->findEntities($qb);
+    }
+
+    /**
+     * @throws Exception
+     */
     public function sumByAccount(string $userId, int $year, ?int $propertyId = null, ?int $unitId = null): array {
         $qb = $this->db->getQueryBuilder();
         $qb->select('account')

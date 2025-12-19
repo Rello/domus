@@ -10,6 +10,8 @@ return [
         ['name' => 'Property#create', 'url' => '/properties', 'verb' => 'POST'],
         ['name' => 'Property#update', 'url' => '/properties/{id}', 'verb' => 'PUT'],
         ['name' => 'Property#destroy', 'url' => '/properties/{id}', 'verb' => 'DELETE'],
+        ['name' => 'Distribution#listByProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'GET'],
+        ['name' => 'Distribution#createForProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'POST'],
 
         // Unit
         ['name' => 'Unit#index', 'url' => '/units', 'verb' => 'GET'],
@@ -20,6 +22,8 @@ return [
         ['name' => 'Unit#destroy', 'url' => '/units/{id}', 'verb' => 'DELETE'],
         ['name' => 'Unit#listSettlements', 'url' => '/units/{id}/settlements', 'verb' => 'GET'],
         ['name' => 'Unit#createSettlement', 'url' => '/units/{id}/settlements', 'verb' => 'POST'],
+        ['name' => 'Distribution#createForUnit', 'url' => '/units/{unitId}/distributions', 'verb' => 'POST'],
+        ['name' => 'Distribution#listByUnit', 'url' => '/units/{unitId}/distributions', 'verb' => 'GET'],
         // Statistics
         ['name' => 'Statistics#unit', 'url' => '/statistics/units/{unitId}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitPerYear', 'url' => '/statistics/units/{unitId}/{year}', 'verb' => 'GET'],
@@ -48,6 +52,8 @@ return [
         ['name' => 'Booking#create', 'url' => '/bookings', 'verb' => 'POST'],
         ['name' => 'Booking#update', 'url' => '/bookings/{id}', 'verb' => 'PUT'],
         ['name' => 'Booking#destroy', 'url' => '/bookings/{id}', 'verb' => 'DELETE'],
+        ['name' => 'Distribution#previewBooking', 'url' => '/bookings/{bookingId}/distribution-preview', 'verb' => 'GET'],
+        ['name' => 'Distribution#updateForProperty', 'url' => '/properties/{propertyId}/distributions/{distributionId}', 'verb' => 'PUT'],
 
         // Documents
         ['name' => 'Document#index', 'url' => '/documents/{entityType}/{entityId}', 'verb' => 'GET'],

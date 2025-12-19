@@ -5,6 +5,7 @@ namespace OCA\Domus\Service;
 use OCA\Domus\Accounting\Accounts;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
+use OCA\Domus\Db\DistributionKeyMapper;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCP\IL10N;
@@ -14,6 +15,7 @@ class BookingService {
         private BookingMapper $bookingMapper,
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
+        private DistributionKeyMapper $distributionKeyMapper,
         private IL10N $l10n,
     ) {
     }
@@ -41,6 +43,10 @@ class BookingService {
         $booking->setYear((int)substr($data['date'], 0, 4));
         $booking->setPropertyId($data['propertyId'] ?? null);
         $booking->setUnitId($data['unitId'] ?? null);
+        $booking->setDistributionKeyId($data['distributionKeyId'] ?? null);
+        $booking->setStatus('draft');
+        $booking->setPeriodFrom($data['periodFrom'] ?? $data['date']);
+        $booking->setPeriodTo($data['periodTo'] ?? $data['date']);
         $booking->setDescription($data['description'] ?? null);
         $booking->setCreatedAt($now);
         $booking->setUpdatedAt($now);
@@ -49,6 +55,9 @@ class BookingService {
 
     public function updateBooking(int $id, array $data, string $userId): Booking {
         $booking = $this->getBookingForUser($id, $userId);
+        if ($booking->getStatus() !== null && $booking->getStatus() !== 'draft') {
+            throw new \RuntimeException($this->l10n->t('Only draft bookings can be updated.'));
+        }
         $merged = array_merge($booking->jsonSerialize(), $data);
         $this->assertBookingInput($merged, $userId);
 
@@ -58,6 +67,9 @@ class BookingService {
             'amount' => 'setAmount',
             'propertyId' => 'setPropertyId',
             'unitId' => 'setUnitId',
+            'distributionKeyId' => 'setDistributionKeyId',
+            'periodFrom' => 'setPeriodFrom',
+            'periodTo' => 'setPeriodTo',
             'description' => 'setDescription',
         ];
 
@@ -100,6 +112,32 @@ class BookingService {
         }
         if (isset($data['unitId']) && !$this->unitMapper->findForUser((int)$data['unitId'], $userId)) {
             throw new \RuntimeException($this->l10n->t('Unit not found.'));
+        }
+        $periodFrom = $data['periodFrom'] ?? $data['date'];
+        $periodTo = $data['periodTo'] ?? $data['date'];
+        foreach (['periodFrom' => $periodFrom, 'periodTo' => $periodTo] as $label => $value) {
+            if ($value !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$value)) {
+                throw new \InvalidArgumentException($this->l10n->t('Invalid period definition.'));
+            }
+        }
+        if ($periodFrom !== null && $periodTo !== null && $periodFrom > $periodTo) {
+            throw new \InvalidArgumentException($this->l10n->t('Period start must be before period end.'));
+        }
+        if (isset($data['distributionKeyId'])) {
+            if (!isset($data['propertyId'])) {
+                throw new \InvalidArgumentException($this->l10n->t('Distribution keys require a property.'));
+            }
+            $distributionKey = $this->distributionKeyMapper->findForUser((int)$data['distributionKeyId'], $userId);
+            if (!$distributionKey) {
+                throw new \RuntimeException($this->l10n->t('Distribution key not found.'));
+            }
+            if ((int)$distributionKey->getPropertyId() !== (int)$data['propertyId']) {
+                throw new \InvalidArgumentException($this->l10n->t('Distribution key does not belong to the property.'));
+            }
+            $isKeyValid = $distributionKey->getValidFrom() <= $periodTo && ($distributionKey->getValidTo() === null || $distributionKey->getValidTo() >= $periodFrom);
+            if (!$isKeyValid) {
+                throw new \InvalidArgumentException($this->l10n->t('Distribution key is not valid for the selected period.'));
+            }
         }
     }
 
