@@ -28,75 +28,43 @@ class DistributionController extends Controller {
 
     #[NoAdminRequired]
     public function listByProperty(int $propertyId, ?int $unitId = null): DataResponse {
-        try {
-            return new DataResponse($this->distributionKeyService->listForProperty($this->getUserId(), $propertyId, $this->getRole(), $unitId));
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->distributionKeyService->listForProperty($this->getUserId(), $propertyId, $this->getRole(), $unitId));
     }
 
     #[NoAdminRequired]
     public function createForProperty(int $propertyId, string $type, string $name, string $validFrom, ?string $configJson = null, ?string $validTo = null): DataResponse {
         $payload = compact('type', 'name', 'validFrom', 'configJson', 'validTo');
-        try {
-            $created = $this->distributionKeyService->createDistributionKey($propertyId, $payload, $this->getUserId(), $this->getRole());
-            return new DataResponse($created, Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $created = $this->distributionKeyService->createDistributionKey($propertyId, $payload, $this->getUserId(), $this->getRole());
+        return new DataResponse($created, Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
     public function createForUnit(int $unitId, int $distributionKeyId, string $value, string $validFrom, ?string $validTo = null): DataResponse {
         $payload = compact('distributionKeyId', 'value', 'validFrom', 'validTo');
-        try {
-            $result = $this->distributionKeyService->createUnitValue($unitId, $payload, $this->getUserId(), $this->getRole());
-            return new DataResponse($result, Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $result = $this->distributionKeyService->createUnitValue($unitId, $payload, $this->getUserId(), $this->getRole());
+        return new DataResponse($result, Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
     public function listByUnit(int $unitId): DataResponse {
-        try {
-            return new DataResponse($this->distributionKeyService->listForUnit($unitId, $this->getUserId(), $this->getRole()));
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->distributionKeyService->listForUnit($unitId, $this->getUserId(), $this->getRole()));
     }
 
     #[NoAdminRequired]
     public function updateForProperty(int $propertyId, int $distributionId, string $name, string $validFrom, ?string $validTo = null, ?string $configJson = null): DataResponse {
         $payload = compact('name', 'validFrom', 'validTo', 'configJson');
-        try {
-            $updated = $this->distributionKeyService->updateDistributionKey($propertyId, $distributionId, $payload, $this->getUserId(), $this->getRole());
-            return new DataResponse($updated);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $updated = $this->distributionKeyService->updateDistributionKey($propertyId, $distributionId, $payload, $this->getUserId(), $this->getRole());
+        return new DataResponse($updated);
     }
 
     #[NoAdminRequired]
     public function previewBooking(int $bookingId): DataResponse {
-        try {
-            $role = $this->getRole();
-            if (!$this->permissionService->isBuildingManagement($role)) {
-                return $this->validationError($this->l10n->t('Distribution preview is only available for building management.'));
-            }
-            $preview = $this->distributionService->calculatePreview($bookingId, $this->getUserId());
-            return new DataResponse($preview);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
+        $role = $this->getRole();
+        if (!$this->permissionService->isBuildingManagement($role)) {
+            return $this->validationError($this->l10n->t('Distribution preview is only available for building management.'));
         }
+        $preview = $this->distributionService->calculatePreview($bookingId, $this->getUserId());
+        return new DataResponse($preview);
     }
 
     private function getUserId(): string {
