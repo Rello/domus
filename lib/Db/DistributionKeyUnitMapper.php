@@ -43,6 +43,7 @@ class DistributionKeyUnitMapper extends QBMapper {
             ->orderBy('valid_from', 'DESC')
             ->setMaxResults(1);
 
-        return $this->findEntity($qb);
+        $entities = $this->findEntities($qb);
+        return $entities[0] ?? null;
     }
 }
