@@ -1100,6 +1100,7 @@
             { value: 'mixed', label: t('domus', 'Mixed') },
             { value: 'manual', label: t('domus', 'Manual') }
         ];
+        const systemDefaultTypes = typeOptions.filter(opt => opt.systemDefault).map(opt => opt.value);
 
         function canManageDistributions() {
             return Domus.Role.isBuildingMgmtView();
@@ -1120,7 +1121,9 @@
         }
 
         function renderTable(distributions, options = {}) {
+            const filtered = filterList(distributions, options);
             const showUnitValue = options.showUnitValue === true;
+            const hideConfig = options.hideConfig === true;
             const headers = [
                 t('domus', 'Name'),
                 t('domus', 'Type'),
@@ -1128,9 +1131,12 @@
             if (showUnitValue) {
                 headers.push(t('domus', 'Unit value'));
             }
-            headers.push(t('domus', 'Valid from'), t('domus', 'Valid to'), t('domus', 'Configuration'));
+            headers.push(t('domus', 'Valid from'), t('domus', 'Valid to'));
+            if (!hideConfig) {
+                headers.push(t('domus', 'Configuration'));
+            }
 
-            const rows = (distributions || []).map(item => {
+            const rows = filtered.map(item => {
                 const unitValue = item.unitValue || null;
                 const cells = [
                     Domus.Utils.escapeHtml(item.name || ''),
@@ -1144,13 +1150,24 @@
                 }
                 cells.push(
                     Domus.Utils.escapeHtml(formatDate(item.validFrom)),
-                    Domus.Utils.escapeHtml(formatDate(item.validTo)),
-                    Domus.Utils.escapeHtml(item.configJson ? t('domus', 'Configured') : '—')
+                    Domus.Utils.escapeHtml(formatDate(item.validTo))
                 );
+                if (!hideConfig) {
+                    cells.push(Domus.Utils.escapeHtml(item.configJson ? t('domus', 'Configured') : '—'));
+                }
                 return { cells, className: 'domus-distribution-row', dataset: { distid: item.id, disttype: item.type } };
             });
 
             return Domus.UI.buildTable(headers, rows);
+        }
+
+        function filterList(distributions, options = {}) {
+            const baseExcludes = (options.excludeTypes || []).map(t => String(t).toLowerCase());
+            const excludeDefaults = options.excludeSystemDefaults !== false
+                ? systemDefaultTypes.map(t => String(t).toLowerCase())
+                : [];
+            const excludeTypes = baseExcludes.concat(excludeDefaults);
+            return (distributions || []).filter(item => !excludeTypes.includes(String(item.type).toLowerCase()));
         }
 
         function formatDate(value) {
@@ -1250,7 +1267,7 @@
                         Domus.UI.showNotification(t('domus', 'Create a distribution first for this property.'), 'error');
                         return;
                     }
-                    const filtered = distributions.filter(d => !['area', 'unit'].includes(String(d.type).toLowerCase()));
+                    const filtered = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: true });
                     if (!filtered.length) {
                         Domus.UI.showNotification(t('domus', 'No applicable distributions available for unit values.'), 'error');
                         return;
@@ -1480,7 +1497,8 @@
             openPreviewModal,
             renderPreviewTable,
             openEditKeyModal,
-            bindTable
+            bindTable,
+            filterList
         };
     })();
 
@@ -1799,6 +1817,7 @@
                 .then(property => Promise.all([Promise.resolve(property), Domus.Distributions.loadForProperty(id).catch(() => [])]))
                 .then(([property, distributions]) => {
 
+                    const visibleDistributions = Domus.Distributions.filterList(distributions);
                     const cityLine = [property.zip, property.city].filter(Boolean).join(' ');
                     const addressParts = [property.street, cityLine, property.country].filter(Boolean);
                     const address = addressParts.length ? addressParts.join(', ') : (property.address || '');
@@ -1864,8 +1883,8 @@
                         stats +
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
-                        '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-property-distributions">' +
-                        Domus.Distributions.renderTable(distributions) + '</div></div>' +
+                        (canManageDistributions ? '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-property-distributions">' +
+                        Domus.Distributions.renderTable(visibleDistributions) + '</div></div>' : '') +
                         '<div class="domus-panel">' + unitsHeader + '<div class="domus-panel-body">' +
                         Domus.Units.renderListInline(property.units || []) + '</div></div>' +
                         (showBookingFeatures ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
@@ -1882,7 +1901,7 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
-                    Domus.Distributions.bindTable('domus-property-distributions', distributions, {
+                    Domus.Distributions.bindTable('domus-property-distributions', visibleDistributions, {
                         mode: 'property',
                         propertyId: id,
                         onPropertyEdit: (distribution) => Domus.Distributions.openEditKeyModal(id, distribution, () => renderDetail(id))
@@ -2273,6 +2292,7 @@
                     const canManageBookings = Domus.Role.hasCapability('manageBookings') && unitDetailConfig.showBookings;
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
+                    const filteredDistributions = Domus.Distributions.filterList(distributions);
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
                     const currentTenancy = (unit.activeTenancies || [])
                         .slice()
@@ -2377,8 +2397,8 @@
                         stats +
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
-                        '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-unit-distributions">' +
-                        Domus.Distributions.renderTable(distributions, { showUnitValue: true }) + '</div></div>' +
+                        (canManageDistributions ? '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-unit-distributions">' +
+                        Domus.Distributions.renderTable(filteredDistributions, { showUnitValue: true, hideConfig: true }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
                         Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
                         '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +
@@ -2395,10 +2415,12 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
-                    Domus.Distributions.bindTable('domus-unit-distributions', distributions, {
-                        mode: 'unit',
-                        onUnitEdit: (distribution) => Domus.Distributions.openCreateUnitValueModal(unit, () => renderDetail(id), { distributionKeyId: distribution?.id })
-                    });
+                    if (canManageDistributions) {
+                        Domus.Distributions.bindTable('domus-unit-distributions', filteredDistributions, {
+                            mode: 'unit',
+                            onUnitEdit: (distribution) => Domus.Distributions.openCreateUnitValueModal(unit, () => renderDetail(id), { distributionKeyId: distribution?.id })
+                        });
+                    }
                     bindDetailActions(id, unit);
                 })
                 .catch(err => Domus.UI.showError(err.message));
