@@ -1092,9 +1092,9 @@
      */
     Domus.Distributions = (function() {
         const typeOptions = [
-            { value: 'area', label: t('domus', 'Area') },
+            { value: 'area', label: t('domus', 'Area'), systemDefault: true },
             { value: 'mea', label: t('domus', 'MEA') },
-            { value: 'unit', label: t('domus', 'Unit') },
+            { value: 'unit', label: t('domus', 'Unit'), systemDefault: true },
             { value: 'persons', label: t('domus', 'Persons') },
             { value: 'consumption', label: t('domus', 'Consumption') },
             { value: 'mixed', label: t('domus', 'Mixed') },
@@ -1160,8 +1160,9 @@
             return Domus.Utils.formatDate(value);
         }
 
-        function buildTypeSelect(defaultValue = '') {
-            return '<select name="type" required>' + typeOptions.map(opt => {
+        function buildTypeSelect(defaultValue = '', { excludeSystemDefaults = false } = {}) {
+            const options = excludeSystemDefaults ? typeOptions.filter(opt => !opt.systemDefault) : typeOptions;
+            return '<select name="type" required>' + options.map(opt => {
                 const selected = String(opt.value) === String(defaultValue) ? ' selected' : '';
                 return '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + selected + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>';
             }).join('') + '</select>';
@@ -1182,7 +1183,7 @@
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Type'),
                     required: true,
-                    content: buildTypeSelect()
+                    content: buildTypeSelect('', { excludeSystemDefaults: true })
                 }),
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Valid from'),
@@ -1195,7 +1196,7 @@
                 }),
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Configuration'),
-                    helpText: t('domus', 'Provide JSON configuration for mixed distributions.'),
+                    helpText: t('domus', 'Provide JSON configuration for mixed distributions. Example for MEA: { "base": 1000 }'),
                     fullWidth: true,
                     content: '<textarea name="configJson" rows="3"></textarea>'
                 })
@@ -1249,8 +1250,13 @@
                         Domus.UI.showNotification(t('domus', 'Create a distribution first for this property.'), 'error');
                         return;
                     }
+                    const filtered = distributions.filter(d => !['area', 'unit'].includes(String(d.type).toLowerCase()));
+                    if (!filtered.length) {
+                        Domus.UI.showNotification(t('domus', 'No applicable distributions available for unit values.'), 'error');
+                        return;
+                    }
                     const today = (new Date()).toISOString().slice(0, 10);
-                    const options = distributions.map(d => '<option value="' + Domus.Utils.escapeHtml(d.id) + '">' +
+                    const options = filtered.map(d => '<option value="' + Domus.Utils.escapeHtml(d.id) + '">' +
                         Domus.Utils.escapeHtml(d.name || ('#' + d.id)) + ' (' + Domus.Utils.escapeHtml(getTypeLabel(d.type)) + ')' + '</option>').join('');
 
                     const rows = [
