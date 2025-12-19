@@ -173,7 +173,7 @@ class DistributionService {
             throw new \RuntimeException($this->l10n->t('No units found for this property.'));
         }
 
-        $unitValues = $this->collectUnitValues($distributionKey, $period, $userId);
+        $unitValues = $this->collectUnitValues($distributionKey, $period, $userId, $units);
         $weights = $this->calculateWeights($distributionKey, $units, $unitValues);
 
         return [
@@ -241,7 +241,7 @@ class DistributionService {
     /**
      * @throws DbException
      */
-    private function collectUnitValues(DistributionKey $distributionKey, array $period, string $userId): array {
+    private function collectUnitValues(DistributionKey $distributionKey, array $period, string $userId, array $units): array {
         $values = [];
         $entries = $this->distributionKeyUnitMapper->findValidForKey((int)$distributionKey->getId(), $userId, $period['from'], $period['to']);
         foreach ($entries as $entry) {
@@ -252,6 +252,31 @@ class DistributionService {
                     'value' => (float)$entry->getValue(),
                     'validFrom' => $entry->getValidFrom(),
                 ];
+            }
+        }
+
+        $type = strtolower($distributionKey->getType());
+
+        if ($type === 'unit') {
+            foreach ($units as $unit) {
+                $unitId = $unit->getId();
+                if (!array_key_exists($unitId, $values)) {
+                    $values[$unitId] = ['value' => 1];
+                }
+            }
+        }
+
+        if ($type === 'area') {
+            foreach ($units as $unit) {
+                $unitId = $unit->getId();
+                if (array_key_exists($unitId, $values)) {
+                    continue;
+                }
+                $livingArea = $unit->getLivingArea();
+                if ($livingArea === null || $livingArea === '') {
+                    throw new \RuntimeException($this->l10n->t('Living area is missing for unit %s.', [$unit->getLabel()]));
+                }
+                $values[$unitId] = ['value' => (float)$livingArea];
             }
         }
 

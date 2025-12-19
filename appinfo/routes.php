@@ -53,6 +53,7 @@ return [
         ['name' => 'Booking#update', 'url' => '/bookings/{id}', 'verb' => 'PUT'],
         ['name' => 'Booking#destroy', 'url' => '/bookings/{id}', 'verb' => 'DELETE'],
         ['name' => 'Distribution#previewBooking', 'url' => '/bookings/{bookingId}/distribution-preview', 'verb' => 'GET'],
+        ['name' => 'Distribution#updateForProperty', 'url' => '/properties/{propertyId}/distributions/{distributionId}', 'verb' => 'PUT'],
 
         // Documents
         ['name' => 'Document#index', 'url' => '/documents/{entityType}/{entityId}', 'verb' => 'GET'],

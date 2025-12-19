@@ -207,6 +207,7 @@
             getUnitDistributions: (unitId) => request('GET', `/units/${unitId}/distributions`),
             getDistributionPreview: (bookingId) => request('GET', `/bookings/${bookingId}/distribution-preview`),
             createDistribution: (propertyId, data) => request('POST', `/properties/${propertyId}/distributions`, data),
+            updateDistribution: (propertyId, distributionId, data) => request('PUT', `/properties/${propertyId}/distributions/${distributionId}`, data),
             createUnitDistribution: (unitId, data) => request('POST', `/units/${unitId}/distributions`, data),
             getPartners: (type) => {
                 const resolvedType = type && String(type).trim() !== ''
@@ -1146,7 +1147,7 @@
                     Domus.Utils.escapeHtml(formatDate(item.validTo)),
                     Domus.Utils.escapeHtml(item.configJson ? t('domus', 'Configured') : '—')
                 );
-                return { cells };
+                return { cells, className: 'domus-distribution-row', dataset: { distid: item.id, disttype: item.type } };
             });
 
             return Domus.UI.buildTable(headers, rows);
@@ -1232,7 +1233,7 @@
             });
         }
 
-        function openCreateUnitValueModal(unit, onCreated) {
+        function openCreateUnitValueModal(unit, onCreated, defaults = {}) {
             if (!canManageDistributions()) {
                 Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
                 return;
@@ -1288,6 +1289,12 @@
                     });
 
                     modal.modalEl.querySelector('#domus-unit-distribution-cancel')?.addEventListener('click', modal.close);
+                    if (defaults.distributionKeyId) {
+                        const select = modal.modalEl.querySelector('select[name="distributionKeyId"]');
+                        if (select) {
+                            select.value = String(defaults.distributionKeyId);
+                        }
+                    }
                     modal.modalEl.querySelector('#domus-unit-distribution-form')?.addEventListener('submit', function(e) {
                         e.preventDefault();
                         const payload = {};
@@ -1377,6 +1384,85 @@
             }
         }
 
+        function openEditKeyModal(propertyId, distribution, onSaved) {
+            if (!canManageDistributions()) {
+                Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
+                return;
+            }
+            if (!distribution) {
+                Domus.UI.showNotification(t('domus', 'Distribution not found.'), 'error');
+                return;
+            }
+
+            const rows = [
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Name'),
+                    required: true,
+                    content: '<input type="text" name="name" value="' + Domus.Utils.escapeHtml(distribution.name || '') + '" required>'
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Type'),
+                    content: '<input type="text" value="' + Domus.Utils.escapeHtml(getTypeLabel(distribution.type)) + '" disabled>'
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Valid from'),
+                    required: true,
+                    content: '<input type="date" name="validFrom" value="' + Domus.Utils.escapeHtml(distribution.validFrom || '') + '" required>'
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Valid to'),
+                    content: '<input type="date" name="validTo" value="' + Domus.Utils.escapeHtml(distribution.validTo || '') + '">' 
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Configuration'),
+                    helpText: t('domus', 'Provide JSON configuration for mixed distributions.'),
+                    fullWidth: true,
+                    content: '<textarea name="configJson" rows="3">' + Domus.Utils.escapeHtml(distribution.configJson || '') + '</textarea>'
+                })
+            ];
+
+            const modal = Domus.UI.openModal({
+                title: t('domus', 'Edit {entity}', { entity: t('domus', 'Distribution') }),
+                content: '<form id="domus-edit-distribution">' + Domus.UI.buildFormTable(rows) +
+                    '<div class="domus-form-actions">' +
+                    '<button type="button" id="domus-edit-distribution-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                    '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                    '</div></form>'
+            });
+
+            modal.modalEl.querySelector('#domus-edit-distribution-cancel')?.addEventListener('click', modal.close);
+            modal.modalEl.querySelector('#domus-edit-distribution')?.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const payload = {};
+                Array.prototype.forEach.call(this.elements, el => {
+                    if (el.name) payload[el.name] = el.value;
+                });
+                Domus.Api.updateDistribution(propertyId, distribution.id, payload)
+                    .then(() => {
+                        Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Distribution') }), 'success');
+                        modal.close();
+                        onSaved?.();
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+        }
+
+        function bindTable(containerId, distributions, options = {}) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.querySelectorAll('tr.domus-distribution-row').forEach(row => {
+                row.addEventListener('click', () => {
+                    const distId = row.getAttribute('data-distid');
+                    const distribution = distributions.find(d => String(d.id) === String(distId));
+                    if (options.mode === 'unit') {
+                        options.onUnitEdit?.(distribution);
+                    } else {
+                        options.onPropertyEdit?.(distribution);
+                    }
+                });
+            });
+        }
+
         return {
             canManageDistributions,
             loadForProperty,
@@ -1386,7 +1472,9 @@
             openCreateUnitValueModal,
             getTypeLabel,
             openPreviewModal,
-            renderPreviewTable
+            renderPreviewTable,
+            openEditKeyModal,
+            bindTable
         };
     })();
 
@@ -1770,7 +1858,7 @@
                         stats +
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
-                        '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body">' +
+                        '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-property-distributions">' +
                         Domus.Distributions.renderTable(distributions) + '</div></div>' +
                         '<div class="domus-panel">' + unitsHeader + '<div class="domus-panel-body">' +
                         Domus.Units.renderListInline(property.units || []) + '</div></div>' +
@@ -1788,6 +1876,11 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
+                    Domus.Distributions.bindTable('domus-property-distributions', distributions, {
+                        mode: 'property',
+                        propertyId: id,
+                        onPropertyEdit: (distribution) => Domus.Distributions.openEditKeyModal(id, distribution, () => renderDetail(id))
+                    });
                     bindDetailActions(id, property);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -2278,7 +2371,7 @@
                         stats +
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
-                        '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body">' +
+                        '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-unit-distributions">' +
                         Domus.Distributions.renderTable(distributions, { showUnitValue: true }) + '</div></div>' +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
                         Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
@@ -2296,6 +2389,10 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
+                    Domus.Distributions.bindTable('domus-unit-distributions', distributions, {
+                        mode: 'unit',
+                        onUnitEdit: (distribution) => Domus.Distributions.openCreateUnitValueModal(unit, () => renderDetail(id), { distributionKeyId: distribution?.id })
+                    });
                     bindDetailActions(id, unit);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -3430,20 +3527,53 @@
                     const toolbar = '<div class="domus-toolbar">' +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
-                    const rows = (bookings || []).map(b => ({
-                        cells: [
-                            Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
-                            Domus.Utils.escapeHtml(formatAccount(b)),
-                            { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
-                        ],
-                        dataset: { navigate: 'bookingDetail', args: b.id }
-                    }));
-                    Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
-                        t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount')
-                    ], rows));
-                    bindList();
+
+                    const isBuildingMgmt = Domus.Role.isBuildingMgmtView();
+                    const bookingsList = bookings || [];
+                    const distributionPromise = isBuildingMgmt ? buildDistributionTitleMap(bookingsList) : Promise.resolve({});
+
+                    distributionPromise.then(distMap => {
+                        const headers = [t('domus', 'Date'), t('domus', 'Account')];
+                        if (isBuildingMgmt) headers.push(t('domus', 'Distribution'));
+                        headers.push(t('domus', 'Amount'));
+
+                        const rows = bookingsList.map(b => {
+                            const cells = [
+                                Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
+                                Domus.Utils.escapeHtml(formatAccount(b))
+                            ];
+                            if (isBuildingMgmt) {
+                                const key = `${b.propertyId || ''}:${b.distributionKeyId || ''}`;
+                                cells.push(Domus.Utils.escapeHtml(distMap[key] || '—'));
+                            }
+                            cells.push({ content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true });
+                            return {
+                                cells,
+                                dataset: { navigate: 'bookingDetail', args: b.id }
+                            };
+                        });
+
+                        Domus.UI.renderContent(toolbar + Domus.UI.buildTable(headers, rows));
+                        bindList();
+                    }).catch(err => Domus.UI.showError(err.message));
                 })
                 .catch(err => Domus.UI.showError(err.message));
+        }
+
+        function buildDistributionTitleMap(bookings) {
+            const propertyIds = Array.from(new Set((bookings || [])
+                .filter(b => b.propertyId && b.distributionKeyId)
+                .map(b => b.propertyId)));
+            const fetches = propertyIds.map(pid => Domus.Api.getDistributions(pid).then(list => ({ pid, list: list || [] })));
+            return Promise.all(fetches).then(results => {
+                const map = {};
+                results.forEach(({ pid, list }) => {
+                    list.forEach(item => {
+                        map[`${pid}:${item.id}`] = item.name || (`#${item.id}`);
+                    });
+                });
+                return map;
+            });
         }
 
         function bindList() {

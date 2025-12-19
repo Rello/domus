@@ -29,6 +29,8 @@ class DistributionKeyService {
             throw new \RuntimeException($this->l10n->t('Property not found.'));
         }
 
+        $this->ensureDefaultKeys($propertyId, $userId);
+
         $unit = null;
         if ($unitId !== null) {
             $unit = $this->unitMapper->findForUser($unitId, $userId);
@@ -104,6 +106,8 @@ class DistributionKeyService {
             throw new \RuntimeException($this->l10n->t('Unit not found.'));
         }
 
+        $this->ensureDefaultKeys((int)$unit->getPropertyId(), $userId);
+
         $distributionKeyId = (int)($data['distributionKeyId'] ?? 0);
         if ($distributionKeyId <= 0) {
             throw new \InvalidArgumentException($this->l10n->t('Distribution key is required.'));
@@ -147,6 +151,38 @@ class DistributionKeyService {
         $keyData['unitValue'] = $created->jsonSerialize();
 
         return $keyData;
+    }
+
+    public function updateDistributionKey(int $propertyId, int $distributionKeyId, array $data, string $userId, string $role): DistributionKey {
+        if (!$this->permissionService->isBuildingManagement($role)) {
+            throw new \InvalidArgumentException($this->l10n->t('Only building management can update distributions.'));
+        }
+
+        $distributionKey = $this->distributionKeyMapper->findForUser($distributionKeyId, $userId);
+        if (!$distributionKey || (int)$distributionKey->getPropertyId() !== $propertyId) {
+            throw new \RuntimeException($this->l10n->t('Distribution key not found.'));
+        }
+
+        $name = trim((string)($data['name'] ?? $distributionKey->getName() ?? ''));
+        if ($name === '') {
+            throw new \InvalidArgumentException($this->l10n->t('Name is required.'));
+        }
+
+        $validFrom = trim((string)($data['validFrom'] ?? ($distributionKey->getValidFrom() ?? '')));
+        $validTo = array_key_exists('validTo', $data)
+            ? ($data['validTo'] !== null ? trim((string)$data['validTo']) : null)
+            : $distributionKey->getValidTo();
+        $this->assertDateRange($validFrom, $validTo);
+
+        $configJson = $this->normalizeConfigJson($data['configJson'] ?? $distributionKey->getConfigJson());
+
+        $distributionKey->setName($name);
+        $distributionKey->setValidFrom($validFrom);
+        $distributionKey->setValidTo($validTo ?: null);
+        $distributionKey->setConfigJson($configJson);
+        $distributionKey->setUpdatedAt(time());
+
+        return $this->distributionKeyMapper->update($distributionKey);
     }
 
     public function listForUnit(int $unitId, string $userId, string $role): array {
@@ -193,5 +229,46 @@ class DistributionKeyService {
         }
 
         return json_encode($decoded);
+    }
+
+    private function ensureDefaultKeys(int $propertyId, string $userId): void {
+        $existing = $this->distributionKeyMapper->findByProperty($propertyId, $userId);
+        $hasUnit = false;
+        $hasArea = false;
+        foreach ($existing as $key) {
+            if (strtolower((string)$key->getType()) === 'unit') {
+                $hasUnit = true;
+            }
+            if (strtolower((string)$key->getType()) === 'area') {
+                $hasArea = true;
+            }
+        }
+
+        $now = time();
+        if (!$hasUnit) {
+            $key = new DistributionKey();
+            $key->setUserId($userId);
+            $key->setPropertyId($propertyId);
+            $key->setType('unit');
+            $key->setName($this->l10n->t('Unit count'));
+            $key->setValidFrom('1900-01-01');
+            $key->setValidTo(null);
+            $key->setCreatedAt($now);
+            $key->setUpdatedAt($now);
+            $this->distributionKeyMapper->insert($key);
+        }
+
+        if (!$hasArea) {
+            $key = new DistributionKey();
+            $key->setUserId($userId);
+            $key->setPropertyId($propertyId);
+            $key->setType('area');
+            $key->setName($this->l10n->t('Living area'));
+            $key->setValidFrom('1900-01-01');
+            $key->setValidTo(null);
+            $key->setCreatedAt($now);
+            $key->setUpdatedAt($now);
+            $this->distributionKeyMapper->insert($key);
+        }
     }
 }

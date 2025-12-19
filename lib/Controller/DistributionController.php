@@ -71,6 +71,19 @@ class DistributionController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function updateForProperty(int $propertyId, int $distributionId, string $name, string $validFrom, ?string $validTo = null, ?string $configJson = null): DataResponse {
+        $payload = compact('name', 'validFrom', 'validTo', 'configJson');
+        try {
+            $updated = $this->distributionKeyService->updateDistributionKey($propertyId, $distributionId, $payload, $this->getUserId(), $this->getRole());
+            return new DataResponse($updated);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
     public function previewBooking(int $bookingId): DataResponse {
         try {
             $role = $this->getRole();
