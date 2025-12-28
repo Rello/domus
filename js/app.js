@@ -1540,16 +1540,22 @@
             ]) + '</div>' +
                 '<div class="domus-table" id="domus-distribution-report-table"></div>';
 
-            Domus.UI.openModal({
+            const modal = Domus.UI.openModal({
                 title: t('domus', 'Distribution Report'),
                 content: container,
                 size: 'large'
             });
 
-            const propertySelect = container.querySelector('#domus-distribution-report-property');
-            const unitSelect = container.querySelector('#domus-distribution-report-unit');
-            const yearSelect = container.querySelector('#domus-distribution-report-year');
-            const tableContainer = container.querySelector('#domus-distribution-report-table');
+            const modalEl = modal.modalEl;
+            const propertySelect = modalEl.querySelector('#domus-distribution-report-property');
+            const unitSelect = modalEl.querySelector('#domus-distribution-report-unit');
+            const yearSelect = modalEl.querySelector('#domus-distribution-report-year');
+            const tableContainer = modalEl.querySelector('#domus-distribution-report-table');
+
+            if (!propertySelect || !unitSelect || !yearSelect || !tableContainer) {
+                Domus.UI.showNotification(t('domus', 'Unable to load the distribution report form.'), 'error');
+                return;
+            }
 
             yearSelect.innerHTML = buildYearOptions(defaultYear).map(year => '<option value="' + year + '">' + Domus.Utils.escapeHtml(year) + '</option>').join('');
             yearSelect.value = String(selectedYear);
