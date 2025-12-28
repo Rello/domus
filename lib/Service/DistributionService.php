@@ -138,22 +138,29 @@ class DistributionService {
             }
             $shareDetails = $this->calculateShareDetails($distributionKey, $units, $unitValues);
 
-            $rows[] = [
-                'bookingId' => $booking->getId(),
-                'account' => $booking->getAccount(),
-                'accountLabel' => Accounts::label((string)$booking->getAccount(), $this->l10n),
-                'date' => $booking->getDate(),
-                'distributionKeyId' => $distributionKey->getId(),
-                'distributionKeyName' => $distributionKey->getName(),
-                'distributionKeyType' => $distributionKey->getType(),
-                'shareValue' => $shareDetails['shares'][$unitId] ?? null,
-                'shareBase' => $shareDetails['base'] ?? null,
-                'weight' => $shares[$unitId]['weight'] ?? null,
-                'total' => (float)$booking->getAmount(),
-                'amount' => $shares[$unitId]['amount'] ?? null,
-            ];
+            $account = (string)$booking->getAccount();
+            if (!isset($rows[$account])) {
+                $rows[$account] = [
+                    'bookingId' => $booking->getId(),
+                    'account' => $booking->getAccount(),
+                    'accountLabel' => Accounts::label((string)$booking->getAccount(), $this->l10n),
+                    'date' => $booking->getDate(),
+                    'distributionKeyId' => $distributionKey->getId(),
+                    'distributionKeyName' => $distributionKey->getName(),
+                    'distributionKeyType' => $distributionKey->getType(),
+                    'shareValue' => $shareDetails['shares'][$unitId] ?? null,
+                    'shareBase' => $shareDetails['base'] ?? null,
+                    'weight' => $shares[$unitId]['weight'] ?? null,
+                    'total' => 0.0,
+                    'amount' => 0.0,
+                ];
+            }
+
+            $rows[$account]['total'] += (float)$booking->getAmount();
+            $rows[$account]['amount'] += (float)($shares[$unitId]['amount'] ?? 0.0);
         }
 
+        $rows = array_values($rows);
         usort($rows, fn($a, $b) => strcmp((string)($a['date'] ?? ''), (string)($b['date'] ?? '')));
 
         return $rows;

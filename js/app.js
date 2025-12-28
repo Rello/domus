@@ -1622,17 +1622,13 @@
                 unitSelect.innerHTML = renderOptions(options, selectedUnitId);
             }
 
-            function formatShare(value, base, weight) {
+            function formatShare(value, base) {
                 if (value === undefined || value === null || base === undefined || base === null || base === '') {
-                    if (weight !== undefined && weight !== null) {
-                        return Domus.Utils.formatPercentage(weight);
-                    }
                     return '';
                 }
-                const valueText = Domus.Utils.formatAmount(value);
-                const baseText = Domus.Utils.formatAmount(base);
-                const ratio = base ? Domus.Utils.formatPercentage(Number(value) / Number(base)) : '';
-                return ratio ? `${valueText} / ${baseText} (${ratio})` : `${valueText} / ${baseText}`;
+                const valueText = Domus.Utils.formatAmount(value, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                const baseText = Domus.Utils.formatAmount(base, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                return `${valueText} / ${baseText}`;
             }
 
             function renderReport(rows) {
@@ -1640,19 +1636,31 @@
                     tableContainer.innerHTML = '<div>' + Domus.Utils.escapeHtml(t('domus', 'No bookings found for the selected year.')) + '</div>';
                     return;
                 }
+                let totalSum = 0;
+                let amountSum = 0;
                 const renderedRows = rows.map(row => {
                     const accountLabel = row.accountLabel || '';
                     const accountValue = accountLabel || (row.account !== undefined && row.account !== null ? row.account.toString() : '');
                     const distributionLabel = row.distributionKeyName || Domus.Distributions.getTypeLabel(row.distributionKeyType) || '';
+                    totalSum += Number(row.total) || 0;
+                    amountSum += Number(row.amount) || 0;
                     return [
                         Domus.Utils.escapeHtml(accountValue),
                         Domus.Utils.escapeHtml(Domus.Utils.formatDate(row.date)),
                         Domus.Utils.escapeHtml(distributionLabel),
-                        Domus.Utils.escapeHtml(formatShare(row.shareValue, row.shareBase, row.weight)),
+                        Domus.Utils.escapeHtml(formatShare(row.shareValue, row.shareBase)),
                         { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(row.total)), alignRight: true },
                         { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(row.amount)), alignRight: true }
                     ];
                 });
+                renderedRows.push([
+                    Domus.Utils.escapeHtml(t('domus', 'Total')),
+                    '',
+                    '',
+                    '',
+                    { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(totalSum)), alignRight: true },
+                    { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(amountSum)), alignRight: true }
+                ]);
                 tableContainer.innerHTML = Domus.UI.buildTable([
                     t('domus', 'Account'),
                     t('domus', 'Date'),
