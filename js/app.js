@@ -1208,7 +1208,7 @@
             }
             headers.push(t('domus', 'Valid from'), t('domus', 'Valid to'));
             if (!hideConfig) {
-                headers.push(t('domus', 'Configuration'));
+                headers.push(t('domus', 'Base'));
             }
 
             const rows = filtered.map(item => {
@@ -1228,7 +1228,9 @@
                     Domus.Utils.escapeHtml(formatDate(item.validTo))
                 );
                 if (!hideConfig) {
-                    cells.push(Domus.Utils.escapeHtml(item.configJson ? t('domus', 'Configured') : '—'));
+                    const baseValue = parseBaseConfig(item.configJson);
+                    const baseContent = baseValue === '' || baseValue === null || baseValue === undefined ? '—' : baseValue;
+                    cells.push(Domus.Utils.escapeHtml(baseContent));
                 }
                 return { cells, className: 'domus-distribution-row', dataset: { distid: item.id, disttype: item.type } };
             });
