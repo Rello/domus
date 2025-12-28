@@ -2398,7 +2398,7 @@
                     const canManageBookings = Domus.Role.hasCapability('manageBookings') && unitDetailConfig.showBookings;
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
-                    const filteredDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: false });
+                    const filteredDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: true });
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
                     const currentTenancy = (unit.activeTenancies || [])
                         .slice()
@@ -2504,7 +2504,7 @@
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
                         (canManageDistributions ? '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-unit-distributions">' +
-                        Domus.Distributions.renderTable(filteredDistributions, { showUnitValue: true, hideConfig: true, excludeSystemDefaults: false }) + '</div></div>' : '') +
+                        Domus.Distributions.renderTable(filteredDistributions, { showUnitValue: true, hideConfig: true, excludeSystemDefaults: true }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
                         Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
                         '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +
