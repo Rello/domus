@@ -336,6 +336,31 @@ class DistributionService {
             }
         }
 
+        $type = strtolower($distributionKey->getType());
+
+        if ($type === 'unit') {
+            foreach ($units as $unit) {
+                $unitId = $unit->getId();
+                if (!array_key_exists($unitId, $values)) {
+                    $values[$unitId] = ['value' => 1];
+                }
+            }
+        }
+
+        if ($type === 'area') {
+            foreach ($units as $unit) {
+                $unitId = $unit->getId();
+                if (array_key_exists($unitId, $values)) {
+                    continue;
+                }
+                $livingArea = $unit->getLivingArea();
+                if ($livingArea === null || $livingArea === '') {
+                    throw new \RuntimeException($this->l10n->t('Living area is missing for unit %s.', [$unit->getLabel()]));
+                }
+                $values[$unitId] = ['value' => (float)$livingArea];
+            }
+        }
+
         return array_map(fn($entry) => $entry['value'], $values);
     }
 
@@ -437,7 +462,28 @@ class DistributionService {
 
     private function calculateRawValuesByType(string $type, array $units, array $unitValues): array {
         $type = strtolower($type);
-        if (in_array($type, ['area', 'mea', 'unit', 'persons', 'consumption', 'manual'], true)) {
+        if ($type === 'unit') {
+            $values = [];
+            foreach ($units as $unit) {
+                $values[$unit->getId()] = 1;
+            }
+            return $values;
+        }
+
+        if ($type === 'area') {
+            $values = [];
+            foreach ($units as $unit) {
+                $unitId = $unit->getId();
+                $livingArea = $unit->getLivingArea();
+                if ($livingArea === null || $livingArea === '') {
+                    throw new \RuntimeException($this->l10n->t('Living area is missing for unit %s.', [$unit->getLabel()]));
+                }
+                $values[$unitId] = (float)$livingArea;
+            }
+            return $values;
+        }
+
+        if (in_array($type, ['mea', 'persons', 'consumption', 'manual'], true)) {
             $values = [];
             foreach ($units as $unit) {
                 $unitId = $unit->getId();
