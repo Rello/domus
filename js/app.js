@@ -206,6 +206,10 @@
             },
             getUnitDistributions: (unitId) => request('GET', `/units/${unitId}/distributions`),
             getDistributionPreview: (bookingId) => request('GET', `/bookings/${bookingId}/distribution-preview`),
+            getDistributionReport: (propertyId, unitId, year) => {
+                const params = appendFilters(new URLSearchParams(), { propertyId, unitId, year });
+                return request('GET', buildUrl('/distribution-report', params));
+            },
             createDistribution: (propertyId, data) => request('POST', `/properties/${propertyId}/distributions`, data),
             updateDistribution: (propertyId, distributionId, data) => request('PUT', `/properties/${propertyId}/distributions/${distributionId}`, data),
             createUnitDistribution: (unitId, data) => request('POST', `/units/${unitId}/distributions`, data),
@@ -1502,6 +1506,202 @@
         };
     })();
 
+    Domus.DistributionReports = (function() {
+        function openModal(defaults = {}) {
+            if (!Domus.Distributions.canManageDistributions()) {
+                Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
+                return;
+            }
+
+            const defaultYear = defaults.year || Domus.state.currentYear;
+            let selectedPropertyId = defaults.propertyId ? String(defaults.propertyId) : '';
+            let selectedUnitId = defaults.unitId ? String(defaults.unitId) : '';
+            let selectedYear = defaultYear;
+            let properties = [];
+            let units = [];
+
+            const container = document.createElement('div');
+            container.innerHTML = '<div class="domus-form">' + Domus.UI.buildFormTable([
+                {
+                    label: t('domus', 'Property'),
+                    required: true,
+                    content: '<select id="domus-distribution-report-property"></select>'
+                },
+                {
+                    label: t('domus', 'Unit'),
+                    required: true,
+                    content: '<select id="domus-distribution-report-unit"></select>'
+                },
+                {
+                    label: t('domus', 'Year'),
+                    required: true,
+                    content: '<select id="domus-distribution-report-year"></select>'
+                }
+            ]) + '</div>' +
+                '<div class="domus-table" id="domus-distribution-report-table"></div>';
+
+            Domus.UI.openModal({
+                title: t('domus', 'Distribution Report'),
+                content: container,
+                size: 'large'
+            });
+
+            const propertySelect = container.querySelector('#domus-distribution-report-property');
+            const unitSelect = container.querySelector('#domus-distribution-report-unit');
+            const yearSelect = container.querySelector('#domus-distribution-report-year');
+            const tableContainer = container.querySelector('#domus-distribution-report-table');
+
+            yearSelect.innerHTML = buildYearOptions(defaultYear).map(year => '<option value="' + year + '">' + Domus.Utils.escapeHtml(year) + '</option>').join('');
+            yearSelect.value = String(selectedYear);
+
+            yearSelect.addEventListener('change', () => {
+                selectedYear = parseInt(yearSelect.value, 10);
+                loadReport();
+            });
+
+            propertySelect.addEventListener('change', () => {
+                selectedPropertyId = propertySelect.value;
+                loadUnits(selectedPropertyId);
+            });
+
+            unitSelect.addEventListener('change', () => {
+                selectedUnitId = unitSelect.value;
+                loadReport();
+            });
+
+            function buildYearOptions(initialYear) {
+                const current = (new Date()).getFullYear();
+                const years = [];
+                for (let i = 0; i < 6; i++) {
+                    years.push(current - i);
+                }
+                if (!years.includes(initialYear)) {
+                    years.push(initialYear);
+                }
+                return years.sort((a, b) => b - a);
+            }
+
+            function renderOptions(list, selectedId) {
+                return (list || []).map(item => {
+                    const selected = String(item.value) === String(selectedId) ? ' selected' : '';
+                    return '<option value="' + Domus.Utils.escapeHtml(item.value) + '"' + selected + '>' +
+                        Domus.Utils.escapeHtml(item.label) + '</option>';
+                }).join('');
+            }
+
+            function updatePropertyOptions() {
+                const options = properties.map(item => ({
+                    value: item.id,
+                    label: item.name || `${t('domus', 'Property')} #${item.id}`
+                }));
+                if (!selectedPropertyId && options[0]) {
+                    selectedPropertyId = String(options[0].value);
+                }
+                propertySelect.innerHTML = renderOptions(options, selectedPropertyId);
+            }
+
+            function updateUnitOptions() {
+                const options = units.map(item => ({
+                    value: item.id,
+                    label: item.label || `${t('domus', 'Unit')} #${item.id}`
+                }));
+                if (!selectedUnitId && options[0]) {
+                    selectedUnitId = String(options[0].value);
+                }
+                if (selectedUnitId && !options.some(opt => String(opt.value) === String(selectedUnitId))) {
+                    selectedUnitId = options[0] ? String(options[0].value) : '';
+                }
+                unitSelect.innerHTML = renderOptions(options, selectedUnitId);
+            }
+
+            function formatShare(value, base, weight) {
+                if (value === undefined || value === null || base === undefined || base === null || base === '') {
+                    if (weight !== undefined && weight !== null) {
+                        return Domus.Utils.formatPercentage(weight);
+                    }
+                    return '';
+                }
+                const valueText = Domus.Utils.formatAmount(value);
+                const baseText = Domus.Utils.formatAmount(base);
+                const ratio = base ? Domus.Utils.formatPercentage(Number(value) / Number(base)) : '';
+                return ratio ? `${valueText} / ${baseText} (${ratio})` : `${valueText} / ${baseText}`;
+            }
+
+            function renderReport(rows) {
+                if (!rows || !rows.length) {
+                    tableContainer.innerHTML = '<div>' + Domus.Utils.escapeHtml(t('domus', 'No bookings found for the selected year.')) + '</div>';
+                    return;
+                }
+                const renderedRows = rows.map(row => {
+                    const accountLabel = row.accountLabel || '';
+                    const accountValue = accountLabel || (row.account !== undefined && row.account !== null ? row.account.toString() : '');
+                    const distributionLabel = row.distributionKeyName || Domus.Distributions.getTypeLabel(row.distributionKeyType) || '';
+                    return [
+                        Domus.Utils.escapeHtml(accountValue),
+                        Domus.Utils.escapeHtml(Domus.Utils.formatDate(row.date)),
+                        Domus.Utils.escapeHtml(distributionLabel),
+                        Domus.Utils.escapeHtml(formatShare(row.shareValue, row.shareBase, row.weight)),
+                        { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(row.total)), alignRight: true },
+                        { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(row.amount)), alignRight: true }
+                    ];
+                });
+                tableContainer.innerHTML = Domus.UI.buildTable([
+                    t('domus', 'Account'),
+                    t('domus', 'Date'),
+                    t('domus', 'Distribution'),
+                    t('domus', 'Share'),
+                    t('domus', 'Total'),
+                    t('domus', 'Amount')
+                ], renderedRows);
+            }
+
+            function loadReport() {
+                if (!selectedPropertyId || !selectedUnitId) {
+                    tableContainer.innerHTML = '<div>' + Domus.Utils.escapeHtml(t('domus', 'Select a property and unit.')) + '</div>';
+                    return;
+                }
+                tableContainer.innerHTML = '<div>' + Domus.Utils.escapeHtml(t('domus', 'Loading…')) + '</div>';
+                Domus.Api.getDistributionReport(selectedPropertyId, selectedUnitId, selectedYear)
+                    .then(rows => {
+                        renderReport(rows || []);
+                    })
+                    .catch(err => {
+                        tableContainer.innerHTML = '<div class="domus-error">' + Domus.Utils.escapeHtml(err.message || t('domus', 'An error occurred')) + '</div>';
+                    });
+            }
+
+            function loadUnits(propertyId) {
+                if (!propertyId) {
+                    units = [];
+                    updateUnitOptions();
+                    loadReport();
+                    return;
+                }
+                Domus.Api.getUnits(propertyId)
+                    .then(list => {
+                        units = list || [];
+                        updateUnitOptions();
+                        loadReport();
+                    })
+                    .catch(err => {
+                        tableContainer.innerHTML = '<div class="domus-error">' + Domus.Utils.escapeHtml(err.message || t('domus', 'An error occurred')) + '</div>';
+                    });
+            }
+
+            Domus.Api.getProperties()
+                .then(list => {
+                    properties = list || [];
+                    updatePropertyOptions();
+                    loadUnits(selectedPropertyId);
+                })
+                .catch(err => {
+                    tableContainer.innerHTML = '<div class="domus-error">' + Domus.Utils.escapeHtml(err.message || t('domus', 'An error occurred')) + '</div>';
+                });
+        }
+
+        return { openModal };
+    })();
+
     /**
      * Router mapping view identifiers to renderers
      */
@@ -2356,6 +2556,7 @@
                         (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
                         (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : ''),
                         (canManageDistributions ? '<button id="domus-add-unit-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : ''),
+                        (canManageDistributions ? '<button id="domus-unit-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : ''),
                         '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>'
                     ].filter(Boolean);
 
@@ -2472,6 +2673,13 @@
             });
             document.getElementById('domus-add-unit-distribution')?.addEventListener('click', () => {
                 Domus.Distributions.openCreateUnitValueModal(unit, () => renderDetail(id));
+            });
+            document.getElementById('domus-unit-distribution-report')?.addEventListener('click', () => {
+                Domus.DistributionReports.openModal({
+                    propertyId: unit?.propertyId,
+                    unitId: id,
+                    year: Domus.state.currentYear
+                });
             });
         }
 
