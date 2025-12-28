@@ -2396,7 +2396,7 @@
                     const canManageBookings = Domus.Role.hasCapability('manageBookings') && unitDetailConfig.showBookings;
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
-                    const filteredDistributions = Domus.Distributions.filterList(distributions);
+                    const filteredDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: false });
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
                     const currentTenancy = (unit.activeTenancies || [])
                         .slice()
