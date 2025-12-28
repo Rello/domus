@@ -396,14 +396,12 @@ class DistributionService {
         if ($type === 'mixed') {
             return $this->calculateMixedShareDetails($distributionKey, $units, $unitValues);
         }
-        if ($type === 'unit') {
-            $shares = [];
-            foreach ($units as $unit) {
-                $shares[$unit->getId()] = 1;
-            }
-            return ['shares' => $shares, 'base' => count($units)];
+        if (in_array($type, ['area', 'mea', 'unit'], true)) {
+            $shares = $this->calculateRawValuesByType($type, $units, $unitValues);
+            $base = $this->getDistributionBase($distributionKey);
+            return ['shares' => $shares, 'base' => $base];
         }
-        if (in_array($type, ['area', 'mea', 'persons', 'consumption', 'manual'], true)) {
+        if (in_array($type, ['persons', 'consumption', 'manual'], true)) {
             $shares = $this->calculateRawValuesByType($type, $units, $unitValues);
             $base = array_sum($shares);
             if ($base <= 0) {
