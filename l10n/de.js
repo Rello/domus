@@ -62,6 +62,8 @@ OC.L10N.register(
         "Deposit": "Kaution",
         "Description": "Beschreibung",
         "Details": "Details",
+        "Distribution": "Umlageschlüssel",
+        "Distribution Report": "Umlage Bericht",
         "Document": "Dokument",
         "Document linked.": "Dokument verknüpft.",
         "Document links": "Dokumentenverknüpfungen",

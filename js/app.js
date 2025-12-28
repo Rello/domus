@@ -2051,6 +2051,7 @@
                     const contextActions = [
                         '<button id="domus-add-unit">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>',
                         showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : '',
+                        canManageDistributions ? '<button id="domus-add-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : '',
                         canManageDistributions ? '<button id="domus-preview-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Preview distribution')) + '</button>' : ''
                     ].filter(Boolean);
                     const stats = Domus.UI.buildStatCards([
@@ -2076,11 +2077,7 @@
                         '</div>';
 
                     const unitsHeader = Domus.UI.buildSectionHeader(t('domus', 'Units'));
-                    const distributionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Distributions'), canManageDistributions ? {
-                        id: 'domus-add-distribution',
-                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') }),
-                        label: t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })
-                    } : null);
+                    const distributionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Distribution'));
                     const bookingsHeader = showBookingFeatures ? Domus.UI.buildSectionHeader(t('domus', 'Bookings')) : '';
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-property-link-doc',
@@ -2593,11 +2590,7 @@
                         '</div>';
 
                     const tenanciesHeader = Domus.UI.buildSectionHeader(tenancyLabels.plural);
-                    const distributionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Distributions'), canManageDistributions ? {
-                        id: 'domus-add-unit-distribution',
-                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') }),
-                        label: t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })
-                    } : null);
+                    const distributionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Distribution'));
                     const bookingsHeader = canManageBookings ? Domus.UI.buildSectionHeader(t('domus', 'Bookings')) : '';
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-unit-link-doc',
