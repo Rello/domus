@@ -839,6 +839,13 @@
             if (row.fullWidth) {
                 classes.push('domus-form-row-full');
             }
+            if (row.className) {
+                if (Array.isArray(row.className)) {
+                    classes.push(...row.className.filter(Boolean));
+                } else {
+                    classes.push(row.className);
+                }
+            }
 
             return '<div class="' + classes.join(' ') + '">' + label + value + '</div>';
         }
@@ -1100,6 +1107,7 @@
             { value: 'mixed', label: t('domus', 'Mixed') },
             { value: 'manual', label: t('domus', 'Manual') }
         ];
+        const baseTypes = ['mea', 'unit', 'area'];
         const systemDefaultTypes = typeOptions.filter(opt => opt.systemDefault).map(opt => opt.value);
 
         function canManageDistributions() {
@@ -1120,6 +1128,73 @@
             return match ? match.label : type;
         }
 
+        function isBaseType(type) {
+            return baseTypes.includes((type || '').toString().toLowerCase());
+        }
+
+        function parseBaseConfig(configJson) {
+            if (!configJson) {
+                return '';
+            }
+            try {
+                const parsed = JSON.parse(configJson);
+                if (parsed && parsed.base !== undefined && parsed.base !== null && parsed.base !== '') {
+                    return parsed.base;
+                }
+            } catch (e) {
+                return '';
+            }
+            return '';
+        }
+
+        function buildBaseConfig(baseValue) {
+            if (baseValue === undefined || baseValue === null || baseValue === '') {
+                return '';
+            }
+            const parsed = parseFloat(baseValue);
+            if (Number.isNaN(parsed) || parsed <= 0) {
+                return '';
+            }
+            return JSON.stringify({ base: parsed });
+        }
+
+        function toggleConfigFields(form, type) {
+            const normalized = (type || '').toString().toLowerCase();
+            const needsBase = isBaseType(normalized);
+            const needsConfig = normalized === 'mixed';
+            const baseRow = form.querySelector('.domus-distribution-base-row');
+            const configRow = form.querySelector('.domus-distribution-config-row');
+            const baseInput = form.querySelector('input[name="baseValue"]');
+            const configInput = form.querySelector('textarea[name="configJson"]');
+
+            if (baseRow) {
+                baseRow.style.display = needsBase ? '' : 'none';
+            }
+            if (configRow) {
+                configRow.style.display = needsConfig ? '' : 'none';
+            }
+            if (baseInput) {
+                baseInput.required = needsBase;
+                baseInput.disabled = !needsBase;
+            }
+            if (configInput) {
+                configInput.required = needsConfig;
+                configInput.disabled = !needsConfig;
+            }
+        }
+
+        function resolveConfigPayload(type, form) {
+            const normalized = (type || '').toString().toLowerCase();
+            if (isBaseType(normalized)) {
+                const baseValue = form.querySelector('input[name="baseValue"]')?.value;
+                return buildBaseConfig(baseValue);
+            }
+            if (normalized === 'mixed') {
+                return form.querySelector('textarea[name="configJson"]')?.value || '';
+            }
+            return '';
+        }
+
         function renderTable(distributions, options = {}) {
             const filtered = filterList(distributions, options);
             const showUnitValue = options.showUnitValue === true;
@@ -1133,7 +1208,7 @@
             }
             headers.push(t('domus', 'Valid from'), t('domus', 'Valid to'));
             if (!hideConfig) {
-                headers.push(t('domus', 'Configuration'));
+                headers.push(t('domus', 'Base'));
             }
 
             const rows = filtered.map(item => {
@@ -1153,7 +1228,9 @@
                     Domus.Utils.escapeHtml(formatDate(item.validTo))
                 );
                 if (!hideConfig) {
-                    cells.push(Domus.Utils.escapeHtml(item.configJson ? t('domus', 'Configured') : '—'));
+                    const baseValue = parseBaseConfig(item.configJson);
+                    const baseContent = baseValue === '' || baseValue === null || baseValue === undefined ? '—' : baseValue;
+                    cells.push(Domus.Utils.escapeHtml(baseContent));
                 }
                 return { cells, className: 'domus-distribution-row', dataset: { distid: item.id, disttype: item.type } };
             });
@@ -1212,10 +1289,17 @@
                     content: '<input type="date" name="validTo">'
                 }),
                 Domus.UI.buildFormRow({
+                    label: t('domus', 'Base'),
+                    helpText: t('domus', 'Base value used to calculate shares.'),
+                    content: '<input type="number" name="baseValue" step="0.01" min="0.01">',
+                    className: 'domus-distribution-base-row'
+                }),
+                Domus.UI.buildFormRow({
                     label: t('domus', 'Configuration'),
-                    helpText: t('domus', 'Provide JSON configuration for mixed distributions. Example for MEA: { "base": 1000 }'),
+                    helpText: t('domus', 'Provide JSON configuration for mixed distributions.'),
                     fullWidth: true,
-                    content: '<textarea name="configJson" rows="3"></textarea>'
+                    content: '<textarea name="configJson" rows="3"></textarea>',
+                    className: 'domus-distribution-config-row'
                 })
             ];
 
@@ -1233,14 +1317,22 @@
             });
 
             modal.modalEl.querySelector('#domus-distribution-cancel')?.addEventListener('click', modal.close);
+            const typeSelect = modal.modalEl.querySelector('select[name="type"]');
+            if (typeSelect) {
+                toggleConfigFields(modal.modalEl, typeSelect.value);
+                typeSelect.addEventListener('change', function() {
+                    toggleConfigFields(modal.modalEl, this.value);
+                });
+            }
             modal.modalEl.querySelector('#domus-distribution-form')?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const payload = {};
                 Array.prototype.forEach.call(this.elements, el => {
-                    if (el.name) {
+                    if (el.name && el.name !== 'baseValue') {
                         payload[el.name] = el.value;
                     }
                 });
+                payload.configJson = resolveConfigPayload(payload.type, this);
                 Domus.Api.createDistribution(propertyId, payload)
                     .then(() => {
                         Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Distribution') }), 'success');
@@ -1417,6 +1509,7 @@
                 return;
             }
 
+            const baseValue = parseBaseConfig(distribution.configJson);
             const rows = [
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Name'),
@@ -1437,10 +1530,17 @@
                     content: '<input type="date" name="validTo" value="' + Domus.Utils.escapeHtml(distribution.validTo || '') + '">' 
                 }),
                 Domus.UI.buildFormRow({
+                    label: t('domus', 'Base'),
+                    helpText: t('domus', 'Base value used to calculate shares.'),
+                    content: '<input type="number" name="baseValue" step="0.01" min="0.01" value="' + Domus.Utils.escapeHtml(baseValue) + '">',
+                    className: 'domus-distribution-base-row'
+                }),
+                Domus.UI.buildFormRow({
                     label: t('domus', 'Configuration'),
                     helpText: t('domus', 'Provide JSON configuration for mixed distributions.'),
                     fullWidth: true,
-                    content: '<textarea name="configJson" rows="3">' + Domus.Utils.escapeHtml(distribution.configJson || '') + '</textarea>'
+                    content: '<textarea name="configJson" rows="3">' + Domus.Utils.escapeHtml(distribution.configJson || '') + '</textarea>',
+                    className: 'domus-distribution-config-row'
                 })
             ];
 
@@ -1454,12 +1554,14 @@
             });
 
             modal.modalEl.querySelector('#domus-edit-distribution-cancel')?.addEventListener('click', modal.close);
+            toggleConfigFields(modal.modalEl, distribution.type);
             modal.modalEl.querySelector('#domus-edit-distribution')?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const payload = {};
                 Array.prototype.forEach.call(this.elements, el => {
-                    if (el.name) payload[el.name] = el.value;
+                    if (el.name && el.name !== 'baseValue') payload[el.name] = el.value;
                 });
+                payload.configJson = resolveConfigPayload(distribution.type, this);
                 Domus.Api.updateDistribution(propertyId, distribution.id, payload)
                     .then(() => {
                         Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Distribution') }), 'success');
@@ -1821,7 +1923,7 @@
                 .then(property => Promise.all([Promise.resolve(property), Domus.Distributions.loadForProperty(id).catch(() => [])]))
                 .then(([property, distributions]) => {
 
-                    const visibleDistributions = Domus.Distributions.filterList(distributions);
+                    const visibleDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: false });
                     const cityLine = [property.zip, property.city].filter(Boolean).join(' ');
                     const addressParts = [property.street, cityLine, property.country].filter(Boolean);
                     const address = addressParts.length ? addressParts.join(', ') : (property.address || '');
@@ -1888,7 +1990,7 @@
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
                         (canManageDistributions ? '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-property-distributions">' +
-                        Domus.Distributions.renderTable(visibleDistributions) + '</div></div>' : '') +
+                        Domus.Distributions.renderTable(visibleDistributions, { excludeSystemDefaults: false }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + unitsHeader + '<div class="domus-panel-body">' +
                         Domus.Units.renderListInline(property.units || []) + '</div></div>' +
                         (showBookingFeatures ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
@@ -2296,7 +2398,7 @@
                     const canManageBookings = Domus.Role.hasCapability('manageBookings') && unitDetailConfig.showBookings;
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
-                    const filteredDistributions = Domus.Distributions.filterList(distributions);
+                    const filteredDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: true });
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
                     const currentTenancy = (unit.activeTenancies || [])
                         .slice()
@@ -2402,7 +2504,7 @@
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
                         (canManageDistributions ? '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-unit-distributions">' +
-                        Domus.Distributions.renderTable(filteredDistributions, { showUnitValue: true, hideConfig: true }) + '</div></div>' : '') +
+                        Domus.Distributions.renderTable(filteredDistributions, { showUnitValue: true, hideConfig: true, excludeSystemDefaults: true }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
                         Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
                         '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +

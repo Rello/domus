@@ -296,11 +296,14 @@ class DistributionService {
             return $this->calculateMixedWeights($distributionKey, $units, $unitValues);
         }
 
-        if ($type === 'unit') {
-            return $this->calculateUnitWeights($units);
+        if (in_array($type, ['area', 'mea', 'unit'], true)) {
+            if ($distributionKey === null) {
+                throw new \RuntimeException($this->l10n->t('Distribution configuration is missing.'));
+            }
+            return $this->calculateBaseWeights($distributionKey, $units, $unitValues);
         }
 
-        if (in_array($type, ['area', 'mea', 'persons', 'consumption', 'manual'], true)) {
+        if (in_array($type, ['persons', 'consumption', 'manual'], true)) {
             return $this->calculateProportionalWeights($units, $unitValues);
         }
 
@@ -357,19 +360,6 @@ class DistributionService {
         return $aggregated;
     }
 
-    private function calculateUnitWeights(array $units): array {
-        $count = count($units);
-        if ($count === 0) {
-            throw new \RuntimeException($this->l10n->t('No units available for distribution.'));
-        }
-        $weight = 1 / $count;
-        $weights = [];
-        foreach ($units as $unit) {
-            $weights[$unit->getId()] = $weight;
-        }
-        return $weights;
-    }
-
     private function calculateProportionalWeights(array $units, array $unitValues): array {
         $weights = [];
         foreach ($units as $unit) {
@@ -390,6 +380,34 @@ class DistributionService {
         }
 
         return $weights;
+    }
+
+    private function calculateBaseWeights(DistributionKey $distributionKey, array $units, array $unitValues): array {
+        $base = $this->getDistributionBase($distributionKey);
+        $weights = [];
+        foreach ($units as $unit) {
+            $unitId = $unit->getId();
+            if (!array_key_exists($unitId, $unitValues)) {
+                throw new \RuntimeException($this->l10n->t('Missing distribution value for unit %s.', [$unit->getLabel()]));
+            }
+            $weights[$unitId] = (float)$unitValues[$unitId] / $base;
+        }
+
+        return $weights;
+    }
+
+    private function getDistributionBase(DistributionKey $distributionKey): float {
+        $config = $distributionKey->getConfigJson();
+        if ($config === null || trim((string)$config) === '') {
+            throw new \RuntimeException($this->l10n->t('Distribution base is missing.'));
+        }
+        $decoded = json_decode((string)$config, true);
+        $base = is_array($decoded) && isset($decoded['base']) ? (float)$decoded['base'] : 0.0;
+        if ($base <= 0) {
+            throw new \RuntimeException($this->l10n->t('Distribution base must be greater than zero.'));
+        }
+
+        return $base;
     }
 
     private function assertKeyInPeriod(DistributionKey $distributionKey, array $period): void {
