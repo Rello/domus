@@ -67,6 +67,22 @@ class DistributionController extends Controller {
         return new DataResponse($preview);
     }
 
+    #[NoAdminRequired]
+    public function report(int $propertyId, int $unitId, int $year): DataResponse {
+        $role = $this->getRole();
+        if (!$this->permissionService->isBuildingManagement($role)) {
+            return $this->validationError($this->l10n->t('Distribution report is only available for building management.'));
+        }
+        try {
+            $report = $this->distributionService->buildReport($propertyId, $unitId, $year, $this->getUserId());
+            return new DataResponse($report);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
     }
