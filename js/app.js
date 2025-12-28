@@ -1520,24 +1520,26 @@
             let properties = [];
             let units = [];
 
-            const container = document.createElement('div');
-            container.innerHTML = '<div class="domus-form">' + Domus.UI.buildFormTable([
-                {
+            const formRows = [
+                Domus.UI.buildFormRow({
                     label: t('domus', 'Property'),
                     required: true,
                     content: '<select id="domus-distribution-report-property"></select>'
-                },
-                {
+                }),
+                Domus.UI.buildFormRow({
                     label: t('domus', 'Unit'),
                     required: true,
                     content: '<select id="domus-distribution-report-unit"></select>'
-                },
-                {
+                }),
+                Domus.UI.buildFormRow({
                     label: t('domus', 'Year'),
                     required: true,
                     content: '<select id="domus-distribution-report-year"></select>'
-                }
-            ]) + '</div>' +
+                })
+            ];
+
+            const container = document.createElement('div');
+            container.innerHTML = '<div class="domus-form">' + Domus.UI.buildFormTable(formRows) + '</div>' +
                 '<div class="domus-table" id="domus-distribution-report-table"></div>';
 
             const modal = Domus.UI.openModal({
