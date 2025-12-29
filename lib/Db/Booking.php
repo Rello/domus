@@ -9,6 +9,7 @@ class Booking extends Entity implements JsonSerializable {
     protected $userId;
     protected $account;
     protected $date;
+    protected $deliveryDate;
     protected $amount;
     protected $year;
     protected $propertyId;
@@ -47,6 +48,7 @@ class Booking extends Entity implements JsonSerializable {
             'userId' => $this->userId,
             'account' => $this->account,
             'date' => $this->date,
+            'deliveryDate' => $this->deliveryDate,
             'amount' => $this->amount,
             'year' => $this->year,
             'propertyId' => $this->propertyId,

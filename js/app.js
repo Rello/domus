@@ -3565,7 +3565,7 @@
                     const distributionPromise = isBuildingMgmt ? buildDistributionTitleMap(bookingsList) : Promise.resolve({});
 
                     distributionPromise.then(distMap => {
-                        const headers = [t('domus', 'Date'), t('domus', 'Account')];
+                        const headers = [t('domus', 'Invoice date'), t('domus', 'Account')];
                         if (isBuildingMgmt) headers.push(t('domus', 'Distribution'));
                         headers.push(t('domus', 'Amount'));
 
@@ -3622,7 +3622,7 @@
                 dataset: b.id ? { navigate: 'bookingDetail', args: b.id } : null
             }));
             return Domus.UI.buildTable([
-                t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount')
+                t('domus', 'Invoice date'), t('domus', 'Account'), t('domus', 'Amount')
             ], rows);
         }
 
@@ -3768,7 +3768,8 @@
                     const accountDisplay = formatAccount(booking);
                     const stats = Domus.UI.buildStatCards([
                         { label: t('domus', 'Amount'), value: Domus.Utils.formatCurrency(booking.amount), hint: t('domus', 'Recorded amount') },
-                        { label: t('domus', 'Date'), value: Domus.Utils.formatDate(booking.date) || '—', hint: t('domus', 'Booking date') },
+                        { label: t('domus', 'Invoice date'), value: Domus.Utils.formatDate(booking.date) || '—', hint: t('domus', 'Invoice date') },
+                        { label: t('domus', 'Delivery date'), value: Domus.Utils.formatDate(booking.deliveryDate) || '—', hint: t('domus', 'Delivery date') },
                         { label: t('domus', 'Account'), value: accountDisplay || '—', hint: t('domus', 'Ledger reference') }
                     ]);
                     const standardActions = [
@@ -3799,7 +3800,8 @@
                     });
                     const detailsHeader = Domus.UI.buildSectionHeader(t('domus', 'Details'));
                     const infoList = Domus.UI.buildInfoList([
-                        { label: t('domus', 'Date'), value: Domus.Utils.formatDate(booking.date) },
+                        { label: t('domus', 'Invoice date'), value: Domus.Utils.formatDate(booking.date) },
+                        { label: t('domus', 'Delivery date'), value: Domus.Utils.formatDate(booking.deliveryDate) },
                         { label: t('domus', 'Amount'), value: Domus.Utils.formatCurrency(booking.amount) },
                         { label: t('domus', 'Account'), value: accountDisplay },
                         { label: t('domus', 'Property'), value: booking.propertyName || booking.propertyId },
@@ -3900,6 +3902,12 @@
             const docWidget = options.docWidget;
             const distributionSelect = modalContext.modalEl.querySelector('#domus-booking-distribution');
             const propertySelect = form?.querySelector('select[name="propertyId"]');
+            const invoiceDateInput = form?.querySelector('input[name="date"]');
+            const deliveryDateInput = form?.querySelector('input[name="deliveryDate"]');
+            let lastInvoiceDate = invoiceDateInput ? invoiceDateInput.value : '';
+            let deliveryTouched = deliveryDateInput
+                ? (deliveryDateInput.value !== '' && deliveryDateInput.value !== lastInvoiceDate)
+                : false;
 
             initializeBookingEntries(entriesContainer, options.accountOptions || [], options.initialEntries || [{}], multiEntry);
 
@@ -3958,6 +3966,19 @@
             propertySelect?.addEventListener('change', function() {
                 updateDistributionOptions(this.value);
             });
+            deliveryDateInput?.addEventListener('change', function() {
+                deliveryTouched = deliveryDateInput.value !== '' && deliveryDateInput.value !== invoiceDateInput?.value;
+            });
+            invoiceDateInput?.addEventListener('change', function() {
+                if (!deliveryDateInput) {
+                    return;
+                }
+                if (!deliveryTouched || deliveryDateInput.value === '' || deliveryDateInput.value === lastInvoiceDate) {
+                    deliveryDateInput.value = this.value;
+                    deliveryTouched = false;
+                }
+                lastInvoiceDate = this.value;
+            });
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const formData = {};
@@ -3975,7 +3996,11 @@
                 }
 
                 if (!formData.date) {
-                    Domus.UI.showNotification(t('domus', 'Date is required.'), 'error');
+                    Domus.UI.showNotification(t('domus', 'Invoice date is required.'), 'error');
+                    return;
+                }
+                if (!formData.deliveryDate) {
+                    Domus.UI.showNotification(t('domus', 'Delivery date is required.'), 'error');
                     return;
                 }
                 if (!formData.propertyId && !formData.unitId) {
@@ -3992,6 +4017,9 @@
             const { accountOptions, propertyOptions, unitOptions } = options;
             const multiEntry = formOptions.multiEntry !== undefined ? formOptions.multiEntry : !booking;
             const bookingDate = booking?.date ? Domus.Utils.escapeHtml(booking.date) : '';
+            const bookingDeliveryDate = booking?.deliveryDate
+                ? Domus.Utils.escapeHtml(booking.deliveryDate)
+                : bookingDate;
             const propertyLocked = Boolean(booking?.propertyId) || Boolean(formOptions.lockProperty);
             const unitLocked = Boolean(booking?.unitId) || Boolean(formOptions.lockUnit);
             const selectedProperty = booking?.propertyId ? String(booking.propertyId) : '';
@@ -4003,7 +4031,10 @@
                 '<form id="domus-booking-form">' +
                 '<div class="domus-booking-layout">' +
                 '<div class="domus-booking-main">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Date')) + ' *<input type="date" name="date" required value="' + bookingDate + '"></label>' +
+                '<div class="domus-booking-dates">' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Invoice date')) + ' *<input type="date" name="date" required value="' + bookingDate + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Delivery date')) + ' *<input type="date" name="deliveryDate" required value="' + bookingDeliveryDate + '"></label>' +
+                '</div>' +
                 '<div class="domus-booking-entries-wrapper">' +
                 '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Amounts')) + '</div>' +
                 '<div id="domus-booking-entries" class="domus-booking-entries" data-multi="' + (multiEntry ? '1' : '0') + '"></div>' +
