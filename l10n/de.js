@@ -176,6 +176,7 @@ OC.L10N.register(
         "Total units in this property": "Gesamteinheiten in dieser Immobilie",
         "Type": "Typ",
         "Unit": "Einheit",
+        "Unit allocation": "Zuordnung Einheit",
         "Unit and at least one partner are required.": "Einheit und mindestens ein Partner sind erforderlich.",
         "Unit details": "Einheitsdetails",
         "Unit number": "Einheitsnummer",
