@@ -114,6 +114,7 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
             $table->addColumn('account', 'integer', ['notnull' => true, 'default' => 0]);
             $table->addColumn('date', 'string', ['notnull' => true, 'length' => 32]);
+            $table->addColumn('delivery_date', 'string', ['notnull' => false, 'length' => 32]);
             $table->addColumn('amount', 'string', ['notnull' => true, 'length' => 32]);
             $table->addColumn('year', 'integer', ['notnull' => true]);
             $table->addColumn('property_id', 'bigint', ['notnull' => false]);

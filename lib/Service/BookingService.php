@@ -33,12 +33,14 @@ class BookingService {
     }
 
     public function createBooking(array $data, string $userId): Booking {
+        $data['deliveryDate'] = $data['deliveryDate'] ?? $data['date'] ?? null;
         $this->assertBookingInput($data, $userId);
         $now = time();
         $booking = new Booking();
         $booking->setUserId($userId);
         $booking->setAccount((int)$data['account']);
         $booking->setDate($data['date']);
+        $booking->setDeliveryDate($data['deliveryDate']);
         $booking->setAmount($data['amount']);
         $booking->setYear((int)substr($data['date'], 0, 4));
         $booking->setPropertyId($data['propertyId'] ?? null);
@@ -59,11 +61,15 @@ class BookingService {
             throw new \RuntimeException($this->l10n->t('Only draft bookings can be updated.'));
         }
         $merged = array_merge($booking->jsonSerialize(), $data);
+        if ((empty($merged['deliveryDate']) || !isset($merged['deliveryDate'])) && !empty($merged['date'])) {
+            $merged['deliveryDate'] = $merged['date'];
+        }
         $this->assertBookingInput($merged, $userId);
 
         $setters = [
             'account' => 'setAccount',
             'date' => 'setDate',
+            'deliveryDate' => 'setDeliveryDate',
             'amount' => 'setAmount',
             'propertyId' => 'setPropertyId',
             'unitId' => 'setUnitId',
@@ -82,6 +88,9 @@ class BookingService {
         if (isset($data['date'])) {
             $booking->setYear((int)substr($booking->getDate(), 0, 4));
         }
+        if (!isset($data['deliveryDate']) && $booking->getDeliveryDate() === null) {
+            $booking->setDeliveryDate($booking->getDate());
+        }
         $booking->setUpdatedAt(time());
         return $this->bookingMapper->update($booking);
     }
@@ -93,7 +102,10 @@ class BookingService {
 
     private function assertBookingInput(array $data, string $userId): void {
         if (!isset($data['date']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$data['date'])) {
-            throw new \InvalidArgumentException($this->l10n->t('Date is required.'));
+            throw new \InvalidArgumentException($this->l10n->t('Invoice date is required.'));
+        }
+        if (!isset($data['deliveryDate']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$data['deliveryDate'])) {
+            throw new \InvalidArgumentException($this->l10n->t('Delivery date is required.'));
         }
         if (!isset($data['amount']) || (float)$data['amount'] < 0) {
             throw new \InvalidArgumentException($this->l10n->t('Amount must be at least 0.'));

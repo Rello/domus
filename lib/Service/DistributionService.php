@@ -56,6 +56,7 @@ class DistributionService {
                 $unitBooking->setUserId($userId);
                 $unitBooking->setAccount($booking->getAccount());
                 $unitBooking->setDate($booking->getDate());
+                $unitBooking->setDeliveryDate($booking->getDeliveryDate() ?? $booking->getDate());
                 $unitBooking->setAmount((string)$share['amount']);
                 $unitBooking->setYear((int)$booking->getYear());
                 $unitBooking->setPropertyId($booking->getPropertyId());
@@ -191,6 +192,7 @@ class DistributionService {
                 $reversal->setUserId($userId);
                 $reversal->setAccount($unitBooking->getAccount());
                 $reversal->setDate($unitBooking->getDate());
+                $reversal->setDeliveryDate($unitBooking->getDeliveryDate() ?? $unitBooking->getDate());
                 $reversal->setAmount((string)(-1 * (float)$unitBooking->getAmount()));
                 $reversal->setYear((int)$unitBooking->getYear());
                 $reversal->setPropertyId($unitBooking->getPropertyId());

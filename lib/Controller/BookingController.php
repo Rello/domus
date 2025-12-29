@@ -45,6 +45,7 @@ class BookingController extends Controller {
     public function create(
         int $account,
         string $date,
+        ?string $deliveryDate = null,
         string $amount,
         ?int $propertyId = null,
         ?int $unitId = null,
@@ -53,7 +54,7 @@ class BookingController extends Controller {
         ?string $periodFrom = null,
         ?string $periodTo = null,
     ): DataResponse {
-        $data = compact('account', 'date', 'amount', 'propertyId', 'unitId', 'description', 'distributionKeyId', 'periodFrom', 'periodTo');
+        $data = compact('account', 'date', 'deliveryDate', 'amount', 'propertyId', 'unitId', 'description', 'distributionKeyId', 'periodFrom', 'periodTo');
         try {
             $booking = $this->bookingService->createBooking($data, $this->getUserId());
             return new DataResponse($booking, Http::STATUS_CREATED);
@@ -69,6 +70,7 @@ class BookingController extends Controller {
         int $id,
         ?int $account = null,
         ?string $date = null,
+        ?string $deliveryDate = null,
         ?string $amount = null,
         ?int $propertyId = null,
         ?int $unitId = null,
@@ -80,6 +82,7 @@ class BookingController extends Controller {
         $data = array_filter([
             'account' => $account,
             'date' => $date,
+            'deliveryDate' => $deliveryDate,
             'amount' => $amount,
             'propertyId' => $propertyId,
             'unitId' => $unitId,

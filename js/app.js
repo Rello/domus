@@ -3884,7 +3884,7 @@
                     const distributionPromise = isBuildingMgmt ? buildDistributionTitleMap(bookingsList) : Promise.resolve({});
 
                     distributionPromise.then(distMap => {
-                        const headers = [t('domus', 'Date'), t('domus', 'Account')];
+                        const headers = [t('domus', 'Invoice date'), t('domus', 'Account')];
                         if (isBuildingMgmt) headers.push(t('domus', 'Distribution'));
                         headers.push(t('domus', 'Amount'));
 
@@ -3941,7 +3941,7 @@
                 dataset: b.id ? { navigate: 'bookingDetail', args: b.id } : null
             }));
             return Domus.UI.buildTable([
-                t('domus', 'Date'), t('domus', 'Account'), t('domus', 'Amount')
+                t('domus', 'Invoice date'), t('domus', 'Account'), t('domus', 'Amount')
             ], rows);
         }
 
@@ -4030,6 +4030,12 @@
                         : null));
             const title = formConfig.title || t('domus', 'Add {entity}', { entity: t('domus', 'Booking') });
             const successMessage = formConfig.successMessage || t('domus', '{entity} created.', { entity: t('domus', 'Booking') });
+            const today = new Date();
+            const pad = (value) => String(value).padStart(2, '0');
+            const todayValue = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+            if (!defaults.date) {
+                defaults = Object.assign({}, defaults, { date: todayValue });
+            }
 
             Promise.all([
                 Domus.Api.getProperties(),
@@ -4087,7 +4093,8 @@
                     const accountDisplay = formatAccount(booking);
                     const stats = Domus.UI.buildStatCards([
                         { label: t('domus', 'Amount'), value: Domus.Utils.formatCurrency(booking.amount), hint: t('domus', 'Recorded amount') },
-                        { label: t('domus', 'Date'), value: Domus.Utils.formatDate(booking.date) || '—', hint: t('domus', 'Booking date') },
+                        { label: t('domus', 'Invoice date'), value: Domus.Utils.formatDate(booking.date) || '—', hint: t('domus', 'Invoice date') },
+                        { label: t('domus', 'Delivery date'), value: Domus.Utils.formatDate(booking.deliveryDate) || '—', hint: t('domus', 'Delivery date') },
                         { label: t('domus', 'Account'), value: accountDisplay || '—', hint: t('domus', 'Ledger reference') }
                     ]);
                     const standardActions = [
@@ -4118,7 +4125,8 @@
                     });
                     const detailsHeader = Domus.UI.buildSectionHeader(t('domus', 'Details'));
                     const infoList = Domus.UI.buildInfoList([
-                        { label: t('domus', 'Date'), value: Domus.Utils.formatDate(booking.date) },
+                        { label: t('domus', 'Invoice date'), value: Domus.Utils.formatDate(booking.date) },
+                        { label: t('domus', 'Delivery date'), value: Domus.Utils.formatDate(booking.deliveryDate) },
                         { label: t('domus', 'Amount'), value: Domus.Utils.formatCurrency(booking.amount) },
                         { label: t('domus', 'Account'), value: accountDisplay },
                         { label: t('domus', 'Property'), value: booking.propertyName || booking.propertyId },
@@ -4219,6 +4227,16 @@
             const docWidget = options.docWidget;
             const distributionSelect = modalContext.modalEl.querySelector('#domus-booking-distribution');
             const propertySelect = form?.querySelector('select[name="propertyId"]');
+            const invoiceDateInput = form?.querySelector('input[name="date"]');
+            const deliveryDateInput = form?.querySelector('input[name="deliveryDate"]');
+            const unitField = form?.querySelector('[data-role="unit-field"]');
+            const unitSelect = form?.querySelector('select[name="unitId"]');
+            const isBuildingMgmt = Domus.Role.isBuildingMgmtView();
+            const unitAllocationValue = 'unit-allocation';
+            let lastInvoiceDate = invoiceDateInput ? invoiceDateInput.value : '';
+            let deliveryTouched = deliveryDateInput
+                ? (deliveryDateInput.value !== '' && deliveryDateInput.value !== lastInvoiceDate)
+                : false;
 
             initializeBookingEntries(entriesContainer, options.accountOptions || [], options.initialEntries || [{}], multiEntry);
 
@@ -4227,8 +4245,11 @@
                     return;
                 }
                 const emptyOption = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'Select distribution')) + '</option>';
+                const unitAllocationOption = isBuildingMgmt
+                    ? '<option value="' + Domus.Utils.escapeHtml(unitAllocationValue) + '">' + Domus.Utils.escapeHtml(t('domus', 'Unit allocation')) + '</option>'
+                    : '';
                 if (!propertyId) {
-                    distributionSelect.innerHTML = emptyOption;
+                    distributionSelect.innerHTML = emptyOption + unitAllocationOption;
                     distributionSelect.disabled = true;
                     return;
                 }
@@ -4236,10 +4257,13 @@
                 Domus.Api.getDistributions(propertyId)
                     .then(list => {
                         const optionsHtml = (list || []).map(d => '<option value="' + Domus.Utils.escapeHtml(d.id) + '">' + Domus.Utils.escapeHtml(d.name || ('#' + d.id)) + ' (' + Domus.Utils.escapeHtml(Domus.Distributions.getTypeLabel(d.type)) + ')</option>');
-                        distributionSelect.innerHTML = emptyOption + optionsHtml.join('');
+                        distributionSelect.innerHTML = emptyOption + unitAllocationOption + optionsHtml.join('');
                         const desired = distributionSelect.dataset.selected || '';
                         if (desired) {
                             distributionSelect.value = desired;
+                        }
+                        if (isBuildingMgmt) {
+                            toggleUnitField(distributionSelect.value === unitAllocationValue);
                         }
                         distributionSelect.disabled = false;
                     })
@@ -4252,6 +4276,26 @@
 
             if (distributionSelect) {
                 updateDistributionOptions(propertySelect ? propertySelect.value : null);
+            }
+
+            function clearUnitSelection() {
+                if (unitSelect) {
+                    unitSelect.value = '';
+                }
+            }
+
+            function toggleUnitField(isVisible) {
+                if (!unitField) {
+                    return;
+                }
+                if (isVisible) {
+                    unitField.removeAttribute('hidden');
+                    unitSelect?.setAttribute('required', '');
+                } else {
+                    unitField.setAttribute('hidden', '');
+                    unitSelect?.removeAttribute('required');
+                    clearUnitSelection();
+                }
             }
 
             if (multiEntry) {
@@ -4277,6 +4321,24 @@
             propertySelect?.addEventListener('change', function() {
                 updateDistributionOptions(this.value);
             });
+            distributionSelect?.addEventListener('change', function() {
+                if (isBuildingMgmt) {
+                    toggleUnitField(this.value === unitAllocationValue);
+                }
+            });
+            deliveryDateInput?.addEventListener('change', function() {
+                deliveryTouched = deliveryDateInput.value !== '' && deliveryDateInput.value !== invoiceDateInput?.value;
+            });
+            invoiceDateInput?.addEventListener('change', function() {
+                if (!deliveryDateInput) {
+                    return;
+                }
+                if (!deliveryTouched || deliveryDateInput.value === '' || deliveryDateInput.value === lastInvoiceDate) {
+                    deliveryDateInput.value = this.value;
+                    deliveryTouched = false;
+                }
+                lastInvoiceDate = this.value;
+            });
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const formData = {};
@@ -4293,8 +4355,25 @@
                     return;
                 }
 
+                if (isBuildingMgmt && distributionSelect) {
+                    const selection = distributionSelect.value;
+                    if (selection === unitAllocationValue) {
+                        if (!formData.unitId) {
+                            Domus.UI.showNotification(t('domus', 'Select unit'), 'error');
+                            return;
+                        }
+                        delete formData.distributionKeyId;
+                    } else if (selection) {
+                        delete formData.unitId;
+                    }
+                }
+
                 if (!formData.date) {
-                    Domus.UI.showNotification(t('domus', 'Date is required.'), 'error');
+                    Domus.UI.showNotification(t('domus', 'Invoice date is required.'), 'error');
+                    return;
+                }
+                if (!formData.deliveryDate) {
+                    Domus.UI.showNotification(t('domus', 'Delivery date is required.'), 'error');
                     return;
                 }
                 if (!formData.propertyId && !formData.unitId) {
@@ -4305,24 +4384,38 @@
                 const payload = { metadata: formData, entries, document: docWidget?.getSelection ? docWidget.getSelection() : null };
                 onSubmit(payload);
             });
+
+            if (isBuildingMgmt && distributionSelect) {
+                toggleUnitField(distributionSelect.value === unitAllocationValue);
+            }
         }
 
         function buildBookingForm(options, booking, formOptions = {}) {
             const { accountOptions, propertyOptions, unitOptions } = options;
             const multiEntry = formOptions.multiEntry !== undefined ? formOptions.multiEntry : !booking;
             const bookingDate = booking?.date ? Domus.Utils.escapeHtml(booking.date) : '';
+            const bookingDeliveryDate = booking?.deliveryDate
+                ? Domus.Utils.escapeHtml(booking.deliveryDate)
+                : bookingDate;
             const propertyLocked = Boolean(booking?.propertyId) || Boolean(formOptions.lockProperty);
-            const unitLocked = Boolean(booking?.unitId) || Boolean(formOptions.lockUnit);
+            const isBuildingMgmt = Domus.Role.isBuildingMgmtView();
+            const unitLocked = Boolean(formOptions.lockUnit) || (!isBuildingMgmt && Boolean(booking?.unitId));
             const selectedProperty = booking?.propertyId ? String(booking.propertyId) : '';
             const selectedUnit = booking?.unitId ? String(booking.unitId) : '';
-            const selectedDistributionKey = booking?.distributionKeyId ? String(booking.distributionKeyId) : '';
+            const unitAllocationValue = 'unit-allocation';
+            const selectedDistributionKey = booking?.distributionKeyId
+                ? String(booking.distributionKeyId)
+                : (booking?.unitId && isBuildingMgmt ? unitAllocationValue : '');
             const hideProperty = formOptions.hidePropertyField || (!booking && Domus.Role.getCurrentRole() === 'landlord');
             const showDistribution = Domus.Distributions.canManageDistributions();
             return '<div class="domus-form">' +
                 '<form id="domus-booking-form">' +
                 '<div class="domus-booking-layout">' +
                 '<div class="domus-booking-main">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Date')) + ' *<input type="date" name="date" required value="' + bookingDate + '"></label>' +
+                '<div class="domus-booking-dates">' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Invoice date')) + ' *<input type="date" name="date" required value="' + bookingDate + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Delivery date')) + ' *<input type="date" name="deliveryDate" required value="' + bookingDeliveryDate + '"></label>' +
+                '</div>' +
                 '<div class="domus-booking-entries-wrapper">' +
                 '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Amounts')) + '</div>' +
                 '<div id="domus-booking-entries" class="domus-booking-entries" data-multi="' + (multiEntry ? '1' : '0') + '"></div>' +
@@ -4332,9 +4425,11 @@
                     : ('<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId"' + (propertyLocked ? ' disabled' : '') + '>' +
                     propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedProperty ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                     '</select>' + (propertyLocked ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '') + '</label>')) +
+                '<div class="domus-booking-unit-field" data-role="unit-field">' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId"' + (unitLocked ? ' disabled' : '') + '>' +
                 unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedUnit ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                 '</select></label>' +
+                '</div>' +
                 (showDistribution ? '<label>' + Domus.Utils.escapeHtml(t('domus', 'Distribution key')) + '<select name="distributionKeyId" id="domus-booking-distribution" data-selected="' + Domus.Utils.escapeHtml(selectedDistributionKey) + '">' +
                 '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'Select distribution')) + '</option>' +
                 '</select></label>' : '') +

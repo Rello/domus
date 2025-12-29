@@ -298,6 +298,13 @@
     flex-direction: column;
 }
 
+.domus-booking-dates {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
 .domus-booking-documents {
     display: flex;
     flex-direction: column;
@@ -910,6 +917,12 @@
     }
 
     .domus-booking-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .domus-booking-dates {
         grid-template-columns: 1fr;
     }
 }
