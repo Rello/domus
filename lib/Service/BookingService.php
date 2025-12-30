@@ -1,8 +1,6 @@
 <?php
 
 namespace OCA\Domus\Service;
-
-use OCA\Domus\Accounting\Accounts;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DistributionKeyMapper;
@@ -16,6 +14,7 @@ class BookingService {
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
         private DistributionKeyMapper $distributionKeyMapper,
+        private AccountService $accountService,
         private IL10N $l10n,
     ) {
     }
@@ -113,9 +112,7 @@ class BookingService {
         if (!isset($data['account'])) {
             throw new \InvalidArgumentException($this->l10n->t('Account is required.'));
         }
-        if (!Accounts::exists((string)$data['account'])) {
-            throw new \InvalidArgumentException($this->l10n->t('Account is invalid.'));
-        }
+        $this->accountService->assertAccountNumber((string)$data['account']);
         if (!isset($data['propertyId']) && !isset($data['unitId'])) {
             throw new \InvalidArgumentException($this->l10n->t('At least one relation is required.'));
         }
