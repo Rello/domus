@@ -8,7 +8,7 @@ use OCP\IDBConnection;
 
 class DistributionKeyMapper extends QBMapper {
     public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_distribution_keys', DistributionKey::class);
+        parent::__construct($db, 'domus_dist_keys', DistributionKey::class);
     }
 
     /**

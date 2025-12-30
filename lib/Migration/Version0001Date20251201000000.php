@@ -148,8 +148,8 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addIndex(['entity_type', 'entity_id'], 'domus_doc_rel');
         }
 
-        if (!$schema->hasTable('domus_distribution_keys')) {
-            $table = $schema->createTable('domus_distribution_keys');
+        if (!$schema->hasTable('domus_dist_keys')) {
+            $table = $schema->createTable('domus_dist_keys');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
             $table->addColumn('property_id', 'bigint', ['notnull' => true]);

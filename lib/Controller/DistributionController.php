@@ -73,14 +73,8 @@ class DistributionController extends Controller {
         if (!$this->permissionService->isBuildingManagement($role)) {
             return $this->validationError($this->l10n->t('Distribution report is only available for building management.'));
         }
-        try {
-            $report = $this->distributionService->buildReport($propertyId, $unitId, $year, $this->getUserId());
+             $report = $this->distributionService->buildReport($propertyId, $unitId, $year, $this->getUserId());
             return new DataResponse($report);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
     }
 
     private function getUserId(): string {
