@@ -38,4 +38,28 @@ class AccountMapper extends QBMapper {
 
         return $entities[0] ?? null;
     }
+
+    /**
+     * @throws Exception
+     */
+    public function findChildren(int $parentId): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('parent_id', $qb->createNamedParameter($parentId, $qb::PARAM_INT)));
+
+        return $this->findEntities($qb);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function getMaxSortOrder(): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectAlias($qb->createFunction('MAX(sort_order)'), 'max_sort')
+            ->from($this->getTableName());
+
+        $value = $qb->executeQuery()->fetchOne();
+        return $value !== null ? (int)$value : 0;
+    }
 }
