@@ -61,9 +61,7 @@ class AccountService {
 
         $labelDe = $this->normalizeLabel($data['labelDe'] ?? null);
         $labelEn = $this->normalizeLabel($data['labelEn'] ?? null);
-        if ($labelDe === null && $labelEn === null) {
-            throw new \InvalidArgumentException($this->l10n->t('At least one label is required.'));
-        }
+        [$labelDe, $labelEn] = $this->ensureLabels($labelDe, $labelEn);
 
         $parentId = $this->resolveParentId($data['parentId'] ?? null);
         $sortOrder = isset($data['sortOrder']) ? (int)$data['sortOrder'] : ($this->accountMapper->getMaxSortOrder() + 1);
@@ -104,6 +102,10 @@ class AccountService {
             $account->setLabelEn($this->normalizeLabel($data['labelEn']));
         }
 
+        [$normalizedDe, $normalizedEn] = $this->ensureLabels($account->getLabelDe(), $account->getLabelEn());
+        $account->setLabelDe($normalizedDe);
+        $account->setLabelEn($normalizedEn);
+
         if (array_key_exists('parentId', $data)) {
             $parentId = $this->resolveParentId($data['parentId']);
             if ($parentId !== null && $parentId === $account->getId()) {
@@ -114,10 +116,6 @@ class AccountService {
 
         if (array_key_exists('sortOrder', $data)) {
             $account->setSortOrder((int)$data['sortOrder']);
-        }
-
-        if ($account->getLabelDe() === null && $account->getLabelEn() === null) {
-            throw new \InvalidArgumentException($this->l10n->t('At least one label is required.'));
         }
 
         $account->setUpdatedAt(time());
@@ -186,6 +184,19 @@ class AccountService {
     private function normalizeLabel(?string $value): ?string {
         $trimmed = $value !== null ? trim($value) : '';
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function ensureLabels(?string $labelDe, ?string $labelEn): array {
+        if ($labelDe === null && $labelEn === null) {
+            throw new \InvalidArgumentException($this->l10n->t('At least one label is required.'));
+        }
+        if ($labelDe === null) {
+            $labelDe = $labelEn;
+        }
+        if ($labelEn === null) {
+            $labelEn = $labelDe;
+        }
+        return [$labelDe, $labelEn];
     }
 
     private function resolveParentId(mixed $parentId): ?int {

@@ -243,11 +243,12 @@
     display: flex;
     justify-content: space-between;
     gap: 16px;
-    padding: 12px;
+    padding: 8px 12px;
     border: 1px solid var(--color-border);
     border-radius: 8px;
     background: var(--color-background-hover);
     margin-left: calc(var(--level, 0) * 20px);
+    flex-wrap: wrap;
 }
 
 .domus-account-main {
@@ -256,9 +257,10 @@
 
 .domus-account-title {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
     font-weight: 600;
+    align-items: center;
 }
 
 .domus-account-number {
@@ -266,16 +268,16 @@
 }
 
 .domus-account-meta {
-    margin-top: 6px;
+    margin-top: 4px;
     display: flex;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 .domus-account-actions {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
 }
 
@@ -283,8 +285,24 @@
     border: 1px solid var(--color-border);
     background: var(--color-background-dark);
     border-radius: 6px;
-    padding: 4px 10px;
+    padding: 2px 8px;
     cursor: pointer;
+}
+
+.domus-account-main {
+    min-width: 0;
+}
+
+.domus-account-title,
+.domus-account-label,
+.domus-account-meta {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.domus-account-actions {
+    flex-shrink: 0;
 }
 
 .domus-account-action:disabled {
