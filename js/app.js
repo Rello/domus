@@ -4340,11 +4340,11 @@
             const columnsLabel = Domus.Utils.escapeHtml(t('domus', 'Columns (in order): {columns}', {
                 columns: bookingCsvColumns.join(', ')
             }));
-            return '<div class="domus-panel domus-booking-import">' +
-                '<div class="domus-panel-header">' +
-                '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Import bookings')) + '</h3>' +
-                '</div>' +
-                '<div class="domus-panel-body">' +
+            return '<div class="domus-panel domus-booking-import domus-collapsed">' +
+                '<button type="button" class="domus-booking-import-toggle" id="domus-booking-import-toggle" aria-expanded="false">' +
+                Domus.Utils.escapeHtml(t('domus', 'Import bookings')) +
+                '</button>' +
+                '<div class="domus-panel-body domus-booking-import-body">' +
                 '<p>' + Domus.Utils.escapeHtml(t('domus', 'Download the CSV template to see the required column order, then paste your rows below.')) + '</p>' +
                 '<div class="domus-booking-import-actions">' +
                 '<button type="button" class="domus-ghost" id="domus-booking-csv-template">' + Domus.Utils.escapeHtml(t('domus', 'Download CSV template')) + '</button>' +
@@ -4362,21 +4362,81 @@
                 '</div>';
         }
 
-        function buildBookingCsvTemplate() {
-            return bookingCsvColumns.join(',') + '\n';
+        function buildBookingCsvTemplate(masterdata) {
+            const lines = [];
+            if (masterdata) {
+                const properties = masterdata.properties || [];
+                const units = masterdata.units || [];
+                const distributionKeys = masterdata.distributionKeys || {};
+                if (properties.length) {
+                    lines.push('# Properties (id - name)');
+                    properties.forEach(property => {
+                        lines.push(`# ${property.id} - ${property.name || t('domus', 'Property') + ' #' + property.id}`);
+                    });
+                    lines.push('#');
+                }
+                if (units.length) {
+                    lines.push('# Units (id - label - propertyId)');
+                    units.forEach(unit => {
+                        lines.push(`# ${unit.id} - ${unit.label || t('domus', 'Unit') + ' #' + unit.id} - ${unit.propertyId || ''}`);
+                    });
+                    lines.push('#');
+                }
+                const distributionKeysEntries = Object.entries(distributionKeys);
+                if (distributionKeysEntries.length) {
+                    lines.push('# Distribution keys (propertyId: id - name)');
+                    distributionKeysEntries.forEach(([propertyId, keys]) => {
+                        (keys || []).forEach(key => {
+                            lines.push(`# ${propertyId}: ${key.id} - ${key.name || t('domus', 'Distribution') + ' #' + key.id}`);
+                        });
+                    });
+                    lines.push('#');
+                }
+            }
+            lines.push(bookingCsvColumns.join(','));
+            return lines.join('\n') + '\n';
         }
 
         function downloadBookingCsvTemplate() {
-            const content = buildBookingCsvTemplate();
-            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'domus-bookings-template.csv';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            const baseTemplate = () => buildBookingCsvTemplate(null);
+            updateImportStatus(t('domus', 'Preparing template…'));
+            return Promise.all([
+                Domus.Api.getProperties(),
+                Domus.Api.getUnits()
+            ])
+                .then(([properties, units]) => {
+                    const propertyList = properties || [];
+                    const distributionRequests = propertyList.map(property => (
+                        Domus.Api.getDistributions(property.id)
+                            .then(keys => ({ propertyId: property.id, keys: keys || [] }))
+                            .catch(() => ({ propertyId: property.id, keys: [] }))
+                    ));
+                    return Promise.all(distributionRequests)
+                        .then(results => {
+                            const distributionKeys = {};
+                            results.forEach(resultItem => {
+                                distributionKeys[resultItem.propertyId] = resultItem.keys || [];
+                            });
+                            return buildBookingCsvTemplate({
+                                properties: propertyList,
+                                units: units || [],
+                                distributionKeys
+                            });
+                        });
+                })
+                .catch(() => baseTemplate())
+                .then(content => {
+                    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'domus-bookings-template.csv';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    updateImportStatus(t('domus', 'Template ready.'));
+                });
         }
 
         function parseCsvText(text) {
@@ -4431,7 +4491,10 @@
         }
 
         function parseBookingCsv(text) {
-            const rows = parseCsvText(text || '');
+            const rows = parseCsvText(text || '').filter(values => {
+                const firstValue = values.find(value => value.trim() !== '');
+                return !firstValue || !firstValue.trim().startsWith('#');
+            });
             const errors = [];
             if (!rows.length) {
                 errors.push(t('domus', 'No CSV rows found.'));
@@ -4523,11 +4586,22 @@
         function bindImportActions() {
             const downloadBtn = document.getElementById('domus-booking-csv-template');
             const importBtn = document.getElementById('domus-booking-csv-import');
+            const toggleBtn = document.getElementById('domus-booking-import-toggle');
             if (downloadBtn) {
                 downloadBtn.addEventListener('click', downloadBookingCsvTemplate);
             }
             if (importBtn) {
                 importBtn.addEventListener('click', handleCsvImport);
+            }
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    const panel = document.querySelector('.domus-booking-import');
+                    if (!panel) {
+                        return;
+                    }
+                    const isCollapsed = panel.classList.toggle('domus-collapsed');
+                    toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+                });
             }
         }
 
