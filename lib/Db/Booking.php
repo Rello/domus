@@ -22,6 +22,7 @@ class Booking extends Entity implements JsonSerializable {
     protected $description;
     protected $createdAt;
     protected $updatedAt;
+    protected $hasDocuments = false;
 
     public function getBookingType(): ?string {
         // Legacy compatibility: bookingType was removed but older code paths may still call the getter.
@@ -61,6 +62,7 @@ class Booking extends Entity implements JsonSerializable {
             'description' => $this->description,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
+            'hasDocuments' => $this->hasDocuments,
         ];
     }
 }

@@ -4204,6 +4204,26 @@
             return label ? `${nr} – ${label}` : nr;
         }
 
+        function buildDocumentIndicator(booking) {
+            if (!booking?.hasDocuments) {
+                return '';
+            }
+            const label = t('domus', 'Document attached');
+            return '<span class="domus-doc-indicator" title="' + Domus.Utils.escapeHtml(label) + '">' +
+                '<span class="domus-icon domus-icon-document" aria-hidden="true"></span>' +
+                '<span class="domus-visually-hidden">' + Domus.Utils.escapeHtml(label) + '</span>' +
+                '</span>';
+        }
+
+        function buildAccountCell(booking) {
+            const accountLabel = Domus.Utils.escapeHtml(formatAccount(booking));
+            const indicator = buildDocumentIndicator(booking);
+            if (!indicator) {
+                return accountLabel;
+            }
+            return '<span class="domus-inline-label">' + accountLabel + indicator + '</span>';
+        }
+
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Bookings') }));
@@ -4225,7 +4245,7 @@
                         const rows = bookingsList.map(b => {
                             const cells = [
                                 Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
-                                Domus.Utils.escapeHtml(formatAccount(b))
+                                buildAccountCell(b)
                             ];
                             if (isBuildingMgmt) {
                                 const key = `${b.propertyId || ''}:${b.distributionKeyId || ''}`;
@@ -4288,7 +4308,7 @@
             const rows = (bookings || []).map(b => ({
                 cells: [
                     Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
-                    Domus.Utils.escapeHtml(formatAccount(b)),
+                    buildAccountCell(b),
                     { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
                 ],
                 dataset: b.id ? {

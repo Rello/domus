@@ -50,4 +50,30 @@ class DocumentLinkMapper extends QBMapper {
 
         return $this->findEntities($qb);
     }
+
+    /**
+     * @throws Exception
+     */
+    public function findEntityIdsWithDocuments(string $userId, string $entityType, array $entityIds): array {
+        if ($entityIds === []) {
+            return [];
+        }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('entity_id')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->in('entity_id', $qb->createNamedParameter($entityIds, $qb::PARAM_INT_ARRAY)))
+            ->groupBy('entity_id');
+
+        $result = $qb->executeQuery();
+        $ids = [];
+        while ($row = $result->fetch()) {
+            $ids[] = (int)$row['entity_id'];
+        }
+        $result->closeCursor();
+
+        return $ids;
+    }
 }
