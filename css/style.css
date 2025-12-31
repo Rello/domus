@@ -267,11 +267,11 @@
     font-variant-numeric: tabular-nums;
 }
 
-.domus-account-meta {
-    margin-top: 4px;
-    display: flex;
+.domus-account-badges {
+    display: inline-flex;
     gap: 6px;
     flex-wrap: nowrap;
+    align-items: center;
 }
 
 .domus-account-actions {
@@ -295,7 +295,7 @@
 
 .domus-account-title,
 .domus-account-label,
-.domus-account-meta {
+.domus-account-badges {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

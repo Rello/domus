@@ -436,8 +436,8 @@
                 '<div class="domus-account-title">' +
                 '<span class="domus-account-number">' + safeNumber + '</span>' +
                 '<span class="domus-account-label">' + safeLabel + '</span>' +
+                (badges ? '<span class="domus-account-badges">' + badges + '</span>' : '') +
                 '</div>' +
-                '<div class="domus-account-meta">' + badges + '</div>' +
                 '</div>' +
                 '<div class="domus-account-actions">' +
                 '<button type="button" class="domus-account-action" data-account-action="addChild" data-account-id="' + account.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Add child')) + '</button>' +
