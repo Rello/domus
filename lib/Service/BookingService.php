@@ -168,4 +168,11 @@ class BookingService {
     public function sumByAccountGrouped(string $userId, ?int $year, string $groupBy, ?int $groupId = null): array {
         return $this->bookingMapper->sumByAccountGrouped($userId, $year, $groupBy, $groupId);
     }
+
+    /**
+     * @param string[] $accounts
+     */
+    public function sumByAccountPerYear(string $userId, array $accounts): array {
+        return $this->bookingMapper->sumByAccountPerYear($userId, $accounts);
+    }
 }

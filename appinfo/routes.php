@@ -28,6 +28,7 @@ return [
         ['name' => 'Statistics#unit', 'url' => '/statistics/units/{unitId}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitPerYear', 'url' => '/statistics/units/{unitId}/{year}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitsOverview', 'url' => '/statistics/units-overview', 'verb' => 'GET'],
+        ['name' => 'Statistics#accountTotals', 'url' => '/statistics/accounts', 'verb' => 'GET'],
 
         // Partner
         ['name' => 'Partner#index', 'url' => '/partners', 'verb' => 'GET'],

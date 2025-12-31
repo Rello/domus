@@ -244,6 +244,15 @@
             disableAccount: id => request('POST', `/accounts/${id}/disable`),
             enableAccount: id => request('POST', `/accounts/${id}/enable`),
             deleteAccount: id => request('DELETE', `/accounts/${id}`),
+            getAccountTotals: (accounts = []) => {
+                const params = new URLSearchParams();
+                (accounts || []).forEach(account => {
+                    if (account !== undefined && account !== null && account !== '') {
+                        params.append('accounts', account);
+                    }
+                });
+                return request('GET', buildUrl('/statistics/accounts', params));
+            },
             getDocuments: (entityType, entityId) => request('GET', `/documents/${entityType}/${entityId}`),
             getDocumentDetail: (id) => request('GET', `/documents/${id}`),
             linkDocument: (entityType, entityId, data) => request('POST', `/documents/${entityType}/${entityId}`, data),
@@ -1246,6 +1255,7 @@
                 label: t('domus', 'Landlord'),
                 navigation: [
                     { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
+                    { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' },
                     { view: 'units', label: t('domus', 'Units'), icon: 'domus-icon-unit' },
                     { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
                     { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' },
@@ -1259,6 +1269,7 @@
                 label: t('domus', 'Building Mgmt'),
                 navigation: [
                     { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
+                    { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' },
                     { view: 'properties', label: t('domus', 'Properties'), icon: 'domus-icon-property' },
                     { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
                     { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' },
@@ -1272,6 +1283,7 @@
                 label: t('domus', 'Tenant'),
                 navigation: [
                     { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
+                    { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' },
                     { view: 'tenancies', label: t('domus', 'My tenancies'), icon: 'domus-icon-tenancy' }
                 ],
                 tenancyLabels: { singular: t('domus', 'Tenancy'), plural: t('domus', 'My tenancies'), action: null },
@@ -2408,6 +2420,191 @@
                 Domus.UI.buildTable([t('domus', 'Unit'), t('domus', 'Period'), t('domus', 'Status')], tenancyRows) +
                 '<h2>' + Domus.Utils.escapeHtml(t('domus', 'My reports')) + '</h2>' +
                 Domus.UI.buildTable([t('domus', 'Property'), t('domus', 'Year'), ''], reportRows);
+        }
+
+        return { render };
+    })();
+
+    /**
+     * Analytics view
+     */
+    Domus.Analytics = (function() {
+        let chartInstance = null;
+        let requestId = 0;
+
+        function render() {
+            Domus.UI.renderSidebar('');
+            Domus.UI.renderContent(buildLayout());
+            bindControls();
+        }
+
+        function buildLayout() {
+            const options = Domus.Accounts.toOptions(false);
+            const optionHtml = options.map(opt => (
+                '<option value="' + Domus.Utils.escapeHtml(opt.value) + '">' +
+                Domus.Utils.escapeHtml(opt.label || opt.value) +
+                '</option>'
+            )).join('');
+            const emptyState = options.length === 0
+                ? '<div class="domus-analytics-empty">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Accounts') })) + '</div>'
+                : '';
+
+            return '<div class="domus-section-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Analytics')) + '</h3></div>' +
+                '<div class="domus-analytics-layout">' +
+                '<div class="domus-analytics-panel">' +
+                '<label for="domus-analytics-accounts">' + Domus.Utils.escapeHtml(t('domus', 'Accounts')) + '</label>' +
+                '<select id="domus-analytics-accounts" class="domus-analytics-select" multiple size="10">' +
+                optionHtml +
+                '</select>' +
+                '<div class="domus-analytics-hint">' + Domus.Utils.escapeHtml(t('domus', 'Hold Ctrl (Windows) or Command (Mac) to select multiple accounts.')) + '</div>' +
+                emptyState +
+                '</div>' +
+                '<div class="domus-analytics-chart">' +
+                '<div id="domus-analytics-status" class="domus-analytics-status">' +
+                Domus.Utils.escapeHtml(t('domus', 'Select accounts to view the yearly trend.')) +
+                '</div>' +
+                '<canvas id="domus-analytics-chart" class="domus-analytics-canvas" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Account analytics chart')) + '" role="img"></canvas>' +
+                '</div>' +
+                '</div>';
+        }
+
+        function bindControls() {
+            const select = document.getElementById('domus-analytics-accounts');
+            if (!select) {
+                return;
+            }
+
+            select.addEventListener('change', () => {
+                updateChart(getSelectedAccounts(select));
+            });
+
+            updateChart(getSelectedAccounts(select));
+        }
+
+        function getSelectedAccounts(select) {
+            return Array.from(select.selectedOptions || [])
+                .map(option => option.value)
+                .filter(value => value !== '');
+        }
+
+        function updateChart(accounts) {
+            const status = document.getElementById('domus-analytics-status');
+            if (!window.Chart) {
+                if (status) {
+                    status.textContent = t('domus', 'Chart library not available.');
+                }
+                return;
+            }
+
+            if (!accounts.length) {
+                destroyChart();
+                if (status) {
+                    status.textContent = t('domus', 'Select accounts to view the yearly trend.');
+                }
+                return;
+            }
+
+            if (status) {
+                status.textContent = t('domus', 'Loading…');
+            }
+
+            const currentRequest = ++requestId;
+            Domus.Api.getAccountTotals(accounts)
+                .then(data => {
+                    if (currentRequest !== requestId) {
+                        return;
+                    }
+                    renderChart(data || {}, accounts);
+                })
+                .catch(err => {
+                    destroyChart();
+                    if (status) {
+                        status.textContent = err.message || t('domus', 'An error occurred');
+                    }
+                });
+        }
+
+        function renderChart(data, accounts) {
+            const status = document.getElementById('domus-analytics-status');
+            const canvas = document.getElementById('domus-analytics-chart');
+            if (!canvas) {
+                return;
+            }
+
+            const years = Array.isArray(data.years) ? data.years : [];
+            const series = data.series || {};
+            if (!years.length) {
+                destroyChart();
+                if (status) {
+                    status.textContent = t('domus', 'No analytics data found.');
+                }
+                return;
+            }
+
+            if (status) {
+                status.textContent = '';
+            }
+
+            const colors = [
+                '#2b7cd3',
+                '#6c4bc1',
+                '#e8793b',
+                '#2f9e77',
+                '#b84592',
+                '#d1a215',
+                '#24689e',
+                '#b05d24'
+            ];
+
+            const datasets = accounts.map((account, index) => {
+                const values = Array.isArray(series[account]) ? series[account] : new Array(years.length).fill(0);
+                const labelParts = [account, Domus.Accounts.label(account)].filter(Boolean);
+                return {
+                    label: labelParts.join(' — '),
+                    data: values,
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length],
+                    fill: false,
+                    tension: 0.25
+                };
+            });
+
+            const chartData = {
+                labels: years.map(year => year.toString()),
+                datasets
+            };
+
+            destroyChart();
+            chartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function destroyChart() {
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
         }
 
         return { render };
@@ -5628,6 +5825,7 @@
 
         function registerRoutes() {
             Domus.Router.register('dashboard', Domus.Dashboard.render);
+            Domus.Router.register('analytics', Domus.Analytics.render);
             Domus.Router.register('properties', Domus.Properties.renderList);
             Domus.Router.register('propertyDetail', Domus.Properties.renderDetail);
             Domus.Router.register('units', Domus.Units.renderList);

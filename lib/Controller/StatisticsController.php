@@ -43,6 +43,19 @@ class StatisticsController extends Controller {
         return new DataResponse($stats);
     }
 
+    #[NoAdminRequired]
+    public function accountTotals(): DataResponse {
+        $accounts = $this->request->getParam('accounts', []);
+        if (is_string($accounts)) {
+            $accounts = array_filter(array_map('trim', explode(',', $accounts)));
+        }
+        if (!is_array($accounts)) {
+            $accounts = [];
+        }
+
+        return new DataResponse($this->statisticsService->accountTotalsByYear($accounts, $this->getUserId()));
+    }
+
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
     }
