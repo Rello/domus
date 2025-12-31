@@ -42,6 +42,19 @@ class AccountMapper extends QBMapper {
     /**
      * @throws Exception
      */
+    public function findById(int $id): ?Account {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
+            ->setMaxResults(1);
+
+        return $this->findEntity($qb);
+    }
+
+    /**
+     * @throws Exception
+     */
     public function findChildren(int $parentId): array {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')

@@ -167,7 +167,7 @@ class AccountService {
     }
 
     private function getAccount(int $id): Account {
-        $account = $this->accountMapper->find($id);
+        $account = $this->accountMapper->findById($id);
         if (!$account) {
             throw new \RuntimeException($this->l10n->t('Account not found.'));
         }
@@ -196,7 +196,7 @@ class AccountService {
         if ($resolved <= 0) {
             return null;
         }
-        $parent = $this->accountMapper->find($resolved);
+        $parent = $this->accountMapper->findById($resolved);
         if (!$parent) {
             throw new \InvalidArgumentException($this->l10n->t('Parent account not found.'));
         }
