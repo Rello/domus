@@ -115,6 +115,7 @@ class DistributionService {
             $distributionMap[$distributionKey->getId()] = $distributionKey;
         }
 
+        $topAccountMap = $this->accountService->getTopAccountNumberMap();
         $rows = [];
         foreach ($bookings as $booking) {
             if ($booking->getUnitId() !== null) {
@@ -138,12 +139,12 @@ class DistributionService {
             }
             $shareDetails = $this->calculateShareDetails($distributionKey, $units, $unitValues);
 
-            $account = (string)$booking->getAccount();
+            $account = $this->accountService->resolveTopAccountNumber((string)$booking->getAccount(), $topAccountMap);
             if (!isset($rows[$account])) {
                 $rows[$account] = [
                     'bookingId' => $booking->getId(),
-                    'account' => $booking->getAccount(),
-                    'accountLabel' => $this->accountService->label((string)$booking->getAccount(), $this->l10n),
+                    'account' => $account,
+                    'accountLabel' => $this->accountService->label($account, $this->l10n),
                     'date' => $booking->getDate(),
                     'distributionKeyId' => $distributionKey->getId(),
                     'distributionKeyName' => $distributionKey->getName(),

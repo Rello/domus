@@ -17,6 +17,7 @@ class ServiceChargeSettlementService {
         private PartnerMapper $partnerMapper,
         private UnitMapper $unitMapper,
         private DocumentService $documentService,
+        private AccountService $accountService,
         private IL10N $l10n,
     ) {
     }
@@ -160,13 +161,16 @@ class ServiceChargeSettlementService {
         $bookings = $this->bookingMapper->findByUser($userId, ['unitId' => $unitId, 'year' => $year]);
         $houseFee = 0.0;
         $propertyTax = 0.0;
+        $topAccountMap = $this->accountService->getTopAccountNumberMap();
+        $houseFeeAccount = $this->accountService->resolveTopAccountNumber(self::HOUSE_FEE_ACCOUNT, $topAccountMap);
+        $propertyTaxAccount = $this->accountService->resolveTopAccountNumber(self::PROPERTY_TAX_ACCOUNT, $topAccountMap);
 
         foreach ($bookings as $booking) {
-            $account = (string)$booking->getAccount();
-            if ($account === self::HOUSE_FEE_ACCOUNT) {
+            $account = $this->accountService->resolveTopAccountNumber((string)$booking->getAccount(), $topAccountMap);
+            if ($account === $houseFeeAccount) {
                 $houseFee += (float)$booking->getAmount();
             }
-            if ($account === self::PROPERTY_TAX_ACCOUNT) {
+            if ($account === $propertyTaxAccount) {
                 $propertyTax += (float)$booking->getAmount();
             }
         }

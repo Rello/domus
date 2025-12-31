@@ -127,9 +127,7 @@ class AccountService {
             throw new \InvalidArgumentException($this->l10n->t('Invalid status.'));
         }
         $account = $this->getAccount($id);
-        if ($status === 'disabled') {
-            $this->assertAccountMutable($account, $userId);
-        }
+        $this->assertAccountToggleAllowed($account);
         $account->setStatus($status);
         $account->setUpdatedAt(time());
         return $this->accountMapper->update($account);
@@ -158,9 +156,42 @@ class AccountService {
         return $this->resolveLabel($account, $l10n);
     }
 
+    public function getTopAccountNumberMap(): array {
+        $accounts = $this->accountMapper->findAllOrdered();
+        $accountsById = [];
+        foreach ($accounts as $account) {
+            $accountsById[$account->getId()] = $account;
+        }
+
+        $map = [];
+        foreach ($accounts as $account) {
+            $map[(string)$account->getNumber()] = $this->resolveTopAncestorNumber($account, $accountsById);
+        }
+
+        return $map;
+    }
+
+    public function resolveTopAccountNumber(string $number, ?array $topAccountMap = null): string {
+        if ($topAccountMap === null) {
+            $topAccountMap = $this->getTopAccountNumberMap();
+        }
+
+        return $topAccountMap[$number] ?? $number;
+    }
+
     public function assertAccountNumber(string $number): void {
         if (!$this->exists($number)) {
             throw new \InvalidArgumentException($this->l10n->t('Account is invalid.'));
+        }
+    }
+
+    public function assertAccountActive(string $number): void {
+        $account = $this->accountMapper->findByNumber($number);
+        if (!$account) {
+            throw new \InvalidArgumentException($this->l10n->t('Account is invalid.'));
+        }
+        if ($account->getStatus() === 'disabled') {
+            throw new \InvalidArgumentException($this->l10n->t('Account is disabled.'));
         }
     }
 
@@ -178,6 +209,12 @@ class AccountService {
         }
         if ($this->bookingMapper->countByAccount($userId, (string)$account->getNumber()) > 0) {
             throw new \RuntimeException($this->l10n->t('Account is used in bookings and cannot be modified.'));
+        }
+    }
+
+    private function assertAccountToggleAllowed(Account $account): void {
+        if ((int)$account->getIsSystem() === 1) {
+            throw new \RuntimeException($this->l10n->t('System accounts cannot be modified.'));
         }
     }
 
@@ -242,6 +279,21 @@ class AccountService {
             'updatedAt' => $account->getUpdatedAt(),
             'usedInBookings' => isset($usage[$number]),
         ];
+    }
+
+    private function resolveTopAncestorNumber(Account $account, array $accountsById): string {
+        $current = $account;
+        $seen = [];
+
+        while ($current->getParentId() && isset($accountsById[$current->getParentId()])) {
+            if (isset($seen[$current->getId()])) {
+                break;
+            }
+            $seen[$current->getId()] = true;
+            $current = $accountsById[$current->getParentId()];
+        }
+
+        return (string)$current->getNumber();
     }
 
     private function buildHierarchy(array $accounts, ?IL10N $l10n = null, array $usage = []): array {

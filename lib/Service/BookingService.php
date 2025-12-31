@@ -113,6 +113,7 @@ class BookingService {
             throw new \InvalidArgumentException($this->l10n->t('Account is required.'));
         }
         $this->accountService->assertAccountNumber((string)$data['account']);
+        $this->accountService->assertAccountActive((string)$data['account']);
         if (!isset($data['propertyId']) && !isset($data['unitId'])) {
             throw new \InvalidArgumentException($this->l10n->t('At least one relation is required.'));
         }
