@@ -4668,7 +4668,7 @@
             const selectedDistributionKey = booking?.distributionKeyId
                 ? String(booking.distributionKeyId)
                 : (booking?.unitId && isBuildingMgmt ? unitAllocationValue : '');
-            const hideProperty = formOptions.hidePropertyField || (!booking && Domus.Role.getCurrentRole() === 'landlord');
+            const hideProperty = formOptions.hidePropertyField || Domus.Role.getCurrentRole() === 'landlord';
             const showDistribution = Domus.Distributions.canManageDistributions();
             const existingDocuments = booking?.id
                 ? '<div class="domus-booking-documents-existing">' +
@@ -4693,14 +4693,14 @@
                     : ('<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId"' + (propertyLocked ? ' disabled' : '') + '>' +
                     propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedProperty ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                     '</select>' + (propertyLocked ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '') + '</label>')) +
+                (showDistribution ? '<label>' + Domus.Utils.escapeHtml(t('domus', 'Distribution key')) + '<select name="distributionKeyId" id="domus-booking-distribution" data-selected="' + Domus.Utils.escapeHtml(selectedDistributionKey) + '">' +
+                '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'Select distribution')) + '</option>' +
+                '</select></label>' : '') +
                 '<div class="domus-booking-unit-field" data-role="unit-field">' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId"' + (unitLocked ? ' disabled' : '') + '>' +
                 unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedUnit ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                 '</select></label>' +
                 '</div>' +
-                (showDistribution ? '<label>' + Domus.Utils.escapeHtml(t('domus', 'Distribution key')) + '<select name="distributionKeyId" id="domus-booking-distribution" data-selected="' + Domus.Utils.escapeHtml(selectedDistributionKey) + '">' +
-                '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'Select distribution')) + '</option>' +
-                '</select></label>' : '') +
                 '</div>' +
                 '<div class="domus-booking-documents" id="domus-booking-documents">' +
                 '<div class="domus-doc-attachment-placeholder domus-doc-attachment-shell"></div>' +
