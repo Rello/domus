@@ -4224,6 +4224,19 @@
             return '<span class="domus-inline-label">' + accountLabel + indicator + '</span>';
         }
 
+        const bookingCsvColumns = [
+            'account',
+            'date',
+            'deliveryDate',
+            'amount',
+            'propertyId',
+            'unitId',
+            'distributionKeyId',
+            'periodFrom',
+            'periodTo',
+            'description'
+        ];
+
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Bookings') }));
@@ -4258,7 +4271,7 @@
                             };
                         });
 
-                        Domus.UI.renderContent(toolbar + Domus.UI.buildTable(headers, rows));
+                        Domus.UI.renderContent(toolbar + Domus.UI.buildTable(headers, rows) + buildImportPanel());
                         bindList();
                     }).catch(err => Domus.UI.showError(err.message));
                 })
@@ -4283,6 +4296,7 @@
 
         function bindList() {
             Domus.UI.bindRowNavigation();
+            bindImportActions();
         }
 
         function filterBookingsForRole(bookings) {
@@ -4320,6 +4334,340 @@
             return Domus.UI.buildTable([
                 t('domus', 'Invoice date'), t('domus', 'Account'), t('domus', 'Amount')
             ], rows);
+        }
+
+        function buildImportPanel() {
+            const columnsLabel = Domus.Utils.escapeHtml(t('domus', 'Columns (in order): {columns}', {
+                columns: bookingCsvColumns.join(', ')
+            }));
+            return '<div class="domus-panel domus-booking-import domus-collapsed">' +
+                '<button type="button" class="domus-booking-import-toggle" id="domus-booking-import-toggle" aria-expanded="false">' +
+                Domus.Utils.escapeHtml(t('domus', 'Import bookings')) +
+                '</button>' +
+                '<div class="domus-panel-body domus-booking-import-body">' +
+                '<p>' + Domus.Utils.escapeHtml(t('domus', 'Download the CSV template to see the required column order, then paste your rows below.')) + '</p>' +
+                '<div class="domus-booking-import-actions">' +
+                '<button type="button" class="domus-ghost" id="domus-booking-csv-template">' + Domus.Utils.escapeHtml(t('domus', 'Download CSV template')) + '</button>' +
+                '</div>' +
+                '<div class="muted domus-booking-import-columns">' + columnsLabel + '</div>' +
+                '<label class="domus-booking-import-label">' +
+                Domus.Utils.escapeHtml(t('domus', 'Paste CSV data')) +
+                '<textarea id="domus-booking-csv-input" placeholder="' + Domus.Utils.escapeHtml(t('domus', 'account,date,deliveryDate,amount,propertyId,unitId,distributionKeyId,periodFrom,periodTo,description')) + '"></textarea>' +
+                '</label>' +
+                '<div class="domus-booking-import-actions">' +
+                '<button type="button" class="primary" id="domus-booking-csv-import">' + Domus.Utils.escapeHtml(t('domus', 'Import bookings')) + '</button>' +
+                '</div>' +
+                '<div class="domus-booking-import-status muted" id="domus-booking-import-status"></div>' +
+                '</div>' +
+                '</div>';
+        }
+
+        function buildBookingCsvTemplate(masterdata) {
+            const lines = [];
+            if (masterdata) {
+                const properties = masterdata.properties || [];
+                const units = masterdata.units || [];
+                const distributionKeys = masterdata.distributionKeys || {};
+                if (properties.length) {
+                    lines.push('# Properties (id - name)');
+                    properties.forEach(property => {
+                        lines.push(`# ${property.id} - ${property.name || t('domus', 'Property') + ' #' + property.id}`);
+                    });
+                    lines.push('#');
+                }
+                if (units.length) {
+                    lines.push('# Units (id - label - propertyId)');
+                    units.forEach(unit => {
+                        lines.push(`# ${unit.id} - ${unit.label || t('domus', 'Unit') + ' #' + unit.id} - ${unit.propertyId || ''}`);
+                    });
+                    lines.push('#');
+                }
+                const distributionKeysEntries = Object.entries(distributionKeys);
+                if (distributionKeysEntries.length) {
+                    lines.push('# Distribution keys (propertyId: id - name)');
+                    distributionKeysEntries.forEach(([propertyId, keys]) => {
+                        (keys || []).forEach(key => {
+                            lines.push(`# ${propertyId}: ${key.id} - ${key.name || t('domus', 'Distribution') + ' #' + key.id}`);
+                        });
+                    });
+                    lines.push('#');
+                }
+            }
+            lines.push(bookingCsvColumns.join(','));
+            lines.push('4000,2024-01-15,2024-01-15,120.50,1,10,3,2024-01-01,2024-01-31,Sample booking');
+            return lines.join('\n') + '\n';
+        }
+
+        function downloadBookingCsvTemplate() {
+            const baseTemplate = () => buildBookingCsvTemplate(null);
+            updateImportStatus(t('domus', 'Preparing template…'));
+            return Promise.all([
+                Domus.Api.getProperties(),
+                Domus.Api.getUnits()
+            ])
+                .then(([properties, units]) => {
+                    const propertyList = properties || [];
+                    const distributionRequests = propertyList.map(property => (
+                        Domus.Api.getDistributions(property.id)
+                            .then(keys => ({ propertyId: property.id, keys: keys || [] }))
+                            .catch(() => ({ propertyId: property.id, keys: [] }))
+                    ));
+                    return Promise.all(distributionRequests)
+                        .then(results => {
+                            const distributionKeys = {};
+                            results.forEach(resultItem => {
+                                distributionKeys[resultItem.propertyId] = resultItem.keys || [];
+                            });
+                            return buildBookingCsvTemplate({
+                                properties: propertyList,
+                                units: units || [],
+                                distributionKeys
+                            });
+                        });
+                })
+                .catch(() => baseTemplate())
+                .then(content => {
+                    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'domus-bookings-template.csv';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    updateImportStatus(t('domus', 'Template ready.'));
+                });
+        }
+
+        function parseCsvText(text) {
+            const rows = [];
+            let row = [];
+            let field = '';
+            let inQuotes = false;
+            const pushField = () => {
+                row.push(field);
+                field = '';
+            };
+            const pushRow = () => {
+                pushField();
+                rows.push(row);
+                row = [];
+            };
+
+            for (let i = 0; i < text.length; i += 1) {
+                const char = text[i];
+                if (inQuotes) {
+                    if (char === '"') {
+                        if (text[i + 1] === '"') {
+                            field += '"';
+                            i += 1;
+                        } else {
+                            inQuotes = false;
+                        }
+                    } else {
+                        field += char;
+                    }
+                } else if (char === '"') {
+                    inQuotes = true;
+                } else if (char === ',') {
+                    pushField();
+                } else if (char === '\n') {
+                    pushRow();
+                } else if (char === '\r') {
+                    if (text[i + 1] === '\n') {
+                        i += 1;
+                    }
+                    pushRow();
+                } else {
+                    field += char;
+                }
+            }
+
+            if (field.length || row.length) {
+                pushRow();
+            }
+
+            return rows.filter(values => values.some(value => value.trim() !== ''));
+        }
+
+        function parseBookingCsv(text) {
+            const rows = parseCsvText(text || '').filter(values => {
+                const firstValue = values.find(value => value.trim() !== '');
+                return !firstValue || !firstValue.trim().startsWith('#');
+            });
+            const errors = [];
+            if (!rows.length) {
+                errors.push(t('domus', 'No CSV rows found.'));
+                return { entries: [], errors };
+            }
+
+            const expectedHeaders = bookingCsvColumns.map(col => col.toLowerCase());
+            const header = rows[0].map(cell => cell.trim().toLowerCase());
+            const hasHeader = expectedHeaders.every((col, idx) => header[idx] === col);
+            const dataRows = hasHeader ? rows.slice(1) : rows;
+
+            const entries = [];
+            dataRows.forEach((row, index) => {
+                const rowNumber = hasHeader ? index + 2 : index + 1;
+                const values = bookingCsvColumns.map((_, idx) => (row[idx] || '').trim());
+                if (values.every(value => value === '')) {
+                    return;
+                }
+
+                const payload = {};
+                const rowErrors = [];
+                const [account, date, deliveryDate, amount, propertyId, unitId, distributionKeyId, periodFrom, periodTo, description] = values;
+
+                if (account) payload.account = account;
+                if (date) payload.date = date;
+                if (deliveryDate) payload.deliveryDate = deliveryDate;
+                if (amount !== '') payload.amount = amount;
+
+                const propertyResult = parseOptionalInteger(propertyId, t('domus', 'Property'));
+                if (propertyResult.errorMessage) {
+                    rowErrors.push(propertyResult.errorMessage);
+                } else if (propertyResult.value !== null) {
+                    payload.propertyId = propertyResult.value;
+                }
+                const unitResult = parseOptionalInteger(unitId, t('domus', 'Unit'));
+                if (unitResult.errorMessage) {
+                    rowErrors.push(unitResult.errorMessage);
+                } else if (unitResult.value !== null) {
+                    payload.unitId = unitResult.value;
+                }
+                const distributionResult = parseOptionalInteger(distributionKeyId, t('domus', 'Distribution key'));
+                if (distributionResult.errorMessage) {
+                    rowErrors.push(distributionResult.errorMessage);
+                } else if (distributionResult.value !== null) {
+                    payload.distributionKeyId = distributionResult.value;
+                }
+
+                if (periodFrom) payload.periodFrom = periodFrom;
+                if (periodTo) payload.periodTo = periodTo;
+                if (description) payload.description = description;
+
+                if (!payload.account) {
+                    rowErrors.push(t('domus', 'Account is required.'));
+                }
+                if (!payload.date) {
+                    rowErrors.push(t('domus', 'Invoice date is required.'));
+                }
+                if (payload.amount === undefined || payload.amount === '') {
+                    rowErrors.push(t('domus', 'Amount is required.'));
+                } else if (Number.isNaN(Number(payload.amount))) {
+                    rowErrors.push(t('domus', 'Enter a valid amount.'));
+                }
+                if (payload.propertyId === undefined && payload.unitId === undefined) {
+                    rowErrors.push(t('domus', 'At least one relation is required.'));
+                }
+
+                if (rowErrors.length) {
+                    errors.push(t('domus', 'Row {row}: {message}', { row: rowNumber, message: rowErrors.join(' ') }));
+                    return;
+                }
+
+                entries.push({ payload, rowNumber });
+            });
+
+            return { entries, errors };
+        }
+
+        function parseOptionalInteger(value, label) {
+            if (!value) {
+                return { value: null, errorMessage: '' };
+            }
+            const parsed = parseInt(value, 10);
+            if (Number.isNaN(parsed)) {
+                return { value: null, errorMessage: t('domus', '{label} must be a number.', { label }) };
+            }
+            return { value: parsed, errorMessage: '' };
+        }
+
+        function bindImportActions() {
+            const downloadBtn = document.getElementById('domus-booking-csv-template');
+            const importBtn = document.getElementById('domus-booking-csv-import');
+            const toggleBtn = document.getElementById('domus-booking-import-toggle');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', downloadBookingCsvTemplate);
+            }
+            if (importBtn) {
+                importBtn.addEventListener('click', handleCsvImport);
+            }
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    const panel = document.querySelector('.domus-booking-import');
+                    if (!panel) {
+                        return;
+                    }
+                    const isCollapsed = panel.classList.toggle('domus-collapsed');
+                    toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+                });
+            }
+        }
+
+        function updateImportStatus(message) {
+            const status = document.getElementById('domus-booking-import-status');
+            if (status) {
+                status.textContent = message;
+            }
+        }
+
+        function handleCsvImport() {
+            const input = document.getElementById('domus-booking-csv-input');
+            const raw = input ? input.value.trim() : '';
+            if (!raw) {
+                Domus.UI.showNotification(t('domus', 'Paste CSV data before importing.'), 'error');
+                updateImportStatus(t('domus', 'No CSV data provided.'));
+                return;
+            }
+
+            const result = parseBookingCsv(raw);
+            if (result.errors.length) {
+                Domus.UI.showNotification(t('domus', 'Please fix the CSV errors before importing.'), 'error');
+                updateImportStatus(result.errors.join(' '));
+                return;
+            }
+
+            if (!result.entries.length) {
+                Domus.UI.showNotification(t('domus', 'No bookings found to import.'), 'error');
+                updateImportStatus(t('domus', 'No bookings found in the CSV.'));
+                return;
+            }
+
+            updateImportStatus(t('domus', 'Importing {count} bookings…', { count: result.entries.length }));
+            const requests = result.entries.map(entry => (
+                Domus.Api.createBooking(entry.payload)
+                    .then(() => ({ ok: true, rowNumber: entry.rowNumber }))
+                    .catch(err => ({ ok: false, rowNumber: entry.rowNumber, message: err.message }))
+            ));
+
+            Promise.all(requests).then(results => {
+                const failures = results.filter(resultItem => !resultItem.ok);
+                const successCount = results.length - failures.length;
+
+                if (successCount > 0) {
+                    Domus.UI.showNotification(t('domus', 'Imported {count} bookings.', { count: successCount }), 'success');
+                    if (input) {
+                        input.value = '';
+                    }
+                }
+
+                if (failures.length) {
+                    const failureMessages = failures.map(item => t('domus', 'Row {row}: {message}', {
+                        row: item.rowNumber,
+                        message: item.message || t('domus', 'Import failed.')
+                    }));
+                    Domus.UI.showNotification(t('domus', 'Some bookings could not be imported.'), 'error');
+                    updateImportStatus(failureMessages.join(' '));
+                } else {
+                    updateImportStatus(t('domus', 'Import completed.'));
+                }
+
+                if (successCount > 0) {
+                    renderList();
+                }
+            });
         }
 
         function dedupeTargets(targets) {

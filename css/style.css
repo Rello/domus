@@ -758,6 +758,62 @@
     margin-top: 10px;
 }
 
+.domus-booking-import {
+    position: relative;
+}
+
+.domus-booking-import-toggle {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.domus-booking-import-toggle::after {
+    content: '▾';
+    float: right;
+}
+
+.domus-booking-import.domus-collapsed .domus-booking-import-toggle::after {
+    content: '▸';
+}
+
+.domus-booking-import.domus-collapsed .domus-booking-import-body {
+    display: none;
+}
+
+.domus-booking-import-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.domus-booking-import-columns {
+    margin-bottom: 8px;
+}
+
+.domus-booking-import-label {
+    display: block;
+    margin-top: 8px;
+}
+
+.domus-booking-import textarea {
+    width: 100%;
+    min-height: 160px;
+    margin-top: 6px;
+    font-family: monospace;
+}
+
+.domus-booking-import-status {
+    margin-top: 8px;
+    white-space: pre-line;
+}
+
 .domus-info-list {
     display: grid;
     grid-template-columns: 1fr;
