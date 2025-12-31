@@ -4214,7 +4214,7 @@
                         '</div>';
 
                     const isBuildingMgmt = Domus.Role.isBuildingMgmtView();
-                    const bookingsList = bookings || [];
+                    const bookingsList = filterBookingsForRole(bookings || []);
                     const distributionPromise = isBuildingMgmt ? buildDistributionTitleMap(bookingsList) : Promise.resolve({});
 
                     distributionPromise.then(distMap => {
@@ -4263,6 +4263,25 @@
 
         function bindList() {
             Domus.UI.bindRowNavigation();
+        }
+
+        function filterBookingsForRole(bookings) {
+            const currentRole = Domus.Role.getCurrentRole();
+            return (bookings || []).filter(booking => {
+                const accountNumber = booking?.account !== undefined && booking?.account !== null
+                    ? String(booking.account)
+                    : '';
+                if (!accountNumber) {
+                    return true;
+                }
+                if (currentRole === 'landlord') {
+                    return !accountNumber.startsWith('4');
+                }
+                if (currentRole === 'buildingMgmt') {
+                    return !accountNumber.startsWith('2');
+                }
+                return true;
+            });
         }
 
         function renderInline(bookings, options = {}) {
