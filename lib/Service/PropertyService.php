@@ -3,6 +3,7 @@
 namespace OCA\Domus\Service;
 
 use OCA\Domus\Db\BookingMapper;
+use OCA\Domus\Db\DocumentLinkMapper;
 use OCA\Domus\Db\Property;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\TenancyMapper;
@@ -15,6 +16,7 @@ class PropertyService {
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
         private BookingMapper $bookingMapper,
+        private DocumentLinkMapper $documentLinkMapper,
         private TenancyMapper $tenancyMapper,
         private IL10N $l10n,
         private LoggerInterface $logger,
@@ -101,6 +103,14 @@ class PropertyService {
             $property->setUnitCount(count($units));
 
             $bookings = $this->bookingMapper->findByUser($property->getUserId(), ['propertyId' => $property->getId()]);
+            $bookingIds = array_values(array_filter(array_map(fn($booking) => $booking->getId(), $bookings)));
+            if ($bookingIds !== []) {
+                $documentedIds = $this->documentLinkMapper->findEntityIdsWithDocuments($property->getUserId(), 'booking', $bookingIds);
+                $documentedLookup = array_fill_keys($documentedIds, true);
+                foreach ($bookings as $booking) {
+                    $booking->setHasDocuments(isset($documentedLookup[$booking->getId()]));
+                }
+            }
             $property->setBookings($bookings);
             $annualResult = 0.0;
             foreach ($bookings as $booking) {

@@ -3,6 +3,7 @@
 namespace OCA\Domus\Service;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
+use OCA\Domus\Db\DocumentLinkMapper;
 use OCA\Domus\Db\DistributionKeyMapper;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\UnitMapper;
@@ -11,6 +12,7 @@ use OCP\IL10N;
 class BookingService {
     public function __construct(
         private BookingMapper $bookingMapper,
+        private DocumentLinkMapper $documentLinkMapper,
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
         private DistributionKeyMapper $distributionKeyMapper,
@@ -20,7 +22,19 @@ class BookingService {
     }
 
     public function listBookings(string $userId, array $filter = []): array {
-        return $this->bookingMapper->findByUser($userId, $filter);
+        $bookings = $this->bookingMapper->findByUser($userId, $filter);
+        $bookingIds = array_values(array_filter(array_map(fn(Booking $booking) => $booking->getId(), $bookings)));
+        if ($bookingIds === []) {
+            return $bookings;
+        }
+
+        $documentedIds = $this->documentLinkMapper->findEntityIdsWithDocuments($userId, 'booking', $bookingIds);
+        $documentedLookup = array_fill_keys($documentedIds, true);
+        foreach ($bookings as $booking) {
+            $booking->setHasDocuments(isset($documentedLookup[$booking->getId()]));
+        }
+
+        return $bookings;
     }
 
     public function getBookingForUser(int $id, string $userId): Booking {

@@ -81,6 +81,11 @@
     gap: 6px;
 }
 
+.domus-doc-indicator {
+    display: inline-flex;
+    align-items: center;
+}
+
 .domus-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -994,6 +999,10 @@
 
 .domus-icon-delete {
     background-image: url(../img/delete.svg);
+}
+
+.domus-icon-document {
+    background-image: url(../img/icon.svg);
 }
 
 @media (max-width: 1000px) {
