@@ -66,5 +66,13 @@ return [
 
         // Dashboard
         ['name' => 'Dashboard#summary', 'url' => '/dashboard/summary', 'verb' => 'GET'],
+
+        // Accounts
+        ['name' => 'Account#index', 'url' => '/accounts', 'verb' => 'GET'],
+        ['name' => 'Account#create', 'url' => '/accounts', 'verb' => 'POST'],
+        ['name' => 'Account#update', 'url' => '/accounts/{id}', 'verb' => 'PUT'],
+        ['name' => 'Account#disable', 'url' => '/accounts/{id}/disable', 'verb' => 'POST'],
+        ['name' => 'Account#enable', 'url' => '/accounts/{id}/enable', 'verb' => 'POST'],
+        ['name' => 'Account#destroy', 'url' => '/accounts/{id}', 'verb' => 'DELETE'],
     ],
 ];
