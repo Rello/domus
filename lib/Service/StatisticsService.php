@@ -14,6 +14,7 @@ class StatisticsService {
                 private TenancyService $tenancyService,
                 private UnitMapper $unitMapper,
                 private PermissionService $permissionService,
+                private AccountService $accountService,
                 private IL10N $l10n,
                 private LoggerInterface $logger,
         ) {
@@ -21,25 +22,28 @@ class StatisticsService {
 
         public function unitStatPerYear(int $unitId, string $userId, int $year): array {
                 $unit = $this->loadUnit($unitId, $userId);
+                $topAccountMap = $this->accountService->getTopAccountNumberMap();
 
                 $definitions = [
                         'revenue' => $this->normalizeColumns(StatisticCalculations::unitRevenue()),
                         'cost' => $this->normalizeColumns(StatisticCalculations::unitCost()),
                 ];
 
-                return $this->buildStatisticsTables($definitions, function (array $tableDefinitions) use ($unitId, $unit, $userId, $year) {
+                return $this->buildStatisticsTables($definitions, function (array $tableDefinitions) use ($unitId, $unit, $userId, $year, $topAccountMap) {
                         return $this->buildStatisticsRowForUnitYear(
                                 $unitId,
                                 $unit,
                                 $userId,
                                 $year,
                                 $tableDefinitions,
+                                $topAccountMap,
                         );
                 });
         }
 
         public function unitStatsAllYears(int $unitId, string $userId, ?array $columns = null): array {
                 $unit = $this->loadUnit($unitId, $userId);
+                $topAccountMap = $this->accountService->getTopAccountNumberMap();
 
                 $definitions = [
                         'revenue' => $this->normalizeColumns(StatisticCalculations::unitRevenue()),
@@ -47,17 +51,26 @@ class StatisticsService {
                 ];
 
                 $grouped = $this->bookingService->sumByAccountGrouped($userId, null, 'unit', $unitId);
-                $perYearSums = $this->mapSumsByYear($grouped);
+                $perYearSums = $this->mapSumsByYear($grouped, $topAccountMap);
                 $years = $this->collectYears($perYearSums, $this->tenancyService->getTenanciesForUnit($unitId, $userId));
 
                 $tables = $this->initializeStatisticsTables($definitions);
                 foreach ($years as $year) {
-                        $tenancySums = $this->tenancyService->sumTenancyForYear($userId, $unitId, $year);
-                        $unitSums = $this->buildUnitSums($unit);
+                        $tenancySums = $this->mapSumsToTopAccounts(
+                                $this->tenancyService->sumTenancyForYear($userId, $unitId, $year),
+                                $topAccountMap,
+                        );
+                        $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                         $sums = $this->mergeSums($perYearSums[$year] ?? [], $tenancySums, $unitSums);
 
                         foreach ($definitions as $tableName => $tableDefinitions) {
-                                $tables[$tableName]['rows'][] = $this->buildRowForYear($year, $tableDefinitions, $sums, ['unit' => $unit]);
+                                $tables[$tableName]['rows'][] = $this->buildRowForYear(
+                                        $year,
+                                        $tableDefinitions,
+                                        $sums,
+                                        ['unit' => $unit],
+                                        $topAccountMap,
+                                );
                         }
                 }
 
@@ -70,13 +83,21 @@ class StatisticsService {
 
         public function unitOverview(int $year, string $userId, ?int $propertyId = null, string $role = 'landlord'): array {
                 $definitions = $this->normalizeColumns(StatisticCalculations::unitOverview());
+                $topAccountMap = $this->accountService->getTopAccountNumberMap();
                 $isBuildingManagement = $this->permissionService->isBuildingManagement($role);
                 $propertyFilter = $isBuildingManagement ? $propertyId : null;
                 $units = $this->unitMapper->findByUser($userId, $propertyFilter, !$isBuildingManagement);
                 $rows = [];
 
                 foreach ($units as $unit) {
-                        $row = $this->buildStatisticsRowForUnitYear($unit->getId(), $unit, $userId, $year, $definitions);
+                        $row = $this->buildStatisticsRowForUnitYear(
+                                $unit->getId(),
+                                $unit,
+                                $userId,
+                                $year,
+                                $definitions,
+                                $topAccountMap,
+                        );
 
                         $rows[] = $row;
                 }
@@ -118,20 +139,23 @@ class StatisticsService {
                 return false;
         }
 
-        private function mapSums(array $rows): array {
+        private function mapSums(array $rows, array $topAccountMap): array {
                 $sums = [];
                 foreach ($rows as $row) {
                         if (!isset($row['account'])) {
                                 $this->logger->info('StatisticsService: skipping row missing account', ['row' => $row]);
                                 continue;
                         }
-                        $account = (string)$row['account'];
-                        $sums[$account] = (float)($row['total'] ?? 0.0);
+                        $account = $this->resolveTopAccountNumber((string)$row['account'], $topAccountMap);
+                        if (!isset($sums[$account])) {
+                                $sums[$account] = 0.0;
+                        }
+                        $sums[$account] += (float)($row['total'] ?? 0.0);
                 }
                 return $sums;
         }
 
-        private function mapSumsByYear(array $rows): array {
+        private function mapSumsByYear(array $rows, array $topAccountMap): array {
                 $perYear = [];
                 foreach ($rows as $row) {
                         if (!isset($row['year'])) {
@@ -147,7 +171,11 @@ class StatisticsService {
                         if (!isset($perYear[$year])) {
                                 $perYear[$year] = [];
                         }
-                        $perYear[$year][$account] = (float)($row['total'] ?? 0.0);
+                        $account = $this->resolveTopAccountNumber($account, $topAccountMap);
+                        if (!isset($perYear[$year][$account])) {
+                                $perYear[$year][$account] = 0.0;
+                        }
+                        $perYear[$year][$account] += (float)($row['total'] ?? 0.0);
                 }
                 return $perYear;
         }
@@ -191,16 +219,16 @@ class StatisticsService {
                 return $years;
         }
 
-        private function buildRowForYear(int $year, array $definitions, array $sums, array $context = []): array {
+        private function buildRowForYear(int $year, array $definitions, array $sums, array $context = [], array $topAccountMap = []): array {
                 $row = [];
                 foreach ($definitions as $column) {
                         $key = $column['key'];
-                        $row[$key] = $this->resolveColumnValue($column, $year, $sums, $context, $row);
+                        $row[$key] = $this->resolveColumnValue($column, $year, $sums, $context, $row, $topAccountMap);
                 }
                 return $row;
         }
 
-        private function resolveColumnValue(array $column, int $year, array $sums, array $context, array $computed): mixed {
+        private function resolveColumnValue(array $column, int $year, array $sums, array $context, array $computed, array $topAccountMap): mixed {
                 $key = $column['key'];
 
                 if (($column['type'] ?? '') === 'year') {
@@ -212,16 +240,17 @@ class StatisticsService {
                 }
 
                 if (isset($column['account'])) {
-                        return round($this->get($sums, (string)$column['account']), 2);
+                        $account = $this->resolveTopAccountNumber((string)$column['account'], $topAccountMap);
+                        return round($this->get($sums, $account), 2);
                 }
                 if (isset($column['rule'])) {
-                        return round($this->evalRule($sums, $column['rule'], $computed), 2);
+                        return round($this->evalRule($sums, $column['rule'], $computed, $topAccountMap), 2);
                 }
 
                 return null;
         }
 
-        private function evalRule(array $sums, array $rule, array $computed = []): float {
+        private function evalRule(array $sums, array $rule, array $computed = [], array $topAccountMap = []): float {
                 $prev = 0.0;
 
                 foreach ($rule as $step) {
@@ -241,7 +270,8 @@ class StatisticsService {
                                         return (float)($computed[$arg] ?? 0.0);
                                 }
                                 // Fallback: treat as account number / sum key
-                                return $this->get($sums, (string)$arg);
+                                $account = $this->resolveTopAccountNumber((string)$arg, $topAccountMap);
+                                return $this->get($sums, $account);
                         }, $args);
 
                         switch ($op) {
@@ -341,7 +371,7 @@ class StatisticsService {
                 return $tables;
         }
 
-        private function buildStatisticsRowForUnitYear(int $unitId, ?Unit $unit, string $userId, int $year, array $definitions): array {
+        private function buildStatisticsRowForUnitYear(int $unitId, ?Unit $unit, string $userId, int $year, array $definitions, array $topAccountMap = []): array {
                 $this->logger->info('StatisticsService: calculating unit stats', [
                         'unitId' => $unitId,
                         'userId' => $userId,
@@ -355,15 +385,18 @@ class StatisticsService {
                         'grouped' => $grouped,
                 ]);
 
-                $sums = $this->mapSums($grouped);
+                $sums = $this->mapSums($grouped, $topAccountMap);
                 $this->logger->info('StatisticsService: sums for unit extracted', ['sums' => $sums]);
 
-                $tenancySums = $this->tenancyService->sumTenancyForYear($userId, $unitId, $year);
-                $unitSums = $this->buildUnitSums($unit);
+                $tenancySums = $this->mapSumsToTopAccounts(
+                        $this->tenancyService->sumTenancyForYear($userId, $unitId, $year),
+                        $topAccountMap,
+                );
+                $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                 $mergedSums = $this->mergeSums($sums, $tenancySums, $unitSums);
                 $this->logger->info('StatisticsService: merged booking and tenancy sums', ['sums' => $mergedSums]);
 
-                $row = $this->buildRowForYear($year, $definitions, $mergedSums, ['unit' => $unit]);
+                $row = $this->buildRowForYear($year, $definitions, $mergedSums, ['unit' => $unit], $topAccountMap);
 
                 $this->logger->info('StatisticsService: calculated statistics row', ['row' => $row]);
 
@@ -390,6 +423,22 @@ class StatisticsService {
                         'format' => $col['format'] ?? null,
                         'unit' => $col['unit'] ?? null,
                 ], array_filter($definitions, fn(array $definition) => $definition['visible'] ?? true)));
+        }
+
+        private function resolveTopAccountNumber(string $account, array $topAccountMap): string {
+                return $this->accountService->resolveTopAccountNumber($account, $topAccountMap);
+        }
+
+        private function mapSumsToTopAccounts(array $sums, array $topAccountMap): array {
+                $mapped = [];
+                foreach ($sums as $account => $value) {
+                        $resolved = $this->resolveTopAccountNumber((string)$account, $topAccountMap);
+                        if (!isset($mapped[$resolved])) {
+                                $mapped[$resolved] = 0.0;
+                        }
+                        $mapped[$resolved] += (float)$value;
+                }
+                return $mapped;
         }
 
         private function addValues(float ...$values): float {

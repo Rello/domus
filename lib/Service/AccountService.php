@@ -158,6 +158,29 @@ class AccountService {
         return $this->resolveLabel($account, $l10n);
     }
 
+    public function getTopAccountNumberMap(): array {
+        $accounts = $this->accountMapper->findAllOrdered();
+        $accountsById = [];
+        foreach ($accounts as $account) {
+            $accountsById[$account->getId()] = $account;
+        }
+
+        $map = [];
+        foreach ($accounts as $account) {
+            $map[(string)$account->getNumber()] = $this->resolveTopAncestorNumber($account, $accountsById);
+        }
+
+        return $map;
+    }
+
+    public function resolveTopAccountNumber(string $number, ?array $topAccountMap = null): string {
+        if ($topAccountMap === null) {
+            $topAccountMap = $this->getTopAccountNumberMap();
+        }
+
+        return $topAccountMap[$number] ?? $number;
+    }
+
     public function assertAccountNumber(string $number): void {
         if (!$this->exists($number)) {
             throw new \InvalidArgumentException($this->l10n->t('Account is invalid.'));
@@ -242,6 +265,21 @@ class AccountService {
             'updatedAt' => $account->getUpdatedAt(),
             'usedInBookings' => isset($usage[$number]),
         ];
+    }
+
+    private function resolveTopAncestorNumber(Account $account, array $accountsById): string {
+        $current = $account;
+        $seen = [];
+
+        while ($current->getParentId() && isset($accountsById[$current->getParentId()])) {
+            if (isset($seen[$current->getId()])) {
+                break;
+            }
+            $seen[$current->getId()] = true;
+            $current = $accountsById[$current->getParentId()];
+        }
+
+        return (string)$current->getNumber();
     }
 
     private function buildHierarchy(array $accounts, ?IL10N $l10n = null, array $usage = []): array {
