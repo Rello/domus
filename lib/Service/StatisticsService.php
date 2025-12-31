@@ -261,7 +261,7 @@ class StatisticsService {
                         // 1) 'prev' special token -> last step result
                         // 2) previously computed column key present in $computed
                         // 3) account lookup in $sums
-                        $values = array_map(function ($arg) use (&$prev, $sums, $computed) {
+                        $values = array_map(function ($arg) use (&$prev, $sums, $computed, $topAccountMap) {
                                 if ($arg === 'prev') {
                                         return $prev;
                                 }
@@ -425,7 +425,7 @@ class StatisticsService {
                 ], array_filter($definitions, fn(array $definition) => $definition['visible'] ?? true)));
         }
 
-        private function resolveTopAccountNumber(string $account, array $topAccountMap): string {
+        private function resolveTopAccountNumber(string $account, ?array $topAccountMap = null): string {
                 return $this->accountService->resolveTopAccountNumber($account, $topAccountMap);
         }
 
