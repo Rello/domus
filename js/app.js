@@ -313,25 +313,43 @@
             }
         }
 
+        let accountHierarchy = null;
         let accounts = readAccounts();
+        if (Array.isArray(accounts)) {
+            accountHierarchy = accounts;
+            accounts = mapHierarchyToAccounts(accountHierarchy);
+        }
         Domus.accounts = accounts;
 
-        function setAccounts(nextAccounts) {
+        function setAccounts(nextAccounts, hierarchy = null) {
             accounts = nextAccounts || {};
+            accountHierarchy = hierarchy;
             Domus.accounts = accounts;
         }
 
         function toOptions(includePlaceholder = true, filterFn = null) {
-            let entries = Object.entries(accounts);
-            if (typeof filterFn === 'function') {
-                entries = entries.filter(([nr, data]) => filterFn(nr, data));
+            let entries = [];
+            if (accountHierarchy && accountHierarchy.length) {
+                entries = flattenHierarchy(accountHierarchy);
+            } else {
+                entries = Object.entries(accounts).map(([nr, data]) => ({
+                    number: nr,
+                    label: data && data.label ? data.label : '',
+                    status: data && data.status ? data.status : null,
+                    level: data && data.level ? data.level : 0
+                }));
             }
+            if (typeof filterFn === 'function') {
+                entries = entries.filter(entry => filterFn(entry.number, entry));
+            }
+            entries = entries.filter(entry => entry.status !== 'disabled');
 
-            const opts = entries.map(([nr, data]) => {
-                const translated = data && data.label ? data.label : '';
+            const opts = entries.map(entry => {
+                const prefix = entry.level ? `${'— '.repeat(entry.level)}` : '';
+                const labelText = `${prefix}${entry.number} ${entry.label || ''}`.trim();
                 return {
-                    value: nr,
-                    label: translated || nr
+                    value: entry.number,
+                    label: labelText || entry.number
                 };
             });
             if (includePlaceholder) {
@@ -363,13 +381,21 @@
             return result;
         }
 
-        function updateAccountsFromHierarchy(nodes) {
+        function mapHierarchyToAccounts(nodes) {
             const entries = flattenHierarchy(nodes || []);
             const mapped = {};
             entries.forEach(entry => {
-                mapped[entry.number] = { label: entry.label };
+                mapped[entry.number] = {
+                    label: entry.label,
+                    status: entry.status,
+                    level: entry.level
+                };
             });
-            setAccounts(mapped);
+            return mapped;
+        }
+
+        function updateAccountsFromHierarchy(nodes) {
+            setAccounts(mapHierarchyToAccounts(nodes || []), nodes || []);
         }
 
         function buildParentOptions(nodes, options = {}) {
@@ -409,12 +435,12 @@
             const hasChildren = !!(account.children && account.children.length);
             const isSystem = account.isSystem === 1 || account.isSystem === true;
             const usedInBookings = account.usedInBookings === true;
-            const cannotModify = isSystem || usedInBookings;
-            const deleteBlocked = cannotModify || hasChildren;
+            const cannotModify = isSystem;
+            const deleteBlocked = isSystem || usedInBookings || hasChildren;
             const disableLabel = isDisabled ? t('domus', 'Enable') : t('domus', 'Disable');
             const disableTitle = isSystem
                 ? t('domus', 'System accounts cannot be disabled.')
-                : (usedInBookings ? t('domus', 'Accounts in bookings cannot be disabled.') : '');
+                : '';
             let deleteTitle = '';
             if (isSystem) {
                 deleteTitle = t('domus', 'System accounts cannot be deleted.');

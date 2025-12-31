@@ -24,7 +24,7 @@ class PageController extends Controller {
         #[NoCSRFRequired]
     public function index(): TemplateResponse {
         return new TemplateResponse(Application::APP_ID, 'main', [
-            'accounts' => $this->accountService->listAccounts($this->l10n),
+            'accounts' => $this->accountService->getHierarchyForUser($this->getUserId(), $this->l10n),
         ]);
     }
 }

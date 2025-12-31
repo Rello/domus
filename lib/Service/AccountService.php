@@ -127,9 +127,7 @@ class AccountService {
             throw new \InvalidArgumentException($this->l10n->t('Invalid status.'));
         }
         $account = $this->getAccount($id);
-        if ($status === 'disabled') {
-            $this->assertAccountMutable($account, $userId);
-        }
+        $this->assertAccountToggleAllowed($account);
         $account->setStatus($status);
         $account->setUpdatedAt(time());
         return $this->accountMapper->update($account);
@@ -187,6 +185,16 @@ class AccountService {
         }
     }
 
+    public function assertAccountActive(string $number): void {
+        $account = $this->accountMapper->findByNumber($number);
+        if (!$account) {
+            throw new \InvalidArgumentException($this->l10n->t('Account is invalid.'));
+        }
+        if ($account->getStatus() === 'disabled') {
+            throw new \InvalidArgumentException($this->l10n->t('Account is disabled.'));
+        }
+    }
+
     private function getAccount(int $id): Account {
         $account = $this->accountMapper->findById($id);
         if (!$account) {
@@ -201,6 +209,12 @@ class AccountService {
         }
         if ($this->bookingMapper->countByAccount($userId, (string)$account->getNumber()) > 0) {
             throw new \RuntimeException($this->l10n->t('Account is used in bookings and cannot be modified.'));
+        }
+    }
+
+    private function assertAccountToggleAllowed(Account $account): void {
+        if ((int)$account->getIsSystem() === 1) {
+            throw new \RuntimeException($this->l10n->t('System accounts cannot be modified.'));
         }
     }
 
