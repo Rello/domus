@@ -4,7 +4,7 @@
     <name>Domus</name>
     <summary>Property and tenancy management</summary>
     <description>Domus verwaltet Immobilien, Mietverhältnisse und Abrechnungen direkt in Nextcloud.</description>
-    <version>0.1.7</version>
+    <version>0.1.8</version>
     <licence>agpl</licence>
     <author>Domus</author>
     <namespace>Domus</namespace>

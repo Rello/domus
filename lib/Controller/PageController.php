@@ -10,12 +10,14 @@ use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IRequest;
 use OCP\IL10N;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\IUserSession;
 
 class PageController extends Controller {
     public function __construct(
         IRequest $request,
         private AccountService $accountService,
-        private IL10N $l10n,
+		private IUserSession $userSession,
+		private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -27,4 +29,8 @@ class PageController extends Controller {
             'accounts' => $this->accountService->getHierarchyForUser($this->getUserId(), $this->l10n),
         ]);
     }
+
+	private function getUserId(): string {
+		return $this->userSession->getUser()?->getUID() ?? '';
+	}
 }
