@@ -4394,6 +4394,7 @@
                 }
             }
             lines.push(bookingCsvColumns.join(','));
+            lines.push('4000,2024-01-15,2024-01-15,120.50,1,10,3,2024-01-01,2024-01-31,Sample booking');
             return lines.join('\n') + '\n';
         }
 
