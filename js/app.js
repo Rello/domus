@@ -4713,7 +4713,8 @@
             });
 
             if (isBuildingMgmt && distributionSelect) {
-                toggleUnitField(distributionSelect.value === unitAllocationValue);
+                const initialDistribution = distributionSelect.dataset.selected || distributionSelect.value || '';
+                toggleUnitField(initialDistribution === unitAllocationValue);
             }
         }
 

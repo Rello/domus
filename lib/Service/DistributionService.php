@@ -118,10 +118,34 @@ class DistributionService {
         $topAccountMap = $this->accountService->getTopAccountNumberMap();
         $rows = [];
         foreach ($bookings as $booking) {
+            $distributionKeyId = $booking->getDistributionKeyId();
             if ($booking->getUnitId() !== null) {
+                if ((int)$booking->getUnitId() !== $unitId || $distributionKeyId !== null) {
+                    continue;
+                }
+                $account = $this->accountService->resolveTopAccountNumber((string)$booking->getAccount(), $topAccountMap);
+                if (!isset($rows[$account])) {
+                    $rows[$account] = [
+                        'bookingId' => $booking->getId(),
+                        'account' => $account,
+                        'accountLabel' => $this->accountService->label($account, $this->l10n),
+                        'date' => $booking->getDate(),
+                        'distributionKeyId' => null,
+                        'distributionKeyName' => $this->l10n->t('Unit allocation'),
+                        'distributionKeyType' => 'unit-allocation',
+                        'shareValue' => 1,
+                        'shareBase' => 1,
+                        'weight' => 1,
+                        'total' => 0.0,
+                        'amount' => 0.0,
+                    ];
+                }
+
+                $rows[$account]['total'] += (float)$booking->getAmount();
+                $rows[$account]['amount'] += (float)$booking->getAmount();
                 continue;
             }
-            $distributionKeyId = $booking->getDistributionKeyId();
+
             if ($distributionKeyId === null) {
                 continue;
             }
