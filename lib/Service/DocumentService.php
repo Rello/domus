@@ -1,8 +1,6 @@
 <?php
 
 namespace OCA\Domus\Service;
-
-use OCA\Domus\Accounting\Accounts;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DocumentLink;
 use OCA\Domus\Db\DocumentLinkMapper;
@@ -31,6 +29,7 @@ class DocumentService {
         private TenancyMapper $tenancyMapper,
         private BookingMapper $bookingMapper,
         private PartnerMapper $partnerMapper,
+        private AccountService $accountService,
         private LoggerInterface $logger,
     ) {
     }
@@ -190,7 +189,7 @@ class DocumentService {
                 $data['booking'] = [
                     'date' => $booking->getDate(),
                     'account' => $booking->getAccount(),
-                    'accountLabel' => Accounts::label((string)$booking->getAccount(), $this->l10n),
+                    'accountLabel' => $this->accountService->label((string)$booking->getAccount(), $this->l10n),
                     'amount' => $booking->getAmount(),
                 ];
             }
@@ -279,7 +278,7 @@ class DocumentService {
         }
 
         $account = $booking->getAccount();
-        $accountLabel = Accounts::label((string)$account, $this->l10n);
+        $accountLabel = $this->accountService->label((string)$account, $this->l10n);
         if ($account !== null) {
             $accountPart = (string)$account;
             if ($accountLabel) {

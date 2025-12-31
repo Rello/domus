@@ -114,4 +114,31 @@ class BookingMapper extends QBMapper {
 
         return $qb->executeQuery()->fetchAll();
     }
+
+    /**
+     * @throws Exception
+     */
+    public function countByAccount(string $userId, string $accountNumber): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('account', $qb->createNamedParameter((int)$accountNumber, $qb::PARAM_INT)));
+
+        return (int)$qb->executeQuery()->fetchOne();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function findAccountUsage(string $userId): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('account')
+            ->selectAlias($qb->createFunction('COUNT(*)'), 'usage_count')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->groupBy('account');
+
+        return $qb->executeQuery()->fetchAll();
+    }
 }

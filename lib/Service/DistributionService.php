@@ -1,8 +1,6 @@
 <?php
 
 namespace OCA\Domus\Service;
-
-use OCA\Domus\Accounting\Accounts;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DistributionKey;
@@ -21,6 +19,7 @@ class DistributionService {
         private DistributionKeyUnitMapper $distributionKeyUnitMapper,
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
+        private AccountService $accountService,
         private IDBConnection $connection,
         private IL10N $l10n,
     ) {
@@ -144,7 +143,7 @@ class DistributionService {
                 $rows[$account] = [
                     'bookingId' => $booking->getId(),
                     'account' => $booking->getAccount(),
-                    'accountLabel' => Accounts::label((string)$booking->getAccount(), $this->l10n),
+                    'accountLabel' => $this->accountService->label((string)$booking->getAccount(), $this->l10n),
                     'date' => $booking->getDate(),
                     'distributionKeyId' => $distributionKey->getId(),
                     'distributionKeyName' => $distributionKey->getName(),
