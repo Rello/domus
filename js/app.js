@@ -1172,7 +1172,7 @@
                 '<div class="domus-kpi-content">' +
                 '<div class="domus-kpi-headline">' + headline + '</div>' +
                 '<div class="domus-kpi-value">' + value + '</div>' +
-                '<button type="button" class="domus-kpi-more"' + detailTarget + '>' + linkLabel + '</button>' +
+                '<a href="#" class="domus-kpi-more"' + detailTarget + '>' + linkLabel + '</a>' +
                 '</div>' +
                 chart +
                 '</div>';
@@ -3404,7 +3404,10 @@
             }
 
             document.querySelectorAll('.domus-kpi-more[data-kpi-target]').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', (event) => {
+                    if (btn.tagName.toLowerCase() === 'a') {
+                        event.preventDefault();
+                    }
                     const target = btn.getAttribute('data-kpi-target');
                     const content = target ? detailMap[target] : null;
                     if (!content) {
