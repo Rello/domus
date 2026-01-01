@@ -5217,6 +5217,18 @@
                         initialEntries: [{ account: booking.account, amount: booking.amount }],
                         docWidget
                     });
+                    modal.modalEl.querySelector('#domus-booking-delete')?.addEventListener('click', () => {
+                        if (!confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Booking') }))) {
+                            return;
+                        }
+                        Domus.Api.deleteBooking(id)
+                            .then(() => {
+                                Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Booking') }), 'success');
+                                modal.close();
+                                refreshBookingContext(refreshContext);
+                            })
+                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
@@ -5467,6 +5479,7 @@
                 '</div>' +
                 '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                (booking?.id ? '<button type="button" class="domus-ghost" id="domus-booking-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' : '') +
                 '<button type="button" id="domus-booking-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
                 '</div>' +
                 '</form>' +
