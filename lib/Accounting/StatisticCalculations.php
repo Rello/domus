@@ -35,7 +35,7 @@ class StatisticCalculations {
                 'label' => 'Taxes',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['gwb', 'abschr']],
-                    ['op' => 'mul', 'args' => ['prev', '2009']],
+                    ['op' => 'mul', 'args' => ['prev', 'taxRate']],
                 ],
             ],
             [
@@ -114,7 +114,7 @@ class StatisticCalculations {
                 'label' => 'Taxes',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['gwb', 'abschr']],
-                    ['op' => 'mul', 'args' => ['prev', '2009']],
+                    ['op' => 'mul', 'args' => ['prev', 'taxRate']],
                 ],
                 'visible' => false,
             ],

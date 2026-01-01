@@ -5305,7 +5305,7 @@
                 }
                 Domus.Api.updateSettings({ taxRate })
                     .then(response => {
-                        const nextValue = response?.taxRate ?? taxRate;
+                        const nextValue = response?.settings?.taxRate ?? taxRate;
                         const input = form.querySelector('[name="taxRate"]');
                         if (input) {
                             input.value = nextValue;
@@ -5320,10 +5320,11 @@
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading…'));
             Domus.Api.getSettings()
-                .then(settings => {
+                .then(response => {
+                    const settings = response?.settings || {};
                     const content = '<div class="domus-settings">' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
-                        buildForm(settings || {}) +
+                        buildForm(settings) +
                         '</div>';
                     Domus.UI.renderContent(content);
                     bindForm();

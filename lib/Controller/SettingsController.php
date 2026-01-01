@@ -27,30 +27,72 @@ class SettingsController extends Controller {
     #[NoAdminRequired]
     public function show(): DataResponse {
         return new DataResponse([
-            'taxRate' => $this->getTaxRate($this->getUserId()),
+            'settings' => $this->getSettings($this->getUserId()),
         ]);
     }
 
     #[NoAdminRequired]
-    public function update(?string $taxRate = null): DataResponse {
-        $taxRate = $taxRate ?? '0';
-        if ($taxRate === '') {
-            $taxRate = '0';
-        }
-        if (!is_numeric($taxRate)) {
-            return $this->validationError($this->l10n->t('Enter a valid amount.'));
-        }
+    public function update(): DataResponse {
+        $userId = $this->getUserId();
+        $definitions = $this->getSettingsDefinition();
+        $params = $this->request->getParams();
+        $updated = [];
 
-        $normalized = (string)(float)$taxRate;
-        $this->config->setUserValue($this->getUserId(), Application::APP_ID, self::CONFIG_TAX_RATE, $normalized);
+        foreach ($definitions as $key => $definition) {
+            if (!array_key_exists($key, $params)) {
+                continue;
+            }
+
+            $normalized = $this->normalizeSettingValue($key, $params[$key]);
+            if ($normalized === null) {
+                return $this->validationError($this->l10n->t('Enter a valid amount.'));
+            }
+
+            $this->config->setUserValue($userId, Application::APP_ID, $key, $normalized);
+            $updated[$key] = $normalized;
+        }
 
         return new DataResponse([
-            'taxRate' => $normalized,
+            'settings' => $this->getSettings($userId),
+            'updated' => $updated,
         ]);
     }
 
-    private function getTaxRate(string $userId): string {
-        return $this->config->getUserValue($userId, Application::APP_ID, self::CONFIG_TAX_RATE, '0');
+    private function getSettingsDefinition(): array {
+        return [
+            self::CONFIG_TAX_RATE => [
+                'default' => '0',
+            ],
+        ];
+    }
+
+    private function getSettings(string $userId): array {
+        $settings = [];
+        foreach ($this->getSettingsDefinition() as $key => $definition) {
+            $settings[$key] = $this->config->getUserValue(
+                $userId,
+                Application::APP_ID,
+                $key,
+                $definition['default'] ?? '',
+            );
+        }
+
+        return $settings;
+    }
+
+    private function normalizeSettingValue(string $key, mixed $value): ?string {
+        if ($key === self::CONFIG_TAX_RATE) {
+            $normalized = $value === null ? '' : trim((string)$value);
+            if ($normalized === '') {
+                $normalized = '0';
+            }
+            if (!is_numeric($normalized)) {
+                return null;
+            }
+            return (string)(float)$normalized;
+        }
+
+        return null;
     }
 
     private function getUserId(): string {

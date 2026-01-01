@@ -65,7 +65,7 @@ class StatisticsService {
                         );
                         $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                         $sums = $this->mergeSums($perYearSums[$year] ?? [], $tenancySums, $unitSums);
-                        $sums = $this->applyTaxRateSetting($sums, $userId, $topAccountMap);
+                        $sums = $this->applyUserTaxRate($sums, $userId);
 
                         foreach ($definitions as $tableName => $tableDefinitions) {
                                 $tables[$tableName]['rows'][] = $this->buildRowForYear(
@@ -398,7 +398,7 @@ class StatisticsService {
                 );
                 $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                 $mergedSums = $this->mergeSums($sums, $tenancySums, $unitSums);
-                $mergedSums = $this->applyTaxRateSetting($mergedSums, $userId, $topAccountMap);
+                $mergedSums = $this->applyUserTaxRate($mergedSums, $userId);
                 $this->logger->info('StatisticsService: merged booking and tenancy sums', ['sums' => $mergedSums]);
 
                 $row = $this->buildRowForYear($year, $definitions, $mergedSums, ['unit' => $unit], $topAccountMap);
@@ -446,10 +446,8 @@ class StatisticsService {
                 return $mapped;
         }
 
-        private function applyTaxRateSetting(array $sums, string $userId, array $topAccountMap): array {
-                $taxRate = $this->getTaxRateSetting($userId);
-                $account = $this->resolveTopAccountNumber('2009', $topAccountMap);
-                $sums[$account] = $taxRate;
+        private function applyUserTaxRate(array $sums, string $userId): array {
+                $sums['taxRate'] = $this->getTaxRateSetting($userId);
                 return $sums;
         }
 
