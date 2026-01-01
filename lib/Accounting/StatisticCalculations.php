@@ -82,17 +82,17 @@ class StatisticCalculations {
             ['key' => 'unitId', 'label' => 'Unit ID', 'source' => 'unit', 'field' => 'id', 'visible' => false],
             ['key' => 'label', 'label' => 'Unit', 'source' => 'unit', 'field' => 'label'],
             ['key' => 'size', 'label' => 'Size', 'source' => 'unit', 'field' => 'livingArea', 'format' => 'number', 'unit' => 'm²'],
-            [
-                'key' => 'rentPerSqm',
-                'label' => 'Rent/m²',
-                'rule' => [
-                    ['op' => 'div', 'args' => ['rent', 'size']],
-                ],
-                'format' => 'number',
-                'unit' => '€/m²',
-            ],
+
             ['key' => 'rent', 'label' => 'Base rent', 'account' => '1000'],
-            [
+			[
+				'key' => 'rentPerSqm',
+				'label' => 'Rent/m²',
+				'rule' => [
+					['op' => 'div', 'args' => ['rent', 'size']],
+				],
+				'format' => 'number',
+				'unit' => '€/m²',
+			],            [
                 'key' => 'hgnu',
                 'label' => 'Non-allocable',
                 'rule' => [
@@ -119,14 +119,6 @@ class StatisticCalculations {
                 'visible' => false,
             ],
             [
-                'key' => 'gwn',
-                'label' => 'Gewinn Netto',
-                'rule' => [
-                    ['op' => 'sub', 'args' => ['gwb', 'steuer']],
-                ],
-                'visible' => false,
-            ],
-            [
                 'key' => 'gwb',
                 'label' => 'Gross profit',
                 'rule' => [
@@ -134,11 +126,19 @@ class StatisticCalculations {
                     ['op' => 'sub', 'args' => ['prev', 'zinsen']],
                 ],
             ],
+			[
+				'key' => 'gwn',
+				'label' => 'Gewinn Netto',
+				'rule' => [
+					['op' => 'sub', 'args' => ['gwb', 'steuer']],
+				],
+				'visible' => false,
+			],
             [
                 'key' => 'netRentab',
                 'label' => 'Rentability',
                 'rule' => [
-                    ['op' => 'div', 'args' => ['gwn', '3000']],
+                    ['op' => 'div', 'args' => ['gwb', '3000']],
                 ],
                 'format' => 'percentage',
             ],
