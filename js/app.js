@@ -3334,8 +3334,7 @@
                 return;
             }
 
-            const rootStyles = getComputedStyle(document.documentElement);
-            const lineColor = options.color || rootStyles.getPropertyValue('--color-primary').trim() || '#2d7fff';
+            const lineColor = '#0f6b2f';
 
             const chart = new Chart(ctx, {
                 type: 'line',
