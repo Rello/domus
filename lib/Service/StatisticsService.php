@@ -245,10 +245,12 @@ class StatisticsService {
 
                 if (isset($column['account'])) {
                         $account = $this->resolveTopAccountNumber((string)$column['account'], $topAccountMap);
-                        return round($this->get($sums, $account), 2);
+                        $value = $this->get($sums, $account);
+                        return $this->formatColumnValue($column, $value);
                 }
                 if (isset($column['rule'])) {
-                        return round($this->evalRule($sums, $column['rule'], $computed, $topAccountMap), 2);
+                        $value = $this->evalRule($sums, $column['rule'], $computed, $topAccountMap);
+                        return $this->formatColumnValue($column, $value);
                 }
 
                 return null;
@@ -301,6 +303,13 @@ class StatisticsService {
                 }
 
                 return $prev;
+        }
+
+        private function formatColumnValue(array $column, float $value): float {
+                if (($column['format'] ?? '') === 'percentage') {
+                        return round($value, 4);
+                }
+                return round($value, 2);
         }
 
         private function get(array $sums, string $nr): float {
