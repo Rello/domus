@@ -56,7 +56,7 @@
             if (value === undefined || value === null) return '';
             const numeric = Number(value);
             if (Number.isNaN(numeric)) return String(value);
-            return `${formatNumber(numeric * 100, { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}%`;
+            return `${formatNumber(numeric * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false })} %`;
         }
 
         function formatYear(value) {
