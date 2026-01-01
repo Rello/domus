@@ -2830,6 +2830,21 @@
             const rentabilityColor = rootStyles.getPropertyValue('--color-primary').trim() || '#2d7fff';
             const coldRentColor = rootStyles.getPropertyValue('--color-warning').trim() || '#f6b02e';
 
+            const formatAxisPercentage = (value) => {
+                const numeric = Number(value);
+                if (Number.isNaN(numeric)) {
+                    return '';
+                }
+                return `${Domus.Utils.formatNumber(numeric * 100, { minimumFractionDigits: 0, maximumFractionDigits: 0, useGrouping: false })}%`;
+            };
+            const formatAxisCurrency = (value) => {
+                const numeric = Number(value);
+                if (Number.isNaN(numeric)) {
+                    return '';
+                }
+                return `€ ${Domus.Utils.formatNumber(numeric, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            };
+
             rentabilityChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -2883,18 +2898,23 @@
                         y: {
                             position: 'left',
                             beginAtZero: true,
+                            min: 0,
+                            grid: {
+                                display: false
+                            },
                             ticks: {
-                                callback: (value) => Domus.Utils.formatPercentage(value)
+                                callback: formatAxisPercentage
                             }
                         },
                         y1: {
                             position: 'right',
                             beginAtZero: true,
+                            min: 0,
                             grid: {
-                                drawOnChartArea: false
+                                display: false
                             },
                             ticks: {
-                                callback: (value) => Domus.Utils.formatCurrency(value)
+                                callback: formatAxisCurrency
                             }
                         }
                     }
