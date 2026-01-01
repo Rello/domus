@@ -2845,6 +2845,26 @@
                 return `€ ${Domus.Utils.formatNumber(numeric, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
             };
 
+            const rentabilityValues = chartSeries.rentability.filter(value => value !== null);
+            const coldRentValues = chartSeries.coldRent.filter(value => value !== null);
+            const rentabilityMin = rentabilityValues.length ? Math.min(...rentabilityValues) : 0;
+            const rentabilityMax = rentabilityValues.length ? Math.max(...rentabilityValues) : 0;
+            const coldRentMax = coldRentValues.length ? Math.max(...coldRentValues) : 0;
+
+            let yAxisMin = rentabilityMin;
+            let yAxisMax = rentabilityMax;
+            if (yAxisMin === yAxisMax) {
+                yAxisMin -= 0.05;
+                yAxisMax += 0.05;
+            }
+
+            const zeroFraction = yAxisMax !== yAxisMin ? (0 - yAxisMin) / (yAxisMax - yAxisMin) : 0;
+            let y1AxisMin = 0;
+            let y1AxisMax = coldRentMax;
+            if (zeroFraction > 0 && zeroFraction < 1 && y1AxisMax !== 0) {
+                y1AxisMin = (zeroFraction * y1AxisMax) / (zeroFraction - 1);
+            }
+
             rentabilityChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -2895,10 +2915,15 @@
                         }
                     },
                     scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
                         y: {
                             position: 'left',
-                            beginAtZero: true,
-                            min: 0,
+                            min: yAxisMin,
+                            max: yAxisMax,
                             grid: {
                                 display: false
                             },
@@ -2908,8 +2933,8 @@
                         },
                         y1: {
                             position: 'right',
-                            beginAtZero: true,
-                            min: 0,
+                            min: y1AxisMin,
+                            max: y1AxisMax || undefined,
                             grid: {
                                 display: false
                             },
