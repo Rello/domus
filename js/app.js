@@ -2752,11 +2752,154 @@
      * Units view
      */
     Domus.Units = (function() {
+        let rentabilityChartInstance = null;
+
         function formatPartnerNames(partners) {
             return (partners || [])
                 .map(p => p.name)
                 .filter(Boolean)
                 .join(', ');
+        }
+
+        function normalizeChartValue(value) {
+            if (value === undefined || value === null || value === '') {
+                return null;
+            }
+            const numeric = Number(value);
+            return Number.isNaN(numeric) ? null : numeric;
+        }
+
+        function getRentabilityChartSeries(statistics) {
+            const rows = (statistics?.revenue?.rows || [])
+                .map(row => ({
+                    year: normalizeChartValue(row?.year),
+                    rentability: normalizeChartValue(row?.netRentab),
+                    coldRent: normalizeChartValue(row?.rent)
+                }))
+                .filter(row => row.year);
+
+            if (!rows.length) {
+                return null;
+            }
+
+            rows.sort((a, b) => a.year - b.year);
+
+            const labels = rows.map(row => String(row.year));
+            const rentability = rows.map(row => row.rentability);
+            const coldRent = rows.map(row => row.coldRent);
+            const hasValues = rentability.some(value => value !== null) || coldRent.some(value => value !== null);
+
+            if (!hasValues) {
+                return null;
+            }
+
+            return { labels, rentability, coldRent };
+        }
+
+        function buildRentabilityChartPanel(statistics) {
+            const chartSeries = getRentabilityChartSeries(statistics);
+            const header = Domus.UI.buildSectionHeader(t('domus', 'Rentability & cold rent'));
+            const body = chartSeries
+                ? '<div class="domus-chart-wrapper"><canvas id="domus-unit-rentability-chart" class="domus-chart"></canvas></div>'
+                : '<div class="domus-empty">' + Domus.Utils.escapeHtml(t('domus', 'No rentability data available.')) + '</div>';
+
+            return '<div class="domus-panel domus-panel-chart">' +
+                header +
+                '<div class="domus-panel-body">' + body + '</div>' +
+                '</div>';
+        }
+
+        function renderRentabilityChart(statistics) {
+            if (rentabilityChartInstance) {
+                rentabilityChartInstance.destroy();
+                rentabilityChartInstance = null;
+            }
+
+            const chartSeries = getRentabilityChartSeries(statistics);
+            const canvas = document.getElementById('domus-unit-rentability-chart');
+            if (!canvas || !chartSeries || !window.Chart) {
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return;
+            }
+
+            const rootStyles = getComputedStyle(document.documentElement);
+            const rentabilityColor = rootStyles.getPropertyValue('--color-primary').trim() || '#2d7fff';
+            const coldRentColor = rootStyles.getPropertyValue('--color-warning').trim() || '#f6b02e';
+
+            rentabilityChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartSeries.labels,
+                    datasets: [
+                        {
+                            label: t('domus', 'Rentability'),
+                            data: chartSeries.rentability,
+                            type: 'line',
+                            yAxisID: 'y',
+                            borderColor: rentabilityColor,
+                            backgroundColor: rentabilityColor,
+                            tension: 0.3,
+                            pointRadius: 3,
+                            pointHoverRadius: 4,
+                            fill: false
+                        },
+                        {
+                            label: t('domus', 'Cold rent'),
+                            data: chartSeries.coldRent,
+                            yAxisID: 'y1',
+                            backgroundColor: coldRentColor,
+                            borderColor: coldRentColor,
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    if (context.dataset.yAxisID === 'y') {
+                                        return `${context.dataset.label}: ${Domus.Utils.formatPercentage(context.parsed.y)}`;
+                                    }
+                                    return `${context.dataset.label}: ${Domus.Utils.formatCurrency(context.parsed.y)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            position: 'left',
+                            beginAtZero: true,
+                            ticks: {
+                                callback: (value) => Domus.Utils.formatPercentage(value)
+                            }
+                        },
+                        y1: {
+                            position: 'right',
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                callback: (value) => Domus.Utils.formatCurrency(value)
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function renderList() {
@@ -2989,6 +3132,7 @@
                     const canManageBookings = Domus.Role.hasCapability('manageBookings') && unitDetailConfig.showBookings;
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
+                    const showRentabilityChart = Domus.Role.getCurrentRole() === 'landlord';
                     const filteredDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: true });
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
                     const currentTenancy = (unit.activeTenancies || [])
@@ -3084,6 +3228,7 @@
                     const costTable = statistics && statistics.cost
                         ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost) + '</div>'
                         : '';
+                    const rentabilityChartPanel = showRentabilityChart ? buildRentabilityChartPanel(statistics) : '';
 
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('units') +
@@ -3091,6 +3236,7 @@
                         stats +
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
+                        rentabilityChartPanel +
                         (canManageDistributions ? '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-unit-distributions">' +
                         Domus.Distributions.renderTable(filteredDistributions, { showUnitValue: true, hideConfig: true, excludeSystemDefaults: true }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
@@ -3115,6 +3261,7 @@
                             onUnitEdit: (distribution) => Domus.Distributions.openCreateUnitValueModal(unit, () => renderDetail(id), { distributionKeyId: distribution?.id })
                         });
                     }
+                    renderRentabilityChart(showRentabilityChart ? statistics : null);
                     bindDetailActions(id, unit);
                 })
                 .catch(err => Domus.UI.showError(err.message));

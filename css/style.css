@@ -777,6 +777,21 @@
     margin-top: 10px;
 }
 
+.domus-panel-chart .domus-panel-body {
+    margin-top: 12px;
+}
+
+.domus-chart-wrapper {
+    position: relative;
+    height: 260px;
+}
+
+.domus-chart {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
 .domus-booking-import {
     position: relative;
 }
