@@ -244,11 +244,17 @@
             disableAccount: id => request('POST', `/accounts/${id}/disable`),
             enableAccount: id => request('POST', `/accounts/${id}/enable`),
             deleteAccount: id => request('DELETE', `/accounts/${id}`),
-            getAccountTotals: (accounts = []) => {
+            getAccountTotals: (accounts = [], filters = {}) => {
                 const params = new URLSearchParams();
                 const list = (accounts || []).filter(account => account !== undefined && account !== null && account !== '');
                 if (list.length) {
                     params.set('accounts', list.join(','));
+                }
+                if (filters.propertyId) {
+                    params.set('propertyId', filters.propertyId);
+                }
+                if (filters.unitId) {
+                    params.set('unitId', filters.unitId);
                 }
                 return request('GET', buildUrl('/statistics/accounts', params));
             },
@@ -2430,11 +2436,14 @@
     Domus.Analytics = (function() {
         let chartInstance = null;
         let requestId = 0;
+        let properties = [];
+        let units = [];
 
         function render() {
             Domus.UI.renderSidebar('');
             Domus.UI.renderContent(buildLayout());
             bindControls();
+            loadFilters();
         }
 
         function buildLayout() {
@@ -2451,6 +2460,20 @@
             return '<div class="domus-section-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Analytics')) + '</h3></div>' +
                 '<div class="domus-analytics-layout">' +
                 '<div class="domus-analytics-panel">' +
+                '<div class="domus-analytics-filters">' +
+                '<label class="domus-analytics-filter">' +
+                '<span>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '</span>' +
+                '<select id="domus-analytics-property">' +
+                '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All properties')) + '</option>' +
+                '</select>' +
+                '</label>' +
+                '<label class="domus-analytics-filter">' +
+                '<span>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '</span>' +
+                '<select id="domus-analytics-unit" disabled>' +
+                '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All units')) + '</option>' +
+                '</select>' +
+                '</label>' +
+                '</div>' +
                 '<label for="domus-analytics-accounts">' + Domus.Utils.escapeHtml(t('domus', 'Accounts')) + '</label>' +
                 '<select id="domus-analytics-accounts" class="domus-analytics-select" multiple size="10">' +
                 optionHtml +
@@ -2469,15 +2492,26 @@
 
         function bindControls() {
             const select = document.getElementById('domus-analytics-accounts');
+            const propertySelect = document.getElementById('domus-analytics-property');
+            const unitSelect = document.getElementById('domus-analytics-unit');
             if (!select) {
                 return;
             }
 
             select.addEventListener('change', () => {
-                updateChart(getSelectedAccounts(select));
+                updateChart(getSelectedAccounts(select), getSelectedFilters());
             });
 
-            updateChart(getSelectedAccounts(select));
+            propertySelect?.addEventListener('change', () => {
+                updateUnits(propertySelect.value);
+                updateChart(getSelectedAccounts(select), getSelectedFilters());
+            });
+
+            unitSelect?.addEventListener('change', () => {
+                updateChart(getSelectedAccounts(select), getSelectedFilters());
+            });
+
+            updateChart(getSelectedAccounts(select), getSelectedFilters());
         }
 
         function getSelectedAccounts(select) {
@@ -2494,7 +2528,7 @@
                 .filter(entry => entry.normalized !== '');
         }
 
-        function updateChart(accounts) {
+        function updateChart(accounts, filters = {}) {
             const status = document.getElementById('domus-analytics-status');
             if (!window.Chart) {
                 if (status) {
@@ -2528,7 +2562,7 @@
                 accountLabels[entry.normalized] = entry.label || entry.value || entry.normalized;
             });
 
-            Domus.Api.getAccountTotals(uniqueAccounts)
+            Domus.Api.getAccountTotals(uniqueAccounts, filters)
                 .then(data => {
                     if (currentRequest !== requestId) {
                         return;
@@ -2636,6 +2670,69 @@
             }
             const normalized = raw.replace(/^0+/, '');
             return normalized === '' ? '0' : normalized;
+        }
+
+        function loadFilters() {
+            const propertySelect = document.getElementById('domus-analytics-property');
+            const unitSelect = document.getElementById('domus-analytics-unit');
+            if (!propertySelect || !unitSelect) {
+                return;
+            }
+            Domus.Api.getProperties()
+                .then(list => {
+                    properties = list || [];
+                    propertySelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All properties')) + '</option>' +
+                        properties.map(item => (
+                            '<option value="' + Domus.Utils.escapeHtml(String(item.id)) + '">' +
+                            Domus.Utils.escapeHtml(item.name || '') +
+                            '</option>'
+                        )).join('');
+                    updateUnits('');
+                })
+                .catch(() => {
+                    propertySelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All properties')) + '</option>';
+                });
+        }
+
+        function updateUnits(propertyId) {
+            const unitSelect = document.getElementById('domus-analytics-unit');
+            if (!unitSelect) {
+                return;
+            }
+            unitSelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All units')) + '</option>';
+            unitSelect.disabled = true;
+            if (!propertyId) {
+                units = [];
+                return;
+            }
+            Domus.Api.getUnits(propertyId)
+                .then(list => {
+                    units = list || [];
+                    unitSelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All units')) + '</option>' +
+                        units.map(item => (
+                            '<option value="' + Domus.Utils.escapeHtml(String(item.id)) + '">' +
+                            Domus.Utils.escapeHtml(item.label || item.name || '') +
+                            '</option>'
+                        )).join('');
+                    unitSelect.disabled = false;
+                })
+                .catch(() => {
+                    units = [];
+                    unitSelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All units')) + '</option>';
+                });
+        }
+
+        function getSelectedFilters() {
+            const propertySelect = document.getElementById('domus-analytics-property');
+            const unitSelect = document.getElementById('domus-analytics-unit');
+            const filters = {};
+            if (propertySelect && propertySelect.value) {
+                filters.propertyId = propertySelect.value;
+            }
+            if (unitSelect && unitSelect.value) {
+                filters.unitId = unitSelect.value;
+            }
+            return filters;
         }
 
         return { render };

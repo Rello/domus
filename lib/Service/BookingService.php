@@ -172,7 +172,7 @@ class BookingService {
     /**
      * @param string[] $accounts
      */
-    public function sumByAccountPerYear(string $userId, array $accounts): array {
-        return $this->bookingMapper->sumByAccountPerYear($userId, $accounts);
+    public function sumByAccountPerYear(string $userId, array $accounts, ?int $propertyId = null, ?int $unitId = null): array {
+        return $this->bookingMapper->sumByAccountPerYear($userId, $accounts, $propertyId, $unitId);
     }
 }

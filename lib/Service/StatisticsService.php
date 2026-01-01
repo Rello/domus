@@ -111,7 +111,7 @@ class StatisticsService {
         /**
          * @param string[] $accounts
          */
-        public function accountTotalsByYear(array $accounts, string $userId): array {
+        public function accountTotalsByYear(array $accounts, string $userId, ?int $propertyId = null, ?int $unitId = null): array {
                 $accounts = array_values(array_unique(array_filter(array_map('strval', $accounts), static function (string $value): bool {
                         return $value !== '';
                 })));
@@ -123,7 +123,7 @@ class StatisticsService {
                         return ['years' => [], 'series' => []];
                 }
 
-                $rows = $this->bookingService->sumByAccountPerYear($userId, $accounts);
+                $rows = $this->bookingService->sumByAccountPerYear($userId, $accounts, $propertyId, $unitId);
                 $years = [];
                 $series = [];
                 foreach ($accounts as $account) {

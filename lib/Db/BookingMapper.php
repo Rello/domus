@@ -120,7 +120,7 @@ class BookingMapper extends QBMapper {
      *
      * @throws Exception
      */
-    public function sumByAccountPerYear(string $userId, array $accounts): array {
+    public function sumByAccountPerYear(string $userId, array $accounts, ?int $propertyId = null, ?int $unitId = null): array {
         $accounts = array_values(array_unique(array_map('intval', $accounts)));
         if ($accounts === []) {
             return [];
@@ -136,6 +136,13 @@ class BookingMapper extends QBMapper {
             ->groupBy('year')
             ->addGroupBy('account')
             ->orderBy('year', 'ASC');
+
+        if ($propertyId !== null) {
+            $qb->andWhere($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
+        }
+        if ($unitId !== null) {
+            $qb->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
+        }
 
         return $qb->executeQuery()->fetchAll();
     }

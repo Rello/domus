@@ -89,6 +89,22 @@
     gap: 8px;
 }
 
+.domus-analytics-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.domus-analytics-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.domus-analytics-filter select {
+    background: #fff;
+}
+
 .domus-analytics-select {
     min-height: 320px;
     background: #fff;
