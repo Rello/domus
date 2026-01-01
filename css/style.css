@@ -832,9 +832,9 @@
 }
 
 .domus-kpi-tiles {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
     margin: 16px 0;
 }
 
@@ -842,9 +842,9 @@
     display: flex;
     align-items: stretch;
     justify-content: space-between;
-    gap: 24px;
-    padding: 20px 24px;
-    border-radius: 22px;
+    gap: 16px;
+    padding: 14px 18px;
+    border-radius: 18px;
     border: 2px solid var(--color-border);
     background: var(--color-main-background);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -859,12 +859,12 @@
 }
 
 .domus-kpi-headline {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
 }
 
 .domus-kpi-value {
-    font-size: 48px;
+    font-size: 36px;
     font-weight: 700;
     line-height: 1;
 }
@@ -886,15 +886,15 @@
 }
 
 .domus-kpi-chart {
-    flex: 0 0 38%;
-    min-width: 200px;
+    flex: 0 0 42%;
+    min-width: 160px;
     display: flex;
     align-items: center;
 }
 
 .domus-kpi-chart-canvas {
     width: 100%;
-    height: 120px;
+    height: 90px;
 }
 
 .domus-kpi-detail {
@@ -903,6 +903,18 @@
 
 .domus-kpi-detail[hidden] {
     display: none;
+}
+
+@media (max-width: 1200px) {
+    .domus-kpi-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .domus-kpi-tiles {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .domus-dashboard-grid {

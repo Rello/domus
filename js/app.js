@@ -3363,7 +3363,15 @@
                     },
                     scales: {
                         x: { display: false, grid: { display: false } },
-                        y: { display: false, grid: { display: false } }
+                        y: {
+                            display: true,
+                            ticks: { display: false },
+                            border: { display: false },
+                            grid: {
+                                drawTicks: false,
+                                color: (context) => (context.tick?.value === 0 ? 'rgba(0, 0, 0, 0.2)' : 'transparent')
+                            }
+                        }
                     }
                 }
             });
@@ -3772,6 +3780,12 @@
                             showChart: false,
                             linkLabel: t('domus', 'More'),
                             detailTarget: 'tenancies'
+                        }) +
+                        Domus.UI.buildKpiTile({
+                            headline: t('domus', 'Open issues'),
+                            value: t('domus', '0 to dos'),
+                            showChart: false,
+                            linkLabel: t('domus', 'More')
                         }) +
                         '</div>'
                         : '';
