@@ -2483,8 +2483,16 @@
 
         function getSelectedAccounts(select) {
             return Array.from(select.selectedOptions || [])
-                .map(option => option.value)
-                .filter(value => value !== '');
+                .map(option => {
+                    const value = option.value;
+                    const normalized = normalizeAccountNumber(value);
+                    return {
+                        value,
+                        normalized,
+                        label: option.textContent || value || normalized
+                    };
+                })
+                .filter(entry => entry.normalized !== '');
         }
 
         function updateChart(accounts) {
@@ -2509,12 +2517,24 @@
             }
 
             const currentRequest = ++requestId;
-            Domus.Api.getAccountTotals(accounts)
+            const uniqueAccounts = [];
+            const accountLabels = {};
+            accounts.forEach(entry => {
+                if (!entry || !entry.normalized) {
+                    return;
+                }
+                if (!uniqueAccounts.includes(entry.normalized)) {
+                    uniqueAccounts.push(entry.normalized);
+                }
+                accountLabels[entry.normalized] = entry.label || entry.value || entry.normalized;
+            });
+
+            Domus.Api.getAccountTotals(uniqueAccounts)
                 .then(data => {
                     if (currentRequest !== requestId) {
                         return;
                     }
-                    renderChart(data || {}, accounts);
+                    renderChart(data || {}, uniqueAccounts, accountLabels);
                 })
                 .catch(err => {
                     destroyChart();
@@ -2524,7 +2544,7 @@
                 });
         }
 
-        function renderChart(data, accounts) {
+        function renderChart(data, accounts, accountLabels = {}) {
             const status = document.getElementById('domus-analytics-status');
             const canvas = document.getElementById('domus-analytics-chart');
             if (!canvas) {
@@ -2558,7 +2578,7 @@
 
             const datasets = accounts.map((account, index) => {
                 const values = Array.isArray(series[account]) ? series[account] : new Array(years.length).fill(0);
-                const labelParts = [account, Domus.Accounts.label(account)].filter(Boolean);
+                const labelParts = [account, accountLabels[account] || Domus.Accounts.label(account)].filter(Boolean);
                 return {
                     label: labelParts.join(' — '),
                     data: values,
@@ -2581,6 +2601,9 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: {
+                        duration: 300
+                    },
                     interaction: {
                         mode: 'nearest',
                         intersect: false
@@ -2605,6 +2628,15 @@
                 chartInstance.destroy();
                 chartInstance = null;
             }
+        }
+
+        function normalizeAccountNumber(value) {
+            const raw = (value || '').toString().trim();
+            if (raw === '') {
+                return '';
+            }
+            const normalized = raw.replace(/^0+/, '');
+            return normalized === '' ? '0' : normalized;
         }
 
         return { render };

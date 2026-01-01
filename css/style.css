@@ -90,7 +90,8 @@
 }
 
 .domus-analytics-select {
-    min-height: 220px;
+    min-height: 320px;
+    background: #fff;
 }
 
 .domus-analytics-hint,
@@ -107,7 +108,7 @@
     border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 12px;
-    background: var(--color-background-dark);
+    background: #fff;
 }
 
 .domus-analytics-status {

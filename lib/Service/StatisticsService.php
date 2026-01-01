@@ -115,6 +115,10 @@ class StatisticsService {
                 $accounts = array_values(array_unique(array_filter(array_map('strval', $accounts), static function (string $value): bool {
                         return $value !== '';
                 })));
+                $accounts = array_values(array_unique(array_map(function (string $value): string {
+                        $normalized = ltrim($value, '0');
+                        return $normalized === '' ? '0' : $normalized;
+                }, $accounts)));
                 if ($accounts === []) {
                         return ['years' => [], 'series' => []];
                 }
