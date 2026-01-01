@@ -128,7 +128,7 @@ class StatisticCalculations {
             ],
             [
                 'key' => 'gwb',
-                'label' => 'Bruttogewinn',
+                'label' => 'Gross profit',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['rent', 'hgnu']],
                     ['op' => 'sub', 'args' => ['prev', 'zinsen']],

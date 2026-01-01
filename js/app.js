@@ -2348,7 +2348,7 @@
                 ? Domus.Units.renderStatisticsTable(unitsOverview, {
                     buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null,
                     totals: [
-                        { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Bruttogewinn') }) }
+                        { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
                     ]
                 })
                 : '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Units') })) + '</div>';
@@ -2772,7 +2772,7 @@
                     const table = renderStatisticsTable(statistics, {
                         buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null,
                         totals: [
-                            { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Bruttogewinn') }) }
+                            { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
                         ]
                     });
 
