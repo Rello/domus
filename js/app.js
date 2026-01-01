@@ -2346,7 +2346,10 @@
 
             const table = unitsOverview
                 ? Domus.Units.renderStatisticsTable(unitsOverview, {
-                    buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null
+                    buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null,
+                    totals: [
+                        { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
+                    ]
                 })
                 : '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Units') })) + '</div>';
 
@@ -2767,7 +2770,10 @@
                         '</div>';
 
                     const table = renderStatisticsTable(statistics, {
-                        buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null
+                        buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null,
+                        totals: [
+                            { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
+                        ]
                     });
 
                     Domus.UI.renderContent(header + table);
@@ -2849,7 +2855,45 @@
                 return cells;
             });
 
-            return Domus.UI.buildTable(headers, rows);
+            const totalsHtml = buildStatisticsTotals(columnMeta, rowsData, options.totals || []);
+            return Domus.UI.buildTable(headers, rows) + totalsHtml;
+        }
+
+        function buildStatisticsTotals(columnMeta, rowsData, totalsConfig) {
+            if (!totalsConfig.length) {
+                return '';
+            }
+
+            const items = totalsConfig.map(config => {
+                const column = columnMeta.find(col => col.key === config.key);
+                if (!column) {
+                    return null;
+                }
+                let sum = 0;
+                let hasValues = false;
+                rowsData.forEach(row => {
+                    const value = Number(row[column.key]);
+                    if (!Number.isNaN(value)) {
+                        sum += value;
+                        hasValues = true;
+                    }
+                });
+                if (!hasValues) {
+                    return null;
+                }
+                const formatted = formatStatValue(sum, column.format, column.unit);
+                const label = config.label || t('domus', 'Total {label}', { label: column.label || column.key });
+                return '<div class="domus-table-summary-item">' +
+                    '<span class="domus-table-summary-label">' + Domus.Utils.escapeHtml(label) + '</span>' +
+                    '<span class="domus-table-summary-value">' + Domus.Utils.escapeHtml(formatted.content) + '</span>' +
+                    '</div>';
+            }).filter(Boolean);
+
+            if (!items.length) {
+                return '';
+            }
+
+            return '<div class="domus-table-summary">' + items.join('') + '</div>';
         }
 
         function formatStatValue(value, format, unit) {
