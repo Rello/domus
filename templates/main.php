@@ -1,6 +1,7 @@
 <?php
 use OCP\Util;
 Util::addStyle('domus', 'style');
+Util::addScript('domus', '3rdParty/chart.umd');
 Util::addScript('domus', 'app');
 ?>
 <div id="app-navigation"></div>

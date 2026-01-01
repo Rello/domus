@@ -116,6 +116,38 @@ class BookingMapper extends QBMapper {
     }
 
     /**
+     * @param string[] $accounts
+     *
+     * @throws Exception
+     */
+    public function sumByAccountPerYear(string $userId, array $accounts, ?int $propertyId = null, ?int $unitId = null): array {
+        $accounts = array_values(array_unique(array_map('intval', $accounts)));
+        if ($accounts === []) {
+            return [];
+        }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('year')
+            ->addSelect('account')
+            ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->in('account', $qb->createNamedParameter($accounts, $qb::PARAM_INT_ARRAY)))
+            ->groupBy('year')
+            ->addGroupBy('account')
+            ->orderBy('year', 'ASC');
+
+        if ($propertyId !== null) {
+            $qb->andWhere($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
+        }
+        if ($unitId !== null) {
+            $qb->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
+        }
+
+        return $qb->executeQuery()->fetchAll();
+    }
+
+    /**
      * @throws Exception
      */
     public function countByAccount(string $userId, string $accountNumber): int {

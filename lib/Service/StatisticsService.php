@@ -108,6 +108,64 @@ class StatisticsService {
                 ];
         }
 
+        /**
+         * @param string[] $accounts
+         */
+        public function accountTotalsByYear(array $accounts, string $userId, ?int $propertyId = null, ?int $unitId = null): array {
+                $accounts = array_values(array_unique(array_filter(array_map('strval', $accounts), static function (string $value): bool {
+                        return $value !== '';
+                })));
+                $accounts = array_values(array_unique(array_map(function (string $value): string {
+                        $normalized = ltrim($value, '0');
+                        return $normalized === '' ? '0' : $normalized;
+                }, $accounts)));
+                if ($accounts === []) {
+                        return ['years' => [], 'series' => []];
+                }
+
+                $rows = $this->bookingService->sumByAccountPerYear($userId, $accounts, $propertyId, $unitId);
+                $years = [];
+                $series = [];
+                foreach ($accounts as $account) {
+                        $series[$account] = [];
+                }
+
+                foreach ($rows as $row) {
+                        $year = (int)($row['year'] ?? 0);
+                        if ($year === 0) {
+                                continue;
+                        }
+                        $years[$year] = true;
+                }
+
+                if ($years === []) {
+                        $years = [(int)date('Y')];
+                } else {
+                        $years = array_keys($years);
+                        sort($years, SORT_NUMERIC);
+                }
+
+                $yearIndex = array_flip($years);
+                foreach ($series as $account => $values) {
+                        $series[$account] = array_fill(0, count($years), 0.0);
+                }
+
+                foreach ($rows as $row) {
+                        $year = (int)($row['year'] ?? 0);
+                        $account = (string)($row['account'] ?? '');
+                        if ($year === 0 || $account === '' || !isset($series[$account])) {
+                                continue;
+                        }
+                        $index = $yearIndex[$year] ?? null;
+                        if ($index === null) {
+                                continue;
+                        }
+                        $series[$account][$index] = round((float)($row['total'] ?? 0.0), 2);
+                }
+
+                return ['years' => $years, 'series' => $series];
+        }
+
         private function normalizeColumns(array $columns): array {
                 return array_map(function (array $column) {
                         if (!isset($column['key'])) {
