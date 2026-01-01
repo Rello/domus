@@ -69,12 +69,13 @@ class SettingsController extends Controller {
     private function getSettings(string $userId): array {
         $settings = [];
         foreach ($this->getSettingsDefinition() as $key => $definition) {
-            $settings[$key] = $this->config->getUserValue(
+            $value = $this->config->getUserValue(
                 $userId,
                 Application::APP_ID,
                 $key,
                 $definition['default'] ?? '',
             );
+            $settings[$key] = $this->formatSettingValue($key, $value);
         }
 
         return $settings;
@@ -89,10 +90,22 @@ class SettingsController extends Controller {
             if (!is_numeric($normalized)) {
                 return null;
             }
-            return (string)(float)$normalized;
+            $percentage = (float)$normalized;
+            return (string)($percentage / 100);
         }
 
         return null;
+    }
+
+    private function formatSettingValue(string $key, string $value): string {
+        if ($key === self::CONFIG_TAX_RATE) {
+            if (!is_numeric($value)) {
+                return '0';
+            }
+            return (string)((float)$value * 100);
+        }
+
+        return $value;
     }
 
     private function getUserId(): string {
