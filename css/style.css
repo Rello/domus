@@ -105,6 +105,10 @@
     background: #fff;
 }
 
+.domus-hidden {
+    display: none !important;
+}
+
 .domus-analytics-select {
     min-height: 320px;
     background: #fff;

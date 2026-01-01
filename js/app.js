@@ -1260,11 +1260,11 @@
                 label: t('domus', 'Landlord'),
                 navigation: [
                     { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
-                    { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' },
                     { view: 'units', label: t('domus', 'Units'), icon: 'domus-icon-unit' },
                     { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
                     { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' },
-                    { view: 'accounts', label: t('domus', 'Accounts'), icon: 'domus-icon-account' }
+                    { view: 'accounts', label: t('domus', 'Accounts'), icon: 'domus-icon-account' },
+                    { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' }
                 ],
                 tenancyLabels: { singular: t('domus', 'Tenancy'), plural: t('domus', 'Tenancies'), action: t('domus', 'Add {entity}', { entity: t('domus', 'Tenancy') }) },
                 capabilities: { manageTenancies: true, manageBookings: true, manageDocuments: true },
@@ -1274,11 +1274,11 @@
                 label: t('domus', 'Building Mgmt'),
                 navigation: [
                     { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
-                    { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' },
                     { view: 'properties', label: t('domus', 'Properties'), icon: 'domus-icon-property' },
                     { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
                     { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' },
-                    { view: 'accounts', label: t('domus', 'Accounts'), icon: 'domus-icon-account' }
+                    { view: 'accounts', label: t('domus', 'Accounts'), icon: 'domus-icon-account' },
+                    { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' }
                 ],
                 tenancyLabels: { singular: t('domus', 'Owner'), plural: t('domus', 'Owners'), action: t('domus', 'Add {entity}', { entity: t('domus', 'Owner') }) },
                 capabilities: { manageTenancies: true, manageBookings: true, manageDocuments: true },
@@ -1288,8 +1288,8 @@
                 label: t('domus', 'Tenant'),
                 navigation: [
                     { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
-                    { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' },
-                    { view: 'tenancies', label: t('domus', 'My tenancies'), icon: 'domus-icon-tenancy' }
+                    { view: 'tenancies', label: t('domus', 'My tenancies'), icon: 'domus-icon-tenancy' },
+                    { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' }
                 ],
                 tenancyLabels: { singular: t('domus', 'Tenancy'), plural: t('domus', 'My tenancies'), action: null },
                 capabilities: { manageTenancies: false, manageBookings: false, manageDocuments: false },
@@ -2456,20 +2456,23 @@
             const emptyState = options.length === 0
                 ? '<div class="domus-analytics-empty">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Accounts') })) + '</div>'
                 : '';
+            const propertyFilter = Domus.Role.isBuildingMgmtView()
+                ? '<label class="domus-analytics-filter domus-analytics-property-filter">' +
+                    '<span>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '</span>' +
+                    '<select id="domus-analytics-property">' +
+                    '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All properties')) + '</option>' +
+                    '</select>' +
+                    '</label>'
+                : '';
 
             return '<div class="domus-section-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Analytics')) + '</h3></div>' +
                 '<div class="domus-analytics-layout">' +
                 '<div class="domus-analytics-panel">' +
                 '<div class="domus-analytics-filters">' +
-                '<label class="domus-analytics-filter">' +
-                '<span>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '</span>' +
-                '<select id="domus-analytics-property">' +
-                '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All properties')) + '</option>' +
-                '</select>' +
-                '</label>' +
+                propertyFilter +
                 '<label class="domus-analytics-filter">' +
                 '<span>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '</span>' +
-                '<select id="domus-analytics-unit" disabled>' +
+                '<select id="domus-analytics-unit">' +
                 '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All units')) + '</option>' +
                 '</select>' +
                 '</label>' +
@@ -2492,7 +2495,6 @@
 
         function bindControls() {
             const select = document.getElementById('domus-analytics-accounts');
-            const propertySelect = document.getElementById('domus-analytics-property');
             const unitSelect = document.getElementById('domus-analytics-unit');
             if (!select) {
                 return;
@@ -2502,8 +2504,8 @@
                 updateChart(getSelectedAccounts(select), getSelectedFilters());
             });
 
+            const propertySelect = document.getElementById('domus-analytics-property');
             propertySelect?.addEventListener('change', () => {
-                updateUnits(propertySelect.value);
                 updateChart(getSelectedAccounts(select), getSelectedFilters());
             });
 
@@ -2675,37 +2677,37 @@
         function loadFilters() {
             const propertySelect = document.getElementById('domus-analytics-property');
             const unitSelect = document.getElementById('domus-analytics-unit');
-            if (!propertySelect || !unitSelect) {
+            if (!unitSelect) {
                 return;
             }
-            Domus.Api.getProperties()
-                .then(list => {
-                    properties = list || [];
-                    propertySelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All properties')) + '</option>' +
-                        properties.map(item => (
-                            '<option value="' + Domus.Utils.escapeHtml(String(item.id)) + '">' +
-                            Domus.Utils.escapeHtml(item.name || '') +
-                            '</option>'
-                        )).join('');
-                    updateUnits('');
-                })
-                .catch(() => {
-                    propertySelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All properties')) + '</option>';
-                });
+            if (propertySelect && Domus.Role.isBuildingMgmtView()) {
+                Domus.Api.getProperties()
+                    .then(list => {
+                        properties = list || [];
+                        propertySelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All properties')) + '</option>' +
+                            properties.map(item => (
+                                '<option value="' + Domus.Utils.escapeHtml(String(item.id)) + '">' +
+                                Domus.Utils.escapeHtml(item.name || '') +
+                                '</option>'
+                            )).join('');
+                    })
+                    .catch(() => {
+                        propertySelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All properties')) + '</option>';
+                    });
+            } else if (propertySelect) {
+                propertySelect.closest('.domus-analytics-property-filter')?.classList.add('domus-hidden');
+            }
+            updateUnits();
         }
 
-        function updateUnits(propertyId) {
+        function updateUnits() {
             const unitSelect = document.getElementById('domus-analytics-unit');
             if (!unitSelect) {
                 return;
             }
             unitSelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All units')) + '</option>';
-            unitSelect.disabled = true;
-            if (!propertyId) {
-                units = [];
-                return;
-            }
-            Domus.Api.getUnits(propertyId)
+            unitSelect.disabled = false;
+            Domus.Api.getUnits()
                 .then(list => {
                     units = list || [];
                     unitSelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'All units')) + '</option>' +
@@ -2714,7 +2716,6 @@
                             Domus.Utils.escapeHtml(item.label || item.name || '') +
                             '</option>'
                         )).join('');
-                    unitSelect.disabled = false;
                 })
                 .catch(() => {
                     units = [];
@@ -2726,7 +2727,7 @@
             const propertySelect = document.getElementById('domus-analytics-property');
             const unitSelect = document.getElementById('domus-analytics-unit');
             const filters = {};
-            if (propertySelect && propertySelect.value) {
+            if (propertySelect && Domus.Role.isBuildingMgmtView() && propertySelect.value) {
                 filters.propertyId = propertySelect.value;
             }
             if (unitSelect && unitSelect.value) {
