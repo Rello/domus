@@ -82,6 +82,15 @@ class StatisticCalculations {
             ['key' => 'unitId', 'label' => 'Unit ID', 'source' => 'unit', 'field' => 'id', 'visible' => false],
             ['key' => 'label', 'label' => 'Unit', 'source' => 'unit', 'field' => 'label'],
             ['key' => 'size', 'label' => 'Size', 'source' => 'unit', 'field' => 'livingArea', 'format' => 'number', 'unit' => 'm²'],
+            [
+                'key' => 'rentPerSqm',
+                'label' => 'Rent/m²',
+                'rule' => [
+                    ['op' => 'div', 'args' => ['rent', 'size']],
+                ],
+                'format' => 'number',
+                'unit' => '€/m²',
+            ],
             ['key' => 'rent', 'label' => 'Base rent', 'account' => '1000'],
             [
                 'key' => 'hgnu',
@@ -92,15 +101,6 @@ class StatisticCalculations {
                 'visible' => false,
             ],
             ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2006', 'visible' => false],
-            [
-                'key' => 'gwb',
-                'label' => 'Gross profit',
-                'rule' => [
-                    ['op' => 'sub', 'args' => ['rent', 'hgnu']],
-                    ['op' => 'sub', 'args' => ['prev', 'zinsen']],
-                ],
-                'visible' => false,
-            ],
             [
                 'key' => 'abschr',
                 'label' => 'Abschr. & sonstige',
@@ -127,13 +127,12 @@ class StatisticCalculations {
                 'visible' => false,
             ],
             [
-                'key' => 'rentPerSqm',
-                'label' => 'Rent/m²',
+                'key' => 'gwb',
+                'label' => 'Bruttogewinn',
                 'rule' => [
-                    ['op' => 'div', 'args' => ['rent', 'size']],
+                    ['op' => 'sub', 'args' => ['rent', 'hgnu']],
+                    ['op' => 'sub', 'args' => ['prev', 'zinsen']],
                 ],
-                'format' => 'number',
-                'unit' => '€/m²',
             ],
             [
                 'key' => 'netRentab',

@@ -145,6 +145,25 @@
     background-color: #f8f8f8;
 }
 
+.domus-table-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.domus-table-summary-item {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.domus-table-summary-value {
+    text-align: right;
+    white-space: nowrap;
+}
+
 .domus-form label {
     display: flex;
     flex-direction: column;
