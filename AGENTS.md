@@ -8,6 +8,7 @@ This repository is a Nextcloud app; follow the existing design documents when ma
 ## General conventions
 - Prefer lowerCamelCase naming and avoid underscores to stay consistent with the documented standards.
 - Use `OCP\IL10N`/`t()` for any user-facing strings; do not introduce separate language files unless advised otherwise.
+- Add now strings to the existing language files.
 - Keep the main layout structure (`app-navigation`, `app-content`, `app-sidebar`) intact unless a design document explicitly says otherwise.
 - Avoid adding build tooling (e.g., webpack) or external Composer dependencies; stick to vanilla JS and Nextcloud-provided services.
 
