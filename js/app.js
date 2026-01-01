@@ -246,11 +246,10 @@
             deleteAccount: id => request('DELETE', `/accounts/${id}`),
             getAccountTotals: (accounts = []) => {
                 const params = new URLSearchParams();
-                (accounts || []).forEach(account => {
-                    if (account !== undefined && account !== null && account !== '') {
-                        params.append('accounts', account);
-                    }
-                });
+                const list = (accounts || []).filter(account => account !== undefined && account !== null && account !== '');
+                if (list.length) {
+                    params.set('accounts', list.join(','));
+                }
                 return request('GET', buildUrl('/statistics/accounts', params));
             },
             getDocuments: (entityType, entityId) => request('GET', `/documents/${entityType}/${entityId}`),
