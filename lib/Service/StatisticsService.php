@@ -3,8 +3,10 @@
 namespace OCA\Domus\Service;
 
 use OCA\Domus\Accounting\StatisticCalculations;
+use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
+use OCP\IConfig;
 use OCP\IL10N;
 use Psr\Log\LoggerInterface;
 
@@ -15,6 +17,7 @@ class StatisticsService {
                 private UnitMapper $unitMapper,
                 private PermissionService $permissionService,
                 private AccountService $accountService,
+                private IConfig $config,
                 private IL10N $l10n,
                 private LoggerInterface $logger,
         ) {
@@ -62,6 +65,7 @@ class StatisticsService {
                         );
                         $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                         $sums = $this->mergeSums($perYearSums[$year] ?? [], $tenancySums, $unitSums);
+                        $sums = $this->applyUserTaxRate($sums, $userId);
 
                         foreach ($definitions as $tableName => $tableDefinitions) {
                                 $tables[$tableName]['rows'][] = $this->buildRowForYear(
@@ -299,10 +303,12 @@ class StatisticsService {
 
                 if (isset($column['account'])) {
                         $account = $this->resolveTopAccountNumber((string)$column['account'], $topAccountMap);
-                        return round($this->get($sums, $account), 2);
+                        $value = $this->get($sums, $account);
+                        return $this->formatColumnValue($column, $value);
                 }
                 if (isset($column['rule'])) {
-                        return round($this->evalRule($sums, $column['rule'], $computed, $topAccountMap), 2);
+                        $value = $this->evalRule($sums, $column['rule'], $computed, $topAccountMap);
+                        return $this->formatColumnValue($column, $value);
                 }
 
                 return null;
@@ -355,6 +361,13 @@ class StatisticsService {
                 }
 
                 return $prev;
+        }
+
+        private function formatColumnValue(array $column, float $value): float {
+                if (($column['format'] ?? '') === 'percentage') {
+                        return round($value, 4);
+                }
+                return round($value, 2);
         }
 
         private function get(array $sums, string $nr): float {
@@ -452,6 +465,7 @@ class StatisticsService {
                 );
                 $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                 $mergedSums = $this->mergeSums($sums, $tenancySums, $unitSums);
+                $mergedSums = $this->applyUserTaxRate($mergedSums, $userId);
                 $this->logger->info('StatisticsService: merged booking and tenancy sums', ['sums' => $mergedSums]);
 
                 $row = $this->buildRowForYear($year, $definitions, $mergedSums, ['unit' => $unit], $topAccountMap);
@@ -497,6 +511,19 @@ class StatisticsService {
                         $mapped[$resolved] += (float)$value;
                 }
                 return $mapped;
+        }
+
+        private function applyUserTaxRate(array $sums, string $userId): array {
+                $sums['taxRate'] = $this->getTaxRateSetting($userId);
+                return $sums;
+        }
+
+        private function getTaxRateSetting(string $userId): float {
+                $value = $this->config->getUserValue($userId, Application::APP_ID, 'taxRate', '0');
+                if (!is_numeric($value)) {
+                        return 0.0;
+                }
+                return (float)$value;
         }
 
         private function addValues(float ...$values): float {

@@ -56,7 +56,7 @@
             if (value === undefined || value === null) return '';
             const numeric = Number(value);
             if (Number.isNaN(numeric)) return String(value);
-            return `${formatNumber(numeric * 100, { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}%`;
+            return `${formatNumber(numeric * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false })} %`;
         }
 
         function formatYear(value) {
@@ -175,6 +175,8 @@
             put: (path, data) => request('PUT', path, data),
             delete: path => request('DELETE', path),
             getDashboardSummary: () => request('GET', buildYearUrl('/dashboard/summary')),
+            getSettings: () => request('GET', '/settings'),
+            updateSettings: data => request('PUT', '/settings', data),
             getProperties: () => request('GET', buildYearUrl('/properties')),
             createProperty: data => request('POST', '/properties', data),
             updateProperty: (id, data) => request('PUT', `/properties/${id}`, data),
@@ -2243,33 +2245,10 @@
             const container = document.getElementById('app-navigation');
             if (!container) return;
 
-            const ul = document.createElement('ul');
-            ul.className = 'domus-nav';
-
             const activeView = getActiveView();
 
-            getMenuItems().forEach(item => {
-                const li = document.createElement('li');
-                li.className = activeView === item.view ? 'active' : '';
-                const link = document.createElement('a');
-                link.href = '#';
-                const icon = document.createElement('span');
-                icon.className = ['domus-icon', 'domus-nav-icon', item.icon].filter(Boolean).join(' ');
-                icon.setAttribute('aria-hidden', 'true');
-                const label = document.createElement('span');
-                label.textContent = item.label;
-                link.appendChild(icon);
-                link.appendChild(label);
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    Domus.Router.navigate(item.view, item.args || []);
-                });
-                li.appendChild(link);
-                ul.appendChild(li);
-            });
-
             container.innerHTML = '';
-            container.appendChild(ul);
+            container.appendChild(buildNavList(getMenuItems(), activeView));
 
             const roleOptions = Domus.Role.getRoleOptions();
             if (roleOptions.length > 1) {
@@ -2289,10 +2268,50 @@
                 roleSwitcher.appendChild(select);
                 container.appendChild(roleSwitcher);
             }
+
+            const bottomItems = getBottomItems();
+            if (bottomItems.length) {
+                const bottomList = buildNavList(bottomItems, activeView);
+                bottomList.classList.add('domus-nav-bottom');
+                container.appendChild(bottomList);
+            }
+        }
+
+        function buildNavList(items, activeView) {
+            const ul = document.createElement('ul');
+            ul.className = 'domus-nav';
+
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.className = activeView === item.view ? 'active' : '';
+                const link = document.createElement('a');
+                link.href = '#';
+                const icon = document.createElement('span');
+                icon.className = ['domus-icon', 'domus-nav-icon', item.icon].filter(Boolean).join(' ');
+                icon.setAttribute('aria-hidden', 'true');
+                const label = document.createElement('span');
+                label.textContent = item.label;
+                link.appendChild(icon);
+                link.appendChild(label);
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    Domus.Router.navigate(item.view, item.args || []);
+                });
+                li.appendChild(link);
+                ul.appendChild(li);
+            });
+
+            return ul;
         }
 
         function getMenuItems() {
             return Domus.Role.getNavigationItems();
+        }
+
+        function getBottomItems() {
+            return [
+                { view: 'settings', label: t('domus', 'Settings'), icon: 'domus-icon-settings' }
+            ];
         }
 
         function getActiveView() {
@@ -5819,6 +5838,79 @@
     })();
 
     /**
+     * Settings view
+     */
+    Domus.Settings = (function() {
+        function buildForm(settings) {
+            const taxRate = settings?.taxRate ?? '';
+            const rows = [
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Tax rate'),
+                    helpText: t('domus', 'The tax rate will be used to calculate the estimated net result'),
+                    content: '<input name="taxRate" type="number" step="0.01" value="' + Domus.Utils.escapeHtml(taxRate) + '">'
+                })
+            ];
+            const actions = '<div class="domus-form-actions">' +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                '</div>';
+
+            return '<div class="domus-form">' +
+                '<form id="domus-settings-form">' +
+                Domus.UI.buildFormTable(rows) +
+                actions +
+                '</form>' +
+                '</div>';
+        }
+
+        function bindForm() {
+            const form = document.getElementById('domus-settings-form');
+            if (!form) {
+                return;
+            }
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const formData = new FormData(form);
+                let taxRate = (formData.get('taxRate') || '').toString().trim();
+                if (taxRate === '') {
+                    taxRate = '0';
+                }
+                if (taxRate !== '' && Number.isNaN(Number(taxRate))) {
+                    Domus.UI.showNotification(t('domus', 'Enter a valid amount.'), 'error');
+                    return;
+                }
+                Domus.Api.updateSettings({ taxRate })
+                    .then(response => {
+                        const nextValue = response?.settings?.taxRate ?? taxRate;
+                        const input = form.querySelector('[name="taxRate"]');
+                        if (input) {
+                            input.value = nextValue;
+                        }
+                        Domus.UI.showNotification(t('domus', 'Settings saved.'), 'success');
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+        }
+
+        function render() {
+            Domus.UI.renderSidebar('');
+            Domus.UI.showLoading(t('domus', 'Loading…'));
+            Domus.Api.getSettings()
+                .then(response => {
+                    const settings = response?.settings || {};
+                    const content = '<div class="domus-settings">' +
+                        '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
+                        buildForm(settings) +
+                        '</div>';
+                    Domus.UI.renderContent(content);
+                    bindForm();
+                })
+                .catch(err => Domus.UI.showError(err.message || t('domus', 'An error occurred')));
+        }
+
+        return { render };
+    })();
+
+    /**
      * Documents view
      */
     Domus.Documents = (function() {
@@ -6214,6 +6306,7 @@
             Domus.Router.register('tenancyDetail', Domus.Tenancies.renderDetail);
             Domus.Router.register('bookings', Domus.Bookings.renderList);
             Domus.Router.register('accounts', Domus.Accounts.renderList);
+            Domus.Router.register('settings', Domus.Settings.render);
         }
 
         return { init };
