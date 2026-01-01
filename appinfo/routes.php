@@ -67,6 +67,10 @@ return [
         // Dashboard
         ['name' => 'Dashboard#summary', 'url' => '/dashboard/summary', 'verb' => 'GET'],
 
+        // Settings
+        ['name' => 'Settings#show', 'url' => '/settings', 'verb' => 'GET'],
+        ['name' => 'Settings#update', 'url' => '/settings', 'verb' => 'PUT'],
+
         // Accounts
         ['name' => 'Account#index', 'url' => '/accounts', 'verb' => 'GET'],
         ['name' => 'Account#create', 'url' => '/accounts', 'verb' => 'POST'],

@@ -3,8 +3,10 @@
 namespace OCA\Domus\Service;
 
 use OCA\Domus\Accounting\StatisticCalculations;
+use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
+use OCP\IConfig;
 use OCP\IL10N;
 use Psr\Log\LoggerInterface;
 
@@ -15,6 +17,7 @@ class StatisticsService {
                 private UnitMapper $unitMapper,
                 private PermissionService $permissionService,
                 private AccountService $accountService,
+                private IConfig $config,
                 private IL10N $l10n,
                 private LoggerInterface $logger,
         ) {
@@ -62,6 +65,7 @@ class StatisticsService {
                         );
                         $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                         $sums = $this->mergeSums($perYearSums[$year] ?? [], $tenancySums, $unitSums);
+                        $sums = $this->applyTaxRateSetting($sums, $userId, $topAccountMap);
 
                         foreach ($definitions as $tableName => $tableDefinitions) {
                                 $tables[$tableName]['rows'][] = $this->buildRowForYear(
@@ -394,6 +398,7 @@ class StatisticsService {
                 );
                 $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                 $mergedSums = $this->mergeSums($sums, $tenancySums, $unitSums);
+                $mergedSums = $this->applyTaxRateSetting($mergedSums, $userId, $topAccountMap);
                 $this->logger->info('StatisticsService: merged booking and tenancy sums', ['sums' => $mergedSums]);
 
                 $row = $this->buildRowForYear($year, $definitions, $mergedSums, ['unit' => $unit], $topAccountMap);
@@ -439,6 +444,21 @@ class StatisticsService {
                         $mapped[$resolved] += (float)$value;
                 }
                 return $mapped;
+        }
+
+        private function applyTaxRateSetting(array $sums, string $userId, array $topAccountMap): array {
+                $taxRate = $this->getTaxRateSetting($userId);
+                $account = $this->resolveTopAccountNumber('2009', $topAccountMap);
+                $sums[$account] = $taxRate;
+                return $sums;
+        }
+
+        private function getTaxRateSetting(string $userId): float {
+                $value = $this->config->getUserValue($userId, Application::APP_ID, 'taxRate', '0');
+                if (!is_numeric($value)) {
+                        return 0.0;
+                }
+                return (float)$value;
         }
 
         private function addValues(float ...$values): float {

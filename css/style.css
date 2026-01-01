@@ -9,6 +9,9 @@
 #app-navigation {
     border-right: 1px solid var(--color-border);
     width: 200px !important;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
 }
 
 .domus-nav {
@@ -35,6 +38,10 @@
 .domus-nav a:hover {
     background: var(--color-primary-element-light);
     color: var(--color-primary-text);
+}
+
+.domus-nav-bottom {
+    margin-top: auto;
 }
 
 .domus-icon {
@@ -1059,6 +1066,10 @@
 
 .domus-icon-document {
     background-image: url(../img/file.svg);
+}
+
+.domus-icon-settings {
+    background-image: url(../img/settings.svg);
 }
 
 @media (max-width: 1000px) {
