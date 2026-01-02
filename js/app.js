@@ -3672,7 +3672,10 @@
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const isLandlord = Domus.Role.getCurrentRole() === 'landlord';
+                    const isBuildingManagement = Domus.Role.isBuildingMgmtView();
                     const useKpiLayout = isLandlord;
+                    const showPartners = isLandlord;
+                    const showRentabilityPanels = !isBuildingManagement;
                     const filteredDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: true });
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
                     const currentTenancy = (unit.activeTenancies || [])
@@ -3734,7 +3737,8 @@
                         (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : ''),
                         (canManageDistributions ? '<button id="domus-add-unit-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : ''),
                         (canManageDistributions ? '<button id="domus-unit-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : ''),
-                        '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>'
+                        (!isBuildingManagement ? '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>' : ''),
+                        (showPartners ? '<button id="domus-unit-toggle-partners">' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + '</button>' : '')
                     ].filter(Boolean);
 
                     const hero = '<div class="domus-detail-hero">' +
@@ -3768,7 +3772,7 @@
                     const costTable = statistics && statistics.cost
                         ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost) + '</div>'
                         : '';
-                    const rentabilityChartPanel = useKpiLayout ? '' : (isLandlord ? buildRentabilityChartPanel(statistics) : '');
+                    const rentabilityChartPanel = (useKpiLayout || !showRentabilityPanels) ? '' : (isLandlord ? buildRentabilityChartPanel(statistics) : '');
 
                     const rentabilityTrend = getRentabilityChartSeries(statistics);
                     const hasRentabilityTrend = !!(rentabilityTrend?.rentability || []).some(value => value !== null);
@@ -3814,9 +3818,15 @@
                         '</div>'
                         : '';
 
-                    const partnersPanel = Domus.PartnerRelations.renderSection(partners || [], { entityType: 'unit', entityId: id });
+                    const partnersPanel = showPartners
+                        ? Domus.PartnerRelations.renderSection(partners || [], { entityType: 'unit', entityId: id })
+                        : '';
+                    const partnersPanelWrapper = showPartners
+                        ? '<div id="domus-unit-partners-panel"' + (useKpiLayout ? ' class="domus-hidden"' : '') + '>' +
+                        partnersPanel +
+                        '</div>'
+                        : '';
 
-                    const content = '<div class="domus-detail domus-dashboard">' +
                     const kpiDetailArea = useKpiLayout
                         ? '<div class="domus-kpi-detail" id="domus-unit-kpi-detail" hidden>' +
                         '<div id="domus-unit-kpi-detail-content"></div>' +
@@ -3857,6 +3867,7 @@
                         kpiDetailArea +
                         recentBookings +
                         recentDocuments +
+                        partnersPanelWrapper +
                         '</div>'
                         : '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('units') +
@@ -3869,9 +3880,9 @@
                         Domus.Distributions.renderTable(filteredDistributions, { showUnitValue: true, hideConfig: true, excludeSystemDefaults: true }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
                         Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
-                        partnersPanel +
-                        '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +
-                        revenueTable + costTable + '</div></div>' +
+                        partnersPanelWrapper +
+                        (showRentabilityPanels ? '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +
+                        revenueTable + costTable + '</div></div>' : '') +
                         (canManageBookings ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
                         Domus.Bookings.renderInline(bookings || [], { refreshView: 'unitDetail', refreshId: id }) + '</div></div>' : '') +
                         '</div>' +
@@ -3891,8 +3902,9 @@
                             onUnitEdit: (distribution) => Domus.Distributions.openCreateUnitValueModal(unit, () => renderDetail(id), { distributionKeyId: distribution?.id })
                         });
                     }
-                    renderRentabilityChart(showRentabilityChart ? statistics : null);
-                    Domus.PartnerRelations.bindSection({ entityType: 'unit', entityId: id, onRefresh: () => renderDetail(id) });
+                    if (showPartners) {
+                        Domus.PartnerRelations.bindSection({ entityType: 'unit', entityId: id, onRefresh: () => renderDetail(id) });
+                    }
                     if (useKpiLayout) {
                         renderKpiTileCharts(statistics);
                         const detailMap = {
@@ -3901,7 +3913,7 @@
                             tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies))
                         };
                         bindKpiDetailArea(detailMap);
-                    } else {
+                    } else if (showRentabilityPanels) {
                         renderRentabilityChart(isLandlord ? statistics : null);
                     }
                     bindDetailActions(id, unit);
@@ -3912,6 +3924,8 @@
         function bindDetailActions(id, unit) {
             const detailsBtn = document.getElementById('domus-unit-details');
             const deleteBtn = document.getElementById('domus-unit-delete');
+            const partnersToggleBtn = document.getElementById('domus-unit-toggle-partners');
+            const partnersPanel = document.getElementById('domus-unit-partners-panel');
 
             detailsBtn?.addEventListener('click', () => openUnitModal(id, 'view'));
             deleteBtn?.addEventListener('click', () => {
@@ -3925,6 +3939,15 @@
                         renderList();
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+            partnersToggleBtn?.addEventListener('click', () => {
+                if (!partnersPanel) {
+                    return;
+                }
+                partnersPanel.classList.toggle('domus-hidden');
+                if (!partnersPanel.classList.contains('domus-hidden')) {
+                    partnersPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             });
 
             document.getElementById('domus-add-tenancy')?.addEventListener('click', () => {
