@@ -3825,7 +3825,6 @@
 
                     const partnersPanel = Domus.PartnerRelations.renderSection(partners || [], { entityType: 'unit', entityId: id });
 
-                    const content = '<div class="domus-detail domus-dashboard">' +
                     const kpiDetailArea = useKpiLayout
                         ? '<div class="domus-kpi-detail" id="domus-unit-kpi-detail" hidden>' +
                         '<div id="domus-unit-kpi-detail-content"></div>' +
@@ -3901,7 +3900,7 @@
                             onUnitEdit: (distribution) => Domus.Distributions.openCreateUnitValueModal(unit, () => renderDetail(id), { distributionKeyId: distribution?.id })
                         });
                     }
-                    renderRentabilityChart(showRentabilityChart ? statistics : null);
+
                     Domus.PartnerRelations.bindSection({ entityType: 'unit', entityId: id, onRefresh: () => renderDetail(id) });
                     if (useKpiLayout) {
                         renderKpiTileCharts(statistics);

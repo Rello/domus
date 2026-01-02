@@ -1065,9 +1065,9 @@
     width: 36px;
     height: 36px;
     padding: 8px;
-    border: 1px solid var(--color-border);
+    border: none !important;
     border-radius: 8px;
-    background: var(--color-background-dark);
+    background: inherit !important;
     cursor: pointer;
 }
 
