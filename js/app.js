@@ -1154,6 +1154,30 @@
             return '<div class="domus-stat-grid">' + items + '</div>';
         }
 
+        function buildKpiTile(options = {}) {
+            if (!options.headline && options.headline !== 0) {
+                return '';
+            }
+
+            const headline = Domus.Utils.escapeHtml(String(options.headline));
+            const value = options.value === undefined || options.value === null || options.value === '' ? '—' : Domus.Utils.escapeHtml(String(options.value));
+            const linkLabel = Domus.Utils.escapeHtml(options.linkLabel || t('domus', 'More'));
+            const detailTarget = options.detailTarget ? ' data-kpi-target="' + Domus.Utils.escapeHtml(options.detailTarget) + '"' : '';
+            const chartId = options.chartId ? Domus.Utils.escapeHtml(options.chartId) : '';
+            const chart = options.showChart && chartId
+                ? '<div class="domus-kpi-chart"><div class="domus-kpi-chart-inner"><canvas id="' + chartId + '" class="domus-kpi-chart-canvas"></canvas></div></div>'
+                : '';
+
+            return '<div class="domus-kpi-tile">' +
+                '<div class="domus-kpi-content">' +
+                '<div class="domus-kpi-headline">' + headline + '</div>' +
+                '<div class="domus-kpi-value">' + value + '</div>' +
+                '<a href="#" class="domus-kpi-more"' + detailTarget + '>' + linkLabel + '</a>' +
+                '</div>' +
+                chart +
+                '</div>';
+        }
+
         function buildInfoList(items) {
             if (!items || !items.length) {
                 return '';
@@ -1241,6 +1265,7 @@
             buildCollapsible,
             bindCollapsibles,
             buildStatCards,
+            buildKpiTile,
             buildInfoList,
             buildFormSection,
             buildFormRow,
@@ -3098,6 +3123,7 @@
      */
     Domus.Units = (function() {
         let rentabilityChartInstance = null;
+        let kpiChartInstances = [];
 
         function formatPartnerNames(partners) {
             return (partners || [])
@@ -3289,6 +3315,116 @@
                         }
                     }
                 }
+            });
+        }
+
+        function destroyKpiCharts() {
+            kpiChartInstances.forEach(instance => instance?.destroy());
+            kpiChartInstances = [];
+        }
+
+        function renderKpiLineChart(canvasId, labels, values, options = {}) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || !window.Chart) {
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return;
+            }
+
+            const lineColor = '#0f6b2f';
+
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            data: values,
+                            borderColor: lineColor,
+                            backgroundColor: lineColor,
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        x: { display: false, grid: { display: false } },
+                        y: {
+                            display: true,
+                            ticks: { display: false },
+                            border: { display: false },
+                            grid: {
+                                drawTicks: false,
+                                color: (context) => (context.tick?.value === 0 ? 'rgba(0, 0, 0, 0.2)' : 'transparent')
+                            },
+                        }
+                    }
+                }
+            });
+
+            kpiChartInstances.push(chart);
+        }
+
+        function renderKpiTileCharts(statistics) {
+            destroyKpiCharts();
+            const series = getRentabilityChartSeries(statistics);
+            if (!series) {
+                return;
+            }
+            renderKpiLineChart('domus-kpi-rentability-chart', series.labels, series.rentability);
+            renderKpiLineChart('domus-kpi-cold-rent-chart', series.labels, series.coldRent, {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--color-warning').trim() || '#f6b02e'
+            });
+        }
+
+        function buildKpiDetailPanel(title, body) {
+            const header = title ? Domus.UI.buildSectionHeader(title) : '';
+            return '<div class="domus-panel">' + header + '<div class="domus-panel-body">' + body + '</div></div>';
+        }
+
+        function bindKpiDetailArea(detailMap) {
+            const detailArea = document.getElementById('domus-unit-kpi-detail');
+            const detailContent = document.getElementById('domus-unit-kpi-detail-content');
+            if (!detailArea || !detailContent) {
+                return;
+            }
+
+            document.querySelectorAll('.domus-kpi-more[data-kpi-target]').forEach(btn => {
+                btn.addEventListener('click', (event) => {
+                    if (btn.tagName.toLowerCase() === 'a') {
+                        event.preventDefault();
+                    }
+                    const target = btn.getAttribute('data-kpi-target');
+                    const content = target ? detailMap[target] : null;
+                    if (!content) {
+                        return;
+                    }
+                    const currentTarget = detailArea.dataset.kpiTarget || '';
+                    const isVisible = !detailArea.hasAttribute('hidden');
+                    if (isVisible && currentTarget === target) {
+                        detailArea.setAttribute('hidden', '');
+                        detailArea.dataset.kpiTarget = '';
+                        detailContent.innerHTML = '';
+                        return;
+                    }
+                    detailContent.innerHTML = content;
+                    detailArea.removeAttribute('hidden');
+                    detailArea.dataset.kpiTarget = target;
+                    Domus.UI.bindRowNavigation();
+                });
             });
         }
 
@@ -3522,7 +3658,8 @@
                     const canManageBookings = Domus.Role.hasCapability('manageBookings') && unitDetailConfig.showBookings;
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
-                    const showRentabilityChart = Domus.Role.getCurrentRole() === 'landlord';
+                    const isLandlord = Domus.Role.getCurrentRole() === 'landlord';
+                    const useKpiLayout = isLandlord;
                     const filteredDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: true });
                     const allTenancies = (unit.activeTenancies || []).concat(unit.historicTenancies || []);
                     const currentTenancy = (unit.activeTenancies || [])
@@ -3559,7 +3696,7 @@
                         addressParts.push(unit.address);
                     }
                     const addressLine = addressParts.join(', ');
-                    const stats = Domus.UI.buildStatCards([
+                    const stats = useKpiLayout ? '' : Domus.UI.buildStatCards([
                         {
                             label: t('domus', 'Current Tenancy'),
                             value: Domus.Utils.formatCurrency(currentBaseRent) || '—',
@@ -3618,9 +3755,94 @@
                     const costTable = statistics && statistics.cost
                         ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost) + '</div>'
                         : '';
-                    const rentabilityChartPanel = showRentabilityChart ? buildRentabilityChartPanel(statistics) : '';
+                    const rentabilityChartPanel = useKpiLayout ? '' : (isLandlord ? buildRentabilityChartPanel(statistics) : '');
 
-                    const content = '<div class="domus-detail domus-dashboard">' +
+                    const rentabilityTrend = getRentabilityChartSeries(statistics);
+                    const hasRentabilityTrend = !!(rentabilityTrend?.rentability || []).some(value => value !== null);
+                    const hasColdRentTrend = !!(rentabilityTrend?.coldRent || []).some(value => value !== null);
+                    const rentabilityValueLabel = rentabilityValue === undefined || rentabilityValue === null
+                        ? '—'
+                        : Domus.Utils.formatPercentage(rentabilityValue);
+                    const coldRentValueLabel = currentBaseRent === undefined || currentBaseRent === null
+                        ? '—'
+                        : Domus.Utils.formatCurrency(currentBaseRent);
+                    const currentTenantLabel = currentTenantName || '—';
+                    const kpiTiles = useKpiLayout
+                        ? '<div class="domus-kpi-tiles">' +
+                        Domus.UI.buildKpiTile({
+                            headline: t('domus', 'Rentability'),
+                            value: rentabilityValueLabel,
+                            chartId: 'domus-kpi-rentability-chart',
+                            showChart: hasRentabilityTrend,
+                            linkLabel: t('domus', 'More'),
+                            detailTarget: 'revenue'
+                        }) +
+                        Domus.UI.buildKpiTile({
+                            headline: t('domus', 'Cold rent'),
+                            value: coldRentValueLabel,
+                            chartId: 'domus-kpi-cold-rent-chart',
+                            showChart: hasColdRentTrend,
+                            linkLabel: t('domus', 'More'),
+                            detailTarget: 'cost'
+                        }) +
+                        Domus.UI.buildKpiTile({
+                            headline: t('domus', 'Current rental'),
+                            value: currentTenantLabel,
+                            showChart: false,
+                            linkLabel: t('domus', 'More'),
+                            detailTarget: 'tenancies'
+                        }) +
+                        Domus.UI.buildKpiTile({
+                            headline: t('domus', 'Open issues'),
+                            value: t('domus', '0 to dos'),
+                            showChart: false,
+                            linkLabel: t('domus', 'More')
+                        }) +
+                        '</div>'
+                        : '';
+
+                    const kpiDetailArea = useKpiLayout
+                        ? '<div class="domus-kpi-detail" id="domus-unit-kpi-detail" hidden>' +
+                        '<div id="domus-unit-kpi-detail-content"></div>' +
+                        '</div>'
+                        : '';
+
+                    const bookingsPanel = canManageBookings
+                        ? '<div class="domus-panel"><div class="domus-panel-body">' +
+                        Domus.Bookings.renderInline(bookings || [], { refreshView: 'unitDetail', refreshId: id }) +
+                        '</div></div>'
+                        : '';
+
+                    const documentsPanel = '<div class="domus-panel"><div class="domus-panel-body">' +
+                        Domus.Documents.renderList('unit', id, { showLinkAction: documentActionsEnabled }) +
+                        '</div></div>';
+
+                    const recentBookings = canManageBookings
+                        ? Domus.UI.buildCollapsible(bookingsPanel, {
+                            collapsed: true,
+                            showLabel: t('domus', 'Recent bookings'),
+                            hideLabel: t('domus', 'Recent bookings'),
+                            id: 'domus-unit-recent-bookings'
+                        })
+                        : '';
+
+                    const recentDocuments = Domus.UI.buildCollapsible(documentsPanel, {
+                        collapsed: true,
+                        showLabel: t('domus', 'Recent documents'),
+                        hideLabel: t('domus', 'Recent documents'),
+                        id: 'domus-unit-recent-documents'
+                    });
+
+                    const content = useKpiLayout
+                        ? '<div class="domus-detail domus-dashboard domus-unit-detail-landlord">' +
+                        Domus.UI.buildBackButton('units') +
+                        hero +
+                        kpiTiles +
+                        kpiDetailArea +
+                        recentBookings +
+                        recentDocuments +
+                        '</div>'
+                        : '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('units') +
                         hero +
                         stats +
@@ -3645,13 +3867,24 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
-                    if (canManageDistributions) {
+                    Domus.UI.bindCollapsibles();
+                    if (canManageDistributions && !useKpiLayout) {
                         Domus.Distributions.bindTable('domus-unit-distributions', filteredDistributions, {
                             mode: 'unit',
                             onUnitEdit: (distribution) => Domus.Distributions.openCreateUnitValueModal(unit, () => renderDetail(id), { distributionKeyId: distribution?.id })
                         });
                     }
-                    renderRentabilityChart(showRentabilityChart ? statistics : null);
+                    if (useKpiLayout) {
+                        renderKpiTileCharts(statistics);
+                        const detailMap = {
+                            revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable),
+                            cost: buildKpiDetailPanel(t('domus', 'Costs'), renderStatisticsTable(statistics ? statistics.cost : null)),
+                            tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies))
+                        };
+                        bindKpiDetailArea(detailMap);
+                    } else {
+                        renderRentabilityChart(isLandlord ? statistics : null);
+                    }
                     bindDetailActions(id, unit);
                 })
                 .catch(err => Domus.UI.showError(err.message));
