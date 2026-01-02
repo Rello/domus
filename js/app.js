@@ -3419,8 +3419,17 @@
                     if (!content) {
                         return;
                     }
+                    const currentTarget = detailArea.dataset.kpiTarget || '';
+                    const isVisible = !detailArea.hasAttribute('hidden');
+                    if (isVisible && currentTarget === target) {
+                        detailArea.setAttribute('hidden', '');
+                        detailArea.dataset.kpiTarget = '';
+                        detailContent.innerHTML = '';
+                        return;
+                    }
                     detailContent.innerHTML = content;
                     detailArea.removeAttribute('hidden');
+                    detailArea.dataset.kpiTarget = target;
                     Domus.UI.bindRowNavigation();
                 });
             });
