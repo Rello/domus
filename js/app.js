@@ -4847,7 +4847,10 @@
         }
 
         function openAddModal(entityType, entityId, onRefresh) {
-            Domus.Api.getPartners()
+            const partnerTypeFilter = entityType === 'unit'
+                ? Domus.Permission.getTenancyPartnerFilter()
+                : null;
+            Domus.Api.getPartners(partnerTypeFilter)
                 .then(partners => {
                     const partnerOptions = [{ value: '', label: t('domus', 'Create new partner') }].concat((partners || []).map(partner => ({
                         value: partner.id,
