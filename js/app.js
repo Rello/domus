@@ -3659,13 +3659,18 @@
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Unit') }));
             Domus.Api.get('/units/' + id)
-                .then(unit => Promise.all([
-                    Promise.resolve(unit),
-                    Domus.Api.getUnitStatistics(id).catch(() => null),
-                    Domus.Api.getBookings({ unitId: id }).catch(() => []),
-                    Domus.Distributions.loadForUnit(id).catch(() => []),
-                    Domus.Api.getUnitPartners(id).catch(() => [])
-                ]))
+                .then(unit => {
+                    const distributionsPromise = Domus.Role.isBuildingMgmtView()
+                        ? Domus.Distributions.loadForUnit(id).catch(() => [])
+                        : Promise.resolve([]);
+                    return Promise.all([
+                        Promise.resolve(unit),
+                        Domus.Api.getUnitStatistics(id).catch(() => null),
+                        Domus.Api.getBookings({ unitId: id }).catch(() => []),
+                        distributionsPromise,
+                        Domus.Api.getUnitPartners(id).catch(() => [])
+                    ]);
+                })
                 .then(([unit, statistics, bookings, distributions, partners]) => {
 
                     const tenancyLabels = Domus.Role.getTenancyLabels();
