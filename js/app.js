@@ -2882,7 +2882,8 @@
                     ];
                     const contextActions = isBuildingManagement
                         ? [
-                            canManageDistributions ? '<button id="domus-preview-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Preview distribution')) + '</button>' : ''
+                            canManageDistributions ? '<button id="domus-preview-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Preview distribution')) + '</button>' : '',
+                            canManageDistributions ? '<button id="domus-property-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : ''
                         ].filter(Boolean)
                         : [
                             '<button id="domus-add-unit">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>',
@@ -3012,6 +3013,12 @@
             });
             document.getElementById('domus-preview-distribution')?.addEventListener('click', () => {
                 Domus.Distributions.openPreviewModal(property);
+            });
+            document.getElementById('domus-property-distribution-report')?.addEventListener('click', () => {
+                Domus.DistributionReports.openModal({
+                    propertyId: id,
+                    year: Domus.state.currentYear
+                });
             });
         }
 
