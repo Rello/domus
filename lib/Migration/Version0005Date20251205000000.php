@@ -60,7 +60,6 @@ class Version0005Date20251205000000 extends SimpleMigrationStep {
             ['2006', 'Loan interest'],
             ['2007', 'Depreciation'],
             ['2008', 'Other tax deductions'],
-            ['2009', 'Tax rate'],
             ['3000', 'Total cost'],
             ['4000', 'Maintenance1'],
             ['4001', 'Maintenance2'],
