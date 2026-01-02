@@ -4,6 +4,7 @@ namespace OCA\Domus\Service;
 
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DocumentLinkMapper;
+use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Db\Property;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\TenancyMapper;
@@ -17,6 +18,7 @@ class PropertyService {
         private UnitMapper $unitMapper,
         private BookingMapper $bookingMapper,
         private DocumentLinkMapper $documentLinkMapper,
+        private PartnerRelMapper $partnerRelMapper,
         private TenancyMapper $tenancyMapper,
         private IL10N $l10n,
         private LoggerInterface $logger,
@@ -93,6 +95,7 @@ class PropertyService {
         if ($unitCount > 0) {
             throw new \RuntimeException($this->l10n->t('Cannot delete property with existing units.'));
         }
+        $this->partnerRelMapper->deleteForRelation('property', $property->getId(), $userId);
         $this->propertyMapper->delete($property);
     }
 
