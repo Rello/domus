@@ -3335,11 +3335,6 @@
             }
 
             const lineColor = '#0f6b2f';
-            const numericValues = (values || []).map(value => Number(value)).filter(value => !Number.isNaN(value));
-            const minValue = numericValues.length ? Math.min(...numericValues) : 0;
-            const maxValue = numericValues.length ? Math.max(...numericValues) : 0;
-            const yMin = Math.min(0, minValue);
-            const yMax = Math.max(0, maxValue);
 
             const chart = new Chart(ctx, {
                 type: 'line',
@@ -3375,8 +3370,6 @@
                                 drawTicks: false,
                                 color: (context) => (context.tick?.value === 0 ? 'rgba(0, 0, 0, 0.2)' : 'transparent')
                             },
-                            min: yMin,
-                            max: yMax
                         }
                     }
                 }

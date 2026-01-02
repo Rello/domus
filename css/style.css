@@ -848,7 +848,7 @@
     border: 2px solid var(--color-border);
     background: var(--color-main-background);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    min-height: 120px;
+    min-height: 150px;
 }
 
 .domus-kpi-content {
@@ -861,11 +861,11 @@
 
 .domus-kpi-headline {
     font-size: 16px;
-    font-weight: 600;
+    /*font-weight: 600;*/
 }
 
 .domus-kpi-value {
-    font-size: 28px;
+    font-size: 25px;
     font-weight: 700;
     line-height: 1;
 }
@@ -876,8 +876,8 @@
     border: none;
     padding: 0;
     font-size: 14px;
-    font-weight: 600;
-    color: var(--color-primary);
+    /*font-weight: 600;*/
+    /*color: var(--color-primary);*/
     cursor: pointer;
     text-decoration: underline;
 }
@@ -894,7 +894,7 @@
 }
 
 .domus-kpi-chart-inner {
-    height: 60px;
+    height: 70px;
     width: 100%;
     display: flex;
     align-items: center;
