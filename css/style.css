@@ -1289,6 +1289,10 @@
     background-image: url(../img/tenancy.svg);
 }
 
+.domus-icon-add {
+    background-image: url(../img/add.svg);
+}
+
 .domus-icon-edit {
     background-image: url(../img/edit.svg);
 }
