@@ -1065,15 +1065,44 @@
     width: 36px;
     height: 36px;
     padding: 8px;
-    border: 1px solid var(--color-border);
+    border: none !important;
     border-radius: 8px;
-    background: var(--color-background-dark);
+    background: inherit !important;
     cursor: pointer;
 }
 
 .domus-icon-only-button:hover,
 .domus-icon-only-button:focus {
     background: var(--color-background-hover);
+}
+
+.domus-partner-contact {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.domus-partner-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.domus-partner-phone {
+    display: none;
+    font-size: 12px;
+    color: var(--color-text-maxcontrast);
+}
+
+.domus-partner-phone.is-visible {
+    display: inline;
+}
+
+.domus-partner-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .domus-icon-button {
@@ -1242,6 +1271,12 @@
 
 .domus-icon-partner {
     background-image: url(../img/partner.svg);
+}
+.domus-icon-mail {
+    background-image: url(../img/mail.svg);
+}
+.domus-icon-call {
+    background-image: url(../img/call.svg);
 }
 .domus-icon-property {
     background-image: url(../img/property.svg);

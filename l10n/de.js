@@ -206,6 +206,7 @@ OC.L10N.register(
         "Service charge as prepayment": "Nebenkosten als Vorauszahlung",
         "Share": "Anteil",
         "Show": "Anzeigen",
+        "Show phone number": "Telefonnummer anzeigen",
         "Show linked objects": "Verknüpfte Objekte anzeigen",
         "Start date": "Startdatum",
         "Start date and base rent are required.": "Startdatum und Grundmiete sind erforderlich.",
