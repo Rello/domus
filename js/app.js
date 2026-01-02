@@ -1164,7 +1164,10 @@
             }
 
             const headline = Domus.Utils.escapeHtml(String(options.headline));
-            const value = options.value === undefined || options.value === null || options.value === '' ? '—' : Domus.Utils.escapeHtml(String(options.value));
+            const customValue = options.valueHtml;
+            const value = customValue !== undefined
+                ? ((customValue === null || customValue === '') ? '—' : customValue)
+                : (options.value === undefined || options.value === null || options.value === '' ? '—' : Domus.Utils.escapeHtml(String(options.value)));
             const linkLabel = Domus.Utils.escapeHtml(options.linkLabel || t('domus', 'More'));
             const detailTarget = options.detailTarget ? ' data-kpi-target="' + Domus.Utils.escapeHtml(options.detailTarget) + '"' : '';
             const chartId = options.chartId ? Domus.Utils.escapeHtml(options.chartId) : '';
@@ -3682,8 +3685,9 @@
                             const bDate = new Date(b?.startDate || 0);
                             return (bDate.getTime() || 0) - (aDate.getTime() || 0);
                         })[0];
-                    const currentTenantName = currentTenancy ?
-                        (formatPartnerNames(currentTenancy.partners) || currentTenancy.partnerName || '') : '';
+                    const currentTenantPartners = currentTenancy
+                        ? Domus.Partners.renderPartnerContactList(currentTenancy.partners, { fallbackName: currentTenancy.partnerName })
+                        : '';
                     const currentBaseRent = currentTenancy?.baseRent;
                     const previousYear = Domus.state.currentYear - 1;
                     const rentabilityRow = (statistics?.revenue?.rows || [])
@@ -3779,7 +3783,7 @@
                     const coldRentValueLabel = currentBaseRent === undefined || currentBaseRent === null
                         ? '—'
                         : Domus.Utils.formatCurrency(currentBaseRent);
-                    const currentTenantLabel = currentTenantName || '—';
+                    const currentTenantLabel = currentTenantPartners || '—';
                     const kpiTiles = useKpiLayout
                         ? '<div class="domus-kpi-tiles">' +
                         Domus.UI.buildKpiTile({
@@ -3800,7 +3804,7 @@
                         }) +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Current rental'),
-                            value: currentTenantLabel,
+                            valueHtml: currentTenantLabel,
                             showChart: false,
                             linkLabel: t('domus', 'More'),
                             detailTarget: 'tenancies'
@@ -3885,6 +3889,7 @@
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
                     Domus.UI.bindCollapsibles();
+                    Domus.Partners.bindContactActions();
                     if (canManageDistributions && !useKpiLayout) {
                         Domus.Distributions.bindTable('domus-unit-distributions', filteredDistributions, {
                             mode: 'unit',
@@ -4319,9 +4324,89 @@
             return match?.label || type || t('domus', 'Partner');
         }
 
+        function normalizePartnerList(partners, fallbackName) {
+            const normalized = (partners || [])
+                .filter(partner => partner && (partner.name || partner.email || partner.phone))
+                .map(partner => partner);
+            if (normalized.length) {
+                return normalized;
+            }
+            return fallbackName ? [{ name: fallbackName }] : [];
+        }
+
+        function renderPartnerContact(partner, options = {}) {
+            const name = Domus.Utils.escapeHtml(partner?.name || options.fallbackName || '');
+            if (!name) {
+                return '';
+            }
+            const email = partner?.email || '';
+            const phone = partner?.phone || '';
+            const actions = [];
+            if (email) {
+                const mailto = 'mailto:' + encodeURIComponent(email);
+                const label = t('domus', 'Email');
+                actions.push(
+                    '<a class="domus-partner-action domus-icon-only-button" href="' + Domus.Utils.escapeHtml(mailto) + '"' +
+                    ' aria-label="' + Domus.Utils.escapeHtml(label) + '" title="' + Domus.Utils.escapeHtml(label) + '">' +
+                    '<span class="domus-icon domus-icon-mail" aria-hidden="true"></span>' +
+                    '<span class="domus-visually-hidden">' + Domus.Utils.escapeHtml(label) + '</span>' +
+                    '</a>'
+                );
+            }
+            if (phone) {
+                const label = t('domus', 'Show phone number');
+                actions.push(
+                    '<button type="button" class="domus-partner-action domus-icon-only-button domus-partner-phone-button"' +
+                    ' aria-expanded="false"' +
+                    ' aria-label="' + Domus.Utils.escapeHtml(label) + '" title="' + Domus.Utils.escapeHtml(label) + '">' +
+                    '<span class="domus-icon domus-icon-call" aria-hidden="true"></span>' +
+                    '<span class="domus-visually-hidden">' + Domus.Utils.escapeHtml(label) + '</span>' +
+                    '</button>'
+                );
+            }
+            const phoneLabel = phone
+                ? '<span class="domus-partner-phone" aria-live="polite">' + Domus.Utils.escapeHtml(phone) + '</span>'
+                : '';
+            const actionsHtml = actions.length ? '<span class="domus-partner-actions">' + actions.join('') + '</span>' : '';
+            return '<span class="domus-partner-contact">' +
+                '<span class="domus-partner-name">' + name + '</span>' +
+                actionsHtml +
+                phoneLabel +
+                '</span>';
+        }
+
+        function renderPartnerContactList(partners, options = {}) {
+            const normalized = normalizePartnerList(partners, options.fallbackName);
+            if (!normalized.length) {
+                return options.emptyLabel ? Domus.Utils.escapeHtml(options.emptyLabel) : '';
+            }
+            return '<span class="domus-partner-list">' +
+                normalized.map(partner => renderPartnerContact(partner)).join('') +
+                '</span>';
+        }
+
+        function bindContactActions(container = document) {
+            container.querySelectorAll('.domus-partner-phone-button').forEach(button => {
+                if (button.dataset.domusBound === 'true') {
+                    return;
+                }
+                button.dataset.domusBound = 'true';
+                button.addEventListener('click', () => {
+                    const wrapper = button.closest('.domus-partner-contact');
+                    const phoneLabel = wrapper?.querySelector('.domus-partner-phone');
+                    if (!phoneLabel) {
+                        return;
+                    }
+                    phoneLabel.classList.toggle('is-visible');
+                    const expanded = phoneLabel.classList.contains('is-visible');
+                    button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                });
+            });
+        }
+
         function renderInline(partners) {
             const rows = (partners || []).map(partner => [
-                Domus.Utils.escapeHtml(partner.name || ''),
+                renderPartnerContact(partner),
                 Domus.Utils.escapeHtml(getPartnerTypeLabel(partner.partnerType)),
                 Domus.Utils.escapeHtml(partner.email || '')
             ]);
@@ -4346,7 +4431,7 @@
                         '</div>';
                     const rows = (partners || []).map(p => ({
                         cells: [
-                            Domus.Utils.escapeHtml(p.name || ''),
+                            renderPartnerContact(p),
                             Domus.Utils.escapeHtml(getPartnerTypeLabel(p.partnerType)),
                             Domus.Utils.escapeHtml(p.email || '')
                         ],
@@ -4356,6 +4441,7 @@
                         t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
                     ], rows));
                     bindList();
+                    bindContactActions();
                 })
                 .catch(err => Domus.UI.showError(err.message));
         }
@@ -4371,7 +4457,7 @@
         function renderPartnersTable(partners) {
             const rows = (partners || []).map(p => ({
                 cells: [
-                    Domus.Utils.escapeHtml(p.name || ''),
+                    renderPartnerContact(p),
                     Domus.Utils.escapeHtml(getPartnerTypeLabel(p.partnerType)),
                     Domus.Utils.escapeHtml(p.email || '')
                 ],
@@ -4388,6 +4474,7 @@
                 }
             }
             Domus.UI.bindRowNavigation();
+            bindContactActions();
         }
 
         function openCreateModal() {
@@ -4675,6 +4762,9 @@
             renderList,
             renderDetail,
             renderInline,
+            renderPartnerContact,
+            renderPartnerContactList,
+            bindContactActions,
             getPartnerTypeOptions,
             getPartnerTypeLabel,
             buildPartnerFields
@@ -4697,7 +4787,7 @@
                 const contact = [partner.email, partner.phone].filter(Boolean).join(' • ');
                 return {
                     cells: [
-                        Domus.Utils.escapeHtml(partner.name || ''),
+                        Domus.Partners.renderPartnerContact(partner),
                         Domus.Utils.escapeHtml(Domus.Partners.getPartnerTypeLabel(partner.partnerType)),
                         Domus.Utils.escapeHtml(contact || '—')
                     ],
@@ -4725,6 +4815,7 @@
             const openModal = () => openAddModal(entityType, entityId, onRefresh);
             addBtn?.addEventListener('click', openModal);
             emptyBtn?.addEventListener('click', openModal);
+            Domus.Partners.bindContactActions();
         }
 
         function openAddModal(entityType, entityId, onRefresh) {
@@ -4859,11 +4950,14 @@
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
                     const rows = (tenancies || []).map(tn => {
-                        const partnerLabel = tn.partnerName || formatPartnerNames(tn.partners);
+                        const partnerLabel = Domus.Partners.renderPartnerContactList(tn.partners, {
+                            fallbackName: tn.partnerName,
+                            emptyLabel: '—'
+                        });
                         return {
                             cells: [
                                 Domus.Utils.escapeHtml(formatUnitLabel(tn)),
-                                Domus.Utils.escapeHtml(partnerLabel || ''),
+                                partnerLabel || Domus.Utils.escapeHtml(''),
                                 Domus.Utils.escapeHtml(tn.status || '')
                             ],
                             dataset: { navigate: 'tenancyDetail', args: tn.id }
@@ -4873,6 +4967,7 @@
                         t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Status')
                     ], rows));
                     bindList();
+                    Domus.Partners.bindContactActions();
                 })
                 .catch(err => Domus.UI.showError(err.message));
         }
@@ -4886,7 +4981,10 @@
             const rows = (tenancies || []).map(tn => ({
                 cells: [
                     Domus.Utils.escapeHtml(formatUnitLabel(tn)),
-                    Domus.Utils.escapeHtml(formatPartnerNames(tn.partners) || tn.partnerName || ''),
+                    Domus.Partners.renderPartnerContactList(tn.partners, {
+                        fallbackName: tn.partnerName,
+                        emptyLabel: '—'
+                    }) || Domus.Utils.escapeHtml(''),
                     Domus.Utils.escapeHtml(tn.status || ''),
                     Domus.Utils.escapeHtml(tn.period || '')
                 ],
@@ -5008,6 +5106,7 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
+                    Domus.Partners.bindContactActions();
                     bindDetailActions(id, tenancy);
                 })
                 .catch(err => Domus.UI.showError(err.message));
