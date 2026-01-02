@@ -218,10 +218,14 @@
             getPartners: (type) => {
                 const resolvedType = type && String(type).trim() !== ''
                     ? type
-                    : Domus.Permission.getPartnerListFilter();
+                    : null;
                 const params = resolvedType ? appendFilters(new URLSearchParams(), { partnerType: resolvedType }) : null;
                 return request('GET', buildUrl('/partners', params));
             },
+            getUnitPartners: unitId => request('GET', `/units/${unitId}/partners`),
+            getPropertyPartners: propertyId => request('GET', `/properties/${propertyId}/partners`),
+            createUnitPartner: (unitId, data) => request('POST', `/units/${unitId}/partners`, data),
+            createPropertyPartner: (propertyId, data) => request('POST', `/properties/${propertyId}/partners`, data),
             createPartner: data => request('POST', '/partners', data),
             updatePartner: (id, data) => request('PUT', `/partners/${id}`, data),
             deletePartner: id => request('DELETE', `/partners/${id}`),
@@ -1411,8 +1415,8 @@
         function getPartnerTypeConfig() {
             return {
                 defaultType: getPartnerTypeForCreation(),
-                hideField: true,
-                disabled: true
+                hideField: false,
+                disabled: false
             };
         }
 
@@ -1436,7 +1440,7 @@
         }
 
         function getPartnerListFilter() {
-            return getPartnerTypeForCreation();
+            return null;
         }
 
         return {
@@ -2818,8 +2822,12 @@
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Property') }));
             Domus.Api.getProperty(id)
-                .then(property => Promise.all([Promise.resolve(property), Domus.Distributions.loadForProperty(id).catch(() => [])]))
-                .then(([property, distributions]) => {
+                .then(property => Promise.all([
+                    Promise.resolve(property),
+                    Domus.Distributions.loadForProperty(id).catch(() => []),
+                    Domus.Api.getPropertyPartners(id).catch(() => [])
+                ]))
+                .then(([property, distributions, partners]) => {
 
                     const visibleDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: false });
                     const cityLine = [property.zip, property.city].filter(Boolean).join(' ');
@@ -2878,6 +2886,8 @@
                         { label: t('domus', 'Description'), value: property.description }
                     ]);
 
+                    const partnersPanel = Domus.PartnerRelations.renderSection(partners || [], { entityType: 'property', entityId: id });
+
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('properties') +
                         hero +
@@ -2888,6 +2898,7 @@
                         Domus.Distributions.renderTable(visibleDistributions, { excludeSystemDefaults: false }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + unitsHeader + '<div class="domus-panel-body">' +
                         Domus.Units.renderListInline(property.units || []) + '</div></div>' +
+                        partnersPanel +
                         (showBookingFeatures ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
                         Domus.Bookings.renderInline(property.bookings || [], { refreshView: 'propertyDetail', refreshId: id }) + '</div></div>' : '') +
                         '</div>' +
@@ -2907,6 +2918,7 @@
                         propertyId: id,
                         onPropertyEdit: (distribution) => Domus.Distributions.openEditKeyModal(id, distribution, () => renderDetail(id))
                     });
+                    Domus.PartnerRelations.bindSection({ entityType: 'property', entityId: id, onRefresh: () => renderDetail(id) });
                     bindDetailActions(id, property);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -3512,9 +3524,10 @@
                     Promise.resolve(unit),
                     Domus.Api.getUnitStatistics(id).catch(() => null),
                     Domus.Api.getBookings({ unitId: id }).catch(() => []),
-                    Domus.Distributions.loadForUnit(id).catch(() => [])
+                    Domus.Distributions.loadForUnit(id).catch(() => []),
+                    Domus.Api.getUnitPartners(id).catch(() => [])
                 ]))
-                .then(([unit, statistics, bookings, distributions]) => {
+                .then(([unit, statistics, bookings, distributions, partners]) => {
 
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const unitDetailConfig = Domus.Role.getUnitDetailConfig();
@@ -3620,6 +3633,8 @@
                         : '';
                     const rentabilityChartPanel = showRentabilityChart ? buildRentabilityChartPanel(statistics) : '';
 
+                    const partnersPanel = Domus.PartnerRelations.renderSection(partners || [], { entityType: 'unit', entityId: id });
+
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('units') +
                         hero +
@@ -3631,6 +3646,7 @@
                         Domus.Distributions.renderTable(filteredDistributions, { showUnitValue: true, hideConfig: true, excludeSystemDefaults: true }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
                         Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
+                        partnersPanel +
                         '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +
                         revenueTable + costTable + '</div></div>' +
                         (canManageBookings ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
@@ -3652,6 +3668,7 @@
                         });
                     }
                     renderRentabilityChart(showRentabilityChart ? statistics : null);
+                    Domus.PartnerRelations.bindSection({ entityType: 'unit', entityId: id, onRefresh: () => renderDetail(id) });
                     bindDetailActions(id, unit);
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -4052,10 +4069,25 @@
      * Partners view
      */
     Domus.Partners = (function() {
+        function getPartnerTypeOptions() {
+            return [
+                { value: 'tenant', label: t('domus', 'Tenant') },
+                { value: 'owner', label: t('domus', 'Owner') },
+                { value: 'buildingManagement', label: t('domus', 'Building Management') },
+                { value: 'contractor', label: t('domus', 'Contractor') },
+                { value: 'facilities', label: t('domus', 'Facilities') }
+            ];
+        }
+
+        function getPartnerTypeLabel(type) {
+            const match = getPartnerTypeOptions().find(option => option.value === type);
+            return match?.label || type || t('domus', 'Partner');
+        }
+
         function renderInline(partners) {
             const rows = (partners || []).map(partner => [
                 Domus.Utils.escapeHtml(partner.name || ''),
-                Domus.Utils.escapeHtml(partner.partnerType || ''),
+                Domus.Utils.escapeHtml(getPartnerTypeLabel(partner.partnerType)),
                 Domus.Utils.escapeHtml(partner.email || '')
             ]);
             return Domus.UI.buildTable([
@@ -4068,20 +4100,19 @@
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Partners') }));
-            const allowedType = Domus.Permission.getPartnerListFilter();
-            const allowedLabel = allowedType === 'owner' ? t('domus', 'Owner') : t('domus', 'Tenant');
-            Domus.Api.getPartners(allowedType)
+            const typeOptions = [{ value: '', label: t('domus', 'All types') }].concat(getPartnerTypeOptions());
+            Domus.Api.getPartners()
                 .then(partners => {
                     const toolbar = '<div class="domus-toolbar">' +
                         '<button id="domus-partner-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Partner') })) + '</button>' +
                         '<label class="domus-inline-label">' + Domus.Utils.escapeHtml(t('domus', 'Type')) + ' <select id="domus-partner-filter">' +
-                        '<option value="' + Domus.Utils.escapeHtml(allowedType) + '">' + Domus.Utils.escapeHtml(allowedLabel) + '</option>' +
+                        typeOptions.map(option => '<option value="' + Domus.Utils.escapeHtml(option.value) + '">' + Domus.Utils.escapeHtml(option.label) + '</option>').join('') +
                         '</select></label>' +
                         '</div>';
                     const rows = (partners || []).map(p => ({
                         cells: [
                             Domus.Utils.escapeHtml(p.name || ''),
-                            Domus.Utils.escapeHtml(p.partnerType || ''),
+                            Domus.Utils.escapeHtml(getPartnerTypeLabel(p.partnerType)),
                             Domus.Utils.escapeHtml(p.email || '')
                         ],
                         dataset: { navigate: 'partnerDetail', args: p.id }
@@ -4106,7 +4137,7 @@
             const rows = (partners || []).map(p => ({
                 cells: [
                     Domus.Utils.escapeHtml(p.name || ''),
-                    Domus.Utils.escapeHtml(p.partnerType || ''),
+                    Domus.Utils.escapeHtml(getPartnerTypeLabel(p.partnerType)),
                     Domus.Utils.escapeHtml(p.email || '')
                 ],
                 dataset: { navigate: 'partnerDetail', args: p.id }
@@ -4149,7 +4180,7 @@
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const stats = Domus.UI.buildStatCards([
                         { label: tenancyLabels.plural, value: tenancies.length, hint: t('domus', 'Linked contracts'), formatValue: false },
-                        { label: t('domus', 'Type'), value: partner.partnerType || '—', hint: t('domus', 'Partner category') }
+                        { label: t('domus', 'Type'), value: getPartnerTypeLabel(partner.partnerType) || '—', hint: t('domus', 'Partner category') }
                     ]);
                     const standardActions = [
                         Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-partner-details' }),
@@ -4164,7 +4195,7 @@
                         '<div class="domus-hero-content">' +
                         '<div class="domus-hero-indicator"><span class="domus-icon domus-icon-partner" aria-hidden="true"></span></div>' +
                         '<div class="domus-hero-main">' +
-                        '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(partner.partnerType || t('domus', 'Partner')) + '</div>' +
+                        '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(getPartnerTypeLabel(partner.partnerType)) + '</div>' +
                         '<h2>' + Domus.Utils.escapeHtml(partner.name || '') + '</h2>' +
                         (contactMeta ? '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(contactMeta) + '</p>' : '') +
                         '</div>' +
@@ -4183,7 +4214,7 @@
                         dataset: { entityType: 'partner', entityId: id }
                     } : null);
                     const infoList = Domus.UI.buildInfoList([
-                        { label: t('domus', 'Type'), value: partner.partnerType },
+                        { label: t('domus', 'Type'), value: getPartnerTypeLabel(partner.partnerType) },
                         { label: t('domus', 'Street'), value: partner.street },
                         { label: t('domus', 'ZIP'), value: partner.zip },
                         { label: t('domus', 'City'), value: partner.city },
@@ -4299,61 +4330,95 @@
                     Domus.UI.showNotification(t('domus', 'Name is required.'), 'error');
                     return;
                 }
+                if (!data.partnerType) {
+                    Domus.UI.showNotification(t('domus', 'Partner type is required.'), 'error');
+                    return;
+                }
                 onSubmit(data);
             });
         }
 
-        function buildPartnerForm(partner, options = {}) {
+        function renderDisplay(value) {
+            const safeValue = value || value === 0 ? String(value) : '';
+            return '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(safeValue) + '</div>';
+        }
+
+        function inputField(name, label, value, opts = {}) {
+            const isView = opts.isView;
+            const required = opts.required && !isView;
+            const attrs = [`name="${Domus.Utils.escapeHtml(name)}"`];
+            if (opts.type) attrs.push(`type="${Domus.Utils.escapeHtml(opts.type)}"`);
+            if (required) attrs.push('required');
+            if (isView) attrs.push('disabled');
+            const content = opts.isTextarea
+                ? `<textarea ${attrs.join(' ')}>${value ? Domus.Utils.escapeHtml(String(value)) : ''}</textarea>`
+                : `<input ${attrs.join(' ')} value="${value ? Domus.Utils.escapeHtml(String(value)) : ''}">`;
+            return Domus.UI.buildFormRow({
+                label,
+                required,
+                content: isView ? renderDisplay(value) : content,
+                className: opts.className
+            });
+        }
+
+        function selectField(name, label, options, selected, opts = {}) {
+            const isView = opts.isView;
+            const current = selected || options[0]?.value;
+            const attrs = ['name="' + Domus.Utils.escapeHtml(name) + '"'];
+            if (opts.disabled) {
+                attrs.push('disabled');
+            }
+            if (opts.required && !isView) {
+                attrs.push('required');
+            }
+            const content = isView
+                ? renderDisplay(options.find(opt => opt.value === current)?.label || current)
+                : '<select ' + attrs.join(' ') + '>' +
+                options.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (opt.value === current ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
+                '</select>';
+            return Domus.UI.buildFormRow({
+                label,
+                required: opts.required && !isView,
+                content,
+                className: opts.className
+            });
+        }
+
+        function buildPartnerFields(partner, options = {}) {
             const mode = options.mode || 'edit';
             const isView = mode === 'view';
+            const rowClassName = options.rowClassName;
             const partnerTypeConfig = Domus.Permission.getPartnerTypeConfig();
             const defaultPartnerType = partner?.partnerType || partnerTypeConfig.defaultType;
             const hiddenFields = [];
-
-            function renderDisplay(value) {
-                const safeValue = value || value === 0 ? String(value) : '';
-                return '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(safeValue) + '</div>';
-            }
-
-            function inputField(name, label, value, opts = {}) {
-                const required = opts.required && !isView;
-                const attrs = [`name="${Domus.Utils.escapeHtml(name)}"`];
-                if (opts.type) attrs.push(`type="${Domus.Utils.escapeHtml(opts.type)}"`);
-                if (required) attrs.push('required');
-                if (isView) attrs.push('disabled');
-                const content = opts.isTextarea
-                    ? `<textarea ${attrs.join(' ')}>${value ? Domus.Utils.escapeHtml(String(value)) : ''}</textarea>`
-                    : `<input ${attrs.join(' ')} value="${value ? Domus.Utils.escapeHtml(String(value)) : ''}">`;
-                return Domus.UI.buildFormRow({ label, required, content: isView ? renderDisplay(value) : content });
-            }
-
-            function selectField(name, label, options, selected, opts = {}) {
-                const current = selected || options[0]?.value;
-                const content = isView
-                    ? renderDisplay(options.find(opt => opt.value === current)?.label || current)
-                    : '<select name="' + Domus.Utils.escapeHtml(name) + '"' + (opts.disabled ? ' disabled' : '') + '>' +
-                    options.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (opt.value === current ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                    '</select>';
-                return Domus.UI.buildFormRow({ label, content });
-            }
 
             if (partnerTypeConfig.hideField && defaultPartnerType) {
                 hiddenFields.push('<input type="hidden" name="partnerType" value="' + Domus.Utils.escapeHtml(defaultPartnerType) + '">');
             }
 
             const rows = [
-                inputField('name', t('domus', 'Name'), partner?.name || '', { required: true }),
-                ...(partnerTypeConfig.hideField ? [] : [selectField('partnerType', t('domus', 'Type'), [
-                    { value: 'tenant', label: t('domus', 'Tenant') },
-                    { value: 'owner', label: t('domus', 'Owner') }
-                ], defaultPartnerType, { disabled: partnerTypeConfig.disabled })]),
-                inputField('street', t('domus', 'Street'), partner?.street || ''),
-                inputField('zip', t('domus', 'ZIP'), partner?.zip || ''),
-                inputField('city', t('domus', 'City'), partner?.city || ''),
-                inputField('country', t('domus', 'Country'), partner?.country || ''),
-                inputField('email', t('domus', 'Email'), partner?.email || '', { type: 'email' }),
-                inputField('phone', t('domus', 'Phone'), partner?.phone || '')
+                inputField('name', t('domus', 'Name'), partner?.name || '', { required: true, isView, className: rowClassName }),
+                ...(partnerTypeConfig.hideField ? [] : [selectField('partnerType', t('domus', 'Type'), getPartnerTypeOptions(), defaultPartnerType, {
+                    disabled: partnerTypeConfig.disabled,
+                    required: true,
+                    isView,
+                    className: rowClassName
+                })]),
+                inputField('street', t('domus', 'Street'), partner?.street || '', { isView, className: rowClassName }),
+                inputField('zip', t('domus', 'ZIP'), partner?.zip || '', { isView, className: rowClassName }),
+                inputField('city', t('domus', 'City'), partner?.city || '', { isView, className: rowClassName }),
+                inputField('country', t('domus', 'Country'), partner?.country || '', { isView, className: rowClassName }),
+                inputField('email', t('domus', 'Email'), partner?.email || '', { type: 'email', isView, className: rowClassName }),
+                inputField('phone', t('domus', 'Phone'), partner?.phone || '', { isView, className: rowClassName })
             ];
+
+            return { rows, hiddenFields };
+        }
+
+        function buildPartnerForm(partner, options = {}) {
+            const mode = options.mode || 'edit';
+            const isView = mode === 'view';
+            const fields = buildPartnerFields(partner, { mode });
 
             const actions = isView
                 ? '<div class="domus-form-actions"><button type="button" id="domus-partner-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
@@ -4364,14 +4429,166 @@
 
             return '<div class="domus-form">' +
                 '<form id="domus-partner-form" data-mode="' + Domus.Utils.escapeHtml(mode) + '">' +
-                hiddenFields.join('') +
-                Domus.UI.buildFormTable(rows) +
+                fields.hiddenFields.join('') +
+                Domus.UI.buildFormTable(fields.rows) +
                 actions +
                 '</form>' +
                 '</div>';
         }
 
-        return { renderList, renderDetail, renderInline };
+        return {
+            renderList,
+            renderDetail,
+            renderInline,
+            getPartnerTypeOptions,
+            getPartnerTypeLabel,
+            buildPartnerFields
+        };
+    })();
+
+    /**
+     * Partner relations
+     */
+    Domus.PartnerRelations = (function() {
+        function renderSection(partners, options = {}) {
+            const entityType = options.entityType || 'unit';
+            const addId = `domus-${entityType}-add-partner`;
+            const emptyAddId = `domus-${entityType}-add-partner-empty`;
+            const header = Domus.UI.buildSectionHeader(t('domus', 'Partners'), {
+                id: addId,
+                label: t('domus', 'Add {entity}', { entity: t('domus', 'Partner') })
+            });
+            const rows = (partners || []).map(partner => {
+                const contact = [partner.email, partner.phone].filter(Boolean).join(' • ');
+                return {
+                    cells: [
+                        Domus.Utils.escapeHtml(partner.name || ''),
+                        Domus.Utils.escapeHtml(Domus.Partners.getPartnerTypeLabel(partner.partnerType)),
+                        Domus.Utils.escapeHtml(contact || '—')
+                    ],
+                    dataset: { navigate: 'partnerDetail', args: partner.id }
+                };
+            });
+            const body = rows.length
+                ? Domus.UI.buildTable([t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Contact')], rows)
+                : '<div class="domus-empty-state">' +
+                '<p>' + Domus.Utils.escapeHtml(t('domus', 'No partners linked yet.')) + '</p>' +
+                '<button id="' + Domus.Utils.escapeHtml(emptyAddId) + '" class="primary">' +
+                Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Partner') })) +
+                '</button>' +
+                '</div>';
+
+            return '<div class="domus-panel">' + header + '<div class="domus-panel-body">' + body + '</div></div>';
+        }
+
+        function bindSection(options = {}) {
+            const entityType = options.entityType || 'unit';
+            const entityId = options.entityId;
+            const onRefresh = options.onRefresh;
+            const addBtn = document.getElementById(`domus-${entityType}-add-partner`);
+            const emptyBtn = document.getElementById(`domus-${entityType}-add-partner-empty`);
+            const openModal = () => openAddModal(entityType, entityId, onRefresh);
+            addBtn?.addEventListener('click', openModal);
+            emptyBtn?.addEventListener('click', openModal);
+        }
+
+        function openAddModal(entityType, entityId, onRefresh) {
+            Domus.Api.getPartners()
+                .then(partners => {
+                    const partnerOptions = [{ value: '', label: t('domus', 'Create new partner') }].concat((partners || []).map(partner => ({
+                        value: partner.id,
+                        label: partner.name || `${t('domus', 'Partner')} #${partner.id}`,
+                        partnerType: partner.partnerType
+                    })));
+                    const existingSelect = '<select name="partnerId">' +
+                        partnerOptions.map(option => '<option value="' + Domus.Utils.escapeHtml(option.value) + '">' + Domus.Utils.escapeHtml(option.label) + '</option>').join('') +
+                        '</select>';
+                    const existingRow = Domus.UI.buildFormRow({
+                        label: t('domus', 'Existing partner'),
+                        content: existingSelect
+                    });
+                    const fields = Domus.Partners.buildPartnerFields({}, { mode: 'edit', rowClassName: 'domus-partner-new-field' });
+                    const content = '<div class="domus-form">' +
+                        '<form id="domus-partner-relation-form">' +
+                        fields.hiddenFields.join('') +
+                        Domus.UI.buildFormTable([existingRow].concat(fields.rows)) +
+                        '<div class="domus-form-actions">' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                        '<button type="button" id="domus-partner-relation-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                        '</div>' +
+                        '</form>' +
+                        '</div>';
+
+                    const modal = Domus.UI.openModal({
+                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }),
+                        content
+                    });
+                    bindRelationForm(modal, { entityType, entityId, onRefresh, partnerOptions });
+                })
+                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        function bindRelationForm(modalContext, options) {
+            const form = modalContext.modalEl.querySelector('#domus-partner-relation-form');
+            const cancel = modalContext.modalEl.querySelector('#domus-partner-relation-cancel');
+            const existingSelect = form?.querySelector('select[name="partnerId"]');
+            const newRows = form?.querySelectorAll('.domus-partner-new-field') || [];
+            const newInputs = form?.querySelectorAll('.domus-partner-new-field input, .domus-partner-new-field select, .domus-partner-new-field textarea') || [];
+
+            function toggleNewFields() {
+                const hasExisting = Boolean(existingSelect?.value);
+                newRows.forEach(row => row.classList.toggle('domus-hidden', hasExisting));
+                newInputs.forEach(input => {
+                    if (hasExisting) {
+                        input.setAttribute('disabled', 'disabled');
+                    } else {
+                        input.removeAttribute('disabled');
+                    }
+                });
+            }
+
+            existingSelect?.addEventListener('change', toggleNewFields);
+            toggleNewFields();
+            cancel?.addEventListener('click', modalContext.close);
+
+            form?.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const data = {};
+                const selectedPartner = existingSelect?.value;
+                if (selectedPartner) {
+                    data.partnerId = selectedPartner;
+                } else {
+                    Array.prototype.forEach.call(form.elements, el => {
+                        if (!el.name || el.disabled || el.name === 'partnerId') {
+                            return;
+                        }
+                        data[el.name] = el.value;
+                    });
+                    if (!data.name) {
+                        Domus.UI.showNotification(t('domus', 'Name is required.'), 'error');
+                        return;
+                    }
+                    if (!data.partnerType) {
+                        Domus.UI.showNotification(t('domus', 'Partner type is required.'), 'error');
+                        return;
+                    }
+                }
+
+                const request = options.entityType === 'property'
+                    ? Domus.Api.createPropertyPartner(options.entityId, data)
+                    : Domus.Api.createUnitPartner(options.entityId, data);
+
+                request
+                    .then(() => {
+                        Domus.UI.showNotification(t('domus', 'Partner linked.'), 'success');
+                        modalContext.close();
+                        options.onRefresh?.();
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+        }
+
+        return { renderSection, bindSection };
     })();
 
     /**

@@ -8,6 +8,7 @@ use OCP\IRequest;
 class PermissionService {
     private const ROLE_LANDLORD = 'landlord';
     private const ROLE_BUILDING_MGMT = 'buildingMgmt';
+    private const PARTNER_TYPES = ['tenant', 'owner', 'buildingManagement', 'contractor', 'facilities'];
 
     public function __construct(
         private IL10N $l10n,
@@ -41,16 +42,21 @@ class PermissionService {
         }
     }
 
+    public function assertPartnerTypeAllowed(string $partnerType): void {
+        if (!in_array($partnerType, self::PARTNER_TYPES, true)) {
+            throw new \InvalidArgumentException($this->l10n->t('Invalid partner type.'));
+        }
+    }
+
     public function assertPartnerMatchesRole(string $role, string $partnerType): void {
         $this->assertPartnerTypeForRole($role, $partnerType);
     }
 
-    public function filterPartnerListType(?string $type, string $role): string {
-        $allowedType = $this->getAllowedPartnerType($role);
+    public function filterPartnerListType(?string $type): ?string {
         if ($type === null || $type === '') {
-            return $allowedType;
+            return null;
         }
-        $this->assertPartnerTypeForRole($role, $type);
+        $this->assertPartnerTypeAllowed($type);
         return $type;
     }
 
@@ -74,5 +80,9 @@ class PermissionService {
 
     private function getAllowedPartnerType(string $role): string {
         return $this->isBuildingManagement($role) ? 'owner' : 'tenant';
+    }
+
+    public function getAllowedPartnerTypes(): array {
+        return self::PARTNER_TYPES;
     }
 }

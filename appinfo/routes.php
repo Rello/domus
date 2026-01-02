@@ -12,6 +12,8 @@ return [
         ['name' => 'Property#destroy', 'url' => '/properties/{id}', 'verb' => 'DELETE'],
         ['name' => 'Distribution#listByProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'GET'],
         ['name' => 'Distribution#createForProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'POST'],
+        ['name' => 'PartnerRelation#listByProperty', 'url' => '/properties/{propertyId}/partners', 'verb' => 'GET'],
+        ['name' => 'PartnerRelation#createForProperty', 'url' => '/properties/{propertyId}/partners', 'verb' => 'POST'],
 
         // Unit
         ['name' => 'Unit#index', 'url' => '/units', 'verb' => 'GET'],
@@ -24,6 +26,8 @@ return [
         ['name' => 'Unit#createSettlement', 'url' => '/units/{id}/settlements', 'verb' => 'POST'],
         ['name' => 'Distribution#createForUnit', 'url' => '/units/{unitId}/distributions', 'verb' => 'POST'],
         ['name' => 'Distribution#listByUnit', 'url' => '/units/{unitId}/distributions', 'verb' => 'GET'],
+        ['name' => 'PartnerRelation#listByUnit', 'url' => '/units/{unitId}/partners', 'verb' => 'GET'],
+        ['name' => 'PartnerRelation#createForUnit', 'url' => '/units/{unitId}/partners', 'verb' => 'POST'],
         // Statistics
         ['name' => 'Statistics#unit', 'url' => '/statistics/units/{unitId}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitPerYear', 'url' => '/statistics/units/{unitId}/{year}', 'verb' => 'GET'],
