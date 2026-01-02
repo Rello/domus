@@ -931,6 +931,10 @@
     gap: 16px;
 }
 
+.domus-dashboard-grid.domus-dashboard-grid-single {
+    grid-template-columns: 1fr;
+}
+
 .domus-panel {
     background: var(--color-main-background);
     border: 1px solid var(--color-border);
@@ -1287,6 +1291,10 @@
 
 .domus-icon-tenancy {
     background-image: url(../img/tenancy.svg);
+}
+
+.domus-icon-add {
+    background-image: url(../img/add.svg);
 }
 
 .domus-icon-edit {
