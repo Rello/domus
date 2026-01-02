@@ -107,7 +107,7 @@ OC.L10N.register(
         "Enter at least one amount.": "Geben Sie mindestens einen Betrag ein.",
         "Entries for the selected year": "Einträge für das ausgewählte Jahr",
         "File": "Datei",
-        "Facilities": "Facility Management",
+        "Facilities": "Hausmeister",
         "Generate report": "Bericht erstellen",
         "Hide": "Ausblenden",
         "IBAN": "IBAN",
