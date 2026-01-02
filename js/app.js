@@ -2875,16 +2875,21 @@
                     const showBookingFeatures = Domus.Role.hasCapability('manageBookings');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
+                    const isBuildingManagement = Domus.Role.isBuildingMgmtView();
                     const standardActions = [
                         Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-property-details' }),
                         Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-property-delete' })
                     ];
-                    const contextActions = [
-                        '<button id="domus-add-unit">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>',
-                        showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : '',
-                        canManageDistributions ? '<button id="domus-add-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : '',
-                        canManageDistributions ? '<button id="domus-preview-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Preview distribution')) + '</button>' : ''
-                    ].filter(Boolean);
+                    const contextActions = isBuildingManagement
+                        ? [
+                            canManageDistributions ? '<button id="domus-preview-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Preview distribution')) + '</button>' : ''
+                        ].filter(Boolean)
+                        : [
+                            '<button id="domus-add-unit">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>',
+                            showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : '',
+                            canManageDistributions ? '<button id="domus-add-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : '',
+                            canManageDistributions ? '<button id="domus-preview-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Preview distribution')) + '</button>' : ''
+                        ].filter(Boolean);
                     const stats = Domus.UI.buildStatCards([
                         { label: t('domus', 'Units'), value: (property.units || []).length, hint: t('domus', 'Total units in this property'), formatValue: false },
                         { label: t('domus', 'Bookings'), value: (property.bookings || []).length, hint: t('domus', 'Entries for the selected year'), formatValue: false },
@@ -3766,14 +3771,24 @@
                         Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-unit-details' }),
                         Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-unit-delete' })
                     ];
-                    const contextActions = [
-                        (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
-                        (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : ''),
-                        (canManageDistributions ? '<button id="domus-add-unit-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : ''),
-                        (canManageDistributions ? '<button id="domus-unit-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : ''),
-                        (!isBuildingManagement ? '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>' : ''),
-                        (showPartners ? '<button id="domus-unit-toggle-partners">' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + '</button>' : '')
-                    ].filter(Boolean);
+                    const contextActions = isBuildingManagement
+                        ? [
+                            (canManageDistributions ? '<button id="domus-unit-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : '')
+                        ].filter(Boolean)
+                        : (isLandlord
+                            ? [
+                                '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>',
+                                '<button id="domus-unit-toggle-partners">' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + '</button>'
+                            ]
+                            : [
+                                (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
+                                (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : ''),
+                                (canManageDistributions ? '<button id="domus-add-unit-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : ''),
+                                (canManageDistributions ? '<button id="domus-unit-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : ''),
+                                '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>',
+                                (showPartners ? '<button id="domus-unit-toggle-partners">' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + '</button>' : '')
+                            ]
+                        ).filter(Boolean);
 
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-content">' +
@@ -6744,6 +6759,9 @@
         function bindDocumentActions(entityType, entityId, containerId) {
             document.querySelectorAll('#' + containerId + ' button[data-doc-id]').forEach(btn => {
                 btn.addEventListener('click', function() {
+                    if (!confirm(t('domus', 'Remove document?'))) {
+                        return;
+                    }
                     Domus.Api.unlinkDocument(this.getAttribute('data-doc-id'))
                         .then(() => {
                             Domus.UI.showNotification(t('domus', 'Document removed.'), 'success');
