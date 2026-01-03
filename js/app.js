@@ -4149,10 +4149,11 @@
                         label: p.name || `${t('domus', 'Property')} #${p.id}`
                     })));
                     const availableProperties = propertyOptions.slice(1);
-                    const showPropertySelect = !Domus.Permission.shouldHidePropertyField(unit || {})
+                    const hidePropertyField = Domus.Permission.shouldHidePropertyField(unit || {});
+                    const showPropertySelect = !hidePropertyField
                         && (Domus.Role.isBuildingMgmtView() || availableProperties.length > 1);
-                    const requireProperty = true;
-                    const defaultPropertyId = unit.propertyId || availableProperties[0]?.value;
+                    const requireProperty = Domus.Permission.shouldRequireProperty();
+                    const defaultPropertyId = unit.propertyId || (showPropertySelect ? availableProperties[0]?.value : null);
 
                     let modal;
                     const headerActions = [];
@@ -4175,7 +4176,7 @@
                             renderDetail(id);
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error')),
-                    { requireProperty, mode });
+                    { requireProperty, mode, hidePropertyField });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
@@ -4200,17 +4201,20 @@
                 e.preventDefault();
                 const data = {};
                 Array.prototype.forEach.call(form.elements, el => { if (el.name) data[el.name] = el.value; });
-                if (options.requireProperty && !data.propertyId) {
-                    Domus.UI.showNotification(t('domus', 'Property is required.'), 'error');
-                    return;
-                }
-                if (!data.label) {
-                    Domus.UI.showNotification(t('domus', 'Label is required.'), 'error');
-                    return;
-                }
-                onSubmit?.(data);
-            });
-        }
+            if (options.requireProperty && !data.propertyId) {
+                Domus.UI.showNotification(t('domus', 'Property is required.'), 'error');
+                return;
+            }
+            if (!data.label) {
+                Domus.UI.showNotification(t('domus', 'Label is required.'), 'error');
+                return;
+            }
+            if (options.hidePropertyField) {
+                data.propertyId = null;
+            }
+            onSubmit?.(data);
+        });
+    }
 
 
         function buildUnitForm(propertyOptions, unit, options = {}) {
