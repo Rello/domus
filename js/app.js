@@ -4739,6 +4739,7 @@
             const isView = mode === 'view';
             const rowClassName = options.rowClassName;
             const partnerTypeConfig = Domus.Permission.getPartnerTypeConfig();
+            const partnerTypeOptions = options.partnerTypeOptions || getPartnerTypeOptions();
             const defaultPartnerType = partner?.partnerType || partnerTypeConfig.defaultType;
             const hiddenFields = [];
 
@@ -4748,7 +4749,7 @@
 
             const rows = [
                 inputField('name', t('domus', 'Name'), partner?.name || '', { required: true, isView, className: rowClassName }),
-                ...(partnerTypeConfig.hideField ? [] : [selectField('partnerType', t('domus', 'Type'), getPartnerTypeOptions(), defaultPartnerType, {
+                ...(partnerTypeConfig.hideField ? [] : [selectField('partnerType', t('domus', 'Type'), partnerTypeOptions, defaultPartnerType, {
                     disabled: partnerTypeConfig.disabled,
                     required: true,
                     isView,
@@ -4862,7 +4863,14 @@
                         label: t('domus', 'Existing partner'),
                         content: existingSelect
                     });
-                    const fields = Domus.Partners.buildPartnerFields({}, { mode: 'edit', rowClassName: 'domus-partner-new-field' });
+                    const partnerTypeOptions = entityType === 'unit'
+                        ? Domus.Partners.getPartnerTypeOptions().filter(option => !['tenant', 'owner'].includes(option.value))
+                        : Domus.Partners.getPartnerTypeOptions();
+                    const fields = Domus.Partners.buildPartnerFields({}, {
+                        mode: 'edit',
+                        rowClassName: 'domus-partner-new-field',
+                        partnerTypeOptions
+                    });
                     const content = '<div class="domus-form">' +
                         '<form id="domus-partner-relation-form">' +
                         fields.hiddenFields.join('') +
@@ -5038,7 +5046,9 @@
                         value: u.id,
                         label: u.label || `${t('domus', 'Unit')} #${u.id}`
                     }));
-                    const partnerOptions = (partners || []).map(p => ({
+                    const partnerOptions = (partners || [])
+                        .filter(p => p.partnerType === partnerTypeFilter)
+                        .map(p => ({
                         value: p.id,
                         label: p.name || `${t('domus', 'Partner')} #${p.id}`
                     }));
@@ -5228,7 +5238,9 @@
                         value: u.id,
                         label: u.label || `${t('domus', 'Unit')} #${u.id}`
                     }));
-                    const partnerOptions = (partners || []).map(p => ({
+                    const partnerOptions = (partners || [])
+                        .filter(p => p.partnerType === partnerTypeFilter)
+                        .map(p => ({
                         value: p.id,
                         label: p.name || `${t('domus', 'Partner')} #${p.id}`
                     }));
