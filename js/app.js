@@ -4847,12 +4847,10 @@
         }
 
         function openAddModal(entityType, entityId, onRefresh) {
-            const partnerTypeFilter = entityType === 'unit'
-                ? Domus.Permission.getTenancyPartnerFilter()
-                : null;
-            Domus.Api.getPartners(partnerTypeFilter)
+            Domus.Api.getPartners()
                 .then(partners => {
-                    const partnerOptions = [{ value: '', label: t('domus', 'Create new partner') }].concat((partners || []).map(partner => ({
+                    const existingPartners = (partners || []).filter(partner => !['tenant', 'owner'].includes(partner.partnerType));
+                    const partnerOptions = [{ value: '', label: t('domus', 'Create new partner') }].concat(existingPartners.map(partner => ({
                         value: partner.id,
                         label: partner.name || `${t('domus', 'Partner')} #${partner.id}`,
                         partnerType: partner.partnerType
@@ -5030,9 +5028,10 @@
             const tenancyLabels = Domus.Role.getTenancyLabels();
             const effectiveTitle = title || t('domus', 'Add {entity}', { entity: tenancyLabels.singular });
             const effectiveSuccessMessage = successMessage || t('domus', '{entity} created.', { entity: Domus.Role.getTenancyLabels().singular });
+            const partnerTypeFilter = Domus.Role.isBuildingMgmtView() ? 'owner' : 'tenant';
             Promise.all([
                 Domus.Api.getUnits(),
-                Domus.Api.getPartners(Domus.Permission.getTenancyPartnerFilter())
+                Domus.Api.getPartners(partnerTypeFilter)
             ])
                 .then(([units, partners]) => {
                     const unitOptions = (units || []).map(u => ({
@@ -5219,9 +5218,10 @@
         }
 
         function openTenancyModal(id, tenancy, mode = 'edit') {
+            const partnerTypeFilter = Domus.Role.isBuildingMgmtView() ? 'owner' : 'tenant';
             Promise.all([
                 Domus.Api.getUnits(),
-                Domus.Api.getPartners(Domus.Permission.getTenancyPartnerFilter())
+                Domus.Api.getPartners(partnerTypeFilter)
             ])
                 .then(([units, partners]) => {
                     const unitOptions = (units || []).map(u => ({
