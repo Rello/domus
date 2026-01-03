@@ -28,6 +28,7 @@ return [
         ['name' => 'Distribution#listByUnit', 'url' => '/units/{unitId}/distributions', 'verb' => 'GET'],
         ['name' => 'PartnerRelation#listByUnit', 'url' => '/units/{unitId}/partners', 'verb' => 'GET'],
         ['name' => 'PartnerRelation#createForUnit', 'url' => '/units/{unitId}/partners', 'verb' => 'POST'],
+        ['name' => 'Task#listByUnit', 'url' => '/units/{unitId}/tasks', 'verb' => 'GET'],
         // Statistics
         ['name' => 'Statistics#unit', 'url' => '/statistics/units/{unitId}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitPerYear', 'url' => '/statistics/units/{unitId}/{year}', 'verb' => 'GET'],
@@ -60,6 +61,8 @@ return [
         ['name' => 'Distribution#previewBooking', 'url' => '/bookings/{bookingId}/distribution-preview', 'verb' => 'GET'],
         ['name' => 'Distribution#updateForProperty', 'url' => '/properties/{propertyId}/distributions/{distributionId}', 'verb' => 'PUT'],
         ['name' => 'Distribution#report', 'url' => '/distribution-report', 'verb' => 'GET'],
+        ['name' => 'Task#update', 'url' => '/tasks/{id}', 'verb' => 'PUT'],
+        ['name' => 'Task#summary', 'url' => '/tasks/summary', 'verb' => 'GET'],
 
         // Documents
         ['name' => 'Document#index', 'url' => '/documents/{entityType}/{entityId}', 'verb' => 'GET'],
