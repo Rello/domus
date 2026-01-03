@@ -238,8 +238,13 @@
             updateTenancy: (id, data) => request('PUT', `/tenancies/${id}`, data),
             deleteTenancy: id => request('DELETE', `/tenancies/${id}`),
             getBookings: filters => {
-                const params = appendFilters(withYear(), filters || {});
-                return request('GET', buildUrl('/bookings', params));
+                const params = withYear();
+                const sanitizedFilters = Object.assign({}, filters || {});
+                if (sanitizedFilters.year !== undefined && sanitizedFilters.year !== null && sanitizedFilters.year !== '') {
+                    params.set('year', sanitizedFilters.year);
+                    delete sanitizedFilters.year;
+                }
+                return request('GET', buildUrl('/bookings', appendFilters(params, sanitizedFilters)));
             },
             createBooking: data => request('POST', '/bookings', data),
             updateBooking: (id, data) => request('PUT', `/bookings/${id}`, data),
@@ -3692,6 +3697,68 @@
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
+        function getStatisticsRowYear(row, statistics) {
+            if (!statistics || !statistics.columns) {
+                return null;
+            }
+            const yearColumn = statistics.columns.find(col => {
+                const key = (col.key || '').toLowerCase();
+                const label = (col.label || '').toLowerCase();
+                return key === 'year' || label === 'year';
+            });
+            if (!yearColumn) {
+                return null;
+            }
+            const value = row[yearColumn.key];
+            return value === undefined || value === null || value === '' ? null : value;
+        }
+
+        function renderUnitBookingsByYear(unitId, year) {
+            const panel = document.getElementById('domus-unit-bookings-panel');
+            const body = document.getElementById('domus-unit-bookings-body');
+            if (!panel || !body) {
+                return;
+            }
+            panel.removeAttribute('hidden');
+            body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'Loading bookings…')) + '</div>';
+            Domus.Api.getBookings({ unitId, year })
+                .then(bookings => {
+                    body.innerHTML = Domus.Bookings.renderInline(bookings || [], { refreshView: 'unitDetail', refreshId: unitId });
+                    Domus.UI.bindRowNavigation();
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                })
+                .catch(err => {
+                    body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
+                });
+        }
+
+        function renderUnitDocumentsByYear(unitId, year, options = {}) {
+            Domus.Documents.renderList('unit', unitId, {
+                showLinkAction: options.showLinkAction,
+                year
+            });
+        }
+
+        function bindStatisticsBookingRows(unitId, options = {}) {
+            const detailContent = document.getElementById('domus-unit-kpi-detail-content');
+            if (!detailContent) {
+                return;
+            }
+            detailContent.querySelectorAll('table.domus-table tr[data-stat-year]').forEach(row => {
+                row.addEventListener('click', (event) => {
+                    if (event.target.closest('a') || event.target.closest('button')) {
+                        return;
+                    }
+                    const year = row.getAttribute('data-stat-year');
+                    if (!year) {
+                        return;
+                    }
+                    renderUnitBookingsByYear(unitId, year);
+                    renderUnitDocumentsByYear(unitId, year, options);
+                });
+            });
+        }
+
         function renderDetail(id) {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Unit') }));
@@ -3837,9 +3904,19 @@
                     } : null);
 
                     const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'));
-                    const revenueTable = renderStatisticsTable(statistics ? statistics.revenue : null);
+                    const revenueTable = renderStatisticsTable(statistics ? statistics.revenue : null, {
+                        buildRowDataset: row => {
+                            const year = getStatisticsRowYear(row, statistics ? statistics.revenue : null);
+                            return year ? { 'stat-year': year } : null;
+                        }
+                    });
                     const costTable = statistics && statistics.cost
-                        ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost) + '</div>'
+                        ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost, {
+                            buildRowDataset: row => {
+                                const year = getStatisticsRowYear(row, statistics ? statistics.cost : null);
+                                return year ? { 'stat-year': year } : null;
+                            }
+                        }) + '</div>'
                         : '';
                     const rentabilityChartPanel = (useKpiLayout || !showRentabilityPanels) ? '' : (isLandlord ? buildRentabilityChartPanel(statistics) : '');
 
@@ -3903,7 +3980,7 @@
                         : '';
 
                     const bookingsPanel = canManageBookings
-                        ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
+                        ? '<div class="domus-panel" id="domus-unit-bookings-panel"' + (useKpiLayout ? ' hidden' : '') + '>' + bookingsHeader + '<div class="domus-panel-body" id="domus-unit-bookings-body">' +
                         Domus.Bookings.renderInline(bookings || [], { refreshView: 'unitDetail', refreshId: id }) +
                         '</div></div>'
                         : '';
@@ -3972,6 +4049,7 @@
                             document.getElementById('domus-add-tenancy-inline')?.addEventListener('click', () => {
                                 Domus.Tenancies.openCreateModal({ unitId: id }, () => renderDetail(id));
                             });
+                            bindStatisticsBookingRows(id, { showLinkAction: documentActionsEnabled });
                         });
                     } else if (showRentabilityPanels) {
                         renderRentabilityChart(isLandlord ? statistics : null);
@@ -6578,8 +6656,11 @@
      * Documents view
      */
     Domus.Documents = (function() {
-        function renderList(entityType, entityId, options) {
+        function renderList(entityType, entityId, options = {}) {
             const containerId = `domus-documents-${entityType}-${entityId}`;
+            const filterYear = options.year !== undefined && options.year !== null && options.year !== ''
+                ? parseInt(options.year, 10)
+                : null;
 
             function updateContainer(html) {
                 const placeholder = document.getElementById(containerId);
@@ -6590,7 +6671,16 @@
 
             Domus.Api.getDocuments(entityType, entityId)
                 .then(docs => {
-                    const rows = (docs || []).map(doc => [
+                    const filteredDocs = filterYear
+                        ? (docs || []).filter(doc => {
+                            if (!doc?.createdAt) {
+                                return false;
+                            }
+                            const year = new Date(doc.createdAt * 1000).getFullYear();
+                            return year === filterYear;
+                        })
+                        : (docs || []);
+                    const rows = filteredDocs.map(doc => [
                         '<a class="domus-link" href="' + Domus.Utils.escapeHtml(doc.fileUrl || '#') + '">' + Domus.Utils.escapeHtml(doc.fileName || doc.fileUrl || doc.fileId || '') + '</a>',
                         Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Show linked objects'), { dataset: { docInfo: doc.id } }),
                         Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove'), { dataset: { docId: doc.id } })
