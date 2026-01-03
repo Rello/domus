@@ -4809,6 +4809,7 @@
             const isView = mode === 'view';
             const rowClassName = options.rowClassName;
             const partnerTypeConfig = Domus.Permission.getPartnerTypeConfig();
+            const partnerTypeOptions = options.partnerTypeOptions || getPartnerTypeOptions();
             const defaultPartnerType = partner?.partnerType || partnerTypeConfig.defaultType;
             const hiddenFields = [];
 
@@ -4818,7 +4819,7 @@
 
             const rows = [
                 inputField('name', t('domus', 'Name'), partner?.name || '', { required: true, isView, className: rowClassName }),
-                ...(partnerTypeConfig.hideField ? [] : [selectField('partnerType', t('domus', 'Type'), getPartnerTypeOptions(), defaultPartnerType, {
+                ...(partnerTypeConfig.hideField ? [] : [selectField('partnerType', t('domus', 'Type'), partnerTypeOptions, defaultPartnerType, {
                     disabled: partnerTypeConfig.disabled,
                     required: true,
                     isView,
@@ -4918,7 +4919,8 @@
         function openAddModal(entityType, entityId, onRefresh) {
             Domus.Api.getPartners()
                 .then(partners => {
-                    const partnerOptions = [{ value: '', label: t('domus', 'Create new partner') }].concat((partners || []).map(partner => ({
+                    const existingPartners = (partners || []).filter(partner => !['tenant', 'owner'].includes(partner.partnerType));
+                    const partnerOptions = [{ value: '', label: t('domus', 'Create new partner') }].concat(existingPartners.map(partner => ({
                         value: partner.id,
                         label: partner.name || `${t('domus', 'Partner')} #${partner.id}`,
                         partnerType: partner.partnerType
@@ -4930,7 +4932,14 @@
                         label: t('domus', 'Existing partner'),
                         content: existingSelect
                     });
-                    const fields = Domus.Partners.buildPartnerFields({}, { mode: 'edit', rowClassName: 'domus-partner-new-field' });
+                    const partnerTypeOptions = (entityType === 'unit' || entityType === 'property')
+                        ? Domus.Partners.getPartnerTypeOptions().filter(option => !['tenant', 'owner'].includes(option.value))
+                        : Domus.Partners.getPartnerTypeOptions();
+                    const fields = Domus.Partners.buildPartnerFields({}, {
+                        mode: 'edit',
+                        rowClassName: 'domus-partner-new-field',
+                        partnerTypeOptions
+                    });
                     const content = '<div class="domus-form">' +
                         '<form id="domus-partner-relation-form">' +
                         fields.hiddenFields.join('') +
@@ -5096,16 +5105,19 @@
             const tenancyLabels = Domus.Role.getTenancyLabels();
             const effectiveTitle = title || t('domus', 'Add {entity}', { entity: tenancyLabels.singular });
             const effectiveSuccessMessage = successMessage || t('domus', '{entity} created.', { entity: Domus.Role.getTenancyLabels().singular });
+            const partnerTypeFilter = Domus.Role.isBuildingMgmtView() ? 'owner' : 'tenant';
             Promise.all([
                 Domus.Api.getUnits(),
-                Domus.Api.getPartners(Domus.Permission.getTenancyPartnerFilter())
+                Domus.Api.getPartners(partnerTypeFilter)
             ])
                 .then(([units, partners]) => {
                     const unitOptions = (units || []).map(u => ({
                         value: u.id,
                         label: u.label || `${t('domus', 'Unit')} #${u.id}`
                     }));
-                    const partnerOptions = (partners || []).map(p => ({
+                    const partnerOptions = (partners || [])
+                        .filter(p => p.partnerType === partnerTypeFilter)
+                        .map(p => ({
                         value: p.id,
                         label: p.name || `${t('domus', 'Partner')} #${p.id}`
                     }));
@@ -5284,16 +5296,19 @@
         }
 
         function openTenancyModal(id, tenancy, mode = 'edit') {
+            const partnerTypeFilter = Domus.Role.isBuildingMgmtView() ? 'owner' : 'tenant';
             Promise.all([
                 Domus.Api.getUnits(),
-                Domus.Api.getPartners(Domus.Permission.getTenancyPartnerFilter())
+                Domus.Api.getPartners(partnerTypeFilter)
             ])
                 .then(([units, partners]) => {
                     const unitOptions = (units || []).map(u => ({
                         value: u.id,
                         label: u.label || `${t('domus', 'Unit')} #${u.id}`
                     }));
-                    const partnerOptions = (partners || []).map(p => ({
+                    const partnerOptions = (partners || [])
+                        .filter(p => p.partnerType === partnerTypeFilter)
+                        .map(p => ({
                         value: p.id,
                         label: p.name || `${t('domus', 'Partner')} #${p.id}`
                     }));
