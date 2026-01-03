@@ -3732,7 +3732,14 @@
                 });
         }
 
-        function bindStatisticsBookingRows(unitId) {
+        function renderUnitDocumentsByYear(unitId, year, options = {}) {
+            Domus.Documents.renderList('unit', unitId, {
+                showLinkAction: options.showLinkAction,
+                year
+            });
+        }
+
+        function bindStatisticsBookingRows(unitId, options = {}) {
             const detailContent = document.getElementById('domus-unit-kpi-detail-content');
             if (!detailContent) {
                 return;
@@ -3747,6 +3754,7 @@
                         return;
                     }
                     renderUnitBookingsByYear(unitId, year);
+                    renderUnitDocumentsByYear(unitId, year, options);
                 });
             });
         }
@@ -4041,7 +4049,7 @@
                             document.getElementById('domus-add-tenancy-inline')?.addEventListener('click', () => {
                                 Domus.Tenancies.openCreateModal({ unitId: id }, () => renderDetail(id));
                             });
-                            bindStatisticsBookingRows(id);
+                            bindStatisticsBookingRows(id, { showLinkAction: documentActionsEnabled });
                         });
                     } else if (showRentabilityPanels) {
                         renderRentabilityChart(isLandlord ? statistics : null);
@@ -6633,8 +6641,11 @@
      * Documents view
      */
     Domus.Documents = (function() {
-        function renderList(entityType, entityId, options) {
+        function renderList(entityType, entityId, options = {}) {
             const containerId = `domus-documents-${entityType}-${entityId}`;
+            const filterYear = options.year !== undefined && options.year !== null && options.year !== ''
+                ? parseInt(options.year, 10)
+                : null;
 
             function updateContainer(html) {
                 const placeholder = document.getElementById(containerId);
@@ -6645,7 +6656,16 @@
 
             Domus.Api.getDocuments(entityType, entityId)
                 .then(docs => {
-                    const rows = (docs || []).map(doc => [
+                    const filteredDocs = filterYear
+                        ? (docs || []).filter(doc => {
+                            if (!doc?.createdAt) {
+                                return false;
+                            }
+                            const year = new Date(doc.createdAt * 1000).getFullYear();
+                            return year === filterYear;
+                        })
+                        : (docs || []);
+                    const rows = filteredDocs.map(doc => [
                         '<a class="domus-link" href="' + Domus.Utils.escapeHtml(doc.fileUrl || '#') + '">' + Domus.Utils.escapeHtml(doc.fileName || doc.fileUrl || doc.fileId || '') + '</a>',
                         Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Show linked objects'), { dataset: { docInfo: doc.id } }),
                         Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove'), { dataset: { docId: doc.id } })
