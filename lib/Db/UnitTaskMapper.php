@@ -63,4 +63,32 @@ class UnitTaskMapper extends QBMapper {
 
         return $this->findEntities($qb);
     }
+
+    /**
+     * @param int[] $unitIds
+     *
+     * @throws Exception
+     */
+    public function countByStatusForYearAndUnits(string $userId, int $year, array $unitIds): array {
+        if ($unitIds === []) {
+            return [];
+        }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('status')
+            ->addSelect($qb->func()->count('*', 'count'))
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)))
+            ->andWhere($qb->expr()->in('unit_id', $qb->createNamedParameter($unitIds, $qb::PARAM_INT_ARRAY)))
+            ->groupBy('status');
+
+        $rows = $qb->executeQuery()->fetchAllAssociative();
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[$row['status']] = (int)$row['count'];
+        }
+
+        return $counts;
+    }
 }

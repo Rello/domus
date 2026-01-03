@@ -96,6 +96,90 @@ class TaskService {
     /**
      * @throws DbException
      */
+    public function updateTask(string $userId, int $taskId, ?string $status = null, ?string $notes = null): UnitTask {
+        if ($status === null && $notes === null) {
+            throw new \InvalidArgumentException($this->l10n->t('No task changes provided.'));
+        }
+
+        $task = $this->unitTaskMapper->findForUser($taskId, $userId);
+        if (!$task) {
+            throw new \RuntimeException($this->l10n->t('Task not found.'));
+        }
+
+        $now = time();
+        $notesPayload = $notes !== null ? ($notes === '' ? null : $notes) : null;
+
+        if ($status !== null) {
+            if (!in_array($status, [self::STATUS_OPEN, self::STATUS_DONE], true)) {
+                throw new \InvalidArgumentException($this->l10n->t('Task status is invalid.'));
+            }
+
+            if ($status === self::STATUS_DONE) {
+                $payload = ['manuallyCompleted' => true];
+                if ($notes !== null) {
+                    $payload['notes'] = $notesPayload;
+                }
+                $this->applyCompletion($task, $payload);
+
+                return $this->unitTaskMapper->update($task);
+            }
+
+            $task->setStatus(self::STATUS_OPEN);
+            $task->setCompletedAt(null);
+            $task->setUpdatedAt($now);
+        }
+
+        if ($notes !== null) {
+            $this->mergeDataJson($task, ['notes' => $notesPayload]);
+            $task->setUpdatedAt($now);
+        }
+
+        return $this->unitTaskMapper->update($task);
+    }
+
+    /**
+     * @throws DbException
+     */
+    public function getSummary(string $userId, int $year, ?int $propertyId = null, ?int $unitId = null): array {
+        $units = [];
+        if ($unitId !== null) {
+            $unit = $this->unitMapper->findForUser($unitId, $userId);
+            if (!$unit) {
+                throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            }
+            if ($propertyId !== null && (int)$unit->getPropertyId() !== $propertyId) {
+                throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            }
+            $units = [$unit];
+        } else {
+            $units = $this->unitMapper->findByUser($userId, $propertyId);
+        }
+
+        if ($units === []) {
+            return [
+                'openCount' => 0,
+                'statusCounts' => [],
+            ];
+        }
+
+        $unitIds = array_map(static fn($unit) => (int)$unit->getId(), $units);
+
+        foreach ($unitIds as $targetUnitId) {
+            $this->materializeTasksForUnitYear($userId, $targetUnitId, $year);
+        }
+
+        $statusCounts = $this->unitTaskMapper->countByStatusForYearAndUnits($userId, $year, $unitIds);
+        $openCount = $statusCounts[self::STATUS_OPEN] ?? 0;
+
+        return [
+            'openCount' => $openCount,
+            'statusCounts' => $statusCounts,
+        ];
+    }
+
+    /**
+     * @throws DbException
+     */
     private function materializeTasksForUnitYear(string $userId, int $unitId, int $year): void {
         $unit = $this->unitMapper->findForUser($unitId, $userId);
         if (!$unit) {
