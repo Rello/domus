@@ -131,6 +131,7 @@ OC.L10N.register(
         "Linked objects": "Verknüpfte Objekte",
         "Living area": "Wohnfläche",
         "Loading {entity}…": "Lade {entity}…",
+        "Loading bookings…": "Lade Buchungen…",
         "Loading…": "Lade…",
         "Maintenance fee": "Instandhaltungsgebühr",
         "Manager": "Verwalter",

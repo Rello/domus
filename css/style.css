@@ -222,6 +222,14 @@
     background-color: #f8f8f8;
 }
 
+.domus-table tr[data-stat-year] {
+    cursor: pointer;
+}
+
+.domus-table tr[data-stat-year]:hover {
+    background-color: #f8f8f8;
+}
+
 .domus-table-summary {
     display: flex;
     flex-direction: column;
