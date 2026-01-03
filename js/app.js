@@ -4863,7 +4863,7 @@
                         label: t('domus', 'Existing partner'),
                         content: existingSelect
                     });
-                    const partnerTypeOptions = entityType === 'unit'
+                    const partnerTypeOptions = (entityType === 'unit' || entityType === 'property')
                         ? Domus.Partners.getPartnerTypeOptions().filter(option => !['tenant', 'owner'].includes(option.value))
                         : Domus.Partners.getPartnerTypeOptions();
                     const fields = Domus.Partners.buildPartnerFields({}, {
