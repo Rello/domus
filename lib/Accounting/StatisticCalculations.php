@@ -9,12 +9,12 @@ class StatisticCalculations {
             ['key' => 'rent', 'label' => 'Base rent', 'account' => '1000'],
             [
                 'key' => 'hgnu',
-                'label' => 'Maintenance fee (non-allocable)',
+                'label' => 'Non-allocable costs',
                 'rule' => [
-                    ['op' => 'add', 'args' => ['2001', '2004']],
+                    ['op' => 'add', 'args' => ['2100', '2300']],
                 ],
             ],
-            ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2006'],
+            ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2500'],
             [
                 'key' => 'gwb',
                 'label' => 'Gross profit',
@@ -27,7 +27,7 @@ class StatisticCalculations {
                 'key' => 'abschr',
                 'label' => 'Depreciation & others',
                 'rule' => [
-                    ['op' => 'add', 'args' => ['2007', '2008']],
+                    ['op' => 'add', 'args' => ['2600', '2700']],
                 ],
             ],
             [
@@ -47,7 +47,7 @@ class StatisticCalculations {
             ],
             [
                 'key' => 'netRentab',
-                'label' => 'Rentability',
+                'label' => 'Rentability (net)',
                 'rule' => [
                     ['op' => 'div', 'args' => ['gwn', '3000']],
                 ],
@@ -64,14 +64,14 @@ class StatisticCalculations {
                 'key' => 'maintFee',
                 'label' => 'Maint. fee (allocable) & property tax',
                 'rule' => [
-                    ['op' => 'add', 'args' => ['2000', '2005']],
+                    ['op' => 'add', 'args' => ['2000', '2400']],
                 ],
             ],
             [
                 'key' => 'saldo',
                 'label' => 'Saldo tenant',
                 'rule' => [
-                    ['op' => 'sub', 'args' => ['1001', '2000', '2005']],
+                    ['op' => 'sub', 'args' => ['1001', '2000', '2400']],
                 ],
             ],
         ];
@@ -96,16 +96,16 @@ class StatisticCalculations {
                 'key' => 'hgnu',
                 'label' => 'Non-allocable',
                 'rule' => [
-                    ['op' => 'add', 'args' => ['2001', '2004']],
+                    ['op' => 'add', 'args' => ['2100', '2300']],
                 ],
                 'visible' => false,
             ],
-            ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2006', 'visible' => false],
+            ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2500', 'visible' => false],
             [
                 'key' => 'abschr',
                 'label' => 'Abschr. & sonstige',
                 'rule' => [
-                    ['op' => 'add', 'args' => ['2007', '2008']],
+                    ['op' => 'add', 'args' => ['2600', '2700']],
                 ],
                 'visible' => false,
             ],
@@ -136,7 +136,7 @@ class StatisticCalculations {
 			],
             [
                 'key' => 'netRentab',
-                'label' => 'Rentability',
+                'label' => 'Rentability (gross)',
                 'rule' => [
                     ['op' => 'div', 'args' => ['gwb', '3000']],
                 ],
