@@ -195,6 +195,18 @@
             },
             createUnitSettlementReport: (unitId, payload) => request('POST', `/units/${unitId}/settlements`, payload),
             getUnitStatistics: (unitId) => request('GET', `/statistics/units/${unitId}`),
+            getUnitTasks: (unitId, year) => {
+                const params = new URLSearchParams();
+                if (year !== undefined && year !== null) {
+                    params.set('year', year);
+                }
+                return request('GET', buildUrl(`/units/${unitId}/tasks`, params));
+            },
+            updateTask: (id, data) => request('PUT', `/tasks/${id}`, data),
+            getTaskSummary: (filters = {}) => {
+                const params = appendFilters(withYear(), filters);
+                return request('GET', buildUrl('/tasks/summary', params));
+            },
             getUnitsStatisticsOverview: (propertyId) => {
                 const params = propertyId ? appendFilters(new URLSearchParams(), { propertyId }) : new URLSearchParams();
                 return request('GET', buildYearUrl('/statistics/units-overview', params));
@@ -3449,6 +3461,139 @@
             return '<div class="domus-panel">' + header + '<div class="domus-panel-body">' + body + '</div></div>';
         }
 
+        function parseTaskPayload(task) {
+            if (!task?.dataJson) {
+                return {};
+            }
+            if (typeof task.dataJson === 'object') {
+                return task.dataJson || {};
+            }
+            try {
+                return JSON.parse(task.dataJson);
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function resolveTaskTitle(task, payload) {
+            const title = task?.title || payload?.title || payload?.name || payload?.label;
+            if (title) {
+                return title;
+            }
+            const identifier = task?.templateId || task?.id || '';
+            return t('domus', 'Task {id}', { id: identifier });
+        }
+
+        function getOpenTaskCount(tasks) {
+            return (tasks || []).filter(task => task?.status === 'open').length;
+        }
+
+        function updateOpenTaskIndicators(tasks) {
+            const openCount = getOpenTaskCount(tasks);
+            const label = t('domus', '{count} open tasks', { count: openCount });
+            document.querySelectorAll('[data-open-task-count]').forEach(node => {
+                node.textContent = label;
+            });
+            return openCount;
+        }
+
+        function buildUnitTasksPanel(tasks) {
+            const header = Domus.UI.buildSectionHeader(t('domus', 'Open tasks'));
+            const openCount = getOpenTaskCount(tasks);
+            const indicator = '<div class="domus-task-summary"><span class="domus-open-task-count" data-open-task-count="true">' +
+                Domus.Utils.escapeHtml(t('domus', '{count} open tasks', { count: openCount })) +
+                '</span></div>';
+
+            if (!tasks || !tasks.length) {
+                return '<div class="domus-panel" id="domus-unit-tasks-panel">' +
+                    header +
+                    '<div class="domus-panel-body">' +
+                    indicator +
+                    '<div class="domus-empty">' + Domus.Utils.escapeHtml(t('domus', 'No tasks available.')) + '</div>' +
+                    '</div></div>';
+            }
+
+            const list = '<ul class="domus-task-list">' +
+                tasks.map(task => {
+                    const payload = parseTaskPayload(task);
+                    const title = resolveTaskTitle(task, payload);
+                    const description = payload?.description || payload?.details || '';
+                    const dueDateLabel = task?.dueDate
+                        ? Domus.Utils.formatDate(task.dueDate)
+                        : '';
+                    const metaParts = [];
+                    if (dueDateLabel) {
+                        metaParts.push(t('domus', 'Due {date}', { date: dueDateLabel }));
+                    }
+                    if (description) {
+                        metaParts.push(description);
+                    }
+                    const meta = metaParts.length
+                        ? '<div class="domus-task-meta">' + Domus.Utils.escapeHtml(metaParts.join(' · ')) + '</div>'
+                        : '';
+                    const isDone = task?.status === 'done';
+                    const rawId = String(task.id);
+                    const escapedId = Domus.Utils.escapeHtml(rawId);
+                    const inputId = `domus-task-toggle-${rawId}`;
+                    return '<li class="domus-task-item' + (isDone ? ' is-done' : '') + '" data-task-id="' + escapedId + '">' +
+                        '<input type="checkbox" id="' + Domus.Utils.escapeHtml(inputId) + '" data-task-id="' + escapedId + '"' + (isDone ? ' checked' : '') + '>' +
+                        '<label for="' + Domus.Utils.escapeHtml(inputId) + '">' +
+                        '<div class="domus-task-title">' + Domus.Utils.escapeHtml(title) + '</div>' +
+                        meta +
+                        '</label>' +
+                        '</li>';
+                }).join('') +
+                '</ul>';
+
+            return '<div class="domus-panel" id="domus-unit-tasks-panel">' +
+                header +
+                '<div class="domus-panel-body">' +
+                indicator +
+                list +
+                '</div></div>';
+        }
+
+        function bindUnitTasks(unitId, tasks) {
+            const panel = document.getElementById('domus-unit-tasks-panel');
+            if (!panel || !tasks || !tasks.length) {
+                updateOpenTaskIndicators(tasks);
+                return;
+            }
+            const tasksById = new Map((tasks || []).map(task => [String(task.id), task]));
+
+            panel.addEventListener('change', event => {
+                const checkbox = event.target.closest('input[data-task-id]');
+                if (!checkbox) {
+                    return;
+                }
+                const taskId = checkbox.getAttribute('data-task-id');
+                const task = tasksById.get(taskId);
+                if (!task) {
+                    return;
+                }
+                const newStatus = checkbox.checked ? 'done' : 'open';
+                checkbox.disabled = true;
+                Domus.Api.updateTask(taskId, { status: newStatus })
+                    .then(updated => {
+                        task.status = updated?.status || newStatus;
+                        const item = panel.querySelector('.domus-task-item[data-task-id="' + Domus.Utils.escapeHtml(taskId) + '"]');
+                        if (item) {
+                            item.classList.toggle('is-done', task.status === 'done');
+                        }
+                        updateOpenTaskIndicators(tasks);
+                    })
+                    .catch(err => {
+                        checkbox.checked = task.status === 'done';
+                        Domus.UI.showNotification(err.message, 'error');
+                    })
+                    .finally(() => {
+                        checkbox.disabled = false;
+                    });
+            });
+
+            updateOpenTaskIndicators(tasks);
+        }
+
         function bindKpiDetailArea(detailMap, onRender) {
             const detailArea = document.getElementById('domus-unit-kpi-detail');
             const detailContent = document.getElementById('domus-unit-kpi-detail-content');
@@ -3488,11 +3633,23 @@
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Units') }));
-            Domus.Api.getUnitsStatisticsOverview()
-                .then(statistics => {
+            Promise.all([
+                Domus.Api.getUnitsStatisticsOverview(),
+                Domus.Api.getTaskSummary().catch(() => null)
+            ])
+                .then(([statistics, taskSummary]) => {
+                    const openTasksLabel = taskSummary
+                        ? t('domus', '{count} open tasks', { count: taskSummary?.openCount || 0 })
+                        : '';
+                    const openTasksIndicator = taskSummary
+                        ? '<div class="domus-toolbar-meta"><span class="domus-badge domus-open-tasks-indicator" data-open-task-count="true">' +
+                        Domus.Utils.escapeHtml(openTasksLabel) +
+                        '</span></div>'
+                        : '';
                     const header = '<div class="domus-toolbar">' +
                         '<button id="domus-unit-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>' +
                         Domus.UI.buildYearFilter(renderList) +
+                        openTasksIndicator +
                         '</div>';
 
                     const table = renderStatisticsTable(statistics, {
@@ -3771,11 +3928,12 @@
                         Promise.resolve(unit),
                         Domus.Api.getUnitStatistics(id).catch(() => null),
                         Domus.Api.getBookings({ unitId: id }).catch(() => []),
+                        Domus.Api.getUnitTasks(id, Domus.state.currentYear).catch(() => []),
                         distributionsPromise,
                         Domus.Api.getUnitPartners(id).catch(() => [])
                     ]);
                 })
-                .then(([unit, statistics, bookings, distributions, partners]) => {
+                .then(([unit, statistics, bookings, tasks, distributions, partners]) => {
 
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const unitDetailConfig = Domus.Role.getUnitDetailConfig();
@@ -3956,8 +4114,10 @@
                             detailTarget: 'tenancies'
                         }) +
                         Domus.UI.buildKpiTile({
-                            headline: t('domus', 'Open issues'),
-                            value: t('domus', '0 to dos'),
+                            headline: t('domus', 'Open tasks'),
+                            valueHtml: '<span class="domus-open-task-count" data-open-task-count="true">' +
+                                Domus.Utils.escapeHtml(t('domus', '{count} open tasks', { count: getOpenTaskCount(tasks) })) +
+                                '</span>',
                             showChart: false,
                             linkLabel: t('domus', 'More')
                         }) +
@@ -3989,12 +4149,15 @@
                         Domus.Documents.renderList('unit', id, { showLinkAction: documentActionsEnabled }) +
                         '</div></div>';
 
+                    const tasksPanel = buildUnitTasksPanel(tasks);
+
                     const content = useKpiLayout
                         ? '<div class="domus-detail domus-dashboard domus-unit-detail-landlord">' +
                         Domus.UI.buildBackButton('units') +
                         hero +
                         kpiTiles +
                         kpiDetailArea +
+                        tasksPanel +
                         bookingsPanel +
                         documentsPanel +
                         partnersPanelWrapper +
@@ -4010,6 +4173,7 @@
                         Domus.Distributions.renderTable(filteredDistributions, { showUnitValue: true, hideConfig: true, excludeSystemDefaults: true }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
                         Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
+                        tasksPanel +
                         partnersPanelWrapper +
                         (showRentabilityPanels ? '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +
                         revenueTable + costTable + '</div></div>' : '') +
@@ -4025,6 +4189,7 @@
                     Domus.UI.bindRowNavigation();
                     Domus.UI.bindCollapsibles();
                     Domus.Partners.bindContactActions();
+                    bindUnitTasks(id, tasks);
                     if (canManageDistributions && !useKpiLayout) {
                         Domus.Distributions.bindTable('domus-unit-distributions', filteredDistributions, {
                             mode: 'unit',
