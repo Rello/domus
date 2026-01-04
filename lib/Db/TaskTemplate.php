@@ -12,6 +12,7 @@ class TaskTemplate extends Entity implements JsonSerializable {
     protected $appliesTo;
     protected $isActive;
     protected $userId;
+    protected $scope;
     protected $createdAt;
     protected $updatedAt;
 
