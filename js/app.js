@@ -177,6 +177,10 @@
             getDashboardSummary: () => request('GET', buildYearUrl('/dashboard/summary')),
             getSettings: () => request('GET', '/settings'),
             updateSettings: data => request('PUT', '/settings', data),
+            getTaskTemplates: () => request('GET', '/settings/task-templates'),
+            createTaskTemplate: data => request('POST', '/settings/task-templates', data),
+            updateTaskTemplate: (id, data) => request('PUT', `/settings/task-templates/${id}`, data),
+            reorderTaskTemplates: data => request('PUT', '/settings/task-templates/order', data),
             getProperties: () => request('GET', buildYearUrl('/properties')),
             createProperty: data => request('POST', '/properties', data),
             updateProperty: (id, data) => request('PUT', `/properties/${id}`, data),
@@ -202,6 +206,7 @@
                 }
                 return request('GET', buildUrl(`/units/${unitId}/tasks`, params));
             },
+            createUnitTask: (unitId, data) => request('POST', `/units/${unitId}/tasks`, data),
             updateTask: (id, data) => request('PUT', `/tasks/${id}`, data),
             getTaskSummary: (filters = {}) => {
                 const params = appendFilters(withYear(), filters);
@@ -3476,12 +3481,16 @@
         }
 
         function resolveTaskTitle(task, payload) {
-            const title = task?.title || payload?.title || payload?.name || payload?.label;
+            const title = task?.title || payload?.title || payload?.name || payload?.label || task?.templateTitle;
             if (title) {
                 return title;
             }
             const identifier = task?.templateId || task?.id || '';
             return t('domus', 'Task {id}', { id: identifier });
+        }
+
+        function resolveTaskDescription(task, payload) {
+            return payload?.description || payload?.details || task?.templateDescription || '';
         }
 
         function getOpenTaskCount(tasks) {
@@ -3498,7 +3507,11 @@
         }
 
         function buildUnitTasksPanel(tasks) {
-            const header = Domus.UI.buildSectionHeader(t('domus', 'Open tasks'));
+            const header = Domus.UI.buildSectionHeader(t('domus', 'Open tasks'), {
+                id: 'domus-unit-task-add',
+                title: t('domus', 'Add {entity}', { entity: t('domus', 'Task') }),
+                iconClass: 'domus-icon-add'
+            });
             const openCount = getOpenTaskCount(tasks);
             const indicator = '<div class="domus-task-summary"><span class="domus-open-task-count" data-open-task-count="true">' +
                 Domus.Utils.escapeHtml(t('domus', '{count} open tasks', { count: openCount })) +
@@ -3517,7 +3530,7 @@
                 tasks.map(task => {
                     const payload = parseTaskPayload(task);
                     const title = resolveTaskTitle(task, payload);
-                    const description = payload?.description || payload?.details || '';
+                    const description = resolveTaskDescription(task, payload);
                     const dueDateLabel = task?.dueDate
                         ? Domus.Utils.formatDate(task.dueDate)
                         : '';
@@ -3535,12 +3548,17 @@
                     const rawId = String(task.id);
                     const escapedId = Domus.Utils.escapeHtml(rawId);
                     const inputId = `domus-task-toggle-${rawId}`;
+                    const editButton = Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), {
+                        className: 'domus-icon-only-button domus-task-edit',
+                        dataset: { taskEdit: escapedId }
+                    });
                     return '<li class="domus-task-item' + (isDone ? ' is-done' : '') + '" data-task-id="' + escapedId + '">' +
                         '<input type="checkbox" id="' + Domus.Utils.escapeHtml(inputId) + '" data-task-id="' + escapedId + '"' + (isDone ? ' checked' : '') + '>' +
                         '<label for="' + Domus.Utils.escapeHtml(inputId) + '">' +
                         '<div class="domus-task-title">' + Domus.Utils.escapeHtml(title) + '</div>' +
                         meta +
                         '</label>' +
+                        '<div class="domus-task-actions">' + editButton + '</div>' +
                         '</li>';
                 }).join('') +
                 '</ul>';
@@ -3553,13 +3571,92 @@
                 '</div></div>';
         }
 
+        function openTaskModal(unitId, task, onSaved) {
+            const payload = parseTaskPayload(task);
+            const defaults = {
+                title: payload?.title || task?.title || task?.templateTitle || '',
+                description: payload?.description || task?.templateDescription || '',
+                dueDate: task?.dueDate || ''
+            };
+            const isEdit = !!task;
+            const formId = 'domus-unit-task-form';
+            const rows = [
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Title'),
+                    required: true,
+                    content: '<input type="text" name="title" value="' + Domus.Utils.escapeHtml(defaults.title) + '">'
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Description'),
+                    content: '<textarea name="description" rows="3">' + Domus.Utils.escapeHtml(defaults.description) + '</textarea>'
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Due date'),
+                    content: '<input type="date" name="dueDate" value="' + Domus.Utils.escapeHtml(defaults.dueDate) + '">'
+                })
+            ];
+            const content = '<form id="' + formId + '" class="domus-form">' +
+                Domus.UI.buildFormTable(rows) +
+                '<div class="domus-form-actions">' +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(isEdit ? t('domus', 'Save') : t('domus', 'Add')) + '</button>' +
+                '</div>' +
+                '</form>';
+
+            const modal = Domus.UI.openModal({
+                title: isEdit ? t('domus', 'Edit {entity}', { entity: t('domus', 'Task') }) : t('domus', 'Add {entity}', { entity: t('domus', 'Task') }),
+                content
+            });
+
+            const form = modal.modalEl.querySelector('#' + formId);
+            if (!form) {
+                return;
+            }
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                const formData = new FormData(form);
+                const title = (formData.get('title') || '').toString().trim();
+                const description = (formData.get('description') || '').toString().trim();
+                const dueDate = (formData.get('dueDate') || '').toString().trim();
+                if (!title) {
+                    Domus.UI.showNotification(t('domus', 'Task title is required.'), 'error');
+                    return;
+                }
+
+                const payloadData = {
+                    title,
+                    description,
+                    dueDate
+                };
+                const request = isEdit
+                    ? Domus.Api.updateTask(task.id, payloadData)
+                    : Domus.Api.createUnitTask(unitId, Object.assign({}, payloadData, { year: Domus.state.currentYear }));
+
+                request
+                    .then(() => {
+                        Domus.UI.showNotification(isEdit ? t('domus', 'Task updated.') : t('domus', 'Task added.'), 'success');
+                        modal.close();
+                        if (typeof onSaved === 'function') {
+                            onSaved();
+                        }
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+        }
+
         function bindUnitTasks(unitId, tasks) {
             const panel = document.getElementById('domus-unit-tasks-panel');
             if (!panel || !tasks || !tasks.length) {
                 updateOpenTaskIndicators(tasks);
+                document.getElementById('domus-unit-task-add')?.addEventListener('click', () => {
+                    openTaskModal(unitId, null, () => Domus.Units.renderDetail(unitId));
+                });
                 return;
             }
             const tasksById = new Map((tasks || []).map(task => [String(task.id), task]));
+
+            document.getElementById('domus-unit-task-add')?.addEventListener('click', () => {
+                openTaskModal(unitId, null, () => Domus.Units.renderDetail(unitId));
+            });
 
             panel.addEventListener('change', event => {
                 const checkbox = event.target.closest('input[data-task-id]');
@@ -3589,6 +3686,19 @@
                     .finally(() => {
                         checkbox.disabled = false;
                     });
+            });
+
+            panel.addEventListener('click', event => {
+                const editBtn = event.target.closest('button[data-task-edit]');
+                if (!editBtn) {
+                    return;
+                }
+                const taskId = editBtn.getAttribute('data-task-edit');
+                const task = tasksById.get(taskId);
+                if (!task) {
+                    return;
+                }
+                openTaskModal(unitId, task, () => Domus.Units.renderDetail(unitId));
             });
 
             updateOpenTaskIndicators(tasks);
@@ -6752,6 +6862,8 @@
      * Settings view
      */
     Domus.Settings = (function() {
+        let taskTemplates = [];
+
         function buildForm(settings) {
             const taxRate = settings?.taxRate ?? '';
             const rows = [
@@ -6771,6 +6883,199 @@
                 actions +
                 '</form>' +
                 '</div>';
+        }
+
+        function buildTaskTemplatesTable(templates) {
+            if (!templates || !templates.length) {
+                return '<div class="domus-empty">' + Domus.Utils.escapeHtml(t('domus', 'No task templates configured yet.')) + '</div>';
+            }
+
+            const rows = templates.map((template, index) => {
+                const enabled = template.enabled === 1 || template.enabled === true;
+                const required = template.required === 1 || template.required === true;
+                const toggle = '<input type="checkbox" data-task-template-toggle="' + Domus.Utils.escapeHtml(String(template.id)) + '"' +
+                    (enabled ? ' checked' : '') + '>';
+                const orderControls = '<div class="domus-task-template-order">' +
+                    '<button class="domus-ghost" data-task-template-move="' + Domus.Utils.escapeHtml(String(template.id)) + '" data-move-direction="up" ' +
+                    (index === 0 ? 'disabled' : '') + '>↑</button>' +
+                    '<button class="domus-ghost" data-task-template-move="' + Domus.Utils.escapeHtml(String(template.id)) + '" data-move-direction="down" ' +
+                    (index === templates.length - 1 ? 'disabled' : '') + '>↓</button>' +
+                    '</div>';
+                const actions = Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), {
+                    className: 'domus-icon-only-button',
+                    dataset: { taskTemplateEdit: template.id }
+                });
+                return [
+                    Domus.Utils.escapeHtml(template.title || ''),
+                    Domus.Utils.escapeHtml(template.description || ''),
+                    { content: toggle },
+                    Domus.Utils.escapeHtml(required ? t('domus', 'Required') : t('domus', 'Optional')),
+                    { content: orderControls },
+                    { content: actions }
+                ];
+            });
+
+            return Domus.UI.buildTable([
+                t('domus', 'Title'),
+                t('domus', 'Description'),
+                t('domus', 'Enabled'),
+                t('domus', 'Requirement'),
+                t('domus', 'Order'),
+                ''
+            ], rows);
+        }
+
+        function renderTaskTemplateList() {
+            const container = document.getElementById('domus-task-template-list');
+            if (!container) {
+                return;
+            }
+            container.innerHTML = buildTaskTemplatesTable(taskTemplates);
+            bindTaskTemplateList();
+        }
+
+        function openTaskTemplateModal(template) {
+            const isEdit = !!template;
+            const defaults = {
+                title: template?.title || '',
+                description: template?.description || '',
+                required: template?.required === 1 || template?.required === true,
+                enabled: template?.enabled !== 0
+            };
+            const formId = 'domus-task-template-form';
+            const rows = [
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Title'),
+                    required: true,
+                    content: '<input type="text" name="title" value="' + Domus.Utils.escapeHtml(defaults.title) + '">'
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Description'),
+                    content: '<textarea name="description" rows="3">' + Domus.Utils.escapeHtml(defaults.description) + '</textarea>'
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Required'),
+                    content: '<label><input type="checkbox" name="required"' + (defaults.required ? ' checked' : '') + '> ' +
+                        Domus.Utils.escapeHtml(t('domus', 'Mark tasks as required')) + '</label>'
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Enabled'),
+                    content: '<label><input type="checkbox" name="enabled"' + (defaults.enabled ? ' checked' : '') + '> ' +
+                        Domus.Utils.escapeHtml(t('domus', 'Generate tasks from this template')) + '</label>'
+                })
+            ];
+            const content = '<form id="' + formId + '" class="domus-form">' +
+                Domus.UI.buildFormTable(rows) +
+                '<div class="domus-form-actions">' +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(isEdit ? t('domus', 'Save') : t('domus', 'Add')) + '</button>' +
+                '</div>' +
+                '</form>';
+            const modal = Domus.UI.openModal({
+                title: isEdit ? t('domus', 'Edit {entity}', { entity: t('domus', 'Task template') }) : t('domus', 'Add {entity}', { entity: t('domus', 'Task template') }),
+                content
+            });
+            const form = modal.modalEl.querySelector('#' + formId);
+            if (!form) {
+                return;
+            }
+
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                const formData = new FormData(form);
+                const title = (formData.get('title') || '').toString().trim();
+                const description = (formData.get('description') || '').toString().trim();
+                const required = formData.get('required') ? 1 : 0;
+                const enabled = formData.get('enabled') ? 1 : 0;
+                if (!title) {
+                    Domus.UI.showNotification(t('domus', 'Task title is required.'), 'error');
+                    return;
+                }
+                const payload = {
+                    title,
+                    description,
+                    required,
+                    enabled
+                };
+                const request = isEdit
+                    ? Domus.Api.updateTaskTemplate(template.id, payload)
+                    : Domus.Api.createTaskTemplate(payload);
+                request
+                    .then(response => {
+                        Domus.UI.showNotification(isEdit ? t('domus', 'Task template updated.') : t('domus', 'Task template added.'), 'success');
+                        modal.close();
+                        if (response) {
+                            if (isEdit) {
+                                taskTemplates = taskTemplates.map(item => item.id === response.id ? response : item);
+                            } else {
+                                taskTemplates = taskTemplates.concat([response]).sort((a, b) => (a.order || 0) - (b.order || 0));
+                            }
+                            renderTaskTemplateList();
+                        }
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+        }
+
+        function bindTaskTemplateList() {
+            const container = document.getElementById('domus-task-template-list');
+            if (!container) {
+                return;
+            }
+            container.querySelectorAll('input[data-task-template-toggle]').forEach(toggle => {
+                toggle.addEventListener('change', () => {
+                    const templateId = toggle.getAttribute('data-task-template-toggle');
+                    if (!templateId) {
+                        return;
+                    }
+                    Domus.Api.updateTaskTemplate(templateId, { enabled: toggle.checked ? 1 : 0 })
+                        .then(response => {
+                            taskTemplates = taskTemplates.map(item => item.id === response.id ? response : item);
+                            Domus.UI.showNotification(t('domus', 'Task template updated.'), 'success');
+                        })
+                        .catch(err => {
+                            toggle.checked = !toggle.checked;
+                            Domus.UI.showNotification(err.message, 'error');
+                        });
+                });
+            });
+            container.querySelectorAll('button[data-task-template-edit]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const templateId = btn.getAttribute('data-task-template-edit');
+                    const template = taskTemplates.find(item => String(item.id) === String(templateId));
+                    if (template) {
+                        openTaskTemplateModal(template);
+                    }
+                });
+            });
+            container.querySelectorAll('button[data-task-template-move]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const templateId = btn.getAttribute('data-task-template-move');
+                    const direction = btn.getAttribute('data-move-direction');
+                    const index = taskTemplates.findIndex(item => String(item.id) === String(templateId));
+                    if (index < 0) {
+                        return;
+                    }
+                    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+                    if (targetIndex < 0 || targetIndex >= taskTemplates.length) {
+                        return;
+                    }
+                    const nextTemplates = taskTemplates.slice();
+                    const [moved] = nextTemplates.splice(index, 1);
+                    nextTemplates.splice(targetIndex, 0, moved);
+                    taskTemplates = nextTemplates;
+                    renderTaskTemplateList();
+                    Domus.Api.reorderTaskTemplates({ order: taskTemplates.map(item => item.id) })
+                        .then(response => {
+                            if (response) {
+                                taskTemplates = response;
+                                renderTaskTemplateList();
+                            }
+                        })
+                        .catch(err => {
+                            Domus.UI.showNotification(err.message, 'error');
+                        });
+                });
+            });
         }
 
         function bindForm() {
@@ -6805,15 +7110,32 @@
         function render() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading…'));
-            Domus.Api.getSettings()
-                .then(response => {
+            Promise.all([
+                Domus.Api.getSettings(),
+                Domus.Api.getTaskTemplates().catch(() => [])
+            ])
+                .then(([response, templates]) => {
                     const settings = response?.settings || {};
+                    taskTemplates = templates || [];
+                    const templatesPanel = '<div class="domus-panel">' +
+                        Domus.UI.buildSectionHeader(t('domus', 'Task templates'), {
+                            id: 'domus-task-template-add',
+                            title: t('domus', 'Add {entity}', { entity: t('domus', 'Task template') }),
+                            iconClass: 'domus-icon-add'
+                        }) +
+                        '<div class="domus-panel-body"><div id="domus-task-template-list">' + buildTaskTemplatesTable(taskTemplates) + '</div></div>' +
+                        '</div>';
                     const content = '<div class="domus-settings">' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
                         buildForm(settings) +
+                        templatesPanel +
                         '</div>';
                     Domus.UI.renderContent(content);
                     bindForm();
+                    document.getElementById('domus-task-template-add')?.addEventListener('click', () => {
+                        openTaskTemplateModal();
+                    });
+                    bindTaskTemplateList();
                 })
                 .catch(err => Domus.UI.showError(err.message || t('domus', 'An error occurred')));
         }

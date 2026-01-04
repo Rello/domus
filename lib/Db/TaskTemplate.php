@@ -15,6 +15,7 @@ class TaskTemplate extends Entity implements JsonSerializable {
     protected $description;
     protected $order;
     protected $required;
+    protected $enabled;
     protected $triggerType;
     protected $triggerConfig;
     protected $createdAt;
@@ -26,6 +27,7 @@ class TaskTemplate extends Entity implements JsonSerializable {
         $this->addType('unitId', 'int');
         $this->addType('order', 'int');
         $this->addType('required', 'int');
+        $this->addType('enabled', 'int');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
     }
@@ -42,6 +44,7 @@ class TaskTemplate extends Entity implements JsonSerializable {
             'description' => $this->description,
             'order' => $this->order,
             'required' => $this->required,
+            'enabled' => $this->enabled,
             'triggerType' => $this->triggerType,
             'triggerConfig' => $this->triggerConfig,
             'createdAt' => $this->createdAt,

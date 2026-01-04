@@ -3,7 +3,7 @@
 namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
-use OCA\Domus\Service\TaskService;
+use OCA\Domus\Service\TaskTemplateService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -12,38 +12,50 @@ use OCP\IL10N;
 use OCP\IRequest;
 use OCP\IUserSession;
 
-class TaskController extends Controller {
+class TaskTemplateController extends Controller {
     public function __construct(
         IRequest $request,
         private IUserSession $userSession,
-        private TaskService $taskService,
+        private TaskTemplateService $taskTemplateService,
         private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
 
     #[NoAdminRequired]
-    public function listByUnit(int $unitId, ?int $year = null): DataResponse {
-        $year = $year ?? (int)date('Y');
-
-        try {
-            return new DataResponse($this->taskService->getTasksForUnitYear($this->getUserId(), $unitId, $year));
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+    public function index(): DataResponse {
+        return new DataResponse($this->taskTemplateService->listTemplatesForUser($this->getUserId()));
     }
 
     #[NoAdminRequired]
-    public function createForUnit(int $unitId, ?int $year = null, ?string $title = null, ?string $description = null, ?string $dueDate = null): DataResponse {
-        $year = $year ?? (int)date('Y');
-
+    public function create(string $title, ?string $description = null, ?int $required = null, ?int $enabled = null): DataResponse {
         try {
-            $task = $this->taskService->createTaskForUnit($this->getUserId(), $unitId, $year, [
+            $template = $this->taskTemplateService->createTemplate([
                 'title' => $title,
                 'description' => $description,
-                'dueDate' => $dueDate,
-            ]);
-            return new DataResponse($task, Http::STATUS_CREATED);
+                'required' => $required,
+                'enabled' => $enabled,
+            ], $this->getUserId());
+
+            return new DataResponse($template, Http::STATUS_CREATED);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        }
+    }
+
+    #[NoAdminRequired]
+    public function update(int $id, ?string $title = null, ?string $description = null, ?int $required = null, ?int $enabled = null, ?int $order = null): DataResponse {
+        $payload = array_filter([
+            'title' => $title,
+            'description' => $description,
+            'required' => $required,
+            'enabled' => $enabled,
+            'order' => $order,
+        ], fn($value) => $value !== null);
+
+        try {
+            $template = $this->taskTemplateService->updateTemplate($id, $payload, $this->getUserId());
+            return new DataResponse($template);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
         } catch (\Throwable $e) {
@@ -52,24 +64,11 @@ class TaskController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function update(int $id, ?string $status = null, ?string $notes = null, ?string $title = null, ?string $description = null, ?string $dueDate = null): DataResponse {
+    public function reorder(array $order): DataResponse {
         try {
-            return new DataResponse($this->taskService->updateTask($this->getUserId(), $id, $status, $notes, $title, $description, $dueDate));
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
+            return new DataResponse($this->taskTemplateService->reorderTemplates($this->getUserId(), $order));
         } catch (\Throwable $e) {
-            return $this->notFound();
-        }
-    }
-
-    #[NoAdminRequired]
-    public function summary(?int $year = null, ?int $propertyId = null, ?int $unitId = null): DataResponse {
-        $year = $year ?? (int)date('Y');
-
-        try {
-            return new DataResponse($this->taskService->getSummary($this->getUserId(), $year, $propertyId, $unitId));
-        } catch (\Throwable $e) {
-            return $this->notFound();
+            return $this->validationError($this->l10n->t('Task template order is invalid.'));
         }
     }
 
