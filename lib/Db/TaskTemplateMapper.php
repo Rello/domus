@@ -83,11 +83,7 @@ class TaskTemplateMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
-        $row = $qb->executeQuery()->fetchAssociative();
-        if (!$row || $row['max_order'] === null) {
-            return 0;
-        }
-
-        return (int)$row['max_order'];
+        $value = $qb->executeQuery()->fetchOne();
+        return $value !== null ? (int)$value : 0;
     }
 }
