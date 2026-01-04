@@ -2448,7 +2448,7 @@
                 t('domus', 'Title'),
                 t('domus', 'Due date'),
                 t('domus', 'Type'),
-                ''
+                t('domus', 'Action')
             ].filter(item => item !== null);
             const rows = sorted.map(item => {
                 const unitCell = showUnit
@@ -7198,8 +7198,8 @@
                 Domus.Utils.escapeHtml(t('domus', 'Due +{days} days', { days: step.defaultDueDaysOffset || 0 })) +
                 '</div>' +
                 '<div class="domus-task-step-actions">' +
-                '<button class="domus-task-step-edit" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
-                '<button class="domus-task-step-delete" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
+                '<button type="button" class="domus-task-step-edit" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
+                '<button type="button" class="domus-task-step-delete" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
                 '</div>' +
                 '</li>'
             )).join('');

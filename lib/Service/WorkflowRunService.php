@@ -9,6 +9,7 @@ use OCA\Domus\Db\TaskTemplateStepMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCA\Domus\Db\WorkflowRun;
 use OCA\Domus\Db\WorkflowRunMapper;
+use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
 use OCP\IDBConnection;
 use OCP\IL10N;
@@ -48,7 +49,11 @@ class WorkflowRunService {
         }
 
         if ($year !== null) {
-            $existing = $this->workflowRunMapper->findOpenRunForYear($unitId, $templateId, $year);
+            try {
+                $existing = $this->workflowRunMapper->findOpenRunForYear($unitId, $templateId, $year);
+            } catch (DoesNotExistException $e) {
+                $existing = null;
+            }
             if ($existing) {
                 throw new \RuntimeException($this->l10n->t('A workflow run for this year already exists.'));
             }

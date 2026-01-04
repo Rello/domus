@@ -9,6 +9,7 @@ OC.L10N.register(
         "Accounts": "Konten",
         "Accounts in bookings cannot be deleted.": "Konten mit Buchungen können nicht gelöscht werden.",
         "Accounts with children cannot be deleted.": "Konten mit Unterkonten können nicht gelöscht werden.",
+        "Action": "Aktion",
         "Active": "Aktiv",
         "Add {entity}": "{entity} hinzufügen",
         "Add child": "Unterkonto hinzufügen",
