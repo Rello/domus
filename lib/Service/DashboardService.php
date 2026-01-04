@@ -15,6 +15,8 @@ class DashboardService {
         private UnitMapper $unitMapper,
         private TenancyService $tenancyService,
         private BookingMapper $bookingMapper,
+        private TaskService $taskService,
+        private WorkflowRunService $workflowRunService,
         private PermissionService $permissionService,
         private IL10N $l10n,
     ) {
@@ -76,6 +78,27 @@ class DashboardService {
             ];
         }, $properties);
 
+        $openTasks = [];
+        if ($role !== 'tenant') {
+            $unitMap = [];
+            foreach ($units as $unit) {
+                $unitMap[$unit->getId()] = $unit->getLabel();
+            }
+            $openTasks = array_merge(
+                $this->workflowRunService->listOpenStepsForUser($userId, $role),
+                array_map(function ($task) use ($unitMap) {
+                    return [
+                        'type' => 'task',
+                        'taskId' => $task->getId(),
+                        'unitId' => $task->getUnitId(),
+                        'unitName' => $unitMap[$task->getUnitId()] ?? '',
+                        'title' => $task->getTitle(),
+                        'dueDate' => $task->getDueDate(),
+                    ];
+                }, $this->taskService->listOpenTasks($userId, $role))
+            );
+        }
+
         return [
             'propertyCount' => count($properties),
             'unitCount' => count($units),
@@ -84,6 +107,7 @@ class DashboardService {
             'properties' => $propertyOverview,
             'monthlyBaseRentSum' => number_format($rentSum, 2, '.', ''),
             'annualResult' => number_format($income - $expense, 2, '.', ''),
+            'openTasks' => $openTasks,
         ];
     }
 

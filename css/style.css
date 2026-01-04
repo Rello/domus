@@ -805,6 +805,64 @@
     white-space: nowrap;
 }
 
+.domus-section-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.domus-task-section h4 {
+    margin-top: 16px;
+}
+
+.domus-task-run-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 12px 0 6px;
+}
+
+.domus-task-step-list {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0;
+    border: 1px dashed var(--color-border);
+    border-radius: 8px;
+}
+
+.domus-task-step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-main-background);
+    cursor: grab;
+}
+
+.domus-task-step-item:last-child {
+    border-bottom: none;
+}
+
+.domus-task-step-item.is-dragging {
+    opacity: 0.6;
+}
+
+.domus-task-step-main {
+    flex: 1;
+}
+
+.domus-task-step-meta {
+    font-size: 12px;
+    color: var(--color-text-maxcontrast);
+}
+
+.domus-task-step-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
 .domus-stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

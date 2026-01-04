@@ -83,5 +83,30 @@ return [
         ['name' => 'Account#disable', 'url' => '/accounts/{id}/disable', 'verb' => 'POST'],
         ['name' => 'Account#enable', 'url' => '/accounts/{id}/enable', 'verb' => 'POST'],
         ['name' => 'Account#destroy', 'url' => '/accounts/{id}', 'verb' => 'DELETE'],
+
+        // Task templates
+        ['name' => 'TaskTemplate#index', 'url' => '/api/task-templates', 'verb' => 'GET'],
+        ['name' => 'TaskTemplate#show', 'url' => '/api/task-templates/{id}', 'verb' => 'GET'],
+        ['name' => 'TaskTemplate#create', 'url' => '/api/task-templates', 'verb' => 'POST'],
+        ['name' => 'TaskTemplate#update', 'url' => '/api/task-templates/{id}', 'verb' => 'PUT'],
+        ['name' => 'TaskTemplate#destroy', 'url' => '/api/task-templates/{id}', 'verb' => 'DELETE'],
+        ['name' => 'TaskTemplate#reorderSteps', 'url' => '/api/task-templates/{id}/reorder-steps', 'verb' => 'POST'],
+        ['name' => 'TaskTemplate#addStep', 'url' => '/api/task-templates/{id}/steps', 'verb' => 'POST'],
+        ['name' => 'TaskTemplate#updateStep', 'url' => '/api/task-template-steps/{stepId}', 'verb' => 'PUT'],
+        ['name' => 'TaskTemplate#deleteStep', 'url' => '/api/task-template-steps/{stepId}', 'verb' => 'DELETE'],
+
+        // Workflow runs
+        ['name' => 'WorkflowRun#createForUnit', 'url' => '/api/units/{unitId}/workflow-runs', 'verb' => 'POST'],
+        ['name' => 'WorkflowRun#listByUnit', 'url' => '/api/units/{unitId}/workflow-runs', 'verb' => 'GET'],
+        ['name' => 'WorkflowRun#show', 'url' => '/api/workflow-runs/{runId}', 'verb' => 'GET'],
+        ['name' => 'WorkflowRun#closeStep', 'url' => '/api/task-steps/{stepId}/close', 'verb' => 'POST'],
+        ['name' => 'WorkflowRun#reopenStep', 'url' => '/api/task-steps/{stepId}/reopen', 'verb' => 'POST'],
+
+        // Tasks
+        ['name' => 'Task#createForUnit', 'url' => '/api/units/{unitId}/tasks', 'verb' => 'POST'],
+        ['name' => 'Task#listByUnit', 'url' => '/api/units/{unitId}/tasks', 'verb' => 'GET'],
+        ['name' => 'Task#listOpen', 'url' => '/api/tasks', 'verb' => 'GET'],
+        ['name' => 'Task#close', 'url' => '/api/tasks/{taskId}/close', 'verb' => 'POST'],
+        ['name' => 'Task#reopen', 'url' => '/api/tasks/{taskId}/reopen', 'verb' => 'POST'],
     ],
 ];
