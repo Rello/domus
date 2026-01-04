@@ -18,7 +18,7 @@ class TaskTemplateMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->orderBy('name', 'ASC');
+            ->orderBy('id', 'ASC');
 
         if ($activeOnly !== null) {
             $qb->andWhere($qb->expr()->eq('is_active', $qb->createNamedParameter($activeOnly ? 1 : 0, $qb::PARAM_INT)));
