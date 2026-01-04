@@ -50,6 +50,7 @@ class WorkflowRunMapper extends QBMapper {
             ->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('open')))
             ->setMaxResults(1);
 
-        return $this->findEntity($qb);
+        $entities = $this->findEntities($qb);
+        return $entities[0] ?? null;
     }
 }

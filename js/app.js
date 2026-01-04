@@ -2449,7 +2449,7 @@
                 t('domus', 'Due date'),
                 t('domus', 'Type'),
                 ''
-            ].filter(Boolean);
+            ].filter(item => item !== null);
             const rows = sorted.map(item => {
                 const unitCell = showUnit
                     ? '<span class="domus-link" data-navigate="unitDetail" data-args="' + Domus.Utils.escapeHtml(String(item.unitId || '')) + '">' +
@@ -2470,7 +2470,7 @@
                     Domus.Utils.escapeHtml(dueLabel || '—'),
                     buildTypeBadge(item.type),
                     actionBtn
-                ].filter(Boolean);
+                ].filter(itemCell => itemCell !== null);
                 return { cells, dataset: showUnit ? { navigate: 'unitDetail', args: item.unitId } : null };
             });
 
@@ -7062,6 +7062,14 @@
 
         function openTemplateModal(template, onSaved) {
             const isEdit = !!template?.id;
+            const reopenTemplate = () => {
+                if (!template?.id) {
+                    return;
+                }
+                Domus.Api.getTaskTemplate(template.id)
+                    .then(nextTemplate => openTemplateModal(nextTemplate, onSaved))
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            };
             const rows = [
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Key'),
@@ -7107,8 +7115,8 @@
 
             if (isEdit) {
                 renderStepsList(template);
-                bindStepActions(template.id, () => loadTemplateDetails(template.id));
-                modal.modalEl.querySelector('#domus-task-step-add')?.addEventListener('click', () => openStepModal(template.id, null, () => loadTemplateDetails(template.id)));
+                bindStepActions(template.id, () => loadTemplateDetails(template.id), reopenTemplate);
+                modal.modalEl.querySelector('#domus-task-step-add')?.addEventListener('click', () => openStepModal(template.id, null, reopenTemplate));
             }
 
             form?.addEventListener('submit', (event) => {
@@ -7224,14 +7232,14 @@
             });
         }
 
-        function bindStepActions(templateId, onRefresh) {
+        function bindStepActions(templateId, onRefresh, reopenTemplate) {
             document.querySelectorAll('.domus-task-step-edit').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const stepId = btn.getAttribute('data-id');
                     loadTemplateDetails(templateId, template => {
                         const step = (template.steps || []).find(st => String(st.id) === String(stepId));
                         if (step) {
-                            openStepModal(templateId, step, onRefresh);
+                            openStepModal(templateId, step, reopenTemplate || onRefresh);
                         }
                     });
                 });
