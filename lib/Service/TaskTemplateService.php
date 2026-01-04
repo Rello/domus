@@ -30,7 +30,7 @@ class TaskTemplateService {
      * @throws DbException
      */
     public function getTemplateWithSteps(int $templateId): TaskTemplate {
-        $template = $this->templateMapper->find($templateId);
+        $template = $this->templateMapper->findById($templateId);
         if (!$template) {
             throw new \RuntimeException($this->l10n->t('Task template not found.'));
         }
@@ -73,7 +73,7 @@ class TaskTemplateService {
      * @throws DbException
      */
     public function updateTemplate(int $templateId, array $payload): TaskTemplate {
-        $template = $this->templateMapper->find($templateId);
+        $template = $this->templateMapper->findById($templateId);
         if (!$template) {
             throw new \RuntimeException($this->l10n->t('Task template not found.'));
         }
@@ -115,7 +115,7 @@ class TaskTemplateService {
      * @throws DbException
      */
     public function deleteTemplate(int $templateId): void {
-        $template = $this->templateMapper->find($templateId);
+        $template = $this->templateMapper->findById($templateId);
         if (!$template) {
             throw new \RuntimeException($this->l10n->t('Task template not found.'));
         }

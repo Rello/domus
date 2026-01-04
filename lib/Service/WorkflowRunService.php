@@ -42,7 +42,7 @@ class WorkflowRunService {
             throw new \RuntimeException($this->l10n->t('Unit not found.'));
         }
 
-        $template = $this->templateMapper->find($templateId);
+        $template = $this->templateMapper->findById($templateId);
         if (!$template || (int)$template->getIsActive() !== 1) {
             throw new \RuntimeException($this->l10n->t('Task template is not active.'));
         }

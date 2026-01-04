@@ -11,12 +11,25 @@ class TaskTemplateMapper extends QBMapper {
         parent::__construct($db, 'domus_task_templates', TaskTemplate::class);
     }
 
+    private function selectColumns(): array {
+        return [
+            'id',
+            'key',
+            'name',
+            'description',
+            'applies_to',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ];
+    }
+
     /**
      * @throws Exception
      */
     public function findAll(?bool $activeOnly = null): array {
         $qb = $this->db->getQueryBuilder();
-        $qb->select('*')
+        $qb->select(...$this->selectColumns())
             ->from($this->getTableName())
             ->orderBy('id', 'ASC');
 
@@ -30,9 +43,22 @@ class TaskTemplateMapper extends QBMapper {
     /**
      * @throws Exception
      */
+    public function findById(int $id): ?TaskTemplate {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select(...$this->selectColumns())
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
+            ->setMaxResults(1);
+
+        return $this->findEntity($qb);
+    }
+
+    /**
+     * @throws Exception
+     */
     public function findByKey(string $key): ?TaskTemplate {
         $qb = $this->db->getQueryBuilder();
-        $qb->select('*')
+        $qb->select(...$this->selectColumns())
             ->from($this->getTableName())
             ->where($qb->expr()->eq('key', $qb->createNamedParameter($key)))
             ->setMaxResults(1);
