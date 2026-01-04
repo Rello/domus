@@ -93,11 +93,10 @@ class WorkflowRunService {
                 $taskStep->setSortOrder($order);
                 $taskStep->setTitle($stepTemplate->getTitle());
                 $taskStep->setDescription($stepTemplate->getDescription());
-                $taskStep->setStatus($order === 1 ? self::STEP_STATUS_OPEN : self::STEP_STATUS_NEW);
-                $offset = (int)$stepTemplate->getDefaultDueDaysOffset();
-                $dueDate = (new \DateTimeImmutable('today'))->modify(sprintf('%+d days', $offset))->format('Y-m-d');
-                $taskStep->setDueDate($dueDate);
-                $taskStep->setOpenedAt($order === 1 ? $now : null);
+                $isOpen = $order === 1;
+                $taskStep->setStatus($isOpen ? self::STEP_STATUS_OPEN : self::STEP_STATUS_NEW);
+                $taskStep->setDueDate($isOpen ? $this->buildDueDate((int)$stepTemplate->getDefaultDueDaysOffset(), $now) : null);
+                $taskStep->setOpenedAt($isOpen ? $now : null);
                 $taskStep->setClosedAt(null);
                 $taskStep->setClosedBy(null);
                 $taskStep->setCreatedAt($now);
@@ -180,8 +179,15 @@ class WorkflowRunService {
 
             $next = $this->taskStepMapper->findNextNewStep($step->getWorkflowRunId(), (int)$step->getSortOrder());
             if ($next) {
+                $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
+                $offset = 0;
+                if ($run) {
+                    $templateStep = $this->templateStepMapper->findByTemplateAndSortOrder($run->getTemplateId(), (int)$next->getSortOrder());
+                    $offset = $templateStep ? (int)$templateStep->getDefaultDueDaysOffset() : 0;
+                }
                 $next->setStatus(self::STEP_STATUS_OPEN);
                 $next->setOpenedAt($now);
+                $next->setDueDate($this->buildDueDate($offset, $now));
                 $next->setUpdatedAt($now);
                 $this->taskStepMapper->update($next);
             } else {
@@ -232,14 +238,20 @@ class WorkflowRunService {
                 $this->taskStepMapper->update($openStep);
             }
 
+            $offset = 0;
+            $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
+            if ($run) {
+                $templateStep = $this->templateStepMapper->findByTemplateAndSortOrder($run->getTemplateId(), (int)$step->getSortOrder());
+                $offset = $templateStep ? (int)$templateStep->getDefaultDueDaysOffset() : 0;
+            }
             $step->setStatus(self::STEP_STATUS_OPEN);
             $step->setOpenedAt($now);
+            $step->setDueDate($this->buildDueDate($offset, $now));
             $step->setClosedAt(null);
             $step->setClosedBy(null);
             $step->setUpdatedAt($now);
             $this->taskStepMapper->update($step);
 
-            $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
             if ($run && $run->getStatus() !== self::STATUS_OPEN) {
                 $run->setStatus(self::STATUS_OPEN);
                 $run->setClosedAt(null);
@@ -297,5 +309,12 @@ class WorkflowRunService {
                 'workflowName' => $run?->getName(),
             ];
         }, $steps);
+    }
+
+    private function buildDueDate(int $offset, int $timestamp): string {
+        return (new \DateTimeImmutable('@' . $timestamp))
+            ->setTimezone(new \DateTimeZone(date_default_timezone_get()))
+            ->modify(sprintf('%+d days', $offset))
+            ->format('Y-m-d');
     }
 }

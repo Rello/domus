@@ -36,4 +36,19 @@ class TaskTemplateStepMapper extends QBMapper {
 
         return $this->findEntity($qb);
     }
+
+    /**
+     * @throws Exception
+     */
+    public function findByTemplateAndSortOrder(int $templateId, int $sortOrder): ?TaskTemplateStep {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('template_id', $qb->createNamedParameter($templateId, $qb::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('sort_order', $qb->createNamedParameter($sortOrder, $qb::PARAM_INT)))
+            ->setMaxResults(1);
+
+        $entities = $this->findEntities($qb);
+        return $entities[0] ?? null;
+    }
 }
