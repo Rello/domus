@@ -2737,10 +2737,17 @@
                 Domus.Api.get('/units/' + unitId).catch(() => null)
             ])
                 .then(([runs, tasks, unit]) => {
+                    const openCount = (runs || []).reduce((count, run) => {
+                        const hasOpen = (run.steps || []).some(step => step.status === 'open');
+                        return count + (hasOpen ? 1 : 0);
+                    }, 0) + (tasks || []).filter(task => task.status === 'open').length;
                     const content = buildUnitTasksContent(unitId, { runs, tasks, unitName: unit?.label || '' });
                     body.innerHTML = content;
                     Domus.UI.bindCollapsibles();
                     bindUnitTaskActions(unitId, { onRefresh: () => loadUnitTasks(unitId, options) });
+                    if (typeof options.onOpenCount === 'function') {
+                        options.onOpenCount(openCount);
+                    }
                 })
                 .catch(err => {
                     body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
@@ -4348,6 +4355,10 @@
                         ? '—'
                         : Domus.Utils.formatCurrency(currentBaseRent);
                     const currentTenantLabel = currentTenantPartners || '—';
+                    const openTaskCount = Domus.Role.isTenantView()
+                        ? 0
+                        : (unit.activeOpenTasks || 0);
+                    const openTaskLabel = Domus.Utils.escapeHtml(t('domus', '{count} open tasks', { count: openTaskCount }));
                     const kpiTiles = useKpiLayout
                         ? '<div class="domus-kpi-tiles">' +
                         Domus.UI.buildKpiTile({
@@ -4375,7 +4386,7 @@
                         }) +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Open issues'),
-                            value: t('domus', '0 to dos'),
+                            valueHtml: openTaskLabel,
                             showChart: false,
                             linkLabel: t('domus', 'More')
                         }) +
@@ -4478,7 +4489,14 @@
                     }
                     bindDetailActions(id, unit);
                     if (!Domus.Role.isTenantView()) {
-                        Domus.Tasks.loadUnitTasks(id);
+                        Domus.Tasks.loadUnitTasks(id, {
+                            onOpenCount: (count) => {
+                                unit.activeOpenTasks = count;
+                                if (useKpiLayout) {
+                                    renderDetail(id);
+                                }
+                            }
+                        });
                         Domus.Tasks.bindUnitTaskButtons(id, () => Domus.Tasks.loadUnitTasks(id));
                     }
                 })
@@ -7019,7 +7037,6 @@
             return {
                 cells: [
                     Domus.Utils.escapeHtml(template.name || ''),
-                    Domus.Utils.escapeHtml(template.key || ''),
                     Domus.Utils.escapeHtml(statusLabel),
                     '<button class="domus-task-template-edit" data-id="' + Domus.Utils.escapeHtml(String(template.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
                         '<button class="domus-task-template-toggle" data-id="' + Domus.Utils.escapeHtml(String(template.id)) + '">' + Domus.Utils.escapeHtml(toggleLabel) + '</button>' +
@@ -7049,7 +7066,6 @@
                     const rows = (templates || []).map(buildTemplateRow);
                     container.innerHTML = Domus.UI.buildTable([
                         t('domus', 'Name'),
-                        t('domus', 'Key'),
                         t('domus', 'Status'),
                         ''
                     ], rows);
@@ -7072,11 +7088,6 @@
             };
             const rows = [
                 Domus.UI.buildFormRow({
-                    label: t('domus', 'Key'),
-                    required: true,
-                    content: '<input name="key" required value="' + Domus.Utils.escapeHtml(template?.key || '') + '"' + (isEdit ? ' readonly' : '') + '>'
-                }),
-                Domus.UI.buildFormRow({
                     label: t('domus', 'Name'),
                     required: true,
                     content: '<input name="name" required value="' + Domus.Utils.escapeHtml(template?.name || '') + '">'
@@ -7094,6 +7105,13 @@
                     content: '<input type="checkbox" name="isActive"' + (template?.isActive ? ' checked' : '') + '>'
                 })
             ];
+            if (!isEdit) {
+                rows.unshift(Domus.UI.buildFormRow({
+                    label: t('domus', 'Identifier'),
+                    required: true,
+                    content: '<input name="key" required value="' + Domus.Utils.escapeHtml(template?.key || '') + '">'
+                }));
+            }
             const stepsSection = isEdit ? '<div class="domus-task-steps">' +
                 '<div class="domus-task-steps-header">' +
                 '<strong>' + Domus.Utils.escapeHtml(t('domus', 'Steps')) + '</strong>' +
@@ -7123,12 +7141,14 @@
                 event.preventDefault();
                 const data = new FormData(form);
                 const payload = {
-                    key: data.get('key'),
                     name: data.get('name'),
                     description: data.get('description'),
                     appliesTo: data.get('appliesTo'),
                     isActive: data.get('isActive') === 'on'
                 };
+                if (!isEdit) {
+                    payload.key = data.get('key');
+                }
                 const action = isEdit
                     ? Domus.Api.updateTaskTemplate(template.id, payload)
                     : Domus.Api.createTaskTemplate(payload);

@@ -66,9 +66,6 @@ class WorkflowRunService {
 
         $now = time();
         $displayName = $name !== null && trim($name) !== '' ? trim($name) : $template->getName();
-        if ($year !== null) {
-            $displayName = trim($displayName . ' ' . $year);
-        }
 
         $run = new WorkflowRun();
         $run->setUnitId($unitId);
