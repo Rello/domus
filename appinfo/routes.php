@@ -29,6 +29,7 @@ return [
         ['name' => 'PartnerRelation#listByUnit', 'url' => '/units/{unitId}/partners', 'verb' => 'GET'],
         ['name' => 'PartnerRelation#createForUnit', 'url' => '/units/{unitId}/partners', 'verb' => 'POST'],
         ['name' => 'Task#listByUnit', 'url' => '/units/{unitId}/tasks', 'verb' => 'GET'],
+        ['name' => 'Task#createForUnit', 'url' => '/units/{unitId}/tasks', 'verb' => 'POST'],
         // Statistics
         ['name' => 'Statistics#unit', 'url' => '/statistics/units/{unitId}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitPerYear', 'url' => '/statistics/units/{unitId}/{year}', 'verb' => 'GET'],
@@ -78,6 +79,10 @@ return [
         // Settings
         ['name' => 'Settings#show', 'url' => '/settings', 'verb' => 'GET'],
         ['name' => 'Settings#update', 'url' => '/settings', 'verb' => 'PUT'],
+        ['name' => 'TaskTemplate#index', 'url' => '/settings/task-templates', 'verb' => 'GET'],
+        ['name' => 'TaskTemplate#create', 'url' => '/settings/task-templates', 'verb' => 'POST'],
+        ['name' => 'TaskTemplate#update', 'url' => '/settings/task-templates/{id}', 'verb' => 'PUT'],
+        ['name' => 'TaskTemplate#reorder', 'url' => '/settings/task-templates/order', 'verb' => 'PUT'],
 
         // Accounts
         ['name' => 'Account#index', 'url' => '/accounts', 'verb' => 'GET'],

@@ -30,7 +30,34 @@ class TaskService {
     public function getTasksForUnitYear(string $userId, int $unitId, int $year): array {
         $this->materializeTasksForUnitYear($userId, $unitId, $year);
 
-        return $this->unitTaskMapper->findByUnitYear($userId, $unitId, $year);
+        $tasks = $this->unitTaskMapper->findByUnitYear($userId, $unitId, $year);
+        if ($tasks === []) {
+            return [];
+        }
+
+        $unit = $this->unitMapper->findForUser($unitId, $userId);
+        if (!$unit) {
+            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+        }
+
+        $templates = $this->taskTemplateMapper->findForContext($userId, $unit->getPropertyId(), $unitId, true);
+        $templatesById = [];
+        foreach ($templates as $template) {
+            $templatesById[(int)$template->getId()] = $template;
+        }
+
+        return array_map(function(UnitTask $task) use ($templatesById) {
+            $payload = $task->jsonSerialize();
+            $templateId = (int)$task->getTemplateId();
+            if ($templateId > 0 && isset($templatesById[$templateId])) {
+                $template = $templatesById[$templateId];
+                $payload['templateTitle'] = $template->getTitle();
+                $payload['templateDescription'] = $template->getDescription();
+                $payload['templateRequired'] = $template->getRequired();
+                $payload['templateEnabled'] = $template->getEnabled();
+            }
+            return $payload;
+        }, $tasks);
     }
 
     /**
@@ -96,8 +123,8 @@ class TaskService {
     /**
      * @throws DbException
      */
-    public function updateTask(string $userId, int $taskId, ?string $status = null, ?string $notes = null): UnitTask {
-        if ($status === null && $notes === null) {
+    public function updateTask(string $userId, int $taskId, ?string $status = null, ?string $notes = null, ?string $title = null, ?string $description = null, ?string $dueDate = null): UnitTask {
+        if ($status === null && $notes === null && $title === null && $description === null && $dueDate === null) {
             throw new \InvalidArgumentException($this->l10n->t('No task changes provided.'));
         }
 
@@ -134,7 +161,80 @@ class TaskService {
             $task->setUpdatedAt($now);
         }
 
+        if ($title !== null || $description !== null) {
+            $payload = [];
+            if ($title !== null) {
+                $normalizedTitle = trim($title);
+                if ($normalizedTitle === '') {
+                    throw new \InvalidArgumentException($this->l10n->t('Task title is required.'));
+                }
+                $payload['title'] = $normalizedTitle;
+            }
+            if ($description !== null) {
+                $payload['description'] = $description === '' ? null : trim($description);
+            }
+            $this->mergeDataJson($task, $payload);
+            $task->setUpdatedAt($now);
+        }
+
+        if ($dueDate !== null) {
+            $normalizedDueDate = trim($dueDate);
+            $task->setDueDate($normalizedDueDate === '' ? null : $normalizedDueDate);
+            $task->setUpdatedAt($now);
+        }
+
         return $this->unitTaskMapper->update($task);
+    }
+
+    /**
+     * @throws DbException
+     */
+    public function createTaskForUnit(string $userId, int $unitId, int $year, array $payload): UnitTask {
+        $unit = $this->unitMapper->findForUser($unitId, $userId);
+        if (!$unit) {
+            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+        }
+
+        $title = trim((string)($payload['title'] ?? ''));
+        if ($title === '') {
+            throw new \InvalidArgumentException($this->l10n->t('Task title is required.'));
+        }
+
+        $description = $payload['description'] ?? null;
+        if ($description !== null) {
+            $description = trim((string)$description);
+            if ($description === '') {
+                $description = null;
+            }
+        }
+
+        $dueDate = $payload['dueDate'] ?? null;
+        $dueDate = $dueDate === null ? null : trim((string)$dueDate);
+        if ($dueDate === '') {
+            $dueDate = null;
+        }
+
+        $status = $payload['status'] ?? self::STATUS_OPEN;
+        if (!in_array($status, [self::STATUS_OPEN, self::STATUS_DONE], true)) {
+            throw new \InvalidArgumentException($this->l10n->t('Task status is invalid.'));
+        }
+
+        $now = time();
+        $task = new UnitTask();
+        $task->setUserId($userId);
+        $task->setUnitId($unitId);
+        $task->setYear($year);
+        $task->setTemplateId(0);
+        $task->setStatus($status);
+        $task->setDueDate($dueDate);
+        $task->setCreatedAt($now);
+        $task->setUpdatedAt($now);
+        $task->setDataJson(json_encode([
+            'title' => $title,
+            'description' => $description,
+        ]));
+
+        return $this->unitTaskMapper->insert($task);
     }
 
     /**

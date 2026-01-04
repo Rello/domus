@@ -821,6 +821,7 @@
     flex-direction: column;
     gap: 4px;
     cursor: pointer;
+    flex: 1;
 }
 
 .domus-task-item.is-done .domus-task-title {
@@ -831,6 +832,21 @@
 .domus-task-meta {
     color: var(--color-text-maxcontrast);
     font-size: 12px;
+}
+
+.domus-task-actions {
+    margin-left: auto;
+}
+
+.domus-task-template-order {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.domus-task-template-order button[disabled] {
+    opacity: 0.5;
+    cursor: default;
 }
 
 .domus-hero-actions {
