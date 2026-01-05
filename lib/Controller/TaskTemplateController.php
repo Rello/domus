@@ -6,7 +6,7 @@ use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\TaskTemplateService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
-use OCP\AppFramework\Http\Attribute\AdminRequired;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
 use OCP\IL10N;
@@ -20,12 +20,12 @@ class TaskTemplateController extends Controller {
         parent::__construct(Application::APP_ID, $request);
     }
 
-    #[AdminRequired]
+    #[NoAdminRequired]
     public function index(?int $activeOnly = 1): DataResponse {
         return new DataResponse($this->taskTemplateService->listTemplates((bool)$activeOnly));
     }
 
-    #[AdminRequired]
+    #[NoAdminRequired]
     public function show(int $id): DataResponse {
         try {
             return new DataResponse($this->taskTemplateService->getTemplateWithSteps($id));
@@ -34,7 +34,7 @@ class TaskTemplateController extends Controller {
         }
     }
 
-    #[AdminRequired]
+    #[NoAdminRequired]
     public function create(): DataResponse {
         $payload = $this->request->getParams();
         try {
@@ -45,7 +45,7 @@ class TaskTemplateController extends Controller {
         }
     }
 
-    #[AdminRequired]
+    #[NoAdminRequired]
     public function update(int $id): DataResponse {
         $payload = $this->request->getParams();
         try {
@@ -57,7 +57,7 @@ class TaskTemplateController extends Controller {
         }
     }
 
-    #[AdminRequired]
+    #[NoAdminRequired]
     public function destroy(int $id): DataResponse {
         try {
             $this->taskTemplateService->deleteTemplate($id);
@@ -67,7 +67,7 @@ class TaskTemplateController extends Controller {
         }
     }
 
-    #[AdminRequired]
+    #[NoAdminRequired]
     public function reorderSteps(int $id): DataResponse {
         $payload = $this->request->getParams();
         $orderedStepIds = $payload['orderedStepIds'] ?? [];
@@ -80,7 +80,7 @@ class TaskTemplateController extends Controller {
         }
     }
 
-    #[AdminRequired]
+    #[NoAdminRequired]
     public function addStep(int $id): DataResponse {
         $payload = $this->request->getParams();
         try {
@@ -92,7 +92,7 @@ class TaskTemplateController extends Controller {
         }
     }
 
-    #[AdminRequired]
+    #[NoAdminRequired]
     public function updateStep(int $stepId): DataResponse {
         $payload = $this->request->getParams();
         $payload['id'] = $stepId;
@@ -109,7 +109,7 @@ class TaskTemplateController extends Controller {
         }
     }
 
-    #[AdminRequired]
+    #[NoAdminRequired]
     public function deleteStep(int $stepId): DataResponse {
         try {
             $this->taskTemplateService->deleteStep($stepId);
