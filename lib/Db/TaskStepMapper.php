@@ -84,7 +84,6 @@ class TaskStepMapper extends QBMapper {
             ->andWhere($qb->expr()->eq('step.status', $qb->createNamedParameter('open')))
             ->orderBy('step.due_date', 'ASC');
 
-        $rows = $qb->executeQuery()->fetchAll();
-        return array_map(fn($row) => $this->hydrateEntity(TaskStep::class, $row), $rows);
+        return $this->findEntities($qb);
     }
 }
