@@ -18,6 +18,10 @@ class TaskStep extends Entity implements JsonSerializable {
     protected $closedBy;
     protected $createdAt;
     protected $updatedAt;
+    protected $runName;
+    protected $runStatus;
+    protected $templateId;
+    protected $templateKey;
 
     public function __construct() {
         $this->addType('id', 'int');
