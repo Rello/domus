@@ -4358,7 +4358,9 @@
                     const openTaskCount = Domus.Role.isTenantView()
                         ? 0
                         : (unit.activeOpenTasks || 0);
-                    const openTaskLabel = Domus.Utils.escapeHtml(t('domus', '{count} open tasks', { count: openTaskCount }));
+                    const openTaskLabel = '<span id="domus-kpi-open-tasks">' +
+                        Domus.Utils.escapeHtml(t('domus', '{count} open tasks', { count: openTaskCount })) +
+                        '</span>';
                     const kpiTiles = useKpiLayout
                         ? '<div class="domus-kpi-tiles">' +
                         Domus.UI.buildKpiTile({
@@ -4492,8 +4494,9 @@
                         Domus.Tasks.loadUnitTasks(id, {
                             onOpenCount: (count) => {
                                 unit.activeOpenTasks = count;
-                                if (useKpiLayout) {
-                                    renderDetail(id);
+                                const kpiValue = document.getElementById('domus-kpi-open-tasks');
+                                if (kpiValue) {
+                                    kpiValue.textContent = t('domus', '{count} open tasks', { count });
                                 }
                             }
                         });
