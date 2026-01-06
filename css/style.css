@@ -1370,6 +1370,10 @@
     background-image: url(../img/details.svg);
 }
 
+.domus-icon-ok {
+    background-image: url(../img/ok.svg);
+}
+
 .domus-icon-delete {
     background-image: url(../img/delete.svg);
 }

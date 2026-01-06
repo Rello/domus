@@ -85,6 +85,16 @@ class WorkflowRunController extends Controller {
         }
     }
 
+    #[NoAdminRequired]
+    public function delete(int $runId): DataResponse {
+        try {
+            $this->workflowRunService->deleteRun($runId, $this->getUserId());
+            return new DataResponse(['status' => 'success']);
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
     }

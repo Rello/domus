@@ -99,6 +99,7 @@ return [
         ['name' => 'WorkflowRun#createForUnit', 'url' => '/api/units/{unitId}/workflow-runs', 'verb' => 'POST'],
         ['name' => 'WorkflowRun#listByUnit', 'url' => '/api/units/{unitId}/workflow-runs', 'verb' => 'GET'],
         ['name' => 'WorkflowRun#show', 'url' => '/api/workflow-runs/{runId}', 'verb' => 'GET'],
+        ['name' => 'WorkflowRun#delete', 'url' => '/api/workflow-runs/{runId}', 'verb' => 'DELETE'],
         ['name' => 'WorkflowRun#closeStep', 'url' => '/api/task-steps/{stepId}/close', 'verb' => 'POST'],
         ['name' => 'WorkflowRun#reopenStep', 'url' => '/api/task-steps/{stepId}/reopen', 'verb' => 'POST'],
 
@@ -108,5 +109,6 @@ return [
         ['name' => 'Task#listOpen', 'url' => '/api/tasks', 'verb' => 'GET'],
         ['name' => 'Task#close', 'url' => '/api/tasks/{taskId}/close', 'verb' => 'POST'],
         ['name' => 'Task#reopen', 'url' => '/api/tasks/{taskId}/reopen', 'verb' => 'POST'],
+        ['name' => 'Task#delete', 'url' => '/api/tasks/{taskId}', 'verb' => 'DELETE'],
     ],
 ];

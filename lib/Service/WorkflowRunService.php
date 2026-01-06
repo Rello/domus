@@ -9,7 +9,6 @@ use OCA\Domus\Db\TaskTemplateStepMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCA\Domus\Db\WorkflowRun;
 use OCA\Domus\Db\WorkflowRunMapper;
-use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
 use OCP\IDBConnection;
 use OCP\IL10N;
@@ -46,17 +45,6 @@ class WorkflowRunService {
         $template = $this->templateMapper->findById($templateId);
         if (!$template || (int)$template->getIsActive() !== 1) {
             throw new \RuntimeException($this->l10n->t('Task template is not active.'));
-        }
-
-        if ($year !== null) {
-            try {
-                $existing = $this->workflowRunMapper->findOpenRunForYear($unitId, $templateId, $year);
-            } catch (DoesNotExistException $e) {
-                $existing = null;
-            }
-            if ($existing) {
-                throw new \RuntimeException($this->l10n->t('A workflow run for this year already exists.'));
-            }
         }
 
         $steps = $this->templateStepMapper->findByTemplate($templateId);
@@ -267,6 +255,34 @@ class WorkflowRunService {
     /**
      * @throws DbException
      */
+    public function deleteRun(int $runId, string $userId): void {
+        $run = $this->workflowRunMapper->findById($runId);
+        if (!$run) {
+            throw new \RuntimeException($this->l10n->t('Workflow run not found.'));
+        }
+
+        $unit = $this->unitMapper->findForUser($run->getUnitId(), $userId);
+        if (!$unit) {
+            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+        }
+
+        $this->connection->beginTransaction();
+        try {
+            $steps = $this->taskStepMapper->findByRun($run->getId());
+            foreach ($steps as $step) {
+                $this->taskStepMapper->delete($step);
+            }
+            $this->workflowRunMapper->delete($run);
+            $this->connection->commit();
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * @throws DbException
+     */
     public function listOpenStepsForUser(string $userId, string $role): array {
         $units = $this->unitMapper->findByUser($userId, null, false);
         if ($role === 'buildingMgmt') {
@@ -302,6 +318,7 @@ class WorkflowRunService {
                 'unitId' => $step->getUnitId(),
                 'unitName' => $unitMap[$step->getUnitId()] ?? '',
                 'title' => $step->getTitle(),
+                'description' => $step->getDescription(),
                 'dueDate' => $step->getDueDate(),
                 'workflowName' => $run?->getName(),
             ];

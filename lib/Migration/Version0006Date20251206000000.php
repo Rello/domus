@@ -60,7 +60,6 @@ class Version0006Date20251206000000 extends SimpleMigrationStep {
             $table->setPrimaryKey(['id']);
             $table->addIndex(['unit_id'], 'domus_wrk_run_unit');
             $table->addIndex(['template_id'], 'domus_wrk_run_tpl');
-            $table->addUniqueIndex(['unit_id', 'template_id', 'year'], 'domus_wrk_run_year');
         }
 
         if (!$schema->hasTable('domus_task_steps')) {
