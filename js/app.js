@@ -2448,6 +2448,7 @@
             const headers = [
                 showUnit ? t('domus', 'Unit') : null,
                 t('domus', 'Title'),
+                t('domus', 'Description'),
                 t('domus', 'Due date'),
                 t('domus', 'Type'),
                 t('domus', 'Action')
@@ -2464,15 +2465,15 @@
                 if (item.workflowName) {
                     titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
                 }
-                if (item.description) {
-                    titleParts.push(Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
+                const descriptionBtn = item.description
+                    ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
                         className: 'domus-task-description',
                         dataset: {
                             title: item.title || '',
                             description: item.description || ''
                         }
-                    }));
-                }
+                    })
+                    : '';
                 const actionBtn = Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
                     className: 'domus-task-close',
                     dataset: {
@@ -2483,6 +2484,7 @@
                 const cells = [
                     showUnit ? unitCell : null,
                     titleParts.join(''),
+                    descriptionBtn,
                     Domus.Utils.escapeHtml(dueLabel || '—'),
                     buildTypeBadge(item.type),
                     actionBtn
@@ -2763,15 +2765,15 @@
                     if (item.workflowName) {
                         titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
                     }
-                    if (item.description) {
-                        titleParts.push(Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
+                    const descriptionBtn = item.description
+                        ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
                             className: 'domus-task-description',
                             dataset: {
                                 title: item.title || '',
                                 description: item.description || ''
                             }
-                        }));
-                    }
+                        })
+                        : '';
                     const closedLabel = Domus.Utils.formatDate(item.closedAt ? item.closedAt * 1000 : item.closedAt) || '—';
                     const typeBadge = buildTypeBadge(item.type === 'task' ? 'task' : 'process');
                     const actionParts = [];
@@ -2792,12 +2794,13 @@
                     }
                     return [
                         titleParts.join(''),
+                        descriptionBtn,
                         Domus.Utils.escapeHtml(closedLabel),
                         typeBadge,
                         actionParts.join('')
                     ];
                 });
-            const closedTable = Domus.UI.buildTable([t('domus', 'Title'), t('domus', 'Closed'), t('domus', 'Type'), ''], closedRows);
+            const closedTable = Domus.UI.buildTable([t('domus', 'Title'), t('domus', 'Description'), t('domus', 'Closed'), t('domus', 'Type'), ''], closedRows);
             const closedSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Closed')) + '</h4>' + closedTable;
 
             return '<div class="domus-task-section">' + openSection + closedSection + '</div>';
