@@ -18,3 +18,22 @@ This repository is a Nextcloud app; follow the existing design documents when ma
 
 ## Pull requests
 - Summaries should highlight the key behavioral or documentation changes and the manual checks performed.
+
+## Frontend notes for agents
+- The frontend is loaded via multiple `Util::addScript` calls in `templates/main.php`. Load order matters because modules attach to `window.Domus`.
+- Avoid introducing build tooling when modularizing the frontend; keep using plain, Nextcloud-loaded scripts.
+
+## Frontend file scope (post-split)
+- `js/domusCoreBundle.js`: shared state plus `Domus.Utils`, `Domus.Events`, `Domus.Api`, UI helpers, router/navigation, role/permission logic, and app bootstrap.
+- `js/domusAccounts.js`: account data parsing and account tree UI helpers.
+- `js/domusDistributions.js`: distribution CRUD, allocation UI, summary views, and report rendering/export flows.
+- `js/domusTasks.js`: tasks list, task detail, task step interactions, and task template management.
+- `js/domusDashboard.js`: dashboard tiles, charts, and summary widgets.
+- `js/domusAnalytics.js`: analytics view rendering and chart setup.
+- `js/domusProperties.js`: properties list, detail, and form handling.
+- `js/domusUnits.js`: unit list/detail views, unit forms, related tables, and settlement calculations/report UI.
+- `js/domusPartners.js`: partner list, forms, contact rendering, and partner relation flows.
+- `js/domusTenancies.js`: tenancy list/detail views and form handling.
+- `js/domusBookings.js`: bookings list, booking forms, and ledger tables.
+- `js/domusSettings.js`: settings view and form submission logic.
+- `js/domusDocuments.js`: document upload/link flows and attachment lists.
