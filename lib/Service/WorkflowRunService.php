@@ -318,6 +318,7 @@ class WorkflowRunService {
                 'unitId' => $step->getUnitId(),
                 'unitName' => $unitMap[$step->getUnitId()] ?? '',
                 'title' => $step->getTitle(),
+                'description' => $step->getDescription(),
                 'dueDate' => $step->getDueDate(),
                 'workflowName' => $run?->getName(),
             ];
