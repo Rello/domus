@@ -2650,7 +2650,10 @@
                         dataset: { type: 'process', id: step.id }
                     })
                     : (options.allowReopen && step.status === 'closed'
-                        ? '<button class="domus-task-reopen-step" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Reopen')) + '</button>'
+                        ? Domus.UI.buildIconButton('domus-icon-back', t('domus', 'Reopen'), {
+                            className: 'domus-task-reopen-step',
+                            dataset: { id: step.id }
+                        })
                         : '');
                 return [
                     Domus.Utils.escapeHtml(step.title || ''),
@@ -2773,7 +2776,10 @@
                     const typeBadge = buildTypeBadge(item.type === 'task' ? 'task' : 'process');
                     const actionParts = [];
                     if (item.type === 'task') {
-                        actionParts.push('<button class="domus-task-reopen" data-id="' + Domus.Utils.escapeHtml(String(item.taskId)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Reopen')) + '</button>');
+                        actionParts.push(Domus.UI.buildIconButton('domus-icon-back', t('domus', 'Reopen'), {
+                            className: 'domus-task-reopen',
+                            dataset: { id: item.taskId }
+                        }));
                         actionParts.push(Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {
                             className: 'domus-task-delete',
                             dataset: { type: 'task', id: item.taskId }
