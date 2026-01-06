@@ -50,7 +50,8 @@ class TaskStepMapper extends QBMapper {
             ->orderBy('sort_order', 'ASC')
             ->setMaxResults(1);
 
-        return $this->findEntity($qb);
+		$steps = $this->findEntities($qb);
+		return $steps[0] ?? null;
     }
 
     /**
