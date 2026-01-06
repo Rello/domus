@@ -2471,7 +2471,10 @@
                     buildTypeBadge(item.type),
                     actionBtn
                 ].filter(itemCell => itemCell !== null);
-                return { cells, dataset: showUnit ? { navigate: 'unitDetail', args: item.unitId } : null };
+                const dataset = showUnit
+                    ? { navigate: 'unitDetail', args: item.unitId }
+                    : (item.type === 'process' ? { processRunId: item.runId } : null);
+                return { cells, dataset, className: (!showUnit && item.type === 'process') ? 'domus-task-process-row' : '' };
             });
 
             return Domus.UI.buildTable(headers, rows);
@@ -2640,6 +2643,15 @@
             return Domus.UI.buildTable([t('domus', 'Step'), t('domus', 'Due date'), t('domus', 'Status'), ''], rows);
         }
 
+        function openProcessTasksModal(run) {
+            const rows = (run.steps || []).map(step => ([
+                Domus.Utils.escapeHtml(step.title || ''),
+                Domus.Utils.escapeHtml(step.status || '')
+            ]));
+            const content = Domus.UI.buildTable([t('domus', 'Step'), t('domus', 'Status')], rows);
+            Domus.UI.openModal({ title: run.name || t('domus', 'Process'), content });
+        }
+
         function buildUnitTasksContent(unitId, data, options = {}) {
             const openItems = [];
             (data.runs || []).forEach(run => {
@@ -2648,6 +2660,7 @@
                     openItems.push({
                         type: 'process',
                         stepId: openStep.id,
+                        runId: run.id,
                         unitId,
                         unitName: data.unitName || '',
                         title: openStep.title,
@@ -2670,17 +2683,6 @@
             const openTable = buildOpenTasksTable(openItems, { showUnit: false });
             const openSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</h4>' + openTable;
 
-            const runSections = (data.runs || []).map(run => {
-                const header = '<div class="domus-task-run-header"><strong>' +
-                    Domus.Utils.escapeHtml(run.name || '') + '</strong>' +
-                    '<span class="domus-badge">' + Domus.Utils.escapeHtml(run.status || '') + '</span>' +
-                    '</div>';
-                const table = buildWorkflowStepsTable(run, { allowReopen: true });
-                return header + Domus.UI.buildCollapsible(table, { collapsed: true, showLabel: t('domus', 'Show steps'), hideLabel: t('domus', 'Hide steps') });
-            }).join('');
-            const processSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Processes')) + '</h4>' +
-                (runSections || '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} found.', { entity: t('domus', 'Processes') })) + '</div>');
-
             const closedTasks = (data.tasks || []).filter(task => task.status === 'closed');
             const closedRows = closedTasks.map(task => [
                 Domus.Utils.escapeHtml(task.title || ''),
@@ -2690,11 +2692,23 @@
             const closedTable = Domus.UI.buildTable([t('domus', 'Title'), t('domus', 'Due date'), ''], closedRows);
             const closedSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Closed')) + '</h4>' + closedTable;
 
-            return '<div class="domus-task-section">' + openSection + processSection + closedSection + '</div>';
+            return '<div class="domus-task-section">' + openSection + closedSection + '</div>';
         }
 
-        function bindUnitTaskActions(unitId, options = {}) {
+        function bindUnitTaskActions(unitId, runs, options = {}) {
             bindOpenTaskActions({ onRefresh: options.onRefresh });
+            document.querySelectorAll('table.domus-table tr[data-process-run-id]').forEach(row => {
+                row.addEventListener('click', (event) => {
+                    if (event.target.closest('a') || event.target.closest('button')) {
+                        return;
+                    }
+                    const runId = row.getAttribute('data-process-run-id');
+                    if (!runId) return;
+                    const run = (runs || []).find(item => String(item.id) === String(runId));
+                    if (!run) return;
+                    openProcessTasksModal(run);
+                });
+            });
             document.querySelectorAll('.domus-task-reopen').forEach(btn => {
                 btn.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -2744,7 +2758,7 @@
                     const content = buildUnitTasksContent(unitId, { runs, tasks, unitName: unit?.label || '' });
                     body.innerHTML = content;
                     Domus.UI.bindCollapsibles();
-                    bindUnitTaskActions(unitId, { onRefresh: () => loadUnitTasks(unitId, options) });
+                    bindUnitTaskActions(unitId, runs, { onRefresh: () => loadUnitTasks(unitId, options) });
                     if (typeof options.onOpenCount === 'function') {
                         options.onOpenCount(openCount);
                     }
