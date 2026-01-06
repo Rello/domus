@@ -2669,6 +2669,7 @@
 
         function openProcessTasksModal(run) {
             const rows = (run.steps || []).map(step => {
+                const completedLabel = Domus.Utils.formatDate(step.closedAt ? step.closedAt * 1000 : step.closedAt) || '—';
                 const actionBtn = step.description
                     ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
                         className: 'domus-step-description',
@@ -2681,10 +2682,11 @@
                 return [
                     Domus.Utils.escapeHtml(step.title || ''),
                     Domus.Utils.escapeHtml(step.status || ''),
+                    Domus.Utils.escapeHtml(completedLabel),
                     actionBtn
                 ];
             });
-            const content = Domus.UI.buildTable([t('domus', 'Step'), t('domus', 'Status'), ''], rows);
+            const content = Domus.UI.buildTable([t('domus', 'Step'), t('domus', 'Status'), t('domus', 'Completed'), ''], rows);
             const modal = Domus.UI.openModal({ title: run.name || t('domus', 'Process'), content });
             modal.modalEl.querySelectorAll('.domus-step-description').forEach(btn => {
                 btn.addEventListener('click', (event) => {
