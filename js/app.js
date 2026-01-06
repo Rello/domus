@@ -2445,13 +2445,16 @@
         function buildOpenTasksTable(items, options = {}) {
             const sorted = sortOpenItems(items || []);
             const showUnit = options.showUnit !== false;
+            const showDescription = options.showDescription !== false;
+            const showType = options.showType !== false;
+            const showAction = options.showAction !== false;
             const headers = [
                 showUnit ? t('domus', 'Unit') : null,
                 t('domus', 'Title'),
-                t('domus', 'Description'),
+                showDescription ? t('domus', 'Description') : null,
                 t('domus', 'Due date'),
-                t('domus', 'Type'),
-                t('domus', 'Action')
+                showType ? t('domus', 'Type') : null,
+                showAction ? t('domus', 'Action') : null
             ].filter(item => item !== null);
             const rows = sorted.map(item => {
                 const unitCell = showUnit
@@ -2465,7 +2468,7 @@
                 if (item.workflowName) {
                     titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
                 }
-                const descriptionBtn = item.description
+                const descriptionBtn = showDescription && item.description
                     ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
                         className: 'domus-task-description',
                         dataset: {
@@ -2474,20 +2477,22 @@
                         }
                     })
                     : '';
-                const actionBtn = Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
-                    className: 'domus-task-close',
-                    dataset: {
-                        type: item.type || '',
-                        id: item.stepId || item.taskId || ''
-                    }
-                });
+                const actionBtn = showAction
+                    ? Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
+                        className: 'domus-task-close',
+                        dataset: {
+                            type: item.type || '',
+                            id: item.stepId || item.taskId || ''
+                        }
+                    })
+                    : '';
                 const cells = [
                     showUnit ? unitCell : null,
                     titleParts.join(''),
-                    descriptionBtn,
+                    showDescription ? descriptionBtn : null,
                     Domus.Utils.escapeHtml(dueLabel || '—'),
-                    buildTypeBadge(item.type),
-                    actionBtn
+                    showType ? buildTypeBadge(item.type) : null,
+                    showAction ? actionBtn : null
                 ].filter(itemCell => itemCell !== null);
                 const dataset = showUnit
                     ? { navigate: 'unitDetail', args: item.unitId }
@@ -2999,7 +3004,11 @@
                 })
                 : '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Units') })) + '</div>';
 
-            const openTasksTable = Domus.Tasks.buildOpenTasksTable(data.openTasks || []);
+            const openTasksTable = Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
+                showDescription: false,
+                showType: false,
+                showAction: false
+            });
 
             setTimeout(() => {
                 Domus.UI.bindRowNavigation();
@@ -3037,7 +3046,11 @@
                 t('domus', 'Name'), t('domus', 'City'), t('domus', 'Units')
             ], propertyRows);
 
-            const openTasksTable = Domus.Tasks.buildOpenTasksTable(data.openTasks || []);
+            const openTasksTable = Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
+                showDescription: false,
+                showType: false,
+                showAction: false
+            });
 
             setTimeout(() => {
                 Domus.UI.bindRowNavigation();
