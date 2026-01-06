@@ -194,6 +194,7 @@
             startWorkflowRun: (unitId, data) => request('POST', `/api/units/${unitId}/workflow-runs`, data),
             getWorkflowRunsByUnit: unitId => request('GET', `/api/units/${unitId}/workflow-runs`),
             getWorkflowRun: runId => request('GET', `/api/workflow-runs/${runId}`),
+            deleteWorkflowRun: runId => request('DELETE', `/api/workflow-runs/${runId}`),
             closeTaskStep: stepId => request('POST', `/api/task-steps/${stepId}/close`),
             reopenTaskStep: stepId => request('POST', `/api/task-steps/${stepId}/reopen`),
             createTask: (unitId, data) => request('POST', `/api/units/${unitId}/tasks`, data),
@@ -201,6 +202,7 @@
             getOpenTasks: status => request('GET', buildUrl('/api/tasks', appendFilters(new URLSearchParams(), { status }))),
             closeTask: taskId => request('POST', `/api/tasks/${taskId}/close`),
             reopenTask: taskId => request('POST', `/api/tasks/${taskId}/reopen`),
+            deleteTask: taskId => request('DELETE', `/api/tasks/${taskId}`),
             getUnits: (propertyId) => {
                 const path = propertyId ? `/properties/${propertyId}/units` : '/units';
                 return request('GET', buildYearUrl(path));
@@ -2462,8 +2464,13 @@
                 if (item.workflowName) {
                     titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
                 }
-                const actionBtn = '<button class="domus-task-close" data-type="' + Domus.Utils.escapeHtml(item.type || '') + '" data-id="' + Domus.Utils.escapeHtml(String(item.stepId || item.taskId || '')) + '">' +
-                    Domus.Utils.escapeHtml(t('domus', 'Mark done')) + '</button>';
+                const actionBtn = Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
+                    className: 'domus-task-close',
+                    dataset: {
+                        type: item.type || '',
+                        id: item.stepId || item.taskId || ''
+                    }
+                });
                 const cells = [
                     showUnit ? unitCell : null,
                     titleParts.join(''),
@@ -2473,7 +2480,7 @@
                 ].filter(itemCell => itemCell !== null);
                 const dataset = showUnit
                     ? { navigate: 'unitDetail', args: item.unitId }
-                    : (item.type === 'process' ? { processRunId: item.runId } : null);
+                    : (item.type === 'process' ? { 'process-run-id': item.runId } : null);
                 return { cells, dataset, className: (!showUnit && item.type === 'process') ? 'domus-task-process-row' : '' };
             });
 
@@ -2629,7 +2636,10 @@
                 const dueLabel = Domus.Utils.formatDate(step.dueDate) || '—';
                 const statusLabel = step.status || '';
                 const actionBtn = step.status === 'open'
-                    ? '<button class="domus-task-close" data-type="process" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Mark done')) + '</button>'
+                    ? Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
+                        className: 'domus-task-close',
+                        dataset: { type: 'process', id: step.id }
+                    })
                     : (options.allowReopen && step.status === 'closed'
                         ? '<button class="domus-task-reopen-step" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Reopen')) + '</button>'
                         : '');
@@ -2683,13 +2693,68 @@
             const openTable = buildOpenTasksTable(openItems, { showUnit: false });
             const openSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</h4>' + openTable;
 
-            const closedTasks = (data.tasks || []).filter(task => task.status === 'closed');
-            const closedRows = closedTasks.map(task => [
-                Domus.Utils.escapeHtml(task.title || ''),
-                Domus.Utils.escapeHtml(Domus.Utils.formatDate(task.dueDate) || '—'),
-                '<button class="domus-task-reopen" data-id="' + Domus.Utils.escapeHtml(String(task.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Reopen')) + '</button>'
-            ]);
-            const closedTable = Domus.UI.buildTable([t('domus', 'Title'), t('domus', 'Due date'), ''], closedRows);
+            const closedItems = [];
+            (data.tasks || []).filter(task => task.status === 'closed').forEach(task => {
+                closedItems.push({
+                    type: 'task',
+                    taskId: task.id,
+                    title: task.title,
+                    closedAt: task.closedAt
+                });
+            });
+            (data.runs || []).forEach(run => {
+                (run.steps || []).filter(step => step.status === 'closed').forEach(step => {
+                    closedItems.push({
+                        type: 'processStep',
+                        stepId: step.id,
+                        runId: run.id,
+                        title: step.title,
+                        workflowName: run.name,
+                        closedAt: step.closedAt
+                    });
+                });
+                if (run.status === 'closed') {
+                    closedItems.push({
+                        type: 'processRun',
+                        runId: run.id,
+                        title: run.name,
+                        closedAt: run.closedAt
+                    });
+                }
+            });
+            const closedRows = closedItems
+                .sort((a, b) => (b.closedAt || 0) - (a.closedAt || 0))
+                .map(item => {
+                    const titleParts = [];
+                    titleParts.push(Domus.Utils.escapeHtml(item.title || ''));
+                    if (item.workflowName) {
+                        titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
+                    }
+                    const closedLabel = Domus.Utils.formatDate(item.closedAt ? item.closedAt * 1000 : item.closedAt) || '—';
+                    const typeBadge = buildTypeBadge(item.type === 'task' ? 'task' : 'process');
+                    const actionParts = [];
+                    if (item.type === 'task') {
+                        actionParts.push('<button class="domus-task-reopen" data-id="' + Domus.Utils.escapeHtml(String(item.taskId)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Reopen')) + '</button>');
+                        actionParts.push(Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {
+                            className: 'domus-task-delete',
+                            dataset: { type: 'task', id: item.taskId }
+                        }));
+                    } else if (item.type === 'processStep') {
+                        actionParts.push('<button class="domus-task-reopen-step" data-id="' + Domus.Utils.escapeHtml(String(item.stepId)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Reopen')) + '</button>');
+                    } else if (item.type === 'processRun') {
+                        actionParts.push(Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {
+                            className: 'domus-task-delete',
+                            dataset: { type: 'process', id: item.runId }
+                        }));
+                    }
+                    return [
+                        titleParts.join(''),
+                        Domus.Utils.escapeHtml(closedLabel),
+                        typeBadge,
+                        actionParts.join('')
+                    ];
+                });
+            const closedTable = Domus.UI.buildTable([t('domus', 'Title'), t('domus', 'Closed'), t('domus', 'Type'), ''], closedRows);
             const closedSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Closed')) + '</h4>' + closedTable;
 
             return '<div class="domus-task-section">' + openSection + closedSection + '</div>';
@@ -2707,6 +2772,23 @@
                     const run = (runs || []).find(item => String(item.id) === String(runId));
                     if (!run) return;
                     openProcessTasksModal(run);
+                });
+            });
+            document.querySelectorAll('.domus-task-delete').forEach(btn => {
+                btn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const type = btn.getAttribute('data-type');
+                    const id = btn.getAttribute('data-id');
+                    if (!id) return;
+                    const entityLabel = type === 'process' ? t('domus', 'Process') : t('domus', 'Task');
+                    if (!confirm(t('domus', 'Delete {entity}?', { entity: entityLabel }))) {
+                        return;
+                    }
+                    const action = type === 'process' ? Domus.Api.deleteWorkflowRun(id) : Domus.Api.deleteTask(id);
+                    action.then(() => {
+                        options.onRefresh && options.onRefresh();
+                    }).catch(err => Domus.UI.showNotification(err.message, 'error'));
                 });
             });
             document.querySelectorAll('.domus-task-reopen').forEach(btn => {

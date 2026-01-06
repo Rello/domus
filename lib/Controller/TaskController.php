@@ -83,6 +83,16 @@ class TaskController extends Controller {
         }
     }
 
+    #[NoAdminRequired]
+    public function delete(int $taskId): DataResponse {
+        try {
+            $this->taskService->deleteTask($taskId, $this->getUserId());
+            return new DataResponse(['status' => 'success']);
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
     }

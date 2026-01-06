@@ -130,4 +130,20 @@ class TaskService {
 
         return $this->taskMapper->update($task);
     }
+
+    /**
+     * @throws DbException
+     */
+    public function deleteTask(int $taskId, string $userId): void {
+        $task = $this->taskMapper->findById($taskId);
+        if (!$task) {
+            throw new \RuntimeException($this->l10n->t('Task not found.'));
+        }
+        $unit = $this->unitMapper->findForUser($task->getUnitId(), $userId);
+        if (!$unit) {
+            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+        }
+
+        $this->taskMapper->delete($task);
+    }
 }
