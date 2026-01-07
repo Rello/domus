@@ -27,6 +27,7 @@ class DemoContentService {
                 'unitNumber' => 'A-101',
                 'livingArea' => '72',
                 'unitType' => $this->l10n->t('Apartment'),
+                'totalCosts' => '200000',
                 'notes' => $this->l10n->t('Sample unit used to explore Domus features.'),
             ], $userId, $role);
 
