@@ -1194,6 +1194,12 @@
     align-items: center;
 }
 
+.domus-task-template-actions {
+    display: inline-flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
 .domus-form-subsection {
     margin: 12px 0;
     padding: 12px;
