@@ -11,6 +11,8 @@ use OCP\IConfig;
 use OCP\IL10N;
 use OCP\IRequest;
 use OCP\IUserSession;
+use OCA\Domus\Service\DemoContentService;
+use OCA\Domus\Service\PermissionService;
 
 class SettingsController extends Controller {
     private const CONFIG_TAX_RATE = 'taxRate';
@@ -19,6 +21,8 @@ class SettingsController extends Controller {
         IRequest $request,
         private IUserSession $userSession,
         private IConfig $config,
+        private DemoContentService $demoContentService,
+        private PermissionService $permissionService,
         private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
@@ -56,6 +60,32 @@ class SettingsController extends Controller {
             'settings' => $this->getSettings($userId),
             'updated' => $updated,
         ]);
+    }
+
+    #[NoAdminRequired]
+    public function createDemoContent(): DataResponse {
+        $role = $this->permissionService->getRoleFromRequest($this->request);
+        try {
+            $data = $this->demoContentService->createDemoContent($this->getUserId(), $role);
+            return new DataResponse([
+                'status' => 'success',
+                'data' => $data,
+            ], Http::STATUS_CREATED);
+        } catch (\RuntimeException $e) {
+            return new DataResponse([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'code' => 'CONFLICT',
+            ], Http::STATUS_CONFLICT);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        } catch (\Throwable $e) {
+            return new DataResponse([
+                'status' => 'error',
+                'message' => $this->l10n->t('An error occurred'),
+                'code' => 'ERROR',
+            ], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
     }
 
     private function getSettingsDefinition(): array {

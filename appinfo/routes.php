@@ -75,6 +75,7 @@ return [
         // Settings
         ['name' => 'Settings#show', 'url' => '/settings', 'verb' => 'GET'],
         ['name' => 'Settings#update', 'url' => '/settings', 'verb' => 'PUT'],
+        ['name' => 'Settings#createDemoContent', 'url' => '/settings/demo-content', 'verb' => 'POST'],
 
         // Accounts
         ['name' => 'Account#index', 'url' => '/accounts', 'verb' => 'GET'],
