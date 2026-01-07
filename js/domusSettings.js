@@ -17,23 +17,34 @@
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>';
 
-            return '<div class="domus-form">' +
+            return '<div class="domus-panel">' +
+                '<div class="domus-section-header">' +
+                '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h3>' +
+                '</div>' +
+                '<div class="domus-panel-body">' +
+                '<div class="domus-form">' +
                 '<form id="domus-settings-form">' +
                 Domus.UI.buildFormTable(rows) +
                 actions +
                 '</form>' +
+                '</div>' +
+                '</div>' +
                 '</div>';
         }
 
         function buildDemoSection() {
-            return '<div class="domus-form">' +
-                '<div class="domus-form-section">' +
+            return '<div class="domus-panel">' +
+                '<div class="domus-section-header">' +
                 '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Demo content')) + '</h3>' +
+                '</div>' +
+                '<div class="domus-panel-body">' +
+                '<div class="domus-form">' +
                 '<p>' + Domus.Utils.escapeHtml(t('domus', 'Create a demo dataset to explore units, partners, tenancies, tasks, and bookings.')) + '</p>' +
                 '<div class="domus-form-actions">' +
                 '<button type="button" class="secondary" id="domus-demo-content-button">' +
                 Domus.Utils.escapeHtml(t('domus', 'Create demo content')) +
                 '</button>' +
+                '</div>' +
                 '</div>' +
                 '</div>' +
                 '</div>';
