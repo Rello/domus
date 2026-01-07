@@ -597,13 +597,11 @@
 
         function openTemplateModal(template, onSaved) {
             const isEdit = !!template?.id;
-            const reopenTemplate = () => {
+            const refreshTemplate = () => {
                 if (!template?.id) {
                     return;
                 }
-                Domus.Api.getTaskTemplate(template.id)
-                    .then(nextTemplate => openTemplateModal(nextTemplate, onSaved))
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                loadTemplateDetails(template.id);
             };
             const rows = [
                 Domus.UI.buildFormRow({
@@ -652,8 +650,8 @@
 
             if (isEdit) {
                 renderStepsList(template);
-                bindStepActions(template.id, () => loadTemplateDetails(template.id), reopenTemplate);
-                modal.modalEl.querySelector('#domus-task-step-add')?.addEventListener('click', () => openStepModal(template.id, null, reopenTemplate));
+                bindStepActions(template.id, () => loadTemplateDetails(template.id), refreshTemplate);
+                modal.modalEl.querySelector('#domus-task-step-add')?.addEventListener('click', () => openStepModal(template.id, null, refreshTemplate));
             }
 
             form?.addEventListener('submit', (event) => {
