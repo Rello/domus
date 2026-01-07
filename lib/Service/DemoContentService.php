@@ -2,11 +2,6 @@
 
 namespace OCA\Domus\Service;
 
-use OCA\Domus\Db\BookingMapper;
-use OCA\Domus\Db\PartnerMapper;
-use OCA\Domus\Db\PropertyMapper;
-use OCA\Domus\Db\TenancyMapper;
-use OCA\Domus\Db\UnitMapper;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
@@ -18,21 +13,12 @@ class DemoContentService {
         private PartnerRelationService $partnerRelationService,
         private TaskService $taskService,
         private BookingService $bookingService,
-        private UnitMapper $unitMapper,
-        private PartnerMapper $partnerMapper,
-        private TenancyMapper $tenancyMapper,
-        private BookingMapper $bookingMapper,
-        private PropertyMapper $propertyMapper,
         private IDBConnection $connection,
         private IL10N $l10n,
     ) {
     }
 
     public function createDemoContent(string $userId, string $role): array {
-        if ($this->hasExistingData($userId)) {
-            throw new \RuntimeException($this->l10n->t('Demo content can only be created in an empty account.'));
-        }
-
         $this->connection->beginTransaction();
 
         try {
@@ -156,23 +142,4 @@ class DemoContentService {
         }
     }
 
-    private function hasExistingData(string $userId): bool {
-        if (count($this->unitMapper->findByUser($userId)) > 0) {
-            return true;
-        }
-        if (count($this->partnerMapper->findByUser($userId)) > 0) {
-            return true;
-        }
-        if (count($this->tenancyMapper->findByUser($userId)) > 0) {
-            return true;
-        }
-        if (count($this->bookingMapper->findByUser($userId)) > 0) {
-            return true;
-        }
-        if (count($this->propertyMapper->findByUser($userId)) > 0) {
-            return true;
-        }
-
-        return false;
-    }
 }

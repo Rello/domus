@@ -307,7 +307,6 @@ OC.L10N.register(
         "Create demo content? This will add sample data to your account.": "Demo-Inhalte erstellen? Dadurch werden Beispieldaten zu Ihrem Konto hinzugefügt.",
         "Demo content created.": "Demo-Inhalte erstellt.",
         "Unable to create demo content.": "Demo-Inhalte konnten nicht erstellt werden.",
-        "Demo content can only be created in an empty account.": "Demo-Inhalte können nur in einem leeren Konto erstellt werden.",
         "Demo apartment": "Demo-Wohnung",
         "Apartment": "Wohnung",
         "Sample unit used to explore Domus features.": "Beispiel-Einheit zum Erkunden der Domus-Funktionen.",
