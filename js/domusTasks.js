@@ -646,7 +646,9 @@
             const stepsSection = isEdit ? '<div class="domus-task-steps">' +
                 '<div class="domus-task-steps-header">' +
                 '<strong>' + Domus.Utils.escapeHtml(t('domus', 'Steps')) + '</strong>' +
-                '<button type="button" id="domus-task-step-add">' + Domus.Utils.escapeHtml(t('domus', 'Add step')) + '</button>' +
+                Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add step'), {
+                    id: 'domus-task-step-add'
+                }) +
                 '</div>' +
                 '<ul id="domus-task-step-list" class="domus-task-step-list"></ul>' +
                 '</div>' : '';
@@ -654,8 +656,12 @@
                 Domus.UI.buildFormTable(rows) +
                 stepsSection +
                 '<div class="domus-form-actions">' +
-                '<button type="button" id="domus-task-template-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                Domus.UI.buildIconButton('domus-icon-back', t('domus', 'Cancel'), {
+                    id: 'domus-task-template-cancel'
+                }) +
+                Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Save'), {
+                    type: 'submit'
+                }) +
                 '</div>' +
                 '</form></div>';
             const modal = Domus.UI.openModal({ title: isEdit ? t('domus', 'Edit template') : t('domus', 'Add template'), content });
