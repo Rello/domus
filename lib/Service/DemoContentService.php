@@ -163,7 +163,8 @@ class DemoContentService {
         ], $userId, $role);
 
         $this->createDemoTask($unit->getId(), $userId);
-        $this->createDemoBookings($userId, ['propertyId' => $property->getId()]);
+        $distributionKeyIds = $this->createPropertyDistributions($property->getId(), $unit->getId(), $userId);
+        $this->createPropertyDemoBookings($userId, $property->getId(), $distributionKeyIds);
 
         return [
             'propertyId' => $property->getId(),
@@ -233,6 +234,85 @@ class DemoContentService {
 
         foreach ($bookings as $booking) {
             $this->bookingService->createBooking(array_merge($booking, $relation), $userId);
+        }
+    }
+
+    /**
+     * @return array<string,int>
+     */
+    private function createPropertyDistributions(int $propertyId, int $unitId, string $userId): array {
+        $validFrom = (new \DateTimeImmutable('first day of january'))->format('Y-m-d');
+        $now = time();
+        $baseConfig = json_encode(['base' => 10000]);
+        $keys = [
+            'unit' => $this->l10n->t('Unit distribution'),
+            'area' => $this->l10n->t('Area distribution'),
+            'mea' => $this->l10n->t('MEA distribution'),
+        ];
+        $ids = [];
+
+        foreach ($keys as $type => $name) {
+            $distributionKey = new DistributionKey();
+            $distributionKey->setUserId($userId);
+            $distributionKey->setPropertyId($propertyId);
+            $distributionKey->setType($type);
+            $distributionKey->setName($name);
+            $distributionKey->setConfigJson($baseConfig);
+            $distributionKey->setValidFrom($validFrom);
+            $distributionKey->setValidTo(null);
+            $distributionKey->setCreatedAt($now);
+            $distributionKey->setUpdatedAt($now);
+            $distributionKey = $this->distributionKeyMapper->insert($distributionKey);
+            $ids[$type] = $distributionKey->getId();
+        }
+
+        $unitValue = new DistributionKeyUnit();
+        $unitValue->setUserId($userId);
+        $unitValue->setDistributionKeyId($ids['mea']);
+        $unitValue->setUnitId($unitId);
+        $unitValue->setValue(2000);
+        $unitValue->setValidFrom($validFrom);
+        $unitValue->setValidTo(null);
+        $unitValue->setCreatedAt($now);
+        $unitValue->setUpdatedAt($now);
+        $this->distributionKeyUnitMapper->insert($unitValue);
+
+        return $ids;
+    }
+
+    /**
+     * @param array<string,int> $distributionKeyIds
+     */
+    private function createPropertyDemoBookings(string $userId, int $propertyId, array $distributionKeyIds): void {
+        $year = (new \DateTimeImmutable('today'))->format('Y');
+        $bookings = [
+            [
+                'account' => 4001,
+                'date' => $year . '-02-01',
+                'amount' => '420.00',
+                'description' => $this->l10n->t('Maintenance booking A'),
+                'distributionKeyId' => $distributionKeyIds['unit'] ?? null,
+            ],
+            [
+                'account' => 4002,
+                'date' => $year . '-03-10',
+                'amount' => '510.00',
+                'description' => $this->l10n->t('Maintenance booking B'),
+                'distributionKeyId' => $distributionKeyIds['area'] ?? null,
+            ],
+            [
+                'account' => 4003,
+                'date' => $year . '-04-15',
+                'amount' => '390.00',
+                'description' => $this->l10n->t('Maintenance booking C'),
+                'distributionKeyId' => $distributionKeyIds['mea'] ?? null,
+            ],
+        ];
+
+        foreach ($bookings as $booking) {
+            $this->bookingService->createBooking(array_merge($booking, [
+                'propertyId' => $propertyId,
+            ]), $userId);
         }
     }
 
