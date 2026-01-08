@@ -53,6 +53,19 @@ class PartnerRelMapper extends QBMapper {
         return $this->findEntities($qb);
     }
 
+    /**
+     * @throws Exception
+     */
+    public function findForPartner(int $partnerId, string $userId): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('partner_id', $qb->createNamedParameter($partnerId, $qb::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        return $this->findEntities($qb);
+    }
+
     public function relationExists(string $type, int $relationId, int $partnerId, string $userId): bool {
         $qb = $this->db->getQueryBuilder();
         $qb->select($qb->func()->count('*'))

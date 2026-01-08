@@ -77,7 +77,7 @@ class PartnerService {
 
     public function deletePartner(int $id, string $userId): void {
         $partner = $this->getPartnerForUser($id, $userId);
-        $relations = $this->partnerRelMapper->findForTenancy($partner->getId(), $userId);
+        $relations = $this->partnerRelMapper->findForPartner($partner->getId(), $userId);
         if (count($relations) > 0) {
             throw new \RuntimeException($this->l10n->t('Partner is linked and cannot be deleted.'));
         }
