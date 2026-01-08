@@ -2,6 +2,10 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Db\DistributionKey;
+use OCA\Domus\Db\DistributionKeyMapper;
+use OCA\Domus\Db\DistributionKeyUnit;
+use OCA\Domus\Db\DistributionKeyUnitMapper;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
@@ -14,6 +18,8 @@ class DemoContentService {
         private PartnerRelationService $partnerRelationService,
         private TaskService $taskService,
         private BookingService $bookingService,
+        private DistributionKeyMapper $distributionKeyMapper,
+        private DistributionKeyUnitMapper $distributionKeyUnitMapper,
         private IDBConnection $connection,
         private IL10N $l10n,
     ) {
@@ -84,6 +90,7 @@ class DemoContentService {
             'partnerId' => $facilities->getId(),
         ], $userId, $role);
 
+        $distributionUnitId = $this->createLandlordDistributionDemo($userId, $role);
         $this->createDemoTask($unit->getId(), $userId);
         $this->createDemoBookings($userId, ['unitId' => $unit->getId()]);
 
@@ -91,6 +98,7 @@ class DemoContentService {
             'unitId' => $unit->getId(),
             'tenantId' => $tenant->getId(),
             'facilitiesId' => $facilities->getId(),
+            'distributionUnitId' => $distributionUnitId,
         ];
     }
 
@@ -225,5 +233,54 @@ class DemoContentService {
         foreach ($bookings as $booking) {
             $this->bookingService->createBooking(array_merge($booking, $relation), $userId);
         }
+    }
+
+    private function createLandlordDistributionDemo(string $userId, string $role): int {
+        $property = $this->propertyService->createProperty([
+            'name' => $this->l10n->t('Demo distribution property'),
+            'usageRole' => 'landlord',
+            'street' => $this->l10n->t('Harbor Street 7'),
+            'zip' => '12345',
+            'city' => $this->l10n->t('Sampletown'),
+            'type' => $this->l10n->t('Residential building'),
+            'description' => $this->l10n->t('Property used to showcase MEA distributions.'),
+        ], $userId);
+
+        $unit = $this->unitService->createUnit([
+            'propertyId' => $property->getId(),
+            'label' => $this->l10n->t('Distribution demo unit'),
+            'unitNumber' => 'D-01',
+            'livingArea' => '55',
+            'unitType' => $this->l10n->t('Apartment'),
+            'totalCosts' => '200000',
+            'notes' => $this->l10n->t('Unit used for MEA distribution example.'),
+        ], $userId, $role);
+
+        $validFrom = (new \DateTimeImmutable('first day of january'))->format('Y-m-d');
+        $now = time();
+        $distributionKey = new DistributionKey();
+        $distributionKey->setUserId($userId);
+        $distributionKey->setPropertyId($property->getId());
+        $distributionKey->setType('mea');
+        $distributionKey->setName($this->l10n->t('MEA distribution'));
+        $distributionKey->setConfigJson(json_encode(['base' => 10000]));
+        $distributionKey->setValidFrom($validFrom);
+        $distributionKey->setValidTo(null);
+        $distributionKey->setCreatedAt($now);
+        $distributionKey->setUpdatedAt($now);
+        $distributionKey = $this->distributionKeyMapper->insert($distributionKey);
+
+        $unitValue = new DistributionKeyUnit();
+        $unitValue->setUserId($userId);
+        $unitValue->setDistributionKeyId($distributionKey->getId());
+        $unitValue->setUnitId($unit->getId());
+        $unitValue->setValue(2000);
+        $unitValue->setValidFrom($validFrom);
+        $unitValue->setValidTo(null);
+        $unitValue->setCreatedAt($now);
+        $unitValue->setUpdatedAt($now);
+        $this->distributionKeyUnitMapper->insert($unitValue);
+
+        return $unit->getId();
     }
 }
