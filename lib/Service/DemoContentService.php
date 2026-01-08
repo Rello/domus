@@ -150,9 +150,6 @@ class DemoContentService {
         $this->tenancyService->createTenancy([
             'unitId' => $unit->getId(),
             'startDate' => $startDate,
-            'baseRent' => '0',
-            'serviceCharge' => null,
-            'deposit' => null,
             'conditions' => $this->l10n->t('Owner occupancy agreement for management overview.'),
             'partnerIds' => [$owner->getId()],
         ], $userId, $role);
