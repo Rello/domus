@@ -161,6 +161,10 @@ class DemoContentService {
             'partnerId' => $facilities->getId(),
         ], $userId, $role);
 
+        $this->partnerRelationService->createRelation('property', $property->getId(), [
+            'partnerId' => $owner->getId(),
+        ], $userId, $role);
+
         $this->createDemoTask($unit->getId(), $userId);
         $this->createDemoBookings($userId, ['propertyId' => $property->getId()]);
 
