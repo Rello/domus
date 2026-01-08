@@ -553,13 +553,25 @@
         function buildTemplateRow(template) {
             const statusLabel = template.isActive ? t('domus', 'Active') : t('domus', 'Inactive');
             const toggleLabel = template.isActive ? t('domus', 'Disable') : t('domus', 'Enable');
+            const toggleIcon = template.isActive ? 'domus-icon-back' : 'domus-icon-ok';
             return {
                 cells: [
                     Domus.Utils.escapeHtml(template.name || ''),
                     Domus.Utils.escapeHtml(statusLabel),
-                    '<button class="domus-task-template-edit" data-id="' + Domus.Utils.escapeHtml(String(template.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
-                        '<button class="domus-task-template-toggle" data-id="' + Domus.Utils.escapeHtml(String(template.id)) + '">' + Domus.Utils.escapeHtml(toggleLabel) + '</button>' +
-                        '<button class="domus-task-template-delete" data-id="' + Domus.Utils.escapeHtml(String(template.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>'
+                    '<div class="domus-task-template-actions">' +
+                        Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), {
+                            className: 'domus-task-template-edit',
+                            dataset: { id: template.id }
+                        }) +
+                        Domus.UI.buildIconButton(toggleIcon, toggleLabel, {
+                            className: 'domus-task-template-toggle',
+                            dataset: { id: template.id }
+                        }) +
+                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {
+                            className: 'domus-task-template-delete',
+                            dataset: { id: template.id }
+                        }) +
+                        '</div>'
                 ]
             };
         }
@@ -568,7 +580,9 @@
             return '<div class="domus-panel" id="domus-task-templates-panel">' +
                 '<div class="domus-section-header">' +
                 '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Task templates')) + '</h3>' +
-                '<button id="domus-task-template-create">' + Domus.Utils.escapeHtml(t('domus', 'Add template')) + '</button>' +
+                Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add template'), {
+                    id: 'domus-task-template-create'
+                }) +
                 '</div>' +
                 '<div class="domus-panel-body" id="domus-task-templates-body">' +
                 Domus.Utils.escapeHtml(t('domus', 'Loading templates…')) +
@@ -735,8 +749,14 @@
                 Domus.Utils.escapeHtml(t('domus', 'Due +{days} days', { days: step.defaultDueDaysOffset || 0 })) +
                 '</div>' +
                 '<div class="domus-task-step-actions">' +
-                '<button type="button" class="domus-task-step-edit" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
-                '<button type="button" class="domus-task-step-delete" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
+                Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), {
+                    className: 'domus-task-step-edit',
+                    dataset: { id: step.id }
+                }) +
+                Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {
+                    className: 'domus-task-step-delete',
+                    dataset: { id: step.id }
+                }) +
                 '</div>' +
                 '</li>'
             )).join('');
