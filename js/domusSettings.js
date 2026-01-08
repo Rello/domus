@@ -44,6 +44,9 @@
                 '<button type="button" class="secondary" id="domus-demo-content-button">' +
                 Domus.Utils.escapeHtml(t('domus', 'Create demo content')) +
                 '</button>' +
+                '<button type="button" class="secondary" id="domus-demo-content-building-button">' +
+                Domus.Utils.escapeHtml(t('domus', 'Create demo content (Building Mgmt)')) +
+                '</button>' +
                 '</div>' +
                 '</div>' +
                 '</div>' +
@@ -81,8 +84,28 @@
 
         function bindDemoButton() {
             const button = document.getElementById('domus-demo-content-button');
+            const buildingButton = document.getElementById('domus-demo-content-building-button');
             if (!button) {
                 return;
+            }
+            if (buildingButton) {
+                buildingButton.addEventListener('click', function() {
+                    if (!window.confirm(t('domus', 'Create demo content for building management? This will add sample data to your account.'))) {
+                        return;
+                    }
+                    buildingButton.disabled = true;
+                    let created = false;
+                    Domus.Api.createDemoContent({ role: 'buildingMgmt' })
+                        .then(() => {
+                            created = true;
+                            buildingButton.textContent = t('domus', 'Demo content created.');
+                            Domus.UI.showNotification(t('domus', 'Demo content created.'), 'success');
+                        })
+                        .catch(err => Domus.UI.showNotification(err.message || t('domus', 'Unable to create demo content.'), 'error'))
+                        .finally(() => {
+                            buildingButton.disabled = created;
+                        });
+                });
             }
             button.addEventListener('click', function() {
                 if (!window.confirm(t('domus', 'Create demo content? This will add sample data to your account.'))) {
@@ -90,7 +113,7 @@
                 }
                 button.disabled = true;
                 let created = false;
-                Domus.Api.createDemoContent()
+                Domus.Api.createDemoContent({ role: 'landlord' })
                     .then(() => {
                         created = true;
                         button.textContent = t('domus', 'Demo content created.');

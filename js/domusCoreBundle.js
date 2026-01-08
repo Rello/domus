@@ -177,7 +177,7 @@
             getDashboardSummary: () => request('GET', buildYearUrl('/dashboard/summary')),
             getSettings: () => request('GET', '/settings'),
             updateSettings: data => request('PUT', '/settings', data),
-            createDemoContent: () => request('POST', '/settings/demo-content'),
+            createDemoContent: data => request('POST', '/settings/demo-content', data),
             getProperties: () => request('GET', buildYearUrl('/properties')),
             createProperty: data => request('POST', '/properties', data),
             updateProperty: (id, data) => request('PUT', `/properties/${id}`, data),
