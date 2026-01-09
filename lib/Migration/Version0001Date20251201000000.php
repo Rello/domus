@@ -88,6 +88,7 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_prel_user');
             $table->addIndex(['relation_id'], 'domus_prel_rel');
+			$table->addUniqueIndex(['user_id', 'type', 'relation_id', 'partner_id'], 'domus_prel_uniq');
         }
 
         if (!$schema->hasTable('domus_tenancies')) {
@@ -180,6 +181,108 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addIndex(['user_id'], 'domus_dku_user');
             $table->addIndex(['distribution_key_id'], 'domus_dku_key');
             $table->addIndex(['unit_id'], 'domus_dku_unit');
+        }
+
+        if (!$schema->hasTable('domus_accounts')) {
+            $table = $schema->createTable('domus_accounts');
+            $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
+            $table->addColumn('number', 'string', ['notnull' => true, 'length' => 32]);
+            $table->addColumn('label_de', 'string', ['notnull' => true, 'length' => 190]);
+            $table->addColumn('label_en', 'string', ['notnull' => true, 'length' => 190]);
+            $table->addColumn('parent_id', 'bigint', ['notnull' => false]);
+            $table->addColumn('status', 'string', ['notnull' => true, 'length' => 32, 'default' => 'active']);
+            $table->addColumn('is_system', 'integer', ['notnull' => true, 'default' => 0]);
+            $table->addColumn('sort_order', 'integer', ['notnull' => true, 'default' => 0]);
+            $table->addColumn('created_at', 'bigint', ['notnull' => true]);
+            $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
+            $table->setPrimaryKey(['id']);
+            $table->addUniqueIndex(['number'], 'domus_acct_number');
+            $table->addIndex(['parent_id'], 'domus_acct_parent');
+        }
+
+        if (!$schema->hasTable('domus_task_templates')) {
+            $table = $schema->createTable('domus_task_templates');
+            $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
+            $table->addColumn('key', 'string', ['length' => 64, 'notnull' => true]);
+            $table->addColumn('name', 'string', ['length' => 190, 'notnull' => true]);
+            $table->addColumn('description', 'text', ['notnull' => false]);
+            $table->addColumn('applies_to', 'string', ['length' => 32, 'notnull' => true]);
+            $table->addColumn('is_active', 'integer', ['notnull' => true, 'default' => 1]);
+            $table->addColumn('created_at', 'bigint', ['notnull' => true]);
+            $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
+            $table->setPrimaryKey(['id']);
+            $table->addUniqueIndex(['key'], 'domus_task_tpl_key');
+        }
+
+        if (!$schema->hasTable('domus_task_tpl_steps')) {
+            $table = $schema->createTable('domus_task_tpl_steps');
+            $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
+            $table->addColumn('template_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('sort_order', 'integer', ['notnull' => true, 'default' => 0]);
+            $table->addColumn('title', 'string', ['length' => 190, 'notnull' => true]);
+            $table->addColumn('description', 'text', ['notnull' => false]);
+            $table->addColumn('default_due_days_offset', 'integer', ['notnull' => true, 'default' => 0]);
+            $table->addColumn('created_at', 'bigint', ['notnull' => true]);
+            $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
+            $table->setPrimaryKey(['id']);
+            $table->addIndex(['template_id'], 'domus_task_tpl_step_tpl');
+        }
+
+        if (!$schema->hasTable('domus_workflow_runs')) {
+            $table = $schema->createTable('domus_workflow_runs');
+            $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
+            $table->addColumn('unit_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('template_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('name', 'string', ['length' => 190, 'notnull' => true]);
+            $table->addColumn('year', 'integer', ['notnull' => false]);
+            $table->addColumn('status', 'string', ['length' => 32, 'notnull' => true, 'default' => 'open']);
+            $table->addColumn('started_at', 'bigint', ['notnull' => true]);
+            $table->addColumn('closed_at', 'bigint', ['notnull' => false]);
+            $table->addColumn('created_by', 'string', ['length' => 64, 'notnull' => true]);
+            $table->addColumn('created_at', 'bigint', ['notnull' => true]);
+            $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
+            $table->setPrimaryKey(['id']);
+            $table->addIndex(['unit_id'], 'domus_wrk_run_unit');
+            $table->addIndex(['template_id'], 'domus_wrk_run_tpl');
+        }
+
+        if (!$schema->hasTable('domus_task_steps')) {
+            $table = $schema->createTable('domus_task_steps');
+            $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
+            $table->addColumn('workflow_run_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('unit_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('sort_order', 'integer', ['notnull' => true, 'default' => 0]);
+            $table->addColumn('title', 'string', ['length' => 190, 'notnull' => true]);
+            $table->addColumn('description', 'text', ['notnull' => false]);
+            $table->addColumn('status', 'string', ['length' => 32, 'notnull' => true, 'default' => 'new']);
+            $table->addColumn('due_date', 'string', ['length' => 32, 'notnull' => false]);
+            $table->addColumn('opened_at', 'bigint', ['notnull' => false]);
+            $table->addColumn('closed_at', 'bigint', ['notnull' => false]);
+            $table->addColumn('closed_by', 'string', ['length' => 64, 'notnull' => false]);
+            $table->addColumn('created_at', 'bigint', ['notnull' => true]);
+            $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
+            $table->setPrimaryKey(['id']);
+            $table->addIndex(['workflow_run_id'], 'domus_task_step_run');
+            $table->addIndex(['unit_id'], 'domus_task_step_unit');
+            $table->addIndex(['status'], 'domus_task_step_stat');
+        }
+
+        if (!$schema->hasTable('domus_tasks')) {
+            $table = $schema->createTable('domus_tasks');
+            $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
+            $table->addColumn('unit_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('title', 'string', ['length' => 190, 'notnull' => true]);
+            $table->addColumn('description', 'text', ['notnull' => false]);
+            $table->addColumn('status', 'string', ['length' => 32, 'notnull' => true, 'default' => 'open']);
+            $table->addColumn('due_date', 'string', ['length' => 32, 'notnull' => false]);
+            $table->addColumn('closed_at', 'bigint', ['notnull' => false]);
+            $table->addColumn('closed_by', 'string', ['length' => 64, 'notnull' => false]);
+            $table->addColumn('created_by', 'string', ['length' => 64, 'notnull' => true]);
+            $table->addColumn('created_at', 'bigint', ['notnull' => true]);
+            $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
+            $table->setPrimaryKey(['id']);
+            $table->addIndex(['unit_id'], 'domus_task_unit');
+            $table->addIndex(['status'], 'domus_task_stat');
         }
 
         return $schema;
