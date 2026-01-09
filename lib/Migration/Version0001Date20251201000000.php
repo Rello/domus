@@ -88,12 +88,7 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_prel_user');
             $table->addIndex(['relation_id'], 'domus_prel_rel');
-        }
-        if ($schema->hasTable('domus_partner_rel')) {
-            $table = $schema->getTable('domus_partner_rel');
-            if (!$table->hasIndex('domus_prel_uniq')) {
-                $table->addUniqueIndex(['user_id', 'type', 'relation_id', 'partner_id'], 'domus_prel_uniq');
-            }
+			$table->addUniqueIndex(['user_id', 'type', 'relation_id', 'partner_id'], 'domus_prel_uniq');
         }
 
         if (!$schema->hasTable('domus_tenancies')) {
