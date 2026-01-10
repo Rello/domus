@@ -48,13 +48,7 @@ class TaskTemplateController extends Controller {
     #[NoAdminRequired]
     public function update(int $id): DataResponse {
         $payload = $this->request->getParams();
-        try {
-            return new DataResponse($this->taskTemplateService->updateTemplate($id, $payload));
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+		return new DataResponse($this->taskTemplateService->updateTemplate($id, $payload));
     }
 
     #[NoAdminRequired]
@@ -100,13 +94,7 @@ class TaskTemplateController extends Controller {
         if ($templateId <= 0) {
             return $this->validationError($this->l10n->t('Template is required.'));
         }
-        try {
-            return new DataResponse($this->taskTemplateService->addOrUpdateStep($templateId, $payload));
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+		return new DataResponse($this->taskTemplateService->addOrUpdateStep($templateId, $payload));
     }
 
     #[NoAdminRequired]
