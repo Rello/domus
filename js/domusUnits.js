@@ -785,13 +785,15 @@
                         ? 0
                         : (unit.activeOpenTasks || 0);
                     const openTaskLabel = buildOpenTasksValue(openTaskCount);
+                    const tasksPanel = Domus.Role.isTenantView() ? '' : Domus.Tasks.buildUnitTasksPanel();
                     const kpiTiles = useKpiLayout
                         ? '<div class="domus-kpi-tiles">' +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Open issues'),
                             valueHtml: openTaskLabel,
                             showChart: false,
-                            linkLabel: t('domus', 'More')
+                            linkLabel: t('domus', 'More'),
+                            detailTarget: 'tasks'
                         }) +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Rentability'),
@@ -830,7 +832,7 @@
 
                     const kpiDetailArea = useKpiLayout
                         ? '<div class="domus-kpi-detail" id="domus-unit-kpi-detail" hidden>' +
-                        '<div id="domus-unit-kpi-detail-content"></div>' +
+                        '<div id="domus-unit-kpi-detail-content">' + tasksPanel + '</div>' +
                         '</div>'
                         : '';
 
@@ -844,15 +846,12 @@
                         Domus.Documents.renderList('unit', id, { showLinkAction: documentActionsEnabled }) +
                         '</div></div>';
 
-                    const tasksPanel = Domus.Role.isTenantView() ? '' : Domus.Tasks.buildUnitTasksPanel();
-
                     const content = useKpiLayout
                         ? '<div class="domus-detail domus-dashboard domus-unit-detail-landlord">' +
                         Domus.UI.buildBackButton('units') +
                         hero +
                         kpiTiles +
                         kpiDetailArea +
-                        tasksPanel +
                         bookingsPanel +
                         documentsPanel +
                         partnersPanelWrapper +
@@ -896,6 +895,7 @@
                     if (useKpiLayout) {
                         renderKpiTileCharts(statistics);
                         const detailMap = {
+                            tasks: tasksPanel,
                             revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable),
                             cost: buildKpiDetailPanel(t('domus', 'Costs'), renderStatisticsTable(statistics ? statistics.cost : null)),
                             tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies), (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action) ? {
@@ -904,10 +904,19 @@
                                 iconClass: 'domus-icon-add'
                             } : null)
                         };
-                        bindKpiDetailArea(detailMap, () => {
+                        bindKpiDetailArea(detailMap, (target) => {
                             document.getElementById('domus-add-tenancy-inline')?.addEventListener('click', () => {
                                 Domus.Tenancies.openCreateModal({ unitId: id }, () => renderDetail(id));
                             });
+                            if (target === 'tasks') {
+                                Domus.Tasks.loadUnitTasks(id, {
+                                    onOpenCount: (count) => {
+                                        unit.activeOpenTasks = count;
+                                        updateOpenTasksValue(count);
+                                    }
+                                });
+                                Domus.Tasks.bindUnitTaskButtons(id, () => Domus.Tasks.loadUnitTasks(id));
+                            }
                             bindStatisticsBookingRows(id, { showLinkAction: documentActionsEnabled });
                         });
                     } else if (showRentabilityPanels) {
