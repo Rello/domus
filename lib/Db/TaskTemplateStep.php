@@ -11,6 +11,8 @@ class TaskTemplateStep extends Entity implements JsonSerializable {
     protected $title;
     protected $description;
     protected $defaultDueDaysOffset;
+    protected $actionType;
+    protected $actionUrl;
     protected $createdAt;
     protected $updatedAt;
 
@@ -31,6 +33,8 @@ class TaskTemplateStep extends Entity implements JsonSerializable {
             'title' => $this->title,
             'description' => $this->description,
             'defaultDueDaysOffset' => $this->defaultDueDaysOffset,
+            'actionType' => $this->actionType,
+            'actionUrl' => $this->actionUrl,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
         ];

@@ -16,6 +16,8 @@ class TaskStep extends Entity implements JsonSerializable {
     protected $openedAt;
     protected $closedAt;
     protected $closedBy;
+    protected $actionType;
+    protected $actionUrl;
     protected $createdAt;
     protected $updatedAt;
     protected $runName;
@@ -47,6 +49,8 @@ class TaskStep extends Entity implements JsonSerializable {
             'openedAt' => $this->openedAt,
             'closedAt' => $this->closedAt,
             'closedBy' => $this->closedBy,
+            'actionType' => $this->actionType,
+            'actionUrl' => $this->actionUrl,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
         ];
