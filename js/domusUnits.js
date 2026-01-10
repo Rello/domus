@@ -6,7 +6,6 @@
     Domus.Units = (function() {
         let rentabilityChartInstance = null;
         let kpiChartInstances = [];
-
         function formatPartnerNames(partners) {
             return (partners || [])
                 .map(p => p.name)
@@ -47,6 +46,30 @@
             }
 
             return { labels, rentability, coldRent };
+        }
+
+        function buildOpenTasksValue(count) {
+            const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+            const hasOpenTasks = safeCount > 0;
+            //const toneClass = hasOpenTasks ? 'domus-kpi-number-warning' : 'domus-kpi-number-ok';
+            const icon = hasOpenTasks ? '<span class="domus-icon domus-icon-warning domus-kpi-icon" aria-hidden="true"></span>' : '<span class="domus-icon domus-icon-checkmark domus-kpi-icon" aria-hidden="true"></span>';
+            return '<span id="domus-kpi-open-tasks" class="domus-kpi-number">' +
+                icon +
+                Domus.Utils.escapeHtml(String(safeCount)) +
+                '</span>';
+        }
+
+        function updateOpenTasksValue(count) {
+            const value = document.getElementById('domus-kpi-open-tasks');
+            if (!value) {
+                return;
+            }
+            const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+            const hasOpenTasks = safeCount > 0;
+            //value.classList.toggle('domus-kpi-number-warning', hasOpenTasks);
+            //value.classList.toggle('domus-kpi-number-ok', !hasOpenTasks);
+            value.innerHTML = (hasOpenTasks ? '<span class="domus-icon domus-icon-warning domus-kpi-icon" aria-hidden="true"></span>' : '<span class="domus-icon domus-icon-checkmark domus-kpi-icon" aria-hidden="true"></span>') +
+                Domus.Utils.escapeHtml(String(safeCount));
         }
 
         function buildRentabilityChartPanel(statistics) {
@@ -761,11 +784,15 @@
                     const openTaskCount = Domus.Role.isTenantView()
                         ? 0
                         : (unit.activeOpenTasks || 0);
-                    const openTaskLabel = '<span id="domus-kpi-open-tasks">' +
-                        Domus.Utils.escapeHtml(t('domus', '{count} open tasks', { count: openTaskCount })) +
-                        '</span>';
+                    const openTaskLabel = buildOpenTasksValue(openTaskCount);
                     const kpiTiles = useKpiLayout
                         ? '<div class="domus-kpi-tiles">' +
+                        Domus.UI.buildKpiTile({
+                            headline: t('domus', 'Open issues'),
+                            valueHtml: openTaskLabel,
+                            showChart: false,
+                            linkLabel: t('domus', 'More')
+                        }) +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Rentability'),
                             value: rentabilityValueLabel,
@@ -788,12 +815,6 @@
                             showChart: false,
                             linkLabel: t('domus', 'More'),
                             detailTarget: 'tenancies'
-                        }) +
-                        Domus.UI.buildKpiTile({
-                            headline: t('domus', 'Open issues'),
-                            valueHtml: openTaskLabel,
-                            showChart: false,
-                            linkLabel: t('domus', 'More')
                         }) +
                         '</div>'
                         : '';
@@ -897,10 +918,7 @@
                         Domus.Tasks.loadUnitTasks(id, {
                             onOpenCount: (count) => {
                                 unit.activeOpenTasks = count;
-                                const kpiValue = document.getElementById('domus-kpi-open-tasks');
-                                if (kpiValue) {
-                                    kpiValue.textContent = t('domus', '{count} open tasks', { count });
-                                }
+                                updateOpenTasksValue(count);
                             }
                         });
                         Domus.Tasks.bindUnitTaskButtons(id, () => Domus.Tasks.loadUnitTasks(id));

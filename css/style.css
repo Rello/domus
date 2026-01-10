@@ -936,6 +936,27 @@
     line-height: 1;
 }
 
+.domus-kpi-number {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.domus-kpi-number-warning {
+    color: var(--color-warning);
+}
+
+.domus-kpi-number-ok {
+    color: var(--color-success);
+}
+
+.domus-kpi-icon {
+    display: inline-flex;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+}
+
 .domus-kpi-more {
     align-self: flex-start;
     background: none;
@@ -1390,6 +1411,14 @@
 
 .domus-icon-settings {
     background-image: url(../img/settings.svg);
+}
+
+.domus-icon-warning {
+    background-image: url(../img/warning.svg);
+}
+
+.domus-icon-checkmark {
+    background-image: url(../img/checkmark.svg);
 }
 
 @media (max-width: 1000px) {
