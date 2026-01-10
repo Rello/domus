@@ -164,6 +164,7 @@ OC.L10N.register(
         "None": "Keine",
         "Number": "Nummer",
         "Open bookings": "Offene Buchungen",
+        "Open link": "Link öffnen",
         "Owner": "Eigentümer",
         "Owners": "Eigentümer",
         "Partner linked.": "Partner verknüpft.",

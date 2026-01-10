@@ -1388,6 +1388,10 @@
     background-image: url(../img/file.svg);
 }
 
+.domus-icon-external {
+    background-image: url(../img/external.svg);
+}
+
 .domus-icon-settings {
     background-image: url(../img/settings.svg);
 }

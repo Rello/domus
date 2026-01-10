@@ -49,20 +49,10 @@
             const map = {
                 booking: { label: t('domus', 'Add booking'), icon: 'domus-icon-booking' },
                 document: { label: t('domus', 'Add document'), icon: 'domus-icon-document' },
-                serviceChargeReport: { label: t('domus', 'Service charge report'), icon: 'domus-icon-analytics' },
-                url: { label: t('domus', 'Own link'), icon: 'domus-icon-details' }
+                serviceChargeReport: { label: t('domus', 'Service charge report'), icon: 'domus-icon-document' },
+                url: { label: t('domus', 'Own link'), icon: 'domus-icon-external' }
             };
             return map[actionType] || null;
-        }
-
-        function buildActionSummary(actionType, actionUrl) {
-            const meta = getActionMeta(actionType);
-            if (!meta) return '';
-            if (actionType === 'url') {
-                const url = (actionUrl || '').trim();
-                return url ? `${meta.label}: ${url}` : meta.label;
-            }
-            return meta.label;
         }
 
         function buildOpenTasksTable(items, options = {}) {
@@ -91,21 +81,14 @@
                 if (item.workflowName) {
                     titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
                 }
-                const descriptionTextParts = [];
-                if (item.description) {
-                    descriptionTextParts.push(item.description);
-                }
-                const actionSummary = buildActionSummary(item.actionType, item.actionUrl);
-                if (actionSummary) {
-                    descriptionTextParts.push(t('domus', 'Action: {action}', { action: actionSummary }));
-                }
-                const descriptionText = descriptionTextParts.join('\n\n');
-                const descriptionBtn = showDescription && descriptionText
+                const descriptionBtn = showDescription && (item.description || item.actionType)
                     ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
                         className: 'domus-task-description',
                         dataset: {
                             title: item.title || '',
-                            description: descriptionText
+                            description: item.description || '',
+                            actionType: item.actionType || '',
+                            actionUrl: item.actionUrl || ''
                         }
                     })
                     : '';
@@ -207,11 +190,7 @@
                         return;
                     }
                     if (actionType === 'serviceChargeReport') {
-                        Domus.DistributionReports.openModal({
-                            propertyId: unit?.propertyId,
-                            unitId,
-                            year: Domus.state.currentYear
-                        });
+                        Domus.UnitSettlements.openModal(unitId, onComplete);
                         return;
                     }
                     Domus.UI.showNotification(t('domus', 'Action not supported.'), 'error');
@@ -369,8 +348,25 @@
             return Domus.UI.buildTable([t('domus', 'Step'), t('domus', 'Due date'), t('domus', 'Status'), ''], rows);
         }
 
-        function openDescriptionModal(title, description) {
-            const content = '<div class="domus-form"><p>' + Domus.Utils.escapeHtml(description || '') + '</p></div>';
+        function openDescriptionModal(title, description, actionType, actionUrl) {
+            const meta = getActionMeta(actionType);
+            const actionLabel = Domus.Utils.escapeHtml(t('domus', 'Action'));
+            const descriptionHtml = description
+                ? '<p>' + Domus.Utils.escapeHtml(description).replace(/\n/g, '<br>') + '</p>'
+                : '';
+            let actionHtml = '';
+            if (meta) {
+                if (actionType === 'url' && actionUrl) {
+                    const safeUrl = Domus.Utils.escapeHtml(actionUrl);
+                    actionHtml = '<p><strong>' + actionLabel + ':</strong> ' +
+                        '<a href="' + safeUrl + '" target="_blank" rel="noopener">' +
+                        Domus.Utils.escapeHtml(t('domus', 'Open link')) +
+                        '</a></p>';
+                } else {
+                    actionHtml = '<p><strong>' + actionLabel + ':</strong> ' + Domus.Utils.escapeHtml(meta.label) + '</p>';
+                }
+            }
+            const content = '<div class="domus-form">' + descriptionHtml + actionHtml + '</div>';
             Domus.UI.openModal({ title: title || t('domus', 'Description'), content });
         }
 
@@ -530,7 +526,9 @@
                     event.stopPropagation();
                     const title = btn.getAttribute('data-title');
                     const description = btn.getAttribute('data-description');
-                    openDescriptionModal(title || t('domus', 'Description'), description || '');
+                    const actionType = btn.getAttribute('data-action-type');
+                    const actionUrl = btn.getAttribute('data-action-url');
+                    openDescriptionModal(title || t('domus', 'Description'), description || '', actionType || '', actionUrl || '');
                 });
             });
             document.querySelectorAll('.domus-task-delete').forEach(btn => {
