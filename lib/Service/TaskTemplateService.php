@@ -162,6 +162,19 @@ class TaskTemplateService {
         }
         $description = $payload['description'] ?? null;
         $offset = isset($payload['defaultDueDaysOffset']) ? (int)$payload['defaultDueDaysOffset'] : 0;
+        $actionType = trim((string)($payload['actionType'] ?? ''));
+        $actionUrl = $payload['actionUrl'] ?? null;
+        if ($actionType === '') {
+            $actionType = null;
+            $actionUrl = null;
+        } elseif ($actionType === 'url') {
+            $actionUrl = trim((string)$actionUrl);
+            if ($actionUrl === '') {
+                throw new \InvalidArgumentException($this->l10n->t('Link URL is required.'));
+            }
+        } else {
+            $actionUrl = null;
+        }
         $now = time();
 
         if (!empty($payload['id'])) {
@@ -172,6 +185,8 @@ class TaskTemplateService {
             $step->setTitle($title);
             $step->setDescription($description);
             $step->setDefaultDueDaysOffset($offset);
+            $step->setActionType($actionType);
+            $step->setActionUrl($actionUrl);
             $step->setUpdatedAt($now);
             return $this->stepMapper->update($step);
         }
@@ -188,6 +203,8 @@ class TaskTemplateService {
         $step->setTitle($title);
         $step->setDescription($description);
         $step->setDefaultDueDaysOffset($offset);
+        $step->setActionType($actionType);
+        $step->setActionUrl($actionUrl);
         $step->setCreatedAt($now);
         $step->setUpdatedAt($now);
 

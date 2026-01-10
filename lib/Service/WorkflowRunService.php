@@ -78,6 +78,8 @@ class WorkflowRunService {
                 $taskStep->setSortOrder($order);
                 $taskStep->setTitle($stepTemplate->getTitle());
                 $taskStep->setDescription($stepTemplate->getDescription());
+                $taskStep->setActionType($stepTemplate->getActionType());
+                $taskStep->setActionUrl($stepTemplate->getActionUrl());
                 $isOpen = $order === 1;
                 $taskStep->setStatus($isOpen ? self::STEP_STATUS_OPEN : self::STEP_STATUS_NEW);
                 $taskStep->setDueDate($isOpen ? $this->buildDueDate((int)$stepTemplate->getDefaultDueDaysOffset(), $now) : null);
@@ -319,6 +321,8 @@ class WorkflowRunService {
                 'unitName' => $unitMap[$step->getUnitId()] ?? '',
                 'title' => $step->getTitle(),
                 'description' => $step->getDescription(),
+                'actionType' => $step->getActionType(),
+                'actionUrl' => $step->getActionUrl(),
                 'dueDate' => $step->getDueDate(),
                 'workflowName' => $run?->getName(),
             ];
