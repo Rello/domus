@@ -50,12 +50,9 @@
 
         function buildOpenTasksValue(count) {
             const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-            const hasOpenTasks = safeCount > 0;
-            const toneClass = hasOpenTasks ? 'domus-kpi-number-warning' : 'domus-kpi-number-ok';
-            const icon = hasOpenTasks ? '<span class="domus-icon domus-icon-warning domus-kpi-icon" aria-hidden="true"></span>' : '';
+            const toneClass = safeCount > 0 ? 'domus-kpi-number-warning' : 'domus-kpi-number-ok';
             return '<span id="domus-kpi-open-tasks" class="domus-kpi-number ' + toneClass + '">' +
-                icon +
-                Domus.Utils.escapeHtml(String(safeCount)) +
+                Domus.Utils.escapeHtml(t('domus', '{count} open tasks', { count: safeCount })) +
                 '</span>';
         }
 
@@ -68,8 +65,7 @@
             const hasOpenTasks = safeCount > 0;
             value.classList.toggle('domus-kpi-number-warning', hasOpenTasks);
             value.classList.toggle('domus-kpi-number-ok', !hasOpenTasks);
-            value.innerHTML = (hasOpenTasks ? '<span class="domus-icon domus-icon-warning domus-kpi-icon" aria-hidden="true"></span>' : '') +
-                Domus.Utils.escapeHtml(String(safeCount));
+            value.textContent = t('domus', '{count} open tasks', { count: safeCount });
         }
 
         function buildRentabilityChartPanel(statistics) {
@@ -771,6 +767,9 @@
                         : '';
                     const rentabilityChartPanel = (useKpiLayout || !showRentabilityPanels) ? '' : (isLandlord ? buildRentabilityChartPanel(statistics) : '');
 
+                    const rentabilityTrend = getRentabilityChartSeries(statistics);
+                    const hasRentabilityTrend = !!(rentabilityTrend?.rentability || []).some(value => value !== null);
+                    const hasColdRentTrend = !!(rentabilityTrend?.coldRent || []).some(value => value !== null);
                     const rentabilityValueLabel = rentabilityValue === undefined || rentabilityValue === null
                         ? '—'
                         : Domus.Utils.formatPercentage(rentabilityValue);
@@ -785,22 +784,18 @@
                     const kpiTiles = useKpiLayout
                         ? '<div class="domus-kpi-tiles">' +
                         Domus.UI.buildKpiTile({
-                            headline: t('domus', 'Open issues'),
-                            valueHtml: openTaskLabel,
-                            showChart: false,
-                            linkLabel: t('domus', 'More')
-                        }) +
-                        Domus.UI.buildKpiTile({
                             headline: t('domus', 'Rentability'),
                             value: rentabilityValueLabel,
-                            showChart: false,
+                            chartId: 'domus-kpi-rentability-chart',
+                            showChart: hasRentabilityTrend,
                             linkLabel: t('domus', 'More'),
                             detailTarget: 'revenue'
                         }) +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Cold rent'),
                             value: coldRentValueLabel,
-                            showChart: false,
+                            chartId: 'domus-kpi-cold-rent-chart',
+                            showChart: hasColdRentTrend,
                             linkLabel: t('domus', 'More'),
                             detailTarget: 'cost'
                         }) +
@@ -810,6 +805,12 @@
                             showChart: false,
                             linkLabel: t('domus', 'More'),
                             detailTarget: 'tenancies'
+                        }) +
+                        Domus.UI.buildKpiTile({
+                            headline: t('domus', 'Open issues'),
+                            valueHtml: openTaskLabel,
+                            showChart: false,
+                            linkLabel: t('domus', 'More')
                         }) +
                         '</div>'
                         : '';

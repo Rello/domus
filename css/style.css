@@ -950,13 +950,6 @@
     color: var(--color-success);
 }
 
-.domus-kpi-icon {
-    display: inline-flex;
-    align-items: center;
-    width: 18px;
-    height: 18px;
-}
-
 .domus-kpi-more {
     align-self: flex-start;
     background: none;
@@ -1399,10 +1392,6 @@
 
 .domus-icon-ok {
     background-image: url(../img/ok.svg);
-}
-
-.domus-icon-warning {
-    background-image: url(../img/warning.svg);
 }
 
 .domus-icon-delete {
