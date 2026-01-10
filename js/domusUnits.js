@@ -50,9 +50,12 @@
 
         function buildOpenTasksValue(count) {
             const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-            const toneClass = safeCount > 0 ? 'domus-kpi-number-warning' : 'domus-kpi-number-ok';
-            return '<span id="domus-kpi-open-tasks" class="domus-kpi-number ' + toneClass + '">' +
-                Domus.Utils.escapeHtml(t('domus', '{count} open tasks', { count: safeCount })) +
+            const hasOpenTasks = safeCount > 0;
+            //const toneClass = hasOpenTasks ? 'domus-kpi-number-warning' : 'domus-kpi-number-ok';
+            const icon = hasOpenTasks ? '<span class="domus-icon domus-icon-warning domus-kpi-icon" aria-hidden="true"></span>' : '<span class="domus-icon domus-icon-checkmark domus-kpi-icon" aria-hidden="true"></span>';
+            return '<span id="domus-kpi-open-tasks" class="domus-kpi-number">' +
+                icon +
+                Domus.Utils.escapeHtml(String(safeCount)) +
                 '</span>';
         }
 
@@ -63,9 +66,10 @@
             }
             const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
             const hasOpenTasks = safeCount > 0;
-            value.classList.toggle('domus-kpi-number-warning', hasOpenTasks);
-            value.classList.toggle('domus-kpi-number-ok', !hasOpenTasks);
-            value.textContent = t('domus', '{count} open tasks', { count: safeCount });
+            //value.classList.toggle('domus-kpi-number-warning', hasOpenTasks);
+            //value.classList.toggle('domus-kpi-number-ok', !hasOpenTasks);
+            value.innerHTML = (hasOpenTasks ? '<span class="domus-icon domus-icon-warning domus-kpi-icon" aria-hidden="true"></span>' : '<span class="domus-icon domus-icon-checkmark domus-kpi-icon" aria-hidden="true"></span>') +
+                Domus.Utils.escapeHtml(String(safeCount));
         }
 
         function buildRentabilityChartPanel(statistics) {
@@ -784,6 +788,12 @@
                     const kpiTiles = useKpiLayout
                         ? '<div class="domus-kpi-tiles">' +
                         Domus.UI.buildKpiTile({
+                            headline: t('domus', 'Open issues'),
+                            valueHtml: openTaskLabel,
+                            showChart: false,
+                            linkLabel: t('domus', 'More')
+                        }) +
+                        Domus.UI.buildKpiTile({
                             headline: t('domus', 'Rentability'),
                             value: rentabilityValueLabel,
                             chartId: 'domus-kpi-rentability-chart',
@@ -805,12 +815,6 @@
                             showChart: false,
                             linkLabel: t('domus', 'More'),
                             detailTarget: 'tenancies'
-                        }) +
-                        Domus.UI.buildKpiTile({
-                            headline: t('domus', 'Open issues'),
-                            valueHtml: openTaskLabel,
-                            showChart: false,
-                            linkLabel: t('domus', 'More')
                         }) +
                         '</div>'
                         : '';
