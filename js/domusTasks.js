@@ -68,7 +68,7 @@
                 showDescription ? t('domus', 'Description') : null,
                 t('domus', 'Due date'),
                 showType ? t('domus', 'Type') : null,
-                showAction ? t('domus', 'Action') : null
+                showAction ? { label: t('domus', 'Action'), alignRight: true } : null
             ].filter(item => item !== null);
             const rows = sorted.map(item => {
                 const unitCell = showUnit
