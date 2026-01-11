@@ -558,13 +558,13 @@
             return map;
         }
 
-        function openYearStatusModal(unitId, statistics, onComplete) {
+        function openYearStatusModal(unitId, statistics, onComplete, modalOptions = {}) {
             const years = collectStatisticsYears(statistics);
             const provisionalMap = collectProvisionalMap(statistics);
-            const options = years.map(year => '<option value="' + Domus.Utils.escapeHtml(String(year)) + '">' + Domus.Utils.escapeHtml(String(year)) + '</option>').join('');
+            const yearOptions = years.map(year => '<option value="' + Domus.Utils.escapeHtml(String(year)) + '">' + Domus.Utils.escapeHtml(String(year)) + '</option>').join('');
             const content = '<form id="domus-year-status-form">' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Year')) +
-                '<select id="domus-year-status-year" name="year">' + options + '</select></label>' +
+                '<select id="domus-year-status-year" name="year">' + yearOptions + '</select></label>' +
                 '<div class="muted domus-year-status-hint" id="domus-year-status-hint"></div>' +
                 '<div class="domus-modal-footer">' +
                 '<button type="button" id="domus-year-status-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
@@ -592,6 +592,10 @@
                 }
             }
 
+            const defaultYear = modalOptions.defaultYear !== undefined ? Number(modalOptions.defaultYear) : null;
+            if (defaultYear && yearSelect && years.includes(defaultYear)) {
+                yearSelect.value = String(defaultYear);
+            }
             updateState();
 
             yearSelect?.addEventListener('change', updateState);
@@ -1345,7 +1349,7 @@
                 '</div>';
         }
 
-        return { renderList, renderDetail, renderListInline, renderStatisticsTable, openCreateModal };
+        return { renderList, renderDetail, renderListInline, renderStatisticsTable, openCreateModal, openYearStatusModal };
     })();
     Domus.UnitSettlements = (function() {
         function openModal(unitId, onComplete) {

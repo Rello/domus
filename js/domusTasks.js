@@ -185,15 +185,12 @@
 
             if (actionType === 'closeBookingYear') {
                 const yearValue = parseInt(actionYear || Domus.state.currentYear, 10);
-                if (!yearValue) {
-                    Domus.UI.showNotification(t('domus', 'Year is required.'), 'error');
-                    return;
-                }
-                Domus.Api.closeBookingYear(yearValue, { unitId })
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Year closed.'), 'success');
-                        if (typeof onComplete === 'function') {
-                            onComplete();
+                Domus.Api.getUnitStatistics(unitId)
+                    .then(statistics => {
+                        if (Domus.Units?.openYearStatusModal) {
+                            Domus.Units.openYearStatusModal(unitId, statistics, onComplete, { defaultYear: yearValue });
+                        } else {
+                            Domus.UI.showNotification(t('domus', 'Action not supported.'), 'error');
                         }
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
