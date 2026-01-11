@@ -184,7 +184,7 @@
             }
 
             if (actionType === 'closeBookingYear') {
-                const yearValue = parseInt(actionYear || '', 10);
+                const yearValue = parseInt(actionYear || Domus.state.currentYear, 10);
                 if (!yearValue) {
                     Domus.UI.showNotification(t('domus', 'Year is required.'), 'error');
                     return;

@@ -513,7 +513,7 @@
             }
 
             if (resolvedFormat === 'year' && isNumeric) {
-                return { content: withUnit(Domus.Utils.formatYear(numeric)), alignRight: true };
+                return { content: withUnit(Domus.Utils.formatYear(numeric)), alignRight: false };
             }
 
             if (isNumeric) {
