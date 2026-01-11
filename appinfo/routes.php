@@ -33,6 +33,8 @@ return [
         ['name' => 'Statistics#unitPerYear', 'url' => '/statistics/units/{unitId}/{year}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitsOverview', 'url' => '/statistics/units-overview', 'verb' => 'GET'],
         ['name' => 'Statistics#accountTotals', 'url' => '/statistics/accounts', 'verb' => 'GET'],
+        ['name' => 'BookingYear#close', 'url' => '/booking-years/{year}/close', 'verb' => 'POST'],
+        ['name' => 'BookingYear#reopen', 'url' => '/booking-years/{year}/reopen', 'verb' => 'POST'],
 
         // Partner
         ['name' => 'Partner#index', 'url' => '/partners', 'verb' => 'GET'],

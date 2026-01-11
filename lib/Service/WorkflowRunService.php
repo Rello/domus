@@ -325,6 +325,7 @@ class WorkflowRunService {
                 'actionUrl' => $step->getActionUrl(),
                 'dueDate' => $step->getDueDate(),
                 'workflowName' => $run?->getName(),
+                'year' => $run?->getYear(),
             ];
         }, $steps);
     }

@@ -13,6 +13,7 @@ use Psr\Log\LoggerInterface;
 class StatisticsService {
         public function __construct(
                 private BookingService $bookingService,
+                private BookingYearService $bookingYearService,
                 private TenancyService $tenancyService,
                 private UnitMapper $unitMapper,
                 private PermissionService $permissionService,
@@ -26,14 +27,17 @@ class StatisticsService {
         public function unitStatPerYear(int $unitId, string $userId, int $year): array {
                 $unit = $this->loadUnit($unitId, $userId);
                 $topAccountMap = $this->accountService->getTopAccountNumberMap();
+                $closedUnitYears = $this->bookingYearService->getClosedYearsForUnits([$unitId]);
+                $propertyId = $unit?->getPropertyId();
+                $closedPropertyYears = $propertyId ? $this->bookingYearService->getClosedYearsForProperties([$propertyId]) : [];
 
                 $definitions = [
                         'revenue' => $this->normalizeColumns(StatisticCalculations::unitRevenue()),
                         'cost' => $this->normalizeColumns(StatisticCalculations::unitCost()),
                 ];
 
-                return $this->buildStatisticsTables($definitions, function (array $tableDefinitions) use ($unitId, $unit, $userId, $year, $topAccountMap) {
-                        return $this->buildStatisticsRowForUnitYear(
+                return $this->buildStatisticsTables($definitions, function (array $tableDefinitions) use ($unitId, $unit, $userId, $year, $topAccountMap, $closedUnitYears, $closedPropertyYears, $propertyId) {
+                        $row = $this->buildStatisticsRowForUnitYear(
                                 $unitId,
                                 $unit,
                                 $userId,
@@ -41,12 +45,17 @@ class StatisticsService {
                                 $tableDefinitions,
                                 $topAccountMap,
                         );
+                        $row['isProvisional'] = !$this->isYearClosed($year, $unitId, $propertyId, $closedUnitYears, $closedPropertyYears);
+                        return $row;
                 });
         }
 
         public function unitStatsAllYears(int $unitId, string $userId, ?array $columns = null): array {
                 $unit = $this->loadUnit($unitId, $userId);
                 $topAccountMap = $this->accountService->getTopAccountNumberMap();
+                $closedUnitYears = $this->bookingYearService->getClosedYearsForUnits([$unitId]);
+                $propertyId = $unit?->getPropertyId();
+                $closedPropertyYears = $propertyId ? $this->bookingYearService->getClosedYearsForProperties([$propertyId]) : [];
 
                 $definitions = [
                         'revenue' => $this->normalizeColumns(StatisticCalculations::unitRevenue()),
@@ -75,6 +84,14 @@ class StatisticsService {
                                         ['unit' => $unit],
                                         $topAccountMap,
                                 );
+                                $rowIndex = count($tables[$tableName]['rows']) - 1;
+                                $tables[$tableName]['rows'][$rowIndex]['isProvisional'] = !$this->isYearClosed(
+                                        $year,
+                                        $unitId,
+                                        $propertyId,
+                                        $closedUnitYears,
+                                        $closedPropertyYears,
+                                );
                         }
                 }
 
@@ -91,16 +108,29 @@ class StatisticsService {
                 $isBuildingManagement = $this->permissionService->isBuildingManagement($role);
                 $propertyFilter = $isBuildingManagement ? $propertyId : null;
                 $units = $this->unitMapper->findByUser($userId, $propertyFilter, !$isBuildingManagement);
+                $unitIds = array_values(array_filter(array_map(static fn(Unit $unit) => $unit->getId(), $units)));
+                $propertyIds = array_values(array_unique(array_filter(array_map(static fn(Unit $unit) => $unit->getPropertyId(), $units))));
+                $closedUnitYears = $this->bookingYearService->getClosedYearsForUnits($unitIds);
+                $closedPropertyYears = $this->bookingYearService->getClosedYearsForProperties($propertyIds);
                 $rows = [];
 
                 foreach ($units as $unit) {
+                        $unitId = $unit->getId();
+                        $unitPropertyId = $unit->getPropertyId();
                         $row = $this->buildStatisticsRowForUnitYear(
-                                $unit->getId(),
+                                $unitId,
                                 $unit,
                                 $userId,
                                 $year,
                                 $definitions,
                                 $topAccountMap,
+                        );
+                        $row['isProvisional'] = !$this->isYearClosed(
+                                $year,
+                                $unitId,
+                                $unitPropertyId,
+                                $closedUnitYears,
+                                $closedPropertyYears,
                         );
 
                         $rows[] = $row;
@@ -516,6 +546,18 @@ class StatisticsService {
         private function applyUserTaxRate(array $sums, string $userId): array {
                 $sums['taxRate'] = $this->getTaxRateSetting($userId);
                 return $sums;
+        }
+
+        private function isYearClosed(int $year, int $unitId, ?int $propertyId, array $closedUnitYears, array $closedPropertyYears): bool {
+                if (isset($closedUnitYears[$unitId][$year])) {
+                        return true;
+                }
+
+                if ($propertyId !== null && isset($closedPropertyYears[$propertyId][$year])) {
+                        return true;
+                }
+
+                return false;
         }
 
         private function getTaxRateSetting(string $userId): float {
