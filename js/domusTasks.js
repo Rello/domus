@@ -48,7 +48,7 @@
         function getActionMeta(actionType) {
             const map = {
                 booking: { label: t('domus', 'Add booking'), icon: 'domus-icon-booking' },
-                closeBookingYear: { label: t('domus', 'Close booking year'), icon: 'domus-icon-ok' },
+                closeBookingYear: { label: t('domus', 'Close booking year'), icon: 'domus-icon-confirm-year' },
                 document: { label: t('domus', 'Add document'), icon: 'domus-icon-document' },
                 serviceChargeReport: { label: t('domus', 'Service charge report'), icon: 'domus-icon-document' },
                 url: { label: t('domus', 'Own link'), icon: 'domus-icon-external' }

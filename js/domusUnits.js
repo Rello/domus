@@ -393,14 +393,15 @@
             }
 
             const columnMeta = columns.map(col => {
-                const columnFormat = col.format || (yearColumn && yearColumn.key === col.key ? 'year' : null);
+                const isYearColumn = (col.key || '').toLowerCase() === 'year';
+                const columnFormat = col.format || (isYearColumn ? 'year' : null);
                 const hasNumericValues = rowsData.some(row => {
                     const value = row[col.key];
                     return value !== undefined && value !== null && !Number.isNaN(Number(value));
                 });
                 return Object.assign({}, col, {
                     format: columnFormat,
-                    alignRight: shouldAlignRight(columnFormat, hasNumericValues)
+                    alignRight: isYearColumn ? false : shouldAlignRight(columnFormat, hasNumericValues)
                 });
             });
 
@@ -417,20 +418,23 @@
                     if (formatted && formatted.alignRight && headers[index]) {
                         headers[index].alignRight = true;
                     }
-                    const isYearColumn = yearColumn && yearColumn.key === col.key;
+                    const isYearColumn = (col.key || '').toLowerCase() === 'year';
                     if (isYearColumn && row.isProvisional) {
                         const yearLabel = Domus.Utils.escapeHtml(formatted.content);
                         const badgeLabel = Domus.Utils.escapeHtml(t('domus', 'Provisional'));
                         return {
                             content: '<span class="domus-statistics-year-value">' + yearLabel + '</span>' +
-                                '<span class="domus-badge domus-badge-muted domus-badge-provisional">' + badgeLabel + '</span>',
-                            alignRight: formatted.alignRight,
+                                '<span class="domus-badge domus-badge-muted domus-badge-provisional">' +
+                                '<span class="domus-icon domus-icon-confirm-year" aria-hidden="true"></span>' +
+                                badgeLabel +
+                                '</span>',
+                            alignRight: false,
                             className: 'domus-statistics-year-cell'
                         };
                     }
                     return {
                         content: Domus.Utils.escapeHtml(formatted.content),
-                        alignRight: formatted.alignRight
+                        alignRight: isYearColumn ? false : formatted.alignRight
                     };
                 });
 

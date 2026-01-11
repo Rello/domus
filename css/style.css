@@ -1438,6 +1438,10 @@
     background-image: url(../img/checkmark.svg);
 }
 
+.domus-icon-confirm-year {
+    background-image: url(../img/confirmYear.svg);
+}
+
 @media (max-width: 1000px) {
     .domus-dashboard-grid {
         grid-template-columns: 1fr;
