@@ -609,6 +609,12 @@
             });
         }
 
+        function bindYearStatusAction(unitId, statistics) {
+            document.getElementById('domus-unit-year-status')?.addEventListener('click', () => {
+                openYearStatusModal(unitId, statistics, () => renderDetail(unitId));
+            });
+        }
+
         function openCreateModal(defaults = {}, onCreated) {
             Domus.Api.getProperties()
                 .then(properties => {
@@ -852,11 +858,12 @@
                         dataset: { entityType: 'unit', entityId: id }
                     } : null);
 
-                    const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'), {
+                    const yearStatusAction = {
                         id: 'domus-unit-year-status',
                         title: t('domus', 'Manage year status'),
                         iconClass: 'domus-icon-edit'
-                    });
+                    };
+                    const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'), yearStatusAction);
                     const revenueTable = renderStatisticsTable(statistics ? statistics.revenue : null, {
                         buildRowDataset: row => {
                             const year = getStatisticsRowYear(row, statistics ? statistics.revenue : null);
@@ -984,9 +991,9 @@
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
                     Domus.UI.bindCollapsibles();
-                    document.getElementById('domus-unit-year-status')?.addEventListener('click', () => {
-                        openYearStatusModal(id, statistics, () => renderDetail(id));
-                    });
+                    if (!useKpiLayout) {
+                        bindYearStatusAction(id, statistics);
+                    }
                     Domus.Partners.bindContactActions();
                     if (canManageDistributions && !useKpiLayout) {
                         Domus.Distributions.bindTable('domus-unit-distributions', filteredDistributions, {
@@ -1001,7 +1008,7 @@
                         renderKpiTileCharts(statistics);
                         const detailMap = {
                             tasks: tasksPanel,
-                            revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable),
+                            revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable, yearStatusAction),
                             cost: buildKpiDetailPanel(t('domus', 'Costs'), renderStatisticsTable(statistics ? statistics.cost : null)),
                             tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies), (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action) ? {
                                 id: 'domus-add-tenancy-inline',
@@ -1021,6 +1028,9 @@
                                     }
                                 });
                                 Domus.Tasks.bindUnitTaskButtons(id, () => Domus.Tasks.loadUnitTasks(id));
+                            }
+                            if (target === 'revenue') {
+                                bindYearStatusAction(id, statistics);
                             }
                             bindStatisticsBookingRows(id, { showLinkAction: documentActionsEnabled });
                         });
