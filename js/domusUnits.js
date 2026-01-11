@@ -388,7 +388,8 @@
 
             function shouldAlignRight(format, hasNumericValues) {
                 if (!format && !hasNumericValues) return false;
-                return ['currency', 'percentage', 'ratio', 'number', 'year'].includes(format || (hasNumericValues ? 'currency' : ''));
+                if (format === 'year') return false;
+                return ['currency', 'percentage', 'ratio', 'number'].includes(format || (hasNumericValues ? 'currency' : ''));
             }
 
             const columnMeta = columns.map(col => {

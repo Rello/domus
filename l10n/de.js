@@ -59,6 +59,8 @@ OC.L10N.register(
         "Reopen year": "Jahr wieder öffnen",
         "Year closed.": "Jahr abgeschlossen.",
         "Year reopened.": "Jahr wieder geöffnet.",
+        "Close booking year": "Buchungsjahr abschließen",
+        "Year is required.": "Jahr ist erforderlich.",
         "Select exactly one scope.": "Bitte genau einen Bereich auswählen.",
         "Add": "Hinzufügen",
         "Action: {action}": "Aktion: {action}",
