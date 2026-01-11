@@ -32,7 +32,8 @@ class BookingYearMapper extends QBMapper {
             $qb->andWhere($qb->expr()->isNull('unit_id'));
         }
 
-        return $this->findEntity($qb);
+        $results = $this->findEntities($qb);
+        return $results[0] ?? null;
     }
 
     /**
