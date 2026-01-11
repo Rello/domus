@@ -781,6 +781,19 @@
     background: var(--color-background-hover);
 }
 
+.domus-badge-provisional {
+    margin-left: 6px;
+}
+
+.domus-statistics-year-cell {
+    white-space: nowrap;
+}
+
+.domus-statistics-year-value {
+    display: inline-flex;
+    align-items: center;
+}
+
 .domus-hero-actions {
     display: flex;
     flex-direction: column;
