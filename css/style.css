@@ -818,6 +818,19 @@
     white-space: nowrap;
 }
 
+.domus-task-action-buttons {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.domus-task-action-spacer {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+}
+
 .domus-section-actions {
     display: flex;
     gap: 8px;

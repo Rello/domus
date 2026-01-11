@@ -107,13 +107,16 @@
                     })
                     : '';
                 const actionBtn = showAction
-                    ? runActionBtn + Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
+                    ? '<div class="domus-task-action-buttons">' +
+                    (runActionBtn || '<span class="domus-task-action-spacer"></span>') +
+                    Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
                         className: 'domus-task-close',
                         dataset: {
                             type: item.type || '',
                             id: item.stepId || item.taskId || ''
                         }
-                    })
+                    }) +
+                    '</div>'
                     : '';
                 const cells = [
                     showUnit ? unitCell : null,
