@@ -343,10 +343,11 @@
     })();
     Domus.UI = (function() {
         function renderContent(html) {
-            const el = document.getElementById('app-content');
-            if (el) {
-                el.classList.add('app-domus');
-                el.innerHTML = html;
+            const appContent = document.getElementById('app-content');
+            if (appContent) {
+                appContent.classList.add('app-domus');
+                const contentTarget = document.getElementById('domus-content') || appContent;
+                contentTarget.innerHTML = html;
             }
         }
 

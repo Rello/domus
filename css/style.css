@@ -7,6 +7,9 @@
 
 .app-domus {
     background: var(--domus-content-background);
+}
+
+.domus-content {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
