@@ -1091,7 +1091,8 @@ body {
 }
 
 .domus-panel-table {
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .domus-panel-table .domus-table {
