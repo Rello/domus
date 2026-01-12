@@ -302,8 +302,7 @@
 
         function bindKpiDetailArea(detailMap, onRender) {
             const detailArea = document.getElementById('domus-unit-kpi-detail');
-            const detailContent = document.getElementById('domus-unit-kpi-detail-content');
-            if (!detailArea || !detailContent) {
+            if (!detailArea) {
                 return;
             }
 
@@ -322,10 +321,10 @@
                     if (isVisible && currentTarget === target) {
                         detailArea.setAttribute('hidden', '');
                         detailArea.dataset.kpiTarget = '';
-                        detailContent.innerHTML = '';
+                        detailArea.innerHTML = '';
                         return;
                     }
-                    detailContent.innerHTML = content;
+                    detailArea.innerHTML = content;
                     detailArea.removeAttribute('hidden');
                     detailArea.dataset.kpiTarget = target;
                     Domus.UI.bindRowNavigation();
@@ -591,11 +590,11 @@
         }
 
         function bindStatisticsBookingRows(unitId, options = {}) {
-            const detailContent = document.getElementById('domus-unit-kpi-detail-content');
-            if (!detailContent) {
+            const detailArea = document.getElementById('domus-unit-kpi-detail');
+            if (!detailArea) {
                 return;
             }
-            detailContent.querySelectorAll('table.domus-table tr[data-stat-year]').forEach(row => {
+            detailArea.querySelectorAll('table.domus-table tr[data-stat-year]').forEach(row => {
                 row.addEventListener('click', (event) => {
                     if (event.target.closest('a') || event.target.closest('button')) {
                         return;
@@ -832,7 +831,7 @@
 
                     const kpiDetailArea = useKpiLayout
                         ? '<div class="domus-kpi-detail" id="domus-unit-kpi-detail" hidden>' +
-                        '<div id="domus-unit-kpi-detail-content">' + tasksPanel + '</div>' +
+                        tasksPanel +
                         '</div>'
                         : '';
 

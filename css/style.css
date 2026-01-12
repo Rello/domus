@@ -1039,7 +1039,7 @@
     margin-bottom: 16px;
     background: var(--domus-kpi-detail-background);
     border-radius: 12px;
-    padding: 12px 16px;
+    padding: 0;
 }
 
 .domus-kpi-detail[hidden] {
