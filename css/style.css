@@ -7,11 +7,12 @@
 
 .app-domus {
     background: var(--domus-content-background);
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .domus-detail {
-    max-width: 1200px;
-    margin: 0 auto;
     width: 100%;
 }
 
@@ -24,6 +25,8 @@
 }
 
 #app-navigation {
+    background: initial !important;
+    filter: initial !important;
     border-right: 1px solid var(--color-border);
     width: 200px !important;
     display: flex;
@@ -1043,7 +1046,6 @@
 }
 
 .domus-panel {
-    background: var(--color-main-background);
     border: 1px solid var(--color-border);
     border-radius: 10px;
     padding: 14px;
