@@ -209,30 +209,6 @@ body {
     align-items: center;
 }
 
-.domus-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.domus-card {
-    background: var(--color-background-dark);
-    border-radius: 8px;
-    padding: 12px;
-    border: var(--domus-border);
-}
-
-.domus-card-title {
-    font-size: 14px;
-    color: var(--color-text-maxcontrast);
-}
-
-.domus-card-value {
-    font-size: 24px;
-    font-weight: bold;
-}
-
 .domus-back-button {
     margin-bottom: 12px;
 }
@@ -1115,7 +1091,8 @@ body {
 }
 
 .domus-panel-table {
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .domus-panel-table .domus-table {
