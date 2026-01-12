@@ -1379,6 +1379,10 @@
     background-image: url(../img/booking.svg);
 }
 
+.domus-icon-task {
+    background-image: url(../img/task.svg);
+}
+
 .domus-icon-account {
     background-image: url(../img/account.svg);
 }

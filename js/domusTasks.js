@@ -109,7 +109,7 @@
                 const actionBtn = showAction
                     ? '<div class="domus-task-action-buttons">' +
                     (runActionBtn || '<span class="domus-task-action-spacer"></span>') +
-                    Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
+                    Domus.UI.buildIconButton('domus-icon-task', t('domus', 'Mark done'), {
                         className: 'domus-task-close',
                         dataset: {
                             type: item.type || '',

@@ -425,7 +425,6 @@
                         return {
                             content: '<span class="domus-statistics-year-value">' + yearLabel + '</span>' +
                                 '<span class="domus-badge domus-badge-muted domus-badge-provisional">' +
-                                '<span class="domus-icon domus-icon-confirm-year" aria-hidden="true"></span>' +
                                 badgeLabel +
                                 '</span>',
                             alignRight: false,
@@ -870,7 +869,7 @@
                     const yearStatusAction = {
                         id: 'domus-unit-year-status',
                         title: t('domus', 'Manage year status'),
-                        iconClass: 'domus-icon-edit'
+                        iconClass: 'domus-icon-confirm-year'
                     };
                     const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'), yearStatusAction);
                     const revenueTable = renderStatisticsTable(statistics ? statistics.revenue : null, {
