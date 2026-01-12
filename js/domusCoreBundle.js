@@ -221,6 +221,8 @@
                 const params = propertyId ? appendFilters(new URLSearchParams(), { propertyId }) : new URLSearchParams();
                 return request('GET', buildYearUrl('/statistics/units-overview', params));
             },
+            closeBookingYear: (year, data) => request('POST', `/booking-years/${year}/close`, data),
+            reopenBookingYear: (year, data) => request('POST', `/booking-years/${year}/reopen`, data),
             createUnit: data => request('POST', '/units', data),
             updateUnit: (id, data) => request('PUT', `/units/${id}`, data),
             deleteUnit: id => request('DELETE', `/units/${id}`),
