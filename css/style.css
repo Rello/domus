@@ -3,6 +3,19 @@
     --domus-hero-background: #eef5ff;
     --domus-kpi-tile-background: #ffffff;
     --domus-kpi-detail-background: #f8f3ff;
+    --domus-border-width: 1px;
+    --domus-border-style: solid;
+    --domus-border-color: var(--color-border);
+    --domus-border: var(--domus-border-width) var(--domus-border-style) var(--domus-border-color);
+    --domus-border-strong: 2px solid var(--domus-border-color);
+    --domus-border-dashed: 1px dashed var(--domus-border-color);
+    --domus-border-accent: 1px dashed #b7cffc;
+    --domus-button-primary-background: var(--color-primary);
+    --domus-button-primary-text: var(--color-primary-text);
+    --domus-button-primary-border: var(--domus-border);
+    --domus-button-secondary-background: var(--color-background-dark);
+    --domus-button-secondary-text: var(--color-main-text);
+    --domus-button-secondary-border: var(--domus-border);
 }
 
 .app-domus {
@@ -30,7 +43,7 @@
 #app-navigation {
     background: initial !important;
     filter: initial !important;
-    border-right: 1px solid var(--color-border);
+    border-right: var(--domus-border);
     width: 200px !important;
     display: flex;
     flex-direction: column;
@@ -95,7 +108,7 @@
 .domus-role-switcher {
     margin-top: 16px;
     padding-top: 12px;
-    border-top: 1px solid var(--color-border);
+    border-top: var(--domus-border);
 }
 
 .domus-toolbar {
@@ -155,7 +168,7 @@
     flex: 1;
     position: relative;
     min-height: 280px;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 8px;
     padding: 12px;
     background: #fff;
@@ -197,7 +210,7 @@
     background: var(--color-background-dark);
     border-radius: 8px;
     padding: 12px;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
 }
 
 .domus-card-title {
@@ -223,7 +236,7 @@
 .domus-table th,
 .domus-table td {
     padding: 10px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: var(--domus-border);
     text-align: left;
     word-break: break-word;
     overflow-wrap: anywhere;
@@ -292,7 +305,7 @@
 .domus-form select,
 .domus-form textarea {
     padding: 8px;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 6px;
 }
 
@@ -346,7 +359,7 @@
 
 .domus-form-value-text {
     padding: 5px 10px;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 6px;
     background: #f8f8f8;
     display: flex;
@@ -384,7 +397,7 @@
     justify-content: space-between;
     gap: 16px;
     padding: 8px 12px;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 8px;
     background: var(--color-background-hover);
     margin-left: calc(var(--level, 0) * 20px);
@@ -422,7 +435,7 @@
 }
 
 .domus-account-action {
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     background: var(--color-background-dark);
     border-radius: 6px;
     padding: 2px 8px;
@@ -493,7 +506,7 @@
 }
 
 .domus-booking-remove {
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     background: var(--color-background-dark);
     border-radius: 6px;
     height: 36px;
@@ -576,8 +589,9 @@
 .domus-section-action {
     padding: 2px 8px;
     border-radius: 4px;
-    border: 1px solid var(--color-border);
-    background: var(--color-background-dark);
+    border: var(--domus-button-secondary-border);
+    background: var(--domus-button-secondary-background);
+    color: var(--domus-button-secondary-text);
     cursor: pointer;
 }
 
@@ -589,7 +603,7 @@
 .domus-error {
     padding: 16px;
     border-radius: 8px;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     background: var(--color-background-dark);
 }
 
@@ -605,7 +619,7 @@
     padding: 12px 16px;
     border-radius: 8px;
     background: var(--color-background-dark);
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     z-index: 9999;
 }
@@ -664,7 +678,7 @@
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
     max-width: 640px;
     width: 100%;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     display: flex;
     flex-direction: column;
     max-height: 88vh;
@@ -700,7 +714,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 14px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: var(--domus-border);
     gap: 10px;
 }
 
@@ -726,8 +740,9 @@
 .domus-modal-header button.domus-modal-action {
     padding: 6px 10px;
     border-radius: 6px;
-    border: 1px solid var(--color-border);
-    background: var(--color-background-dark);
+    border: var(--domus-button-secondary-border);
+    background: var(--domus-button-secondary-background);
+    color: var(--domus-button-secondary-text);
     cursor: pointer;
 }
 
@@ -747,7 +762,7 @@
     gap: 16px;
     padding: 18px 20px;
     border-radius: 12px;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     background: var(--domus-hero-background);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     margin-bottom: 16px;
@@ -804,7 +819,7 @@
     padding: 4px 10px;
     border-radius: 999px;
     background: var(--color-background-dark);
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     font-size: 12px;
 }
 
@@ -857,7 +872,7 @@
     list-style: none;
     padding: 0;
     margin: 12px 0 0;
-    border: 1px dashed var(--color-border);
+    border: var(--domus-border-dashed);
     border-radius: 8px;
 }
 
@@ -866,7 +881,7 @@
     align-items: center;
     gap: 12px;
     padding: 10px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: var(--domus-border);
     background: var(--color-main-background);
     cursor: grab;
 }
@@ -903,7 +918,7 @@
 
 .domus-stat-card {
     background: var(--color-main-background);
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 10px;
     padding: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -942,7 +957,7 @@
     gap: 12px;
     padding: 10px 14px;
     border-radius: 18px;
-    border: 2px solid var(--color-border);
+    border: var(--domus-border-strong);
     background: var(--domus-kpi-tile-background);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     min-height: 150px;
@@ -1057,7 +1072,7 @@
 }
 
 .domus-panel {
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 10px;
     padding: 14px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -1155,7 +1170,7 @@
     justify-content: space-between;
     gap: 12px;
     padding-bottom: 6px;
-    border-bottom: 1px dashed var(--color-border);
+    border-bottom: var(--domus-border-dashed);
 }
 
 .domus-info-row:last-child {
@@ -1228,11 +1243,18 @@
     gap: 6px;
 }
 
+.app-domus .primary {
+    background: var(--domus-button-primary-background);
+    color: var(--domus-button-primary-text);
+    border: var(--domus-button-primary-border);
+}
+
 .domus-icon-button {
     background: none;
-    border: 1px solid var(--color-border);
+    border: var(--domus-button-secondary-border);
     border-radius: 6px;
     padding: 6px 10px;
+    color: var(--domus-button-secondary-text);
     cursor: pointer;
     line-height: 1;
 }
@@ -1257,7 +1279,7 @@
 .domus-form-subsection {
     margin: 12px 0;
     padding: 12px;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 8px;
     background: var(--color-background-dark);
 }
@@ -1268,14 +1290,14 @@
 }
 
 .domus-doc-attachment-shell {
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 10px;
     padding: 10px;
     background: #fff;
 }
 
 .domus-doc-block {
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 8px;
     padding: 12px;
     background: var(--color-main-background);
@@ -1286,7 +1308,7 @@
 }
 
 .domus-doc-card {
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 12px;
     padding: 14px;
     background: var(--color-background-dark);
@@ -1304,7 +1326,7 @@
 }
 
 .domus-dropzone {
-    border: 1px dashed #b7cffc;
+    border: var(--domus-border-accent);
     border-radius: 8px;
     padding: 14px;
     background: #f6f9ff;
@@ -1361,7 +1383,7 @@
 
 .domus-ghost {
     background: transparent;
-    border: 1px solid var(--color-border);
+    border: var(--domus-border);
     border-radius: 8px;
     padding: 6px 10px;
 }
