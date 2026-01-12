@@ -450,7 +450,7 @@
             const totalsHtml = buildStatisticsTotals(columnMeta, rowsData, options.totals || []);
             const tableHtml = Domus.UI.buildTable(headers, rows, { wrapPanel: false });
             if (!wrapPanel) {
-                return tableHtml + totalsHtml;
+                return '<div class="domus-panel-table">' + tableHtml + totalsHtml + '</div>';
             }
             return '<div class="domus-panel domus-panel-table">' + tableHtml + totalsHtml + '</div>';
         }
