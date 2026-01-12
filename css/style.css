@@ -7,9 +7,6 @@
     --domus-border-style: solid;
     --domus-border-color: var(--color-border);
     --domus-border: var(--domus-border-width) var(--domus-border-style) var(--domus-border-color);
-    --domus-border-strong: 2px solid var(--domus-border-color);
-    --domus-border-dashed: 1px dashed var(--domus-border-color);
-    --domus-border-accent: 1px dashed #b7cffc;
     --domus-button-primary-background: var(--color-primary);
     --domus-button-primary-text: var(--color-primary-text);
     --domus-button-primary-border: var(--domus-border);
@@ -872,7 +869,7 @@
     list-style: none;
     padding: 0;
     margin: 12px 0 0;
-    border: var(--domus-border-dashed);
+    border: var(--domus-border);
     border-radius: 8px;
 }
 
@@ -957,7 +954,7 @@
     gap: 12px;
     padding: 10px 14px;
     border-radius: 18px;
-    border: var(--domus-border-strong);
+    border: var(--domus-border);
     background: var(--domus-kpi-tile-background);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     min-height: 150px;
@@ -1170,7 +1167,7 @@
     justify-content: space-between;
     gap: 12px;
     padding-bottom: 6px;
-    border-bottom: var(--domus-border-dashed);
+    border-bottom: var(--domus-border);
 }
 
 .domus-info-row:last-child {
@@ -1326,7 +1323,7 @@
 }
 
 .domus-dropzone {
-    border: var(--domus-border-accent);
+    border: var(--domus-border);
     border-radius: 8px;
     padding: 14px;
     background: #f6f9ff;
