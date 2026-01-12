@@ -345,6 +345,7 @@
         function renderContent(html) {
             const el = document.getElementById('app-content');
             if (el) {
+                el.classList.add('app-domus');
                 el.innerHTML = html;
             }
         }
