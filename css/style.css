@@ -1,15 +1,15 @@
 :root {
-    --domus-content-background: #f4f6fa;
-    --domus-hero-background: #eef5ff;
+    --domus-content-background: #E2E8F0;
+    --domus-hero-background: #ffffff;
     --domus-kpi-tile-background: #ffffff;
-    --domus-kpi-detail-background: #f8f3ff;
-    --domus-border-width: 1px;
+    --domus-kpi-detail-background: #ffffff;
+    --domus-border-width: 0px;
     --domus-border-style: solid;
     --domus-border-color: var(--color-border);
     --domus-border: var(--domus-border-width) var(--domus-border-style) var(--domus-border-color);
     --domus-panel-background: var(--color-main-background);
     --domus-panel-border: var(--domus-border);
-    --domus-panel-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --domus-panel-shadow: 0 15px 15px rgba(0, 0, 0, 0.05);
     --domus-panel-radius: 10px;
     --domus-panel-padding: 14px;
     --domus-button-primary-background: var(--color-primary);
@@ -20,6 +20,14 @@
     --domus-button-secondary-border: var(--domus-border);
 }
 
+#app-content {
+    background-color: initial !important;
+}
+
+body {
+    background-image: initial !important;
+    background-color: #0f6b2f !important;
+}
 .app-domus {
     background: var(--domus-content-background);
 }
@@ -261,7 +269,7 @@
 }
 
 .domus-table tbody tr:nth-child(odd) {
-    background-color: var(--color-background-dark);
+    /*background-color: var(--color-background-dark);*/
 }
 
 .domus-table tr[data-navigate]:hover {
@@ -1081,7 +1089,6 @@
 }
 
 .domus-panel-table {
-    --domus-panel-padding: 0;
     overflow: hidden;
 }
 
