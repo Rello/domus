@@ -144,7 +144,7 @@
             }));
             return Domus.UI.buildTable([
                 t('domus', 'Invoice date'), t('domus', 'Account'), t('domus', 'Amount')
-            ], rows);
+            ], rows, { wrapPanel: false });
         }
 
         function buildImportPanel() {

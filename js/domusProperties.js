@@ -141,7 +141,7 @@
                         '<div class="domus-dashboard-grid domus-dashboard-grid-single">' +
                         '<div class="domus-dashboard-main">' +
                         (canManageDistributions ? '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-property-distributions">' +
-                        Domus.Distributions.renderTable(visibleDistributions, { excludeSystemDefaults: false }) + '</div></div>' : '') +
+                        Domus.Distributions.renderTable(visibleDistributions, { excludeSystemDefaults: false, wrapPanel: false }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + unitsHeader + '<div class="domus-panel-body">' +
                         Domus.Units.renderListInline(property.units || []) + '</div></div>' +
                         partnersPanel +

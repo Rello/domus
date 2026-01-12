@@ -34,7 +34,7 @@
                         Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove'), { dataset: { docId: doc.id } })
                     ]);
                     const html = '<div id="' + containerId + '">' +
-                        Domus.UI.buildTable([t('domus', 'File'), t('domus', 'Info'), ''], rows) + '</div>';
+                        Domus.UI.buildTable([t('domus', 'File'), t('domus', 'Info'), ''], rows, { wrapPanel: false }) + '</div>';
                     updateContainer(html);
                     bindDocumentActions(entityType, entityId, containerId);
                 })

@@ -141,7 +141,7 @@
                 return { cells, className: 'domus-distribution-row', dataset: { distid: item.id, disttype: item.type } };
             });
 
-            return Domus.UI.buildTable(headers, rows);
+            return Domus.UI.buildTable(headers, rows, { wrapPanel: options.wrapPanel !== false });
         }
 
         function filterList(distributions, options = {}) {
