@@ -47,8 +47,8 @@
             const cardHtml = cards.map(card => {
                 const renderedValue = card.formatter ? card.formatter(card.value) : card.value;
                 const safeValue = renderedValue === undefined || renderedValue === null ? '' : renderedValue.toString();
-                return '<div class="domus-card"><div class="domus-card-title">' +
-                    Domus.Utils.escapeHtml(card.label) + '</div><div class="domus-card-value">' +
+                return '<div class="domus-stat-card"><div class="domus-stat-label">' +
+                    Domus.Utils.escapeHtml(card.label) + '</div><div class="domus-stat-value">' +
                     Domus.Utils.escapeHtml(safeValue) + '</div></div>';
             }).join('');
 
@@ -72,7 +72,7 @@
                 Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
             }, 0);
 
-            return '<div class="domus-cards">' + cardHtml + '</div>' +
+            return '<div class="domus-stat-grid">' + cardHtml + '</div>' +
                 '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' +
                 openTasksTable +
                 '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Units overview')) + '</h2>' + table;
@@ -86,8 +86,8 @@
                 { label: t('domus', 'Bookings this year'), value: data.bookingCount || 0 }
             ];
 
-            const cardHtml = cards.map(card => '<div class="domus-card"><div class="domus-card-title">' +
-                Domus.Utils.escapeHtml(card.label) + '</div><div class="domus-card-value">' +
+            const cardHtml = cards.map(card => '<div class="domus-stat-card"><div class="domus-stat-label">' +
+                Domus.Utils.escapeHtml(card.label) + '</div><div class="domus-stat-value">' +
                 Domus.Utils.escapeHtml(card.value.toString()) + '</div></div>').join('');
 
             const propertyRows = (data.properties || []).map(p => ({
@@ -114,7 +114,7 @@
                 Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
             }, 0);
 
-            return '<div class="domus-cards">' + cardHtml + '</div>' +
+            return '<div class="domus-stat-grid">' + cardHtml + '</div>' +
                 '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' +
                 openTasksTable +
                 '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Properties overview')) + '</h2>' + table;
