@@ -241,6 +241,14 @@
     cursor: pointer;
 }
 
+.domus-table tbody tr:nth-child(even) {
+    background-color: var(--color-background-hover);
+}
+
+.domus-table tbody tr:nth-child(odd) {
+    background-color: var(--color-background-dark);
+}
+
 .domus-table tr[data-navigate]:hover {
     background-color: #f8f8f8;
 }
