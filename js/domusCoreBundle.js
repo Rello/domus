@@ -542,7 +542,8 @@
             return { label: header, classAttr: '' };
         }
 
-        function buildTable(headers, rows) {
+        function buildTable(headers, rows, options = {}) {
+            const wrapPanel = options.wrapPanel !== false;
             let html = '<table class="domus-table">';
             html += '<thead><tr>' + headers.map(h => {
                 const { label, classAttr } = normalizeHeader(h);
@@ -571,7 +572,10 @@
                 });
             }
             html += '</tbody></table>';
-            return html;
+            if (!wrapPanel) {
+                return html;
+            }
+            return '<div class="domus-panel domus-panel-table">' + html + '</div>';
         }
 
         function bindRowNavigation() {

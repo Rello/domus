@@ -75,7 +75,7 @@
             }));
             return Domus.UI.buildTable([
                 t('domus', 'Unit'), t('domus', 'Partners'), t('domus', 'Status'), t('domus', 'Period')
-            ], rows);
+            ], rows, { wrapPanel: false });
         }
 
         function openCreateModal(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage) {

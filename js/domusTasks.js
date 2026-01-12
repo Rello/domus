@@ -127,7 +127,7 @@
                 return { cells, dataset, className: (!showUnit && item.type === 'process') ? 'domus-task-process-row' : '' };
             });
 
-            return Domus.UI.buildTable(headers, rows);
+            return Domus.UI.buildTable(headers, rows, { wrapPanel: false });
         }
 
         function bindOpenTaskActions(options = {}) {
@@ -607,9 +607,8 @@
                 });
         }
 
-        function buildUnitTasksPanel() {
-            return '<div class="domus-panel" id="domus-unit-tasks-panel">' +
-                '<div class="domus-section-header">' +
+        function buildUnitTasksPanel(options = {}) {
+            const panelContent = '<div class="domus-section-header">' +
                 '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Tasks')) + '</h3>' +
                 '<div class="domus-section-actions">' +
                 '<button id="domus-unit-start-process">' + Domus.Utils.escapeHtml(t('domus', 'Start process')) + '</button>' +
@@ -618,7 +617,13 @@
                 '</div>' +
                 '<div class="domus-panel-body" id="domus-unit-tasks-body">' +
                 Domus.Utils.escapeHtml(t('domus', 'Loading tasks…')) +
-                '</div>' +
+                '</div>';
+            if (options.wrapPanel === false) {
+                return panelContent;
+            }
+            const panelId = options.panelId || 'domus-unit-tasks-panel';
+            return '<div class="domus-panel" id="' + Domus.Utils.escapeHtml(panelId) + '">' +
+                panelContent +
                 '</div>';
         }
 

@@ -109,7 +109,7 @@
                 t('domus', 'Name'),
                 t('domus', 'Type'),
                 t('domus', 'Email')
-            ], rows);
+            ], rows, { wrapPanel: false });
         }
 
         function renderList() {
