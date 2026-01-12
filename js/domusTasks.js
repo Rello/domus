@@ -62,6 +62,7 @@
             const showDescription = options.showDescription !== false;
             const showType = options.showType !== false;
             const showAction = options.showAction !== false;
+            const wrapPanel = options.wrapPanel !== false;
             const headers = [
                 showUnit ? t('domus', 'Unit') : null,
                 t('domus', 'Title'),
@@ -132,7 +133,7 @@
                 return { cells, dataset, className: (!showUnit && item.type === 'process') ? 'domus-task-process-row' : '' };
             });
 
-            return Domus.UI.buildTable(headers, rows, { wrapPanel: false });
+            return Domus.UI.buildTable(headers, rows, { wrapPanel });
         }
 
         function bindOpenTaskActions(options = {}) {
@@ -454,7 +455,7 @@
                 });
             });
 
-            const openTable = buildOpenTasksTable(openItems, { showUnit: false });
+            const openTable = buildOpenTasksTable(openItems, { showUnit: false, wrapPanel: false });
             const openSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</h4>' + openTable;
 
             const closedItems = [];
