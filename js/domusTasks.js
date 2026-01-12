@@ -48,6 +48,7 @@
         function getActionMeta(actionType) {
             const map = {
                 booking: { label: t('domus', 'Add booking'), icon: 'domus-icon-booking' },
+                closeBookingYear: { label: t('domus', 'Close booking year'), icon: 'domus-icon-confirm-year' },
                 document: { label: t('domus', 'Add document'), icon: 'domus-icon-document' },
                 serviceChargeReport: { label: t('domus', 'Service charge report'), icon: 'domus-icon-document' },
                 url: { label: t('domus', 'Own link'), icon: 'domus-icon-external' }
@@ -67,7 +68,7 @@
                 showDescription ? t('domus', 'Description') : null,
                 t('domus', 'Due date'),
                 showType ? t('domus', 'Type') : null,
-                showAction ? t('domus', 'Action') : null
+                showAction ? { label: t('domus', 'Action'), alignRight: true } : null
             ].filter(item => item !== null);
             const rows = sorted.map(item => {
                 const unitCell = showUnit
@@ -100,18 +101,22 @@
                             type: item.type || '',
                             actionType: item.actionType || '',
                             actionUrl: item.actionUrl || '',
+                            actionYear: item.year || '',
                             unitId: item.unitId || ''
                         }
                     })
                     : '';
                 const actionBtn = showAction
-                    ? runActionBtn + Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
+                    ? '<div class="domus-task-action-buttons">' +
+                    (runActionBtn || '<span class="domus-task-action-spacer"></span>') +
+                    Domus.UI.buildIconButton('domus-icon-task', t('domus', 'Mark done'), {
                         className: 'domus-task-close',
                         dataset: {
                             type: item.type || '',
                             id: item.stepId || item.taskId || ''
                         }
-                    })
+                    }) +
+                    '</div>'
                     : '';
                 const cells = [
                     showUnit ? unitCell : null,
@@ -137,9 +142,10 @@
                     event.stopPropagation();
                     const actionType = btn.getAttribute('data-action-type');
                     const actionUrl = btn.getAttribute('data-action-url');
+                    const actionYear = btn.getAttribute('data-action-year');
                     const unitId = btn.getAttribute('data-unit-id');
                     if (!actionType) return;
-                    runTaskAction(actionType, actionUrl, unitId, options.onRefresh);
+                    runTaskAction(actionType, actionUrl, actionYear, unitId, options.onRefresh);
                 });
             });
             document.querySelectorAll('.domus-task-close').forEach(btn => {
@@ -160,7 +166,7 @@
             });
         }
 
-        function runTaskAction(actionType, actionUrl, unitId, onComplete) {
+        function runTaskAction(actionType, actionUrl, actionYear, unitId, onComplete) {
             if (actionType === 'url') {
                 if (!actionUrl) {
                     Domus.UI.showNotification(t('domus', 'Link URL is required.'), 'error');
@@ -177,6 +183,20 @@
 
             if (actionType === 'document') {
                 Domus.Documents.openLinkModal('unit', unitId, onComplete);
+                return;
+            }
+
+            if (actionType === 'closeBookingYear') {
+                const yearValue = parseInt(actionYear || Domus.state.currentYear, 10);
+                Domus.Api.getUnitStatistics(unitId)
+                    .then(statistics => {
+                        if (Domus.Units?.openYearStatusModal) {
+                            Domus.Units.openYearStatusModal(unitId, statistics, onComplete, { defaultYear: yearValue });
+                        } else {
+                            Domus.UI.showNotification(t('domus', 'Action not supported.'), 'error');
+                        }
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
                 return;
             }
 
@@ -789,6 +809,7 @@
             const actionOptions = [
                 { value: '', label: t('domus', 'No action') },
                 { value: 'booking', label: t('domus', 'Add booking') },
+                { value: 'closeBookingYear', label: t('domus', 'Close booking year') },
                 { value: 'document', label: t('domus', 'Add document') },
                 { value: 'serviceChargeReport', label: t('domus', 'Service charge report') },
                 { value: 'url', label: t('domus', 'Own link') },

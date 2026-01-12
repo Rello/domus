@@ -781,6 +781,19 @@
     background: var(--color-background-hover);
 }
 
+.domus-badge-provisional {
+    margin-left: 6px;
+}
+
+.domus-statistics-year-cell {
+    white-space: nowrap;
+}
+
+.domus-statistics-year-value {
+    display: inline-flex;
+    align-items: center;
+}
+
 .domus-hero-actions {
     display: flex;
     flex-direction: column;
@@ -803,6 +816,19 @@
 
 .domus-hero-actions button {
     white-space: nowrap;
+}
+
+.domus-task-action-buttons {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.domus-task-action-spacer {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
 }
 
 .domus-section-actions {
@@ -1353,6 +1379,10 @@
     background-image: url(../img/booking.svg);
 }
 
+.domus-icon-task {
+    background-image: url(../img/task.svg);
+}
+
 .domus-icon-account {
     background-image: url(../img/account.svg);
 }
@@ -1423,6 +1453,10 @@
 
 .domus-icon-checkmark {
     background-image: url(../img/checkmark.svg);
+}
+
+.domus-icon-confirm-year {
+    background-image: url(../img/confirmYear.svg);
 }
 
 @media (max-width: 1000px) {
