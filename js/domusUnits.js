@@ -48,27 +48,36 @@
             return { labels, rentability, coldRent };
         }
 
-        function buildOpenTasksValue(count) {
+        function getOpenTasksTone(status) {
+            if (status === 'overdue') {
+                return { className: 'domus-kpi-number-alert', iconClass: 'domus-icon-alert' };
+            }
+            if (status === 'warning') {
+                return { className: 'domus-kpi-number-warning', iconClass: 'domus-icon-warning' };
+            }
+            return { className: 'domus-kpi-number-ok', iconClass: 'domus-icon-checkmark' };
+        }
+
+        function buildOpenTasksValue(count, status = 'ok') {
             const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-            const hasOpenTasks = safeCount > 0;
-            //const toneClass = hasOpenTasks ? 'domus-kpi-number-warning' : 'domus-kpi-number-ok';
-            const icon = hasOpenTasks ? '<span class="domus-icon domus-icon-warning domus-kpi-icon" aria-hidden="true"></span>' : '<span class="domus-icon domus-icon-checkmark domus-kpi-icon" aria-hidden="true"></span>';
-            return '<span id="domus-kpi-open-tasks" class="domus-kpi-number">' +
+            const tone = getOpenTasksTone(status);
+            const icon = '<span class="domus-icon ' + Domus.Utils.escapeHtml(tone.iconClass) + ' domus-kpi-icon" aria-hidden="true"></span>';
+            return '<span id="domus-kpi-open-tasks" class="domus-kpi-number ' + Domus.Utils.escapeHtml(tone.className) + '">' +
                 icon +
                 Domus.Utils.escapeHtml(String(safeCount)) +
                 '</span>';
         }
 
-        function updateOpenTasksValue(count) {
+        function updateOpenTasksValue(count, status = 'ok') {
             const value = document.getElementById('domus-kpi-open-tasks');
             if (!value) {
                 return;
             }
             const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-            const hasOpenTasks = safeCount > 0;
-            //value.classList.toggle('domus-kpi-number-warning', hasOpenTasks);
-            //value.classList.toggle('domus-kpi-number-ok', !hasOpenTasks);
-            value.innerHTML = (hasOpenTasks ? '<span class="domus-icon domus-icon-warning domus-kpi-icon" aria-hidden="true"></span>' : '<span class="domus-icon domus-icon-checkmark domus-kpi-icon" aria-hidden="true"></span>') +
+            const tone = getOpenTasksTone(status);
+            value.classList.remove('domus-kpi-number-warning', 'domus-kpi-number-ok', 'domus-kpi-number-alert');
+            value.classList.add(tone.className);
+            value.innerHTML = '<span class="domus-icon ' + Domus.Utils.escapeHtml(tone.iconClass) + ' domus-kpi-icon" aria-hidden="true"></span>' +
                 Domus.Utils.escapeHtml(String(safeCount));
         }
 
@@ -1035,9 +1044,9 @@
                             });
                             if (target === 'tasks') {
                                 Domus.Tasks.loadUnitTasks(id, {
-                                    onOpenCount: (count) => {
+                                    onOpenCount: (count, status) => {
                                         unit.activeOpenTasks = count;
-                                        updateOpenTasksValue(count);
+                                        updateOpenTasksValue(count, status);
                                     }
                                 });
                                 Domus.Tasks.bindUnitTaskButtons(id, () => Domus.Tasks.loadUnitTasks(id));
@@ -1053,9 +1062,9 @@
                     bindDetailActions(id, unit);
                     if (!Domus.Role.isTenantView()) {
                         Domus.Tasks.loadUnitTasks(id, {
-                            onOpenCount: (count) => {
+                            onOpenCount: (count, status) => {
                                 unit.activeOpenTasks = count;
-                                updateOpenTasksValue(count);
+                                updateOpenTasksValue(count, status);
                             }
                         });
                         Domus.Tasks.bindUnitTaskButtons(id, () => Domus.Tasks.loadUnitTasks(id));
