@@ -81,12 +81,42 @@ class Version0002Date20251202000000 extends SimpleMigrationStep {
                 'name' => 'Year End',
                 'description' => null,
                 'steps' => [
-                    'Invoice received',
-                    'Book invoices',
-                    'Create year end report',
-                    'Send report to tenant',
-                    'Check incoming payment',
-                    'Confirm completed',
+                    [
+                        'title' => 'Invoice received',
+                        'description' => 'Collect all invoices that belong to the reporting period.',
+                        'actionType' => 'document',
+                        'actionUrl' => null,
+                    ],
+                    [
+                        'title' => 'Book invoices',
+                        'description' => 'Record the invoices as bookings for the correct year.',
+                        'actionType' => 'booking',
+                        'actionUrl' => null,
+                    ],
+                    [
+                        'title' => 'Create year end report',
+                        'description' => 'Generate the service charge report for the year.',
+                        'actionType' => 'serviceChargeReport',
+                        'actionUrl' => null,
+                    ],
+                    [
+                        'title' => 'Send report to tenant',
+                        'description' => 'Send the completed report to the tenant or owner.',
+                        'actionType' => null,
+                        'actionUrl' => null,
+                    ],
+                    [
+                        'title' => 'Check incoming payment',
+                        'description' => 'Verify that the settlement payment has been received.',
+                        'actionType' => null,
+                        'actionUrl' => null,
+                    ],
+                    [
+                        'title' => 'Confirm completed',
+                        'description' => 'Close the booking year once everything is reconciled.',
+                        'actionType' => 'closeBookingYear',
+                        'actionUrl' => null,
+                    ],
                 ],
             ],
             [
@@ -94,10 +124,30 @@ class Version0002Date20251202000000 extends SimpleMigrationStep {
                 'name' => 'Dunning',
                 'description' => null,
                 'steps' => [
-                    'Send reminder',
-                    'Second reminder',
-                    'Court reminder',
-                    'Start cancellation process',
+                    [
+                        'title' => 'Send reminder',
+                        'description' => 'Send the initial payment reminder to the tenant.',
+                        'actionType' => null,
+                        'actionUrl' => null,
+                    ],
+                    [
+                        'title' => 'Second reminder',
+                        'description' => 'Follow up with a second reminder after the grace period.',
+                        'actionType' => null,
+                        'actionUrl' => null,
+                    ],
+                    [
+                        'title' => 'Court reminder',
+                        'description' => 'Escalate to a formal court reminder if needed.',
+                        'actionType' => null,
+                        'actionUrl' => null,
+                    ],
+                    [
+                        'title' => 'Start cancellation process',
+                        'description' => 'Begin the cancellation process if no payment arrives.',
+                        'actionType' => null,
+                        'actionUrl' => null,
+                    ],
                 ],
             ],
         ];
@@ -127,14 +177,16 @@ class Version0002Date20251202000000 extends SimpleMigrationStep {
             }
 
             $order = 1;
-            foreach ($template['steps'] as $title) {
+            foreach ($template['steps'] as $step) {
                 $stepInsert = $this->connection->getQueryBuilder();
                 $stepInsert->insert('domus_task_tpl_steps')
                     ->values([
                         'template_id' => $stepInsert->createNamedParameter($templateId, $stepInsert::PARAM_INT),
                         'sort_order' => $stepInsert->createNamedParameter($order, $stepInsert::PARAM_INT),
-                        'title' => $stepInsert->createNamedParameter($title),
-                        'description' => $stepInsert->createNamedParameter(null),
+                        'title' => $stepInsert->createNamedParameter($step['title']),
+                        'description' => $stepInsert->createNamedParameter($step['description']),
+                        'action_type' => $stepInsert->createNamedParameter($step['actionType']),
+                        'action_url' => $stepInsert->createNamedParameter($step['actionUrl']),
                         'default_due_days_offset' => $stepInsert->createNamedParameter(0, $stepInsert::PARAM_INT),
                         'created_at' => $stepInsert->createNamedParameter($now, $stepInsert::PARAM_INT),
                         'updated_at' => $stepInsert->createNamedParameter($now, $stepInsert::PARAM_INT),

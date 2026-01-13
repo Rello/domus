@@ -221,6 +221,8 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('sort_order', 'integer', ['notnull' => true, 'default' => 0]);
             $table->addColumn('title', 'string', ['length' => 190, 'notnull' => true]);
             $table->addColumn('description', 'text', ['notnull' => false]);
+            $table->addColumn('action_type', 'string', ['length' => 64, 'notnull' => false]);
+            $table->addColumn('action_url', 'text', ['notnull' => false]);
             $table->addColumn('default_due_days_offset', 'integer', ['notnull' => true, 'default' => 0]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
@@ -254,6 +256,8 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('sort_order', 'integer', ['notnull' => true, 'default' => 0]);
             $table->addColumn('title', 'string', ['length' => 190, 'notnull' => true]);
             $table->addColumn('description', 'text', ['notnull' => false]);
+            $table->addColumn('action_type', 'string', ['length' => 64, 'notnull' => false]);
+            $table->addColumn('action_url', 'text', ['notnull' => false]);
             $table->addColumn('status', 'string', ['length' => 32, 'notnull' => true, 'default' => 'new']);
             $table->addColumn('due_date', 'string', ['length' => 32, 'notnull' => false]);
             $table->addColumn('opened_at', 'bigint', ['notnull' => false]);
@@ -283,6 +287,25 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->setPrimaryKey(['id']);
             $table->addIndex(['unit_id'], 'domus_task_unit');
             $table->addIndex(['status'], 'domus_task_stat');
+        }
+
+        if (!$schema->hasTable('domus_booking_years')) {
+            $table = $schema->createTable('domus_booking_years');
+            $table->addColumn('id', 'bigint', [
+                'autoincrement' => true,
+                'notnull' => true,
+                'unsigned' => true,
+                'length' => 20,
+            ]);
+            $table->addColumn('property_id', 'bigint', ['notnull' => false]);
+            $table->addColumn('unit_id', 'bigint', ['notnull' => false]);
+            $table->addColumn('year', 'integer', ['notnull' => true]);
+            $table->addColumn('closed_at', 'integer', ['notnull' => true]);
+            $table->setPrimaryKey(['id']);
+            $table->addIndex(['property_id'], 'domus_book_year_prop');
+            $table->addIndex(['unit_id'], 'domus_book_year_unit');
+            $table->addIndex(['year'], 'domus_book_year_year');
+            $table->addUniqueIndex(['year', 'property_id', 'unit_id'], 'domus_book_year_uniq');
         }
 
         return $schema;
