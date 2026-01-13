@@ -108,18 +108,17 @@
                         Domus.Utils.escapeHtml(item.unitName || '') +
                         '</span>'
                     : '';
-                const dueLabel = Domus.Utils.formatDate(item.dueDate);
                 const titleParts = [];
                 titleParts.push(Domus.Utils.escapeHtml(item.title || ''));
                 if (item.workflowName) {
                     titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
                 }
                 const dueStatus = getDueStatus(item.dueDate);
-                const dueLabel = Domus.Utils.formatDate(item.dueDate);
+                const dueDateLabel = Domus.Utils.formatDate(item.dueDate);
                 const dueClass = dueStatus === 'overdue'
                     ? 'domus-task-date-overdue'
                     : (dueStatus === 'warning' ? 'domus-task-date-warning' : '');
-                const dueText = Domus.Utils.escapeHtml(dueLabel || '—');
+                const dueText = Domus.Utils.escapeHtml(dueDateLabel || '—');
                 const dueHtml = dueClass ? '<span class="' + dueClass + '">' + dueText + '</span>' : dueText;
                 const descriptionBtn = showDescription && (item.description || item.actionType)
                     ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
