@@ -241,21 +241,29 @@ class DemoContentService {
     private function createPropertyDistributions(int $propertyId, int $unitId, string $userId): array {
         $validFrom = (new \DateTimeImmutable('first day of january'))->format('Y-m-d');
         $now = time();
-        $baseConfig = json_encode(['base' => 10000]);
         $keys = [
-            'unit' => $this->l10n->t('Unit distribution'),
-            'area' => $this->l10n->t('Area distribution'),
-            'mea' => $this->l10n->t('MEA distribution'),
+            'unit' => [
+                'label' => $this->l10n->t('Unit distribution'),
+                'base' => 150,
+            ],
+            'area' => [
+                'label' => $this->l10n->t('Area distribution'),
+                'base' => 1000,
+            ],
+            'mea' => [
+                'label' => $this->l10n->t('MEA distribution'),
+                'base' => 10000,
+            ],
         ];
         $ids = [];
 
-        foreach ($keys as $type => $name) {
+        foreach ($keys as $type => $config) {
             $distributionKey = new DistributionKey();
             $distributionKey->setUserId($userId);
             $distributionKey->setPropertyId($propertyId);
             $distributionKey->setType($type);
-            $distributionKey->setName($name);
-            $distributionKey->setConfigJson($baseConfig);
+            $distributionKey->setName($config['label']);
+            $distributionKey->setConfigJson(json_encode(['base' => $config['base']]));
             $distributionKey->setValidFrom($validFrom);
             $distributionKey->setValidTo(null);
             $distributionKey->setCreatedAt($now);
