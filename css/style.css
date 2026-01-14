@@ -915,6 +915,16 @@ body {
     color: var(--color-text-maxcontrast);
 }
 
+.domus-task-date-warning {
+    color: var(--color-element-warning);
+    font-weight: 600;
+}
+
+.domus-task-date-overdue {
+    color: var(--color-error-text);
+    font-weight: 600;
+}
+
 .domus-task-step-actions {
     display: flex;
     gap: 6px;
@@ -1001,11 +1011,15 @@ body {
 }
 
 .domus-kpi-number-warning {
-    color: var(--color-warning);
+    color: var(--color-element-warning);
 }
 
 .domus-kpi-number-ok {
     color: var(--color-success);
+}
+
+.domus-kpi-number-alert {
+    color: var(--color-error-text);
 }
 
 .domus-kpi-icon {
@@ -1498,6 +1512,10 @@ body {
 
 .domus-icon-warning {
     background-image: url(../img/warning.svg);
+}
+
+.domus-icon-alert {
+    background-image: url(../img/alert.svg);
 }
 
 .domus-icon-checkmark {

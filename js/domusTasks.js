@@ -17,6 +17,37 @@
             return date;
         }
 
+        function getDueStatus(dueDate) {
+            const parsed = parseDate(dueDate);
+            if (!parsed) {
+                return 'ok';
+            }
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const warningDate = new Date(today);
+            warningDate.setDate(today.getDate() + 7);
+            if (parsed < today) {
+                return 'overdue';
+            }
+            if (parsed <= warningDate) {
+                return 'warning';
+            }
+            return 'ok';
+        }
+
+        function getHighestDueStatus(items) {
+            let highest = 'ok';
+            (items || []).forEach(item => {
+                const status = getDueStatus(item.dueDate);
+                if (status === 'overdue') {
+                    highest = 'overdue';
+                } else if (status === 'warning' && highest === 'ok') {
+                    highest = 'warning';
+                }
+            });
+            return highest;
+        }
+
         function sortOpenItems(items) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -77,12 +108,18 @@
                         Domus.Utils.escapeHtml(item.unitName || '') +
                         '</span>'
                     : '';
-                const dueLabel = Domus.Utils.formatDate(item.dueDate);
                 const titleParts = [];
                 titleParts.push(Domus.Utils.escapeHtml(item.title || ''));
                 if (item.workflowName) {
                     titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
                 }
+                const dueStatus = getDueStatus(item.dueDate);
+                const dueDateLabel = Domus.Utils.formatDate(item.dueDate);
+                const dueClass = dueStatus === 'overdue'
+                    ? 'domus-task-date-overdue'
+                    : (dueStatus === 'warning' ? 'domus-task-date-warning' : '');
+                const dueText = Domus.Utils.escapeHtml(dueDateLabel || '—');
+                const dueHtml = dueClass ? '<span class="' + dueClass + '">' + dueText + '</span>' : dueText;
                 const descriptionBtn = showDescription && (item.description || item.actionType)
                     ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
                         className: 'domus-task-description',
@@ -123,7 +160,7 @@
                     showUnit ? unitCell : null,
                     titleParts.join(''),
                     showDescription ? descriptionBtn : null,
-                    Domus.Utils.escapeHtml(dueLabel || '—'),
+                    dueHtml,
                     showType ? buildTypeBadge(item.type) : null,
                     showAction ? actionBtn : null
                 ].filter(itemCell => itemCell !== null);
@@ -423,7 +460,7 @@
             });
         }
 
-        function buildUnitTasksContent(unitId, data, options = {}) {
+        function buildUnitOpenItems(unitId, data) {
             const openItems = [];
             (data.runs || []).forEach(run => {
                 const openStep = (run.steps || []).find(step => step.status === 'open');
@@ -454,6 +491,11 @@
                     dueDate: task.dueDate
                 });
             });
+            return openItems;
+        }
+
+        function buildUnitTasksContent(unitId, data, options = {}) {
+            const openItems = buildUnitOpenItems(unitId, data);
 
             const openTable = buildOpenTasksTable(openItems, { showUnit: false, wrapPanel: false });
             const openSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</h4>' + openTable;
@@ -601,30 +643,36 @@
 
         function loadUnitTasks(unitId, options = {}) {
             const body = document.getElementById('domus-unit-tasks-body');
-            if (!body) {
+            if (!body && typeof options.onOpenCount !== 'function') {
                 return;
             }
-            body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'Loading tasks…')) + '</div>';
+            if (body) {
+                body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'Loading tasks…')) + '</div>';
+            }
             Promise.all([
                 Domus.Api.getWorkflowRunsByUnit(unitId).catch(() => []),
                 Domus.Api.getTasksByUnit(unitId).catch(() => []),
                 Domus.Api.get('/units/' + unitId).catch(() => null)
             ])
                 .then(([runs, tasks, unit]) => {
-                    const openCount = (runs || []).reduce((count, run) => {
-                        const hasOpen = (run.steps || []).some(step => step.status === 'open');
-                        return count + (hasOpen ? 1 : 0);
-                    }, 0) + (tasks || []).filter(task => task.status === 'open').length;
-                    const content = buildUnitTasksContent(unitId, { runs, tasks, unitName: unit?.label || '' });
-                    body.innerHTML = content;
-                    Domus.UI.bindCollapsibles();
-                    bindUnitTaskActions(unitId, runs, { onRefresh: () => loadUnitTasks(unitId, options) });
+                    const unitData = { runs, tasks, unitName: unit?.label || '' };
+                    const openItems = buildUnitOpenItems(unitId, unitData);
+                    const openCount = openItems.length;
+                    const highestStatus = getHighestDueStatus(openItems);
+                    if (body) {
+                        const content = buildUnitTasksContent(unitId, unitData);
+                        body.innerHTML = content;
+                        Domus.UI.bindCollapsibles();
+                        bindUnitTaskActions(unitId, runs, { onRefresh: () => loadUnitTasks(unitId, options) });
+                    }
                     if (typeof options.onOpenCount === 'function') {
-                        options.onOpenCount(openCount);
+                        options.onOpenCount(openCount, highestStatus);
                     }
                 })
                 .catch(err => {
-                    body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
+                    if (body) {
+                        body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
+                    }
                 });
         }
 
