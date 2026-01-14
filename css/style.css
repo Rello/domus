@@ -916,12 +916,12 @@ body {
 }
 
 .domus-task-date-warning {
-    color: var(--color-warning);
+    color: var(--color-element-warning);
     font-weight: 600;
 }
 
 .domus-task-date-overdue {
-    color: var(--color-error);
+    color: var(--color-error-text);
     font-weight: 600;
 }
 
@@ -1011,7 +1011,7 @@ body {
 }
 
 .domus-kpi-number-warning {
-    color: var(--color-warning);
+    color: var(--color-element-warning);
 }
 
 .domus-kpi-number-ok {
@@ -1019,7 +1019,7 @@ body {
 }
 
 .domus-kpi-number-alert {
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 .domus-kpi-icon {
