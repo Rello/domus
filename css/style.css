@@ -38,6 +38,23 @@ body {
     width: 100%;
 }
 
+.domus-top-navigation {
+    max-width: 1200px;
+    margin: 0 auto 16px;
+    width: 100%;
+}
+
+#app-content .domus-top-navigation .domus-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0;
+}
+
+#app-content .domus-top-navigation .domus-nav li {
+    margin-bottom: 0;
+}
+
 .domus-detail {
     width: 100%;
 }
@@ -54,7 +71,7 @@ body {
     background: initial !important;
     filter: initial !important;
     border-right: var(--domus-border);
-    width: 200px !important;
+    width: 180px !important;
     display: flex;
     flex-direction: column;
     min-height: 100%;

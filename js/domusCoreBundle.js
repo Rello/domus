@@ -1029,12 +1029,28 @@
     Domus.Navigation = (function() {
         function render() {
             const container = document.getElementById('app-navigation');
-            if (!container) return;
+            const topNavContainer = document.getElementById('domus-top-navigation');
+            if (!container && !topNavContainer) return;
 
             const activeView = getActiveView();
 
-            container.innerHTML = '';
-            container.appendChild(buildNavList(getMenuItems(), activeView));
+            let usedContainerForPrimary = false;
+            if (topNavContainer) {
+                topNavContainer.innerHTML = '';
+                const topNavList = buildNavList(getMenuItems(), activeView);
+                topNavList.classList.add('domus-nav-top');
+                topNavContainer.appendChild(topNavList);
+            } else if (container) {
+                container.innerHTML = '';
+                container.appendChild(buildNavList(getMenuItems(), activeView));
+                usedContainerForPrimary = true;
+            }
+
+            if (container) {
+                if (!usedContainerForPrimary) {
+                    container.innerHTML = '';
+                }
+            }
 
             const roleOptions = Domus.Role.getRoleOptions();
             if (roleOptions.length > 1) {
@@ -1052,14 +1068,18 @@
                 });
                 roleSwitcher.appendChild(label);
                 roleSwitcher.appendChild(select);
-                container.appendChild(roleSwitcher);
+                if (container) {
+                    container.appendChild(roleSwitcher);
+                }
             }
 
             const bottomItems = getBottomItems();
             if (bottomItems.length) {
                 const bottomList = buildNavList(bottomItems, activeView);
                 bottomList.classList.add('domus-nav-bottom');
-                container.appendChild(bottomList);
+                if (container) {
+                    container.appendChild(bottomList);
+                }
             }
         }
 
