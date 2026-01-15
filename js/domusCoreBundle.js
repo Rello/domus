@@ -526,7 +526,7 @@
             return createIconButton(iconClass, label, options).outerHTML;
         }
 
-        function buildScopeAddButton(label, options = {}) {
+        function buildScopeAddButton(iconClass, label, options = {}) {
             const btn = document.createElement('button');
             const classes = ['domus-scope-add-button'];
             if (options.className) {
@@ -549,7 +549,7 @@
                 });
             }
 
-            btn.appendChild(createIconSpan('domus-icon-scope'));
+            btn.appendChild(createIconSpan(iconClass));
             btn.appendChild(createIconSpan('domus-icon-add'));
 
             const hiddenLabel = document.createElement('span');

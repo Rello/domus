@@ -350,7 +350,7 @@
             Domus.Api.getUnitsStatisticsOverview()
                 .then(statistics => {
                     const header = '<div class="domus-toolbar">' +
-                        Domus.UI.buildScopeAddButton(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }), {
+                        Domus.UI.buildScopeAddButton('domus-icon-unit', t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }), {
                             id: 'domus-unit-create',
                             className: 'primary'
                         }) +

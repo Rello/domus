@@ -119,7 +119,7 @@
             Domus.Api.getPartners()
                 .then(partners => {
                     const toolbar = '<div class="domus-toolbar">' +
-                        Domus.UI.buildScopeAddButton(t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }), {
+                        Domus.UI.buildScopeAddButton('domus-icon-partner', t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }), {
                             id: 'domus-partner-create',
                             className: 'primary'
                         }) +

@@ -94,6 +94,14 @@ body {
     gap: 6px;
 }
 
+.domus-scope-add-button.primary {
+    color: #ffffff;
+}
+
+.domus-scope-add-button.primary .domus-icon {
+    filter: brightness(0) invert(1);
+}
+
 .domus-detail {
     width: 100%;
 }

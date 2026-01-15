@@ -52,7 +52,7 @@
             Domus.Api.getBookings()
                 .then(bookings => {
                     const toolbar = '<div class="domus-toolbar">' +
-                        Domus.UI.buildScopeAddButton(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') }), {
+                        Domus.UI.buildScopeAddButton('domus-icon-booking', t('domus', 'Add {entity}', { entity: t('domus', 'Booking') }), {
                             id: 'domus-booking-create',
                             className: 'primary'
                         }) +
