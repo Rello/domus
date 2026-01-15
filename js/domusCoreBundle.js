@@ -226,6 +226,8 @@
             createUnit: data => request('POST', '/units', data),
             updateUnit: (id, data) => request('PUT', `/units/${id}`, data),
             deleteUnit: id => request('DELETE', `/units/${id}`),
+            exportUnitDataset: unitId => request('GET', `/units/${unitId}/export`),
+            importUnitDataset: (payload, propertyId) => request('POST', '/units/import', { payload, propertyId }),
             getDistributions: (propertyId, options = {}) => {
                 const params = appendFilters(new URLSearchParams(), { unitId: options.unitId });
                 return request('GET', buildUrl(`/properties/${propertyId}/distributions`, params));

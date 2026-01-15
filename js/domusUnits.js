@@ -349,8 +349,13 @@
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Units') }));
             Domus.Api.getUnitsStatisticsOverview()
                 .then(statistics => {
+                    const canImport = !Domus.Role.isTenantView();
+                    const importButton = canImport
+                        ? '<button id="domus-unit-import" class="secondary">' + Domus.Utils.escapeHtml(t('domus', 'Import unit data')) + '</button>'
+                        : '';
                     const header = '<div class="domus-toolbar">' +
                         '<button id="domus-unit-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>' +
+                        importButton +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
 
@@ -370,6 +375,8 @@
         function bindList() {
             const createBtn = document.getElementById('domus-unit-create');
             if (createBtn) createBtn.addEventListener('click', () => openCreateModal());
+            const importBtn = document.getElementById('domus-unit-import');
+            if (importBtn) importBtn.addEventListener('click', () => openImportModal());
             Domus.UI.bindRowNavigation();
         }
 
@@ -819,6 +826,7 @@
                     ]);
                     const standardActions = [
                         Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-unit-details' }),
+                        Domus.UI.buildIconButton('domus-icon-document', t('domus', 'Export data'), { id: 'domus-unit-export' }),
                         Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-unit-delete' })
                     ];
                     const contextActions = isBuildingManagement
@@ -1076,6 +1084,7 @@
         function bindDetailActions(id, unit) {
             const detailsBtn = document.getElementById('domus-unit-details');
             const deleteBtn = document.getElementById('domus-unit-delete');
+            const exportBtn = document.getElementById('domus-unit-export');
             const partnersToggleBtn = document.getElementById('domus-unit-toggle-partners');
             const partnersPanel = document.getElementById('domus-unit-partners-panel');
 
@@ -1092,6 +1101,7 @@
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
             });
+            exportBtn?.addEventListener('click', () => openExportModal(id));
             partnersToggleBtn?.addEventListener('click', () => {
                 if (!partnersPanel) {
                     return;
@@ -1193,6 +1203,133 @@
                     { requireProperty, mode, hidePropertyField });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        function openExportModal(unitId) {
+            Domus.Api.exportUnitDataset(unitId)
+                .then(payload => {
+                    const json = JSON.stringify(payload, null, 2);
+                    const content = '<div class="domus-form-row">' +
+                        '<label for="domus-unit-export-data">' + Domus.Utils.escapeHtml(t('domus', 'Export data')) + '</label>' +
+                        '<textarea id="domus-unit-export-data" rows="14" readonly></textarea>' +
+                        '<p class="muted">' + Domus.Utils.escapeHtml(t('domus', 'Documents are not included.')) + '</p>' +
+                        '</div>' +
+                        '<div class="domus-form-actions">' +
+                        '<button type="button" class="secondary" id="domus-unit-export-copy">' + Domus.Utils.escapeHtml(t('domus', 'Copy')) + '</button>' +
+                        '<button type="button" id="domus-unit-export-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button>' +
+                        '</div>';
+                    const modalContext = Domus.UI.openModal({
+                        title: t('domus', 'Export unit data'),
+                        content,
+                        size: 'large'
+                    });
+                    const textarea = modalContext.modalEl.querySelector('#domus-unit-export-data');
+                    const copyBtn = modalContext.modalEl.querySelector('#domus-unit-export-copy');
+                    const closeBtn = modalContext.modalEl.querySelector('#domus-unit-export-close');
+                    if (textarea) {
+                        textarea.value = json;
+                    }
+                    if (copyBtn) {
+                        copyBtn.addEventListener('click', () => {
+                            const text = textarea ? textarea.value : json;
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(text).then(() => {
+                                    Domus.UI.showNotification(t('domus', 'Export data copied to clipboard.'), 'success');
+                                });
+                                return;
+                            }
+                            if (textarea) {
+                                textarea.select();
+                                document.execCommand('copy');
+                                Domus.UI.showNotification(t('domus', 'Export data copied to clipboard.'), 'success');
+                            }
+                        });
+                    }
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', () => modalContext.close());
+                    }
+                })
+                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        function openImportModal() {
+            const isBuildingManagement = Domus.Permission.isBuildingManagement();
+            const propertyPromise = isBuildingManagement ? Domus.Api.getProperties().catch(() => []) : Promise.resolve([]);
+            propertyPromise.then(properties => {
+                const propertyOptions = (properties || []).map(property => (
+                    '<option value="' + Domus.Utils.escapeHtml(String(property.id)) + '">' +
+                    Domus.Utils.escapeHtml(property.name || property.id) +
+                    '</option>'
+                ));
+                const propertySelect = isBuildingManagement
+                    ? '<div class="domus-form-row">' +
+                        '<label for="domus-unit-import-property">' + Domus.Utils.escapeHtml(t('domus', 'Select property')) + '</label>' +
+                        '<select id="domus-unit-import-property" required>' +
+                        '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'Select property')) + '</option>' +
+                        propertyOptions.join('') +
+                        '</select>' +
+                        '</div>'
+                    : '';
+                const content = '<form id="domus-unit-import-form">' +
+                    propertySelect +
+                    '<div class="domus-form-row">' +
+                    '<label for="domus-unit-import-data">' + Domus.Utils.escapeHtml(t('domus', 'Paste export data')) + '</label>' +
+                    '<textarea id="domus-unit-import-data" rows="14" required></textarea>' +
+                    '</div>' +
+                    '<div class="domus-form-actions">' +
+                    '<button type="button" id="domus-unit-import-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                    '<button type="submit" class="primary" id="domus-unit-import-submit">' + Domus.Utils.escapeHtml(t('domus', 'Import')) + '</button>' +
+                    '</div>' +
+                    '</form>';
+                const modalContext = Domus.UI.openModal({
+                    title: t('domus', 'Import unit data'),
+                    content,
+                    size: 'large'
+                });
+                const form = modalContext.modalEl.querySelector('#domus-unit-import-form');
+                const cancelBtn = modalContext.modalEl.querySelector('#domus-unit-import-cancel');
+                const submitBtn = modalContext.modalEl.querySelector('#domus-unit-import-submit');
+                const textArea = modalContext.modalEl.querySelector('#domus-unit-import-data');
+                const propertySelectEl = modalContext.modalEl.querySelector('#domus-unit-import-property');
+                cancelBtn?.addEventListener('click', () => modalContext.close());
+                form?.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    if (submitBtn) submitBtn.disabled = true;
+                    let data;
+                    try {
+                        data = JSON.parse(textArea ? textArea.value : '{}');
+                    } catch (error) {
+                        if (submitBtn) submitBtn.disabled = false;
+                        Domus.UI.showNotification(t('domus', 'Import data must be valid JSON.'), 'error');
+                        return;
+                    }
+
+                    const selectedPropertyId = propertySelectEl ? propertySelectEl.value : '';
+                    if (isBuildingManagement && !selectedPropertyId) {
+                        if (submitBtn) submitBtn.disabled = false;
+                        Domus.UI.showNotification(t('domus', 'Property is required.'), 'error');
+                        return;
+                    }
+
+                    Domus.Api.importUnitDataset(data, selectedPropertyId || null)
+                        .then(response => {
+                            modalContext.close();
+                            Domus.UI.showNotification(t('domus', 'Import completed.'), 'success');
+                            (response?.warnings || []).forEach(message => {
+                                Domus.UI.showNotification(message, 'info');
+                            });
+                            if (response?.unitId) {
+                                Domus.Router.navigate('unitDetail', [response.unitId]);
+                            } else {
+                                renderList();
+                            }
+                        })
+                        .catch(err => {
+                            Domus.UI.showNotification(err.message, 'error');
+                            if (submitBtn) submitBtn.disabled = false;
+                        });
+                });
+            });
         }
 
         function bindUnitForm(modalContext, onSubmit, options = {}) {
