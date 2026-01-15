@@ -94,12 +94,20 @@ body {
     gap: 6px;
 }
 
-.domus-scope-add-button.primary {
+.domus-scope-add-button.primary,
+.domus-back-button.primary {
     color: #ffffff;
 }
 
-.domus-scope-add-button.primary .domus-icon {
+.domus-scope-add-button.primary .domus-icon,
+.domus-back-button.primary .domus-icon {
     filter: brightness(0) invert(1);
+}
+
+.domus-back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .domus-detail {
@@ -189,7 +197,17 @@ body {
     display: flex;
     gap: 12px;
     align-items: center;
+    justify-content: flex-end;
     margin-bottom: 16px;
+}
+
+.domus-toolbar .domus-inline-label {
+    order: 1;
+}
+
+.domus-toolbar .domus-scope-add-button.primary,
+.domus-toolbar .domus-back-button {
+    order: 2;
 }
 
 .domus-analytics-layout {
@@ -1588,10 +1606,6 @@ body {
 
 .domus-icon-confirm-year {
     background-image: url(../img/confirmYear.svg);
-}
-
-.domus-icon-scope {
-    background-image: url(../img/scope.svg);
 }
 
 @media (max-width: 1000px) {

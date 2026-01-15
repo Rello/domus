@@ -367,6 +367,10 @@
             if (toolbar) {
                 toolbarHost.appendChild(toolbar);
             }
+            const backButton = contentTarget.querySelector('.domus-back-button');
+            if (backButton) {
+                toolbarHost.appendChild(backButton);
+            }
         }
 
         function renderSidebar(html) {
@@ -514,6 +518,42 @@
             hiddenLabel.className = 'domus-visually-hidden';
             hiddenLabel.textContent = label || '';
             btn.appendChild(hiddenLabel);
+
+            if (typeof options.onClick === 'function') {
+                btn.addEventListener('click', options.onClick);
+            }
+
+            return btn;
+        }
+
+        function createIconLabelButton(iconClass, label, options = {}) {
+            const btn = document.createElement('button');
+            const classes = [];
+            if (options.className) {
+                classes.push(options.className);
+            }
+            btn.className = classes.join(' ');
+            btn.type = options.type || 'button';
+            if (options.id) {
+                btn.id = options.id;
+            }
+            if (label) {
+                btn.setAttribute('aria-label', label);
+                btn.title = options.title || label;
+            }
+            if (options.dataset) {
+                Object.entries(options.dataset).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        btn.dataset[key] = value;
+                    }
+                });
+            }
+
+            btn.appendChild(createIconSpan(iconClass));
+            const text = document.createElement('span');
+            text.className = 'domus-button-label';
+            text.textContent = label || '';
+            btn.appendChild(text);
 
             if (typeof options.onClick === 'function') {
                 btn.addEventListener('click', options.onClick);
@@ -827,13 +867,13 @@
 
         function buildBackButton(targetView, args) {
             const serializedArgs = (args || []).join(',');
-            return buildIconButton('domus-icon-back', t('domus', 'Back'), {
-                className: 'domus-back-button',
+            return createIconLabelButton('domus-icon-back', t('domus', 'Back'), {
+                className: 'domus-back-button primary',
                 dataset: {
                     back: targetView,
                     backArgs: serializedArgs
                 }
-            });
+            }).outerHTML;
         }
 
         function buildSectionHeader(title, action) {
