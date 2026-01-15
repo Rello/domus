@@ -7,6 +7,8 @@
     --domus-border-style: solid;
     --domus-border-color: var(--color-border);
     --domus-border: var(--domus-border-width) var(--domus-border-style) var(--domus-border-color);
+    --domus-input-border-width: 2px;
+    --domus-input-border: var(--domus-input-border-width) solid var(--color-border);
     --domus-panel-background: var(--color-main-background);
     --domus-panel-border: var(--domus-border);
     --domus-panel-shadow: 0 15px 15px rgba(0, 0, 0, 0.05);
@@ -369,12 +371,32 @@ body {
     font-weight: 600;
 }
 
+.app-domus input[type='text'],
+.app-domus input[type='number'],
+.app-domus input[type='email'],
+.app-domus input[type='password'],
+.app-domus input[type='date'],
+.app-domus input[type='datetime-local'],
+.app-domus input[type='time'],
+.app-domus input[type='month'],
+.app-domus input[type='week'],
+.app-domus input[type='search'],
+.app-domus input[type='tel'],
+.app-domus input[type='url'],
+.app-domus select,
+.app-domus textarea {
+    border: none;
+    border-bottom: var(--domus-input-border);
+    border-radius: 0;
+}
+
 .domus-form input,
 .domus-form select,
 .domus-form textarea {
     padding: 8px;
-    border: var(--domus-border);
-    border-radius: 6px;
+    border: none;
+    border-bottom: var(--domus-input-border);
+    border-radius: 0;
 }
 
 .domus-form textarea {

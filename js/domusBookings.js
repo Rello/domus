@@ -617,7 +617,7 @@
                     }, {
                         multiEntry: true,
                         accountOptions,
-                        initialEntries: defaults && (defaults.account || defaults.amount) ? [{ account: defaults.account, amount: defaults.amount }] : [{}],
+                        initialEntries: defaults && (defaults.account || defaults.amount) ? [{ account: defaults.account, amount: defaults.amount }] : [],
                         docWidget
                     });
                 })
@@ -935,7 +935,7 @@
                 return;
             }
             container.innerHTML = '';
-            const entries = initialEntries && initialEntries.length ? initialEntries : [{}];
+            const entries = initialEntries && initialEntries.length ? initialEntries : [{ amount: 0, isDefaultAmount: true }];
             entries.forEach(entry => {
                 container.appendChild(buildBookingEntryRow(accountOptions, entry, multiEntry));
             });
@@ -969,6 +969,9 @@
             amountInput.dataset.role = 'amount';
             if (entry.amount || entry.amount === 0) {
                 amountInput.value = entry.amount;
+                if (entry.isDefaultAmount) {
+                    amountInput.dataset.defaultAmount = '1';
+                }
             }
 
             row.appendChild(accountSelect);
@@ -995,7 +998,8 @@
             const rows = container.querySelectorAll('.domus-booking-entry');
             const lastRow = rows[rows.length - 1];
             const amountInput = lastRow?.querySelector('[data-role="amount"]');
-            if (amountInput && amountInput.value !== '') {
+            const isDefaultAmount = amountInput?.dataset?.defaultAmount === '1';
+            if (amountInput && amountInput.value !== '' && !(isDefaultAmount && amountInput.value === '0')) {
                 container.appendChild(buildBookingEntryRow(accountOptions, {}, true));
                 updateRemoveButtons(container);
             }
@@ -1033,8 +1037,10 @@
             const rows = Array.from(container.querySelectorAll('.domus-booking-entry'));
             rows.forEach(row => {
                 const account = row.querySelector('[data-role="account"]')?.value || '';
-                const amountValue = (row.querySelector('[data-role="amount"]')?.value || '').trim();
-                const hasAmount = amountValue !== '';
+                const amountInput = row.querySelector('[data-role="amount"]');
+                const amountValue = (amountInput?.value || '').trim();
+                const isDefaultAmount = amountInput?.dataset?.defaultAmount === '1';
+                const hasAmount = amountValue !== '' && !(isDefaultAmount && amountValue === '0' && account === '');
                 const hasAccount = account !== '';
 
                 if (!hasAmount && !hasAccount) {
