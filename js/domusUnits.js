@@ -351,15 +351,17 @@
                 .then(statistics => {
                     const canImport = !Domus.Role.isTenantView();
                     const importButton = canImport
-                        ? '<button id="domus-unit-import" class="secondary">' + Domus.Utils.escapeHtml(t('domus', 'Import unit data')) + '</button>'
+                        ? Domus.UI.createIconButton('domus-icon-add', t('domus', 'Import'), {
+                            id: 'domus-unit-import',
+                            className: 'domus-scope-add-button secondary'
+                        }).outerHTML
                         : '';
                     const header = '<div class="domus-toolbar">' +
-                        '<button id="domus-unit-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>' +
-                        importButton +
                         Domus.UI.buildScopeAddButton('domus-icon-unit', t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }), {
                             id: 'domus-unit-create',
                             className: 'primary'
                         }) +
+                        importButton +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
 
