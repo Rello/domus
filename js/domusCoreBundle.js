@@ -350,6 +350,26 @@
                 appContent.classList.add('app-domus');
                 const contentTarget = document.getElementById('domus-content') || appContent;
                 contentTarget.innerHTML = html;
+                relocateToolbar(contentTarget);
+            }
+        }
+
+        function relocateToolbar(contentTarget) {
+            const toolbarHost = document.getElementById('domus-top-nav-secondary');
+            if (!toolbarHost) {
+                return;
+            }
+            toolbarHost.innerHTML = '';
+            if (!contentTarget) {
+                return;
+            }
+            const toolbar = contentTarget.querySelector('.domus-toolbar');
+            if (toolbar) {
+                toolbarHost.appendChild(toolbar);
+            }
+            const backButton = contentTarget.querySelector('.domus-back-button');
+            if (backButton) {
+                toolbarHost.appendChild(backButton);
             }
         }
 
@@ -462,6 +482,13 @@
             return { modalEl: modal, close: closeModal };
         }
 
+        function createIconSpan(iconClass) {
+            const icon = document.createElement('span');
+            icon.className = ['domus-icon', iconClass].filter(Boolean).join(' ');
+            icon.setAttribute('aria-hidden', 'true');
+            return icon;
+        }
+
         function createIconButton(iconClass, label, options = {}) {
             const btn = document.createElement('button');
             const classes = ['domus-icon-only-button'];
@@ -485,10 +512,7 @@
                 });
             }
 
-            const icon = document.createElement('span');
-            icon.className = ['domus-icon', iconClass].filter(Boolean).join(' ');
-            icon.setAttribute('aria-hidden', 'true');
-            btn.appendChild(icon);
+            btn.appendChild(createIconSpan(iconClass));
 
             const hiddenLabel = document.createElement('span');
             hiddenLabel.className = 'domus-visually-hidden';
@@ -502,8 +526,82 @@
             return btn;
         }
 
+        function createIconLabelButton(iconClass, label, options = {}) {
+            const btn = document.createElement('button');
+            const classes = [];
+            if (options.className) {
+                classes.push(options.className);
+            }
+            btn.className = classes.join(' ');
+            btn.type = options.type || 'button';
+            if (options.id) {
+                btn.id = options.id;
+            }
+            if (label) {
+                btn.setAttribute('aria-label', label);
+                btn.title = options.title || label;
+            }
+            if (options.dataset) {
+                Object.entries(options.dataset).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        btn.dataset[key] = value;
+                    }
+                });
+            }
+
+            btn.appendChild(createIconSpan(iconClass));
+            const text = document.createElement('span');
+            text.className = 'domus-button-label';
+            text.textContent = label || '';
+            btn.appendChild(text);
+
+            if (typeof options.onClick === 'function') {
+                btn.addEventListener('click', options.onClick);
+            }
+
+            return btn;
+        }
+
         function buildIconButton(iconClass, label, options = {}) {
             return createIconButton(iconClass, label, options).outerHTML;
+        }
+
+        function buildScopeAddButton(iconClass, label, options = {}) {
+            const btn = document.createElement('button');
+            const classes = ['domus-scope-add-button'];
+            if (options.className) {
+                classes.push(options.className);
+            }
+            btn.className = classes.join(' ');
+            btn.type = options.type || 'button';
+            if (options.id) {
+                btn.id = options.id;
+            }
+            if (label) {
+                btn.setAttribute('aria-label', label);
+                btn.title = options.title || label;
+            }
+            if (options.dataset) {
+                Object.entries(options.dataset).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        btn.dataset[key] = value;
+                    }
+                });
+            }
+
+            btn.appendChild(createIconSpan(iconClass));
+            btn.appendChild(createIconSpan('domus-icon-add'));
+
+            const hiddenLabel = document.createElement('span');
+            hiddenLabel.className = 'domus-visually-hidden';
+            hiddenLabel.textContent = label || '';
+            btn.appendChild(hiddenLabel);
+
+            if (typeof options.onClick === 'function') {
+                btn.addEventListener('click', options.onClick);
+            }
+
+            return btn.outerHTML;
         }
 
         function buildModalAction(label, onClick, iconClass = 'domus-icon-edit') {
@@ -769,13 +867,13 @@
 
         function buildBackButton(targetView, args) {
             const serializedArgs = (args || []).join(',');
-            return buildIconButton('domus-icon-back', t('domus', 'Back'), {
-                className: 'domus-back-button',
+            return createIconLabelButton('domus-icon-back', t('domus', 'Back'), {
+                className: 'domus-back-button primary',
                 dataset: {
                     back: targetView,
                     backArgs: serializedArgs
                 }
-            });
+            }).outerHTML;
         }
 
         function buildSectionHeader(title, action) {
@@ -954,6 +1052,7 @@
             buildFormTable,
             openModal,
             buildIconButton,
+            buildScopeAddButton,
             createIconButton,
             buildModalAction,
             createFileDropZone
@@ -1029,12 +1128,28 @@
     Domus.Navigation = (function() {
         function render() {
             const container = document.getElementById('app-navigation');
-            if (!container) return;
+            const topNavContainer = document.getElementById('domus-top-nav-primary');
+            if (!container && !topNavContainer) return;
 
             const activeView = getActiveView();
 
-            container.innerHTML = '';
-            container.appendChild(buildNavList(getMenuItems(), activeView));
+            let usedContainerForPrimary = false;
+            if (topNavContainer) {
+                topNavContainer.innerHTML = '';
+                const topNavList = buildNavList(getMenuItems(), activeView);
+                topNavList.classList.add('domus-nav-top');
+                topNavContainer.appendChild(topNavList);
+            } else if (container) {
+                container.innerHTML = '';
+                container.appendChild(buildNavList(getMenuItems(), activeView));
+                usedContainerForPrimary = true;
+            }
+
+            if (container) {
+                if (!usedContainerForPrimary) {
+                    container.innerHTML = '';
+                }
+            }
 
             const roleOptions = Domus.Role.getRoleOptions();
             if (roleOptions.length > 1) {
@@ -1052,14 +1167,18 @@
                 });
                 roleSwitcher.appendChild(label);
                 roleSwitcher.appendChild(select);
-                container.appendChild(roleSwitcher);
+                if (container) {
+                    container.appendChild(roleSwitcher);
+                }
             }
 
             const bottomItems = getBottomItems();
             if (bottomItems.length) {
                 const bottomList = buildNavList(bottomItems, activeView);
                 bottomList.classList.add('domus-nav-bottom');
-                container.appendChild(bottomList);
+                if (container) {
+                    container.appendChild(bottomList);
+                }
             }
         }
 
