@@ -350,6 +350,22 @@
                 appContent.classList.add('app-domus');
                 const contentTarget = document.getElementById('domus-content') || appContent;
                 contentTarget.innerHTML = html;
+                relocateToolbar(contentTarget);
+            }
+        }
+
+        function relocateToolbar(contentTarget) {
+            const toolbarHost = document.getElementById('domus-top-nav-secondary');
+            if (!toolbarHost) {
+                return;
+            }
+            toolbarHost.innerHTML = '';
+            if (!contentTarget) {
+                return;
+            }
+            const toolbar = contentTarget.querySelector('.domus-toolbar');
+            if (toolbar) {
+                toolbarHost.appendChild(toolbar);
             }
         }
 
@@ -1029,7 +1045,7 @@
     Domus.Navigation = (function() {
         function render() {
             const container = document.getElementById('app-navigation');
-            const topNavContainer = document.getElementById('domus-top-navigation');
+            const topNavContainer = document.getElementById('domus-top-nav-primary');
             if (!container && !topNavContainer) return;
 
             const activeView = getActiveView();

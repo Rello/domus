@@ -44,6 +44,24 @@ body {
     width: 100%;
 }
 
+.domus-top-navigation-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+#app-content .domus-top-nav-primary {
+    flex: 1 1 auto;
+}
+
+#app-content .domus-top-nav-secondary {
+    display: flex;
+    justify-content: flex-end;
+    flex: 0 1 auto;
+}
+
 #app-content .domus-top-navigation .domus-nav {
     display: flex;
     flex-wrap: wrap;
@@ -53,6 +71,21 @@ body {
 
 #app-content .domus-top-navigation .domus-nav li {
     margin-bottom: 0;
+}
+
+#app-content .domus-top-navigation .domus-nav li.active a,
+#app-content .domus-top-navigation .domus-nav a:hover {
+    background: #4B5E53;
+    color: #ffffff;
+}
+
+#app-content .domus-top-navigation .domus-nav li.active .domus-icon,
+#app-content .domus-top-navigation .domus-nav a:hover .domus-icon {
+    filter: brightness(0) invert(1);
+}
+
+#app-content .domus-top-nav-secondary .domus-toolbar {
+    margin: 0;
 }
 
 .domus-detail {

@@ -19,7 +19,12 @@ Util::addScript('domus', 'domusDocuments');
 <div id="app-navigation"></div>
 <?php $accountsJson = htmlspecialchars(json_encode($accounts ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8'); ?>
 <div id="app-content" data-accounts="<?php echo $accountsJson; ?>">
-    <div id="domus-top-navigation" class="domus-top-navigation"></div>
+    <div id="domus-top-navigation" class="domus-top-navigation">
+        <div class="domus-top-navigation-inner">
+            <div id="domus-top-nav-primary" class="domus-top-nav-primary"></div>
+            <div id="domus-top-nav-secondary" class="domus-top-nav-secondary"></div>
+        </div>
+    </div>
     <div id="domus-content" class="domus-content"></div>
 </div>
 <div id="app-sidebar"></div>
