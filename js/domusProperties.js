@@ -10,7 +10,10 @@
             Domus.Api.getProperties()
                 .then(properties => {
                     const header = '<div class="domus-toolbar">' +
-                        '<button id="domus-property-create-btn" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Property') })) + '</button>' +
+                        Domus.UI.buildScopeAddButton('domus-icon-property', t('domus', 'Add {entity}', { entity: t('domus', 'Property') }), {
+                            id: 'domus-property-create-btn',
+                            className: 'primary'
+                        }) +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
                     const rows = (properties || []).map(p => ({

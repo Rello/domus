@@ -356,6 +356,10 @@
                     const header = '<div class="domus-toolbar">' +
                         '<button id="domus-unit-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>' +
                         importButton +
+                        Domus.UI.buildScopeAddButton('domus-icon-unit', t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }), {
+                            id: 'domus-unit-create',
+                            className: 'primary'
+                        }) +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
 

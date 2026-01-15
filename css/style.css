@@ -7,6 +7,8 @@
     --domus-border-style: solid;
     --domus-border-color: var(--color-border);
     --domus-border: var(--domus-border-width) var(--domus-border-style) var(--domus-border-color);
+    --domus-input-border-width: 2px;
+    --domus-input-border: var(--domus-input-border-width) solid var(--color-border);
     --domus-panel-background: var(--color-main-background);
     --domus-panel-border: var(--domus-border);
     --domus-panel-shadow: 0 15px 15px rgba(0, 0, 0, 0.05);
@@ -38,6 +40,78 @@ body {
     width: 100%;
 }
 
+.domus-top-navigation {
+    max-width: 1200px;
+    margin: 0 auto 16px;
+    width: 100%;
+}
+
+.domus-top-navigation-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+#app-content .domus-top-nav-primary {
+    flex: 1 1 auto;
+}
+
+#app-content .domus-top-nav-secondary {
+    display: flex;
+    justify-content: flex-end;
+    flex: 0 1 auto;
+}
+
+#app-content .domus-top-navigation .domus-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0;
+}
+
+#app-content .domus-top-navigation .domus-nav li {
+    margin-bottom: 0;
+}
+
+#app-content .domus-top-navigation .domus-nav li.active a,
+#app-content .domus-top-navigation .domus-nav a:hover {
+    background: #4B5E53;
+    color: #ffffff;
+}
+
+#app-content .domus-top-navigation .domus-nav li.active .domus-icon,
+#app-content .domus-top-navigation .domus-nav a:hover .domus-icon {
+    filter: brightness(0) invert(1);
+}
+
+#app-content .domus-top-nav-secondary .domus-toolbar {
+    margin: 0;
+}
+
+.domus-scope-add-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.domus-scope-add-button.primary,
+.domus-back-button.primary {
+    color: #ffffff;
+}
+
+.domus-scope-add-button.primary .domus-icon,
+.domus-back-button.primary .domus-icon {
+    filter: brightness(0) invert(1);
+}
+
+.domus-back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .domus-detail {
     width: 100%;
 }
@@ -54,7 +128,7 @@ body {
     background: initial !important;
     filter: initial !important;
     border-right: var(--domus-border);
-    width: 200px !important;
+    width: 180px !important;
     display: flex;
     flex-direction: column;
     min-height: 100%;
@@ -125,7 +199,17 @@ body {
     display: flex;
     gap: 12px;
     align-items: center;
+    justify-content: flex-end;
     margin-bottom: 16px;
+}
+
+.domus-toolbar .domus-inline-label {
+    order: 1;
+}
+
+.domus-toolbar .domus-scope-add-button.primary,
+.domus-toolbar .domus-back-button {
+    order: 2;
 }
 
 .domus-analytics-layout {
@@ -287,12 +371,32 @@ body {
     font-weight: 600;
 }
 
+.app-domus input[type='text'],
+.app-domus input[type='number'],
+.app-domus input[type='email'],
+.app-domus input[type='password'],
+.app-domus input[type='date'],
+.app-domus input[type='datetime-local'],
+.app-domus input[type='time'],
+.app-domus input[type='month'],
+.app-domus input[type='week'],
+.app-domus input[type='search'],
+.app-domus input[type='tel'],
+.app-domus input[type='url'],
+.app-domus select,
+.app-domus textarea {
+    border: none;
+    border-bottom: var(--domus-input-border);
+    border-radius: 0;
+}
+
 .domus-form input,
 .domus-form select,
 .domus-form textarea {
     padding: 8px;
-    border: var(--domus-border);
-    border-radius: 6px;
+    border: none;
+    border-bottom: var(--domus-input-border);
+    border-radius: 0;
 }
 
 .domus-form textarea {
