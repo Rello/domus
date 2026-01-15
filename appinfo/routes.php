@@ -24,6 +24,8 @@ return [
         ['name' => 'Unit#destroy', 'url' => '/units/{id}', 'verb' => 'DELETE'],
         ['name' => 'Unit#listSettlements', 'url' => '/units/{id}/settlements', 'verb' => 'GET'],
         ['name' => 'Unit#createSettlement', 'url' => '/units/{id}/settlements', 'verb' => 'POST'],
+        ['name' => 'Unit#exportDataset', 'url' => '/units/{id}/export', 'verb' => 'GET'],
+        ['name' => 'Unit#importDataset', 'url' => '/units/import', 'verb' => 'POST'],
         ['name' => 'Distribution#createForUnit', 'url' => '/units/{unitId}/distributions', 'verb' => 'POST'],
         ['name' => 'Distribution#listByUnit', 'url' => '/units/{unitId}/distributions', 'verb' => 'GET'],
         ['name' => 'PartnerRelation#listByUnit', 'url' => '/units/{unitId}/partners', 'verb' => 'GET'],

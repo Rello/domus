@@ -6,6 +6,7 @@ use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\ServiceChargeSettlementService;
 use OCA\Domus\Service\UnitService;
 use OCA\Domus\Service\PermissionService;
+use OCA\Domus\Service\UnitTransferService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
@@ -21,6 +22,7 @@ class UnitController extends Controller {
                 private UnitService                    $unitService,
                 private ServiceChargeSettlementService $settlementService,
                 private PermissionService              $permissionService,
+                private UnitTransferService            $unitTransferService,
                 private IL10N                          $l10n,
         ) {
                 parent::__construct(Application::APP_ID, $request);
@@ -138,6 +140,30 @@ class UnitController extends Controller {
 	public function createSettlement(int $id, int $year, int $partnerId): DataResponse {
 		$result = $this->settlementService->createReport($this->getUserId(), $id, $year, $partnerId);
 		return new DataResponse($result, Http::STATUS_CREATED);
+	}
+
+	#[NoAdminRequired]
+	public function exportDataset(int $id): DataResponse {
+		try {
+			return new DataResponse($this->unitTransferService->exportUnitDataset($id, $this->getUserId()));
+		} catch (\Throwable $e) {
+			return $this->notFound();
+		}
+	}
+
+	#[NoAdminRequired]
+	public function importDataset(?array $payload = null, ?int $propertyId = null): DataResponse {
+		if ($payload === null) {
+			return $this->validationError($this->l10n->t('Import data is missing.'));
+		}
+		try {
+			$result = $this->unitTransferService->importUnitDataset($payload, $this->getUserId(), $this->getRole(), $propertyId);
+			return new DataResponse($result, Http::STATUS_CREATED);
+		} catch (\InvalidArgumentException $e) {
+			return $this->validationError($e->getMessage());
+		} catch (\Throwable $e) {
+			return $this->notFound();
+		}
 	}
 
         private function getUserId(): string {
