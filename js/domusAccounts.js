@@ -358,7 +358,10 @@
             Domus.Api.getAccounts()
                 .then(nodes => {
                     const toolbar = '<div class="domus-toolbar">' +
-                        '<button id="domus-account-create-btn" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Account') })) + '</button>' +
+                        Domus.UI.buildScopeAddButton(t('domus', 'Add {entity}', { entity: t('domus', 'Account') }), {
+                            id: 'domus-account-create-btn',
+                            className: 'primary'
+                        }) +
                         '</div>';
                     Domus.UI.renderContent(toolbar + '<div class="domus-account-tree-wrapper">' + buildAccountTree(nodes || []) + '</div>');
                     updateAccountsFromHierarchy(nodes || []);

@@ -88,6 +88,12 @@ body {
     margin: 0;
 }
 
+.domus-scope-add-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .domus-detail {
     width: 100%;
 }
@@ -1574,6 +1580,10 @@ body {
 
 .domus-icon-confirm-year {
     background-image: url(../img/confirmYear.svg);
+}
+
+.domus-icon-scope {
+    background-image: url(../img/scope.svg);
 }
 
 @media (max-width: 1000px) {

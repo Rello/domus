@@ -119,7 +119,10 @@
             Domus.Api.getPartners()
                 .then(partners => {
                     const toolbar = '<div class="domus-toolbar">' +
-                        '<button id="domus-partner-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Partner') })) + '</button>' +
+                        Domus.UI.buildScopeAddButton(t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }), {
+                            id: 'domus-partner-create',
+                            className: 'primary'
+                        }) +
                         '<label class="domus-inline-label">' + Domus.Utils.escapeHtml(t('domus', 'Type')) + ' <select id="domus-partner-filter">' +
                         typeOptions.map(option => '<option value="' + Domus.Utils.escapeHtml(option.value) + '">' + Domus.Utils.escapeHtml(option.label) + '</option>').join('') +
                         '</select></label>' +

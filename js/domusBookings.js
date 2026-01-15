@@ -52,7 +52,10 @@
             Domus.Api.getBookings()
                 .then(bookings => {
                     const toolbar = '<div class="domus-toolbar">' +
-                        '<button id="domus-booking-create" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' +
+                        Domus.UI.buildScopeAddButton(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') }), {
+                            id: 'domus-booking-create',
+                            className: 'primary'
+                        }) +
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
 
