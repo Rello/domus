@@ -175,7 +175,13 @@
             detailsBtn?.addEventListener('click', () => openPropertyModal(id, 'view'));
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', () => {
-                    if (confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Property') }))) {
+                    Domus.UI.confirmAction({
+                        message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Property') }),
+                        confirmLabel: t('domus', 'Delete')
+                    }).then(confirmed => {
+                        if (!confirmed) {
+                            return;
+                        }
                         Domus.Api.deleteProperty(id)
                             .then(() => {
                                 Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Property') }), 'success');
@@ -183,7 +189,7 @@
                                 renderList();
                             })
                             .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                    }
+                    });
                 });
             }
 

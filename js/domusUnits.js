@@ -1096,16 +1096,21 @@
 
             detailsBtn?.addEventListener('click', () => openUnitModal(id, 'view'));
             deleteBtn?.addEventListener('click', () => {
-                if (!confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Unit') }))) {
-                    return;
-                }
-                Domus.Api.deleteUnit(id)
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Unit') }), 'success');
-                        Domus.UI.renderSidebar('');
-                        renderList();
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                Domus.UI.confirmAction({
+                    message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Unit') }),
+                    confirmLabel: t('domus', 'Delete')
+                }).then(confirmed => {
+                    if (!confirmed) {
+                        return;
+                    }
+                    Domus.Api.deleteUnit(id)
+                        .then(() => {
+                            Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Unit') }), 'success');
+                            Domus.UI.renderSidebar('');
+                            renderList();
+                        })
+                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                });
             });
             exportBtn?.addEventListener('click', () => openExportModal(id));
             partnersToggleBtn?.addEventListener('click', () => {

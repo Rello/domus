@@ -845,11 +845,16 @@ body {
     overflow-y: auto;
 }
 
+.domus-modal-message {
+    margin: 0 0 16px;
+}
+
 .domus-modal-footer {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
     padding: 0 14px 14px;
+    flex-wrap: wrap;
 }
 
 .domus-detail-hero {
