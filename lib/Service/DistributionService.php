@@ -156,12 +156,14 @@ class DistributionService {
             $period = $this->getBookingPeriod($booking);
             $this->assertKeyInPeriod($distributionKey, $period);
             $unitValues = $this->collectUnitValues($distributionKey, $period, $userId, $units);
-            $weights = $this->calculateWeights($distributionKey, $units, $unitValues);
-            $shares = $this->allocateShares($units, $weights, (float)$booking->getAmount());
-            if (!isset($shares[$unitId])) {
+            $shareDetails = $this->calculateShareDetails($distributionKey, $units, $unitValues);
+            $shareValue = $shareDetails['shares'][$unitId] ?? null;
+            $shareBase = $shareDetails['base'] ?? null;
+            if ($shareValue === null || $shareBase === null || (float)$shareBase <= 0) {
                 throw new \RuntimeException($this->l10n->t('Selected unit is not part of the distribution.'));
             }
-            $shareDetails = $this->calculateShareDetails($distributionKey, $units, $unitValues);
+            $weight = (float)$shareValue / (float)$shareBase;
+            $shareAmount = round((float)$booking->getAmount() * $weight, 2);
 
             $account = $this->accountService->resolveTopAccountNumber((string)$booking->getAccount(), $topAccountMap);
             if (!isset($rows[$account])) {
@@ -173,16 +175,16 @@ class DistributionService {
                     'distributionKeyId' => $distributionKey->getId(),
                     'distributionKeyName' => $distributionKey->getName(),
                     'distributionKeyType' => $distributionKey->getType(),
-                    'shareValue' => $shareDetails['shares'][$unitId] ?? null,
-                    'shareBase' => $shareDetails['base'] ?? null,
-                    'weight' => $shares[$unitId]['weight'] ?? null,
+                    'shareValue' => $shareValue,
+                    'shareBase' => $shareBase,
+                    'weight' => $weight,
                     'total' => 0.0,
                     'amount' => 0.0,
                 ];
             }
 
             $rows[$account]['total'] += (float)$booking->getAmount();
-            $rows[$account]['amount'] += (float)($shares[$unitId]['amount'] ?? 0.0);
+            $rows[$account]['amount'] += $shareAmount;
         }
 
         $rows = array_values($rows);
