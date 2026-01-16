@@ -1001,6 +1001,7 @@
             const value = customValue !== undefined
                 ? ((customValue === null || customValue === '') ? '—' : customValue)
                 : (options.value === undefined || options.value === null || options.value === '' ? '—' : Domus.Utils.escapeHtml(String(options.value)));
+            const subline = options.subline ? '<div class="domus-kpi-subline">' + Domus.Utils.escapeHtml(String(options.subline)) + '</div>' : '';
             const linkLabel = Domus.Utils.escapeHtml(options.linkLabel || t('domus', 'More'));
             const detailTarget = options.detailTarget ? ' data-kpi-target="' + Domus.Utils.escapeHtml(options.detailTarget) + '"' : '';
             const chartId = options.chartId ? Domus.Utils.escapeHtml(options.chartId) : '';
@@ -1012,6 +1013,7 @@
                 '<div class="domus-kpi-content">' +
                 '<div class="domus-kpi-headline">' + headline + '</div>' +
                 '<div class="domus-kpi-value">' + value + '</div>' +
+                subline +
                 '<a href="#" class="domus-kpi-more"' + detailTarget + '>' + linkLabel + '</a>' +
                 '</div>' +
                 chart +

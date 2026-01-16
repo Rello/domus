@@ -1120,6 +1120,11 @@ body {
     line-height: 1;
 }
 
+.domus-kpi-subline {
+    font-size: 12px;
+    color: var(--color-text-maxcontrast);
+}
+
 .domus-kpi-number {
     display: inline-flex;
     align-items: center;
