@@ -28,17 +28,8 @@ class DistributionService {
     /**
      * @throws DbException
      */
-    public function calculatePreview(int $bookingId, string $userId): array {
-        $context = $this->buildDistributionContext($bookingId, $userId, true);
-
-        return $this->buildPreview($context);
-    }
-
-    /**
-     * @throws DbException
-     */
     public function distribute(int $bookingId, string $userId): array {
-        $context = $this->buildDistributionContext($bookingId, $userId, false);
+        $context = $this->buildDistributionContext($bookingId, $userId);
         $booking = $context['booking'];
 
         if ($booking->getStatus() !== 'draft') {
@@ -246,16 +237,13 @@ class DistributionService {
     /**
      * @throws DbException
      */
-    private function buildDistributionContext(int $bookingId, string $userId, bool $enforceDraft): array {
+    private function buildDistributionContext(int $bookingId, string $userId): array {
         $booking = $this->bookingMapper->findForUser($bookingId, $userId);
         if (!$booking) {
             throw new \RuntimeException($this->l10n->t('Booking not found.'));
         }
         if ($booking->getPropertyId() === null) {
             throw new \RuntimeException($this->l10n->t('Distribution is only available for property bookings.'));
-        }
-        if ($enforceDraft && $booking->getStatus() !== 'draft') {
-            throw new \RuntimeException($this->l10n->t('Distribution preview is only available for draft bookings.'));
         }
 
         $property = $this->propertyMapper->findForUser((int)$booking->getPropertyId(), $userId);

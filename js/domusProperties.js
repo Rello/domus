@@ -81,14 +81,12 @@
                     ];
                     const contextActions = isBuildingManagement
                         ? [
-                            canManageDistributions ? '<button id="domus-preview-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Preview distribution')) + '</button>' : '',
                             canManageDistributions ? '<button id="domus-property-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : ''
                         ].filter(Boolean)
                         : [
                             '<button id="domus-add-unit">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>',
                             showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : '',
-                            canManageDistributions ? '<button id="domus-add-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : '',
-                            canManageDistributions ? '<button id="domus-preview-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Preview distribution')) + '</button>' : ''
+                            canManageDistributions ? '<button id="domus-add-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : ''
                         ].filter(Boolean);
                     const stats = Domus.UI.buildStatCards([
                         { label: t('domus', 'Units'), value: (property.units || []).length, hint: t('domus', 'Total units in this property'), formatValue: false },
@@ -209,9 +207,6 @@
             });
             document.getElementById('domus-add-distribution-inline')?.addEventListener('click', () => {
                 Domus.Distributions.openCreateKeyModal(id, () => renderDetail(id));
-            });
-            document.getElementById('domus-preview-distribution')?.addEventListener('click', () => {
-                Domus.Distributions.openPreviewModal(property);
             });
             document.getElementById('domus-property-distribution-report')?.addEventListener('click', () => {
                 Domus.DistributionReports.openModal({

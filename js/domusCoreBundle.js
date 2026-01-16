@@ -233,7 +233,6 @@
                 return request('GET', buildUrl(`/properties/${propertyId}/distributions`, params));
             },
             getUnitDistributions: (unitId) => request('GET', `/units/${unitId}/distributions`),
-            getDistributionPreview: (bookingId) => request('GET', `/bookings/${bookingId}/distribution-preview`),
             getDistributionReport: (propertyId, unitId, year) => {
                 const params = appendFilters(new URLSearchParams(), { propertyId, unitId, year });
                 return request('GET', buildUrl('/distribution-report', params));
