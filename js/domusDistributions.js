@@ -336,75 +336,6 @@
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
-        function renderPreviewTable(preview) {
-            if (!preview || !preview.shares || !preview.shares.length) {
-                return Domus.UI.buildTable([t('domus', 'Unit'), t('domus', 'Weight'), t('domus', 'Amount')], []);
-            }
-            const rows = preview.shares.map(share => ([
-                Domus.Utils.escapeHtml(share.unitLabel || share.unitId || ''),
-                Domus.Utils.formatPercentage(share.weight),
-                { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(share.amount)), alignRight: true }
-            ]));
-
-            return '<div class="domus-preview-meta">' +
-                '<div>' + Domus.Utils.escapeHtml(preview.distributionKey?.name || '') + ' • ' + Domus.Utils.escapeHtml(preview.distributionKey?.type || '') + '</div>' +
-                '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'Period')) + ': ' + Domus.Utils.escapeHtml((preview.period?.from || '') + (preview.period?.to ? ' – ' + preview.period.to : '')) + '</div>' +
-                '</div>' +
-                Domus.UI.buildTable([t('domus', 'Unit'), t('domus', 'Weight'), t('domus', 'Amount')], rows);
-        }
-
-        function openPreviewModal(property) {
-            if (!canManageDistributions()) {
-                Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
-                return;
-            }
-            const sourceBookings = (property?.bookings || []).filter(b => b.distributionKeyId);
-            if (!sourceBookings.length) {
-                Domus.UI.showNotification(t('domus', 'No distributable bookings found for this property.'), 'error');
-                return;
-            }
-
-            const selectOptions = sourceBookings.map(b => {
-                const label = [Domus.Utils.formatDate(b.date), Domus.Utils.formatCurrency(b.amount), b.description].filter(Boolean).join(' • ');
-                return '<option value="' + Domus.Utils.escapeHtml(b.id) + '">' + Domus.Utils.escapeHtml(label || ('#' + b.id)) + '</option>';
-            }).join('');
-
-            const modal = Domus.UI.openModal({
-                title: t('domus', 'Distribution preview'),
-                size: 'large',
-                content: '<div class="domus-form">' +
-                    '<label>' + Domus.Utils.escapeHtml(t('domus', 'Booking')) + '<select id="domus-preview-booking">' + selectOptions + '</select></label>' +
-                    '<div id="domus-preview-table" class="domus-preview-table">' + Domus.Utils.escapeHtml(t('domus', 'Loading…')) + '</div>' +
-                    '</div>'
-            });
-
-            const bookingSelect = modal.modalEl.querySelector('#domus-preview-booking');
-            const tableContainer = modal.modalEl.querySelector('#domus-preview-table');
-
-            function loadPreview(bookingId) {
-                if (!bookingId) {
-                    tableContainer.innerHTML = Domus.Utils.escapeHtml(t('domus', 'Select a booking.'));
-                    return;
-                }
-                tableContainer.innerHTML = Domus.Utils.escapeHtml(t('domus', 'Loading…'));
-                Domus.Api.getDistributionPreview(bookingId)
-                    .then(preview => {
-                        tableContainer.innerHTML = renderPreviewTable(preview);
-                    })
-                    .catch(err => {
-                        tableContainer.innerHTML = Domus.Utils.escapeHtml(err.message || t('domus', 'Unable to load preview.'));
-                    });
-            }
-
-            bookingSelect?.addEventListener('change', function() {
-                loadPreview(this.value);
-            });
-
-            if (bookingSelect && bookingSelect.value) {
-                loadPreview(bookingSelect.value);
-            }
-        }
-
         function openEditKeyModal(propertyId, distribution, onSaved) {
             if (!canManageDistributions()) {
                 Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
@@ -502,8 +433,6 @@
             openCreateKeyModal,
             openCreateUnitValueModal,
             getTypeLabel,
-            openPreviewModal,
-            renderPreviewTable,
             openEditKeyModal,
             bindTable,
             filterList

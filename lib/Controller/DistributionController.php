@@ -58,16 +58,6 @@ class DistributionController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function previewBooking(int $bookingId): DataResponse {
-        $role = $this->getRole();
-        if (!$this->permissionService->isBuildingManagement($role)) {
-            return $this->validationError($this->l10n->t('Distribution preview is only available for building management.'));
-        }
-        $preview = $this->distributionService->calculatePreview($bookingId, $this->getUserId());
-        return new DataResponse($preview);
-    }
-
-    #[NoAdminRequired]
     public function report(int $propertyId, int $unitId, int $year): DataResponse {
         $role = $this->getRole();
         if (!$this->permissionService->isBuildingManagement($role)) {
