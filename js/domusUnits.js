@@ -48,6 +48,35 @@
             return { labels, rentability, coldRent };
         }
 
+        function getLatestClosedYear(rows = []) {
+            const parsedRows = rows
+                .map(row => ({
+                    year: normalizeChartValue(row?.year),
+                    isProvisional: row?.isProvisional !== undefined ? !!row.isProvisional : true
+                }))
+                .filter(row => row.year);
+            if (!parsedRows.length) {
+                return null;
+            }
+            const closedYears = parsedRows
+                .filter(row => !row.isProvisional)
+                .map(row => row.year);
+            if (!closedYears.length) {
+                return null;
+            }
+            return Math.max(...closedYears);
+        }
+
+        function getLatestYear(rows = []) {
+            const years = rows
+                .map(row => normalizeChartValue(row?.year))
+                .filter(year => year);
+            if (!years.length) {
+                return null;
+            }
+            return Math.max(...years);
+        }
+
         function getOpenTasksTone(status) {
             if (status === 'overdue') {
                 return { className: 'domus-kpi-number-alert', iconClass: 'domus-icon-alert' };
@@ -367,6 +396,7 @@
 
                     const table = renderStatisticsTable(statistics, {
                         buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null,
+                        sortByYear: false,
                         totals: [
                             { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
                         ]
@@ -429,7 +459,7 @@
 
             const headers = columnMeta.map(col => ({ label: col.label || col.key || '', alignRight: col.alignRight }));
             const sortedRows = [...rowsData];
-            if (yearColumn) {
+            if (yearColumn && options.sortByYear !== false) {
                 sortedRows.sort((a, b) => (parseInt(b[yearColumn.key], 10) || 0) - (parseInt(a[yearColumn.key], 10) || 0));
             }
 
@@ -790,10 +820,17 @@
                         ? Domus.Partners.renderPartnerContactList(currentTenancy.partners, { fallbackName: currentTenancy.partnerName })
                         : '';
                     const currentBaseRent = currentTenancy?.baseRent;
-                    const previousYear = Domus.state.currentYear - 1;
-                    const rentabilityRow = (statistics?.revenue?.rows || [])
-                        .find(row => Number(row.year) === previousYear);
+                    const rentabilityRows = statistics?.revenue?.rows || [];
+                    const latestClosedYear = getLatestClosedYear(rentabilityRows);
+                    const latestYear = getLatestYear(rentabilityRows);
+                    const rentabilityRow = latestClosedYear
+                        ? rentabilityRows.find(row => Number(row.year) === latestClosedYear)
+                        : null;
                     const rentabilityValue = rentabilityRow?.netRentab;
+                    const coldRentRow = latestYear
+                        ? rentabilityRows.find(row => Number(row.year) === latestYear)
+                        : null;
+                    const coldRentValue = coldRentRow?.rent;
                     const livingAreaLabel = unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '';
                     const kickerParts = [livingAreaLabel, unit.notes].filter(Boolean);
                     const kicker = kickerParts.length ? kickerParts.join(' | ') : '';
@@ -923,9 +960,16 @@
                     const rentabilityValueLabel = rentabilityValue === undefined || rentabilityValue === null
                         ? '—'
                         : Domus.Utils.formatPercentage(rentabilityValue);
-                    const coldRentValueLabel = currentBaseRent === undefined || currentBaseRent === null
-                        ? '—'
-                        : Domus.Utils.formatCurrency(currentBaseRent);
+                    const coldRentFormatted = coldRentValue === undefined || coldRentValue === null
+                        ? ''
+                        : Domus.Utils.formatNumber(coldRentValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                    const coldRentValueLabel = coldRentFormatted ? `€ ${coldRentFormatted}` : '—';
+                    const rentabilityYearLabel = latestClosedYear
+                        ? `(${Domus.Utils.formatYear(latestClosedYear)})`
+                        : '';
+                    const coldRentYearLabel = latestYear
+                        ? `(${Domus.Utils.formatYear(latestYear)})`
+                        : '';
                     const currentTenantLabel = currentTenantPartners || '—';
                     const openTaskCount = Domus.Role.isTenantView()
                         ? 0
@@ -945,6 +989,7 @@
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Rentability'),
                             value: rentabilityValueLabel,
+                            subline: rentabilityYearLabel,
                             chartId: 'domus-kpi-rentability-chart',
                             showChart: hasRentabilityTrend,
                             linkLabel: t('domus', 'More'),
@@ -953,6 +998,7 @@
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Cold rent'),
                             value: coldRentValueLabel,
+                            subline: coldRentYearLabel,
                             chartId: 'domus-kpi-cold-rent-chart',
                             showChart: hasColdRentTrend,
                             linkLabel: t('domus', 'More'),

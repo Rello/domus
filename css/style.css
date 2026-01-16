@@ -1107,6 +1107,7 @@ body {
     justify-content: space-between;
     gap: 6px;
     flex: 1 1 auto;
+    min-width: 0;
 }
 
 .domus-kpi-headline {
@@ -1118,6 +1119,12 @@ body {
     font-size: 25px;
     font-weight: 700;
     line-height: 1;
+    white-space: nowrap;
+}
+
+.domus-kpi-subline {
+    font-size: 12px;
+    color: var(--color-text-maxcontrast);
 }
 
 .domus-kpi-number {
@@ -1162,8 +1169,8 @@ body {
 }
 
 .domus-kpi-chart {
-    flex: 0 0 42%;
-    min-width: 160px;
+    flex: 0 1 42%;
+    min-width: 120px;
     display: flex;
     align-items: center;
 }
