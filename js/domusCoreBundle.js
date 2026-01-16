@@ -412,7 +412,7 @@
         }
 
         function openModal(options) {
-            const { title, content, size, headerActions = [] } = options || {};
+            const { title, content, size, headerActions = [], onClose } = options || {};
             const backdrop = document.createElement('div');
             backdrop.className = 'domus-modal-backdrop';
 
@@ -462,9 +462,18 @@
             backdrop.appendChild(modal);
             document.body.appendChild(backdrop);
 
+            let closed = false;
+
             function closeModal() {
+                if (closed) {
+                    return;
+                }
+                closed = true;
                 document.removeEventListener('keydown', onEsc);
                 backdrop.remove();
+                if (typeof onClose === 'function') {
+                    onClose();
+                }
             }
 
             function onEsc(event) {
@@ -482,6 +491,56 @@
             });
 
             return { modalEl: modal, close: closeModal };
+        }
+
+        function confirmAction(options = {}) {
+            const title = options.title || t('domus', 'Please confirm');
+            const message = options.message || '';
+            const confirmLabel = options.confirmLabel || t('domus', 'Yes');
+            const cancelLabel = options.cancelLabel || t('domus', 'Cancel');
+            const confirmClassName = options.confirmClassName || 'primary';
+            const content = document.createElement('div');
+            if (message) {
+                const paragraph = document.createElement('p');
+                paragraph.className = 'domus-modal-message';
+                paragraph.textContent = message;
+                content.appendChild(paragraph);
+            }
+
+            const footer = document.createElement('div');
+            footer.className = 'domus-modal-footer';
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.textContent = cancelLabel;
+            const confirmButton = document.createElement('button');
+            confirmButton.type = 'button';
+            confirmButton.textContent = confirmLabel;
+            if (confirmClassName) {
+                confirmButton.className = confirmClassName;
+            }
+            footer.appendChild(cancelButton);
+            footer.appendChild(confirmButton);
+            content.appendChild(footer);
+
+            return new Promise(resolve => {
+                let resolved = false;
+                let modal;
+                const finish = result => {
+                    if (resolved) {
+                        return;
+                    }
+                    resolved = true;
+                    modal?.close();
+                    resolve(result);
+                };
+                modal = openModal({
+                    title,
+                    content,
+                    onClose: () => finish(false)
+                });
+                cancelButton.addEventListener('click', () => finish(false));
+                confirmButton.addEventListener('click', () => finish(true));
+            });
         }
 
         function createIconSpan(iconClass) {
@@ -1053,6 +1112,7 @@
             buildFormRow,
             buildFormTable,
             openModal,
+            confirmAction,
             buildIconButton,
             buildScopeAddButton,
             createIconButton,

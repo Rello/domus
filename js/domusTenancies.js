@@ -200,16 +200,21 @@
         function bindDetailActions(id, tenancy) {
             document.getElementById('domus-tenancy-details')?.addEventListener('click', () => openTenancyModal(id, tenancy, 'view'));
             document.getElementById('domus-tenancy-delete')?.addEventListener('click', () => {
-                if (!confirm(t('domus', 'Delete {entity}?', { entity: Domus.Role.getTenancyLabels().singular }))) {
-                    return;
-                }
-                Domus.Api.deleteTenancy(id)
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: Domus.Role.getTenancyLabels().singular }), 'success');
-                        Domus.UI.renderSidebar('');
-                        renderList();
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                Domus.UI.confirmAction({
+                    message: t('domus', 'Delete {entity}?', { entity: Domus.Role.getTenancyLabels().singular }),
+                    confirmLabel: t('domus', 'Delete')
+                }).then(confirmed => {
+                    if (!confirmed) {
+                        return;
+                    }
+                    Domus.Api.deleteTenancy(id)
+                        .then(() => {
+                            Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: Domus.Role.getTenancyLabels().singular }), 'success');
+                            Domus.UI.renderSidebar('');
+                            renderList();
+                        })
+                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                });
             });
 
             document.getElementById('domus-tenancy-link-doc')?.addEventListener('click', () => {

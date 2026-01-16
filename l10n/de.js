@@ -198,6 +198,7 @@ OC.L10N.register(
         "Period": "Zeitraum",
         "Phone": "Telefon",
         "Please choose a file to upload.": "Bitte wählen Sie eine Datei zum Hochladen aus.",
+        "Please confirm": "Bitte bestätigen",
         "Please select a file to link.": "Bitte wählen Sie eine Datei zum Verknüpfen aus.",
         "Prepayment": "Vorauszahlung",
         "Properties": "Immobilien",

@@ -278,16 +278,21 @@
 
             detailsBtn?.addEventListener('click', () => openPartnerModal(id, 'view'));
             deleteBtn?.addEventListener('click', () => {
-                if (!confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Partner') }))) {
-                    return;
-                }
-                Domus.Api.deletePartner(id)
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Partner') }), 'success');
-                        Domus.UI.renderSidebar('');
-                        renderList();
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                Domus.UI.confirmAction({
+                    message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Partner') }),
+                    confirmLabel: t('domus', 'Delete')
+                }).then(confirmed => {
+                    if (!confirmed) {
+                        return;
+                    }
+                    Domus.Api.deletePartner(id)
+                        .then(() => {
+                            Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Partner') }), 'success');
+                            Domus.UI.renderSidebar('');
+                            renderList();
+                        })
+                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                });
             });
 
             document.getElementById('domus-add-partner-tenancy')?.addEventListener('click', () => {
