@@ -602,13 +602,18 @@
                     const id = btn.getAttribute('data-id');
                     if (!id) return;
                     const entityLabel = type === 'process' ? t('domus', 'Process') : t('domus', 'Task');
-                    if (!confirm(t('domus', 'Delete {entity}?', { entity: entityLabel }))) {
-                        return;
-                    }
-                    const action = type === 'process' ? Domus.Api.deleteWorkflowRun(id) : Domus.Api.deleteTask(id);
-                    action.then(() => {
-                        options.onRefresh && options.onRefresh();
-                    }).catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    Domus.UI.confirmAction({
+                        message: t('domus', 'Delete {entity}?', { entity: entityLabel }),
+                        confirmLabel: t('domus', 'Delete')
+                    }).then(confirmed => {
+                        if (!confirmed) {
+                            return;
+                        }
+                        const action = type === 'process' ? Domus.Api.deleteWorkflowRun(id) : Domus.Api.deleteTask(id);
+                        action.then(() => {
+                            options.onRefresh && options.onRefresh();
+                        }).catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    });
                 });
             });
             document.querySelectorAll('.domus-task-reopen').forEach(btn => {
@@ -1013,15 +1018,20 @@
             document.querySelectorAll('.domus-task-step-delete').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const stepId = btn.getAttribute('data-id');
-                    if (!confirm(t('domus', 'Delete step?'))) {
-                        return;
-                    }
-                    Domus.Api.deleteTaskTemplateStep(stepId)
-                        .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Step deleted.'), 'success');
-                            onRefresh && onRefresh();
-                        })
-                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    Domus.UI.confirmAction({
+                        message: t('domus', 'Delete step?'),
+                        confirmLabel: t('domus', 'Delete')
+                    }).then(confirmed => {
+                        if (!confirmed) {
+                            return;
+                        }
+                        Domus.Api.deleteTaskTemplateStep(stepId)
+                            .then(() => {
+                                Domus.UI.showNotification(t('domus', 'Step deleted.'), 'success');
+                                onRefresh && onRefresh();
+                            })
+                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    });
                 });
             });
         }
@@ -1063,15 +1073,20 @@
                 btn.addEventListener('click', () => {
                     const id = btn.getAttribute('data-id');
                     if (!id) return;
-                    if (!confirm(t('domus', 'Delete template?'))) {
-                        return;
-                    }
-                    Domus.Api.deleteTaskTemplate(id)
-                        .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Template deleted.'), 'success');
-                            loadTemplates();
-                        })
-                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    Domus.UI.confirmAction({
+                        message: t('domus', 'Delete template?'),
+                        confirmLabel: t('domus', 'Delete')
+                    }).then(confirmed => {
+                        if (!confirmed) {
+                            return;
+                        }
+                        Domus.Api.deleteTaskTemplate(id)
+                            .then(() => {
+                                Domus.UI.showNotification(t('domus', 'Template deleted.'), 'success');
+                                loadTemplates();
+                            })
+                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    });
                 });
             });
             document.getElementById('domus-task-template-create')?.addEventListener('click', () => {

@@ -219,15 +219,20 @@
         function bindDocumentActions(entityType, entityId, containerId) {
             document.querySelectorAll('#' + containerId + ' button[data-doc-id]').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    if (!confirm(t('domus', 'Remove document?'))) {
-                        return;
-                    }
-                    Domus.Api.unlinkDocument(this.getAttribute('data-doc-id'))
-                        .then(() => {
-                            Domus.UI.showNotification(t('domus', 'Document removed.'), 'success');
-                            renderList(entityType, entityId);
-                        })
-                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    Domus.UI.confirmAction({
+                        message: t('domus', 'Remove document?'),
+                        confirmLabel: t('domus', 'Delete')
+                    }).then(confirmed => {
+                        if (!confirmed) {
+                            return;
+                        }
+                        Domus.Api.unlinkDocument(this.getAttribute('data-doc-id'))
+                            .then(() => {
+                                Domus.UI.showNotification(t('domus', 'Document removed.'), 'success');
+                                renderList(entityType, entityId);
+                            })
+                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    });
                 });
             });
 

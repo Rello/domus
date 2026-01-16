@@ -662,16 +662,21 @@
                         docWidget
                     });
                     modal.modalEl.querySelector('#domus-booking-delete')?.addEventListener('click', () => {
-                        if (!confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Booking') }))) {
-                            return;
-                        }
-                        Domus.Api.deleteBooking(id)
-                            .then(() => {
-                                Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Booking') }), 'success');
-                                modal.close();
-                                refreshBookingContext(refreshContext);
-                            })
-                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        Domus.UI.confirmAction({
+                            message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Booking') }),
+                            confirmLabel: t('domus', 'Delete')
+                        }).then(confirmed => {
+                            if (!confirmed) {
+                                return;
+                            }
+                            Domus.Api.deleteBooking(id)
+                                .then(() => {
+                                    Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Booking') }), 'success');
+                                    modal.close();
+                                    refreshBookingContext(refreshContext);
+                                })
+                                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        });
                     });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));

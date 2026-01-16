@@ -327,26 +327,36 @@
                     if (action === 'toggle') {
                         const isDisabled = account.status === 'disabled';
                         const label = isDisabled ? t('domus', 'Enable') : t('domus', 'Disable');
-                        if (!confirm(t('domus', '{action} {entity}?', { action: label, entity: t('domus', 'Account') }))) {
-                            return;
-                        }
-                        const apiCall = isDisabled ? Domus.Api.enableAccount(id) : Domus.Api.disableAccount(id);
-                        apiCall.then(() => {
-                            Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Account') }), 'success');
-                            renderList();
-                        }).catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        Domus.UI.confirmAction({
+                            message: t('domus', '{action} {entity}?', { action: label, entity: t('domus', 'Account') }),
+                            confirmLabel: label
+                        }).then(confirmed => {
+                            if (!confirmed) {
+                                return;
+                            }
+                            const apiCall = isDisabled ? Domus.Api.enableAccount(id) : Domus.Api.disableAccount(id);
+                            apiCall.then(() => {
+                                Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Account') }), 'success');
+                                renderList();
+                            }).catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        });
                         return;
                     }
                     if (action === 'delete') {
-                        if (!confirm(t('domus', 'Delete {entity}?', { entity: t('domus', 'Account') }))) {
-                            return;
-                        }
-                        Domus.Api.deleteAccount(id)
-                            .then(() => {
-                                Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Account') }), 'success');
-                                renderList();
-                            })
-                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        Domus.UI.confirmAction({
+                            message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Account') }),
+                            confirmLabel: t('domus', 'Delete')
+                        }).then(confirmed => {
+                            if (!confirmed) {
+                                return;
+                            }
+                            Domus.Api.deleteAccount(id)
+                                .then(() => {
+                                    Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Account') }), 'success');
+                                    renderList();
+                                })
+                                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        });
                     }
                 });
             });
