@@ -48,6 +48,25 @@
             return { labels, rentability, coldRent };
         }
 
+        function getLatestClosedYear(rows = []) {
+            const parsedRows = rows
+                .map(row => ({
+                    year: normalizeChartValue(row?.year),
+                    isProvisional: row?.isProvisional !== undefined ? !!row.isProvisional : true
+                }))
+                .filter(row => row.year);
+            if (!parsedRows.length) {
+                return null;
+            }
+            const closedYears = parsedRows
+                .filter(row => !row.isProvisional)
+                .map(row => row.year);
+            if (!closedYears.length) {
+                return null;
+            }
+            return Math.max(...closedYears);
+        }
+
         function getOpenTasksTone(status) {
             if (status === 'overdue') {
                 return { className: 'domus-kpi-number-alert', iconClass: 'domus-icon-alert' };
@@ -790,9 +809,11 @@
                         ? Domus.Partners.renderPartnerContactList(currentTenancy.partners, { fallbackName: currentTenancy.partnerName })
                         : '';
                     const currentBaseRent = currentTenancy?.baseRent;
-                    const previousYear = Domus.state.currentYear - 1;
-                    const rentabilityRow = (statistics?.revenue?.rows || [])
-                        .find(row => Number(row.year) === previousYear);
+                    const rentabilityRows = statistics?.revenue?.rows || [];
+                    const latestClosedYear = getLatestClosedYear(rentabilityRows);
+                    const rentabilityRow = latestClosedYear
+                        ? rentabilityRows.find(row => Number(row.year) === latestClosedYear)
+                        : null;
                     const rentabilityValue = rentabilityRow?.netRentab;
                     const livingAreaLabel = unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '';
                     const kickerParts = [livingAreaLabel, unit.notes].filter(Boolean);
