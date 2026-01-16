@@ -117,21 +117,21 @@ class StatisticsService {
                 foreach ($units as $unit) {
                         $unitId = $unit->getId();
                         $unitPropertyId = $unit->getPropertyId();
-                        $row = $this->buildStatisticsRowForUnitYear(
-                                $unitId,
-                                $unit,
-                                $userId,
-                                $year,
-                                $definitions,
-                                $topAccountMap,
-                        );
-                        $row['isProvisional'] = !$this->isYearClosed(
-                                $year,
-                                $unitId,
-                                $unitPropertyId,
-                                $closedUnitYears,
-                                $closedPropertyYears,
-                        );
+                        $latestClosedYear = $this->getLatestClosedYearForUnit($unitId, $unitPropertyId, $closedUnitYears, $closedPropertyYears);
+                        if ($latestClosedYear !== null) {
+                                $row = $this->buildStatisticsRowForUnitYear(
+                                        $unitId,
+                                        $unit,
+                                        $userId,
+                                        $latestClosedYear,
+                                        $definitions,
+                                        $topAccountMap,
+                                );
+                                $row['isProvisional'] = false;
+                        } else {
+                                $row = $this->buildEmptyStatisticsRowForUnit($unit, $definitions);
+                                $row['isProvisional'] = true;
+                        }
 
                         $rows[] = $row;
                 }
@@ -506,7 +506,7 @@ class StatisticsService {
         }
 
         private function loadUnit(int $unitId, string $userId): ?Unit {
-                try {
+            try {
                         return $this->unitMapper->findForUser($unitId, $userId);
                 } catch (\Throwable $e) {
                         $this->logger->error('StatisticsService: failed to load unit while building sums', [
@@ -516,6 +516,36 @@ class StatisticsService {
                 }
 
                 return null;
+        }
+
+        private function buildEmptyStatisticsRowForUnit(?Unit $unit, array $definitions): array {
+                $row = [];
+                foreach ($definitions as $column) {
+                        if (($column['type'] ?? '') === 'year') {
+                                $row[$column['key']] = null;
+                                continue;
+                        }
+                        if (($column['source'] ?? '') === 'unit' && $unit !== null) {
+                                $row[$column['key']] = $this->resolveUnitField($unit, $column['field'] ?? $column['key']);
+                                continue;
+                        }
+                        $row[$column['key']] = null;
+                }
+                return $row;
+        }
+
+        private function getLatestClosedYearForUnit(int $unitId, ?int $propertyId, array $closedUnitYears, array $closedPropertyYears): ?int {
+                $years = [];
+                if (isset($closedUnitYears[$unitId])) {
+                        $years = array_merge($years, array_keys($closedUnitYears[$unitId]));
+                }
+                if ($propertyId !== null && isset($closedPropertyYears[$propertyId])) {
+                        $years = array_merge($years, array_keys($closedPropertyYears[$propertyId]));
+                }
+                if ($years === []) {
+                        return null;
+                }
+                return max(array_map('intval', $years));
         }
 
         private function visibleColumns(array $definitions): array {

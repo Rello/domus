@@ -82,6 +82,7 @@ class StatisticCalculations {
             ['key' => 'unitId', 'label' => 'Unit ID', 'source' => 'unit', 'field' => 'id', 'visible' => false],
             ['key' => 'label', 'label' => 'Unit', 'source' => 'unit', 'field' => 'label'],
             ['key' => 'size', 'label' => 'Size', 'source' => 'unit', 'field' => 'livingArea', 'format' => 'number', 'unit' => 'm²'],
+            ['key' => 'year', 'label' => 'Year', 'type' => 'year'],
 
             ['key' => 'rent', 'label' => 'Base rent', 'account' => '1000'],
 			[

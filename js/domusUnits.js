@@ -386,6 +386,7 @@
 
                     const table = renderStatisticsTable(statistics, {
                         buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null,
+                        sortByYear: false,
                         totals: [
                             { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
                         ]
@@ -448,7 +449,7 @@
 
             const headers = columnMeta.map(col => ({ label: col.label || col.key || '', alignRight: col.alignRight }));
             const sortedRows = [...rowsData];
-            if (yearColumn) {
+            if (yearColumn && options.sortByYear !== false) {
                 sortedRows.sort((a, b) => (parseInt(b[yearColumn.key], 10) || 0) - (parseInt(a[yearColumn.key], 10) || 0));
             }
 
