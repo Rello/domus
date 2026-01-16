@@ -1514,6 +1514,36 @@
             let selectedGroup = null;
             let settlements = [];
             let provisionalMap = {};
+            function collectStatisticsYears(statistics) {
+                const years = new Set();
+                ['revenue', 'cost'].forEach(key => {
+                    const rows = statistics?.[key]?.rows || [];
+                    rows.forEach(row => {
+                        const year = Number(row?.year);
+                        if (!Number.isNaN(year) && year) {
+                            years.add(year);
+                        }
+                    });
+                });
+                if (years.size === 0) {
+                    years.add(Domus.state.currentYear);
+                }
+                return Array.from(years).sort((a, b) => b - a);
+            }
+
+            function collectProvisionalMap(statistics) {
+                const map = {};
+                ['revenue', 'cost'].forEach(key => {
+                    const rows = statistics?.[key]?.rows || [];
+                    rows.forEach(row => {
+                        const year = Number(row?.year);
+                        if (!Number.isNaN(year) && year && map[year] === undefined) {
+                            map[year] = !!row?.isProvisional;
+                        }
+                    });
+                });
+                return map;
+            }
 
             const container = document.createElement('div');
             container.innerHTML = '<div class="domus-form">'
