@@ -960,14 +960,15 @@
                     const rentabilityValueLabel = rentabilityValue === undefined || rentabilityValue === null
                         ? '—'
                         : Domus.Utils.formatPercentage(rentabilityValue);
-                    const coldRentValueLabel = coldRentValue === undefined || coldRentValue === null
-                        ? '—'
-                        : Domus.Utils.formatCurrency(coldRentValue);
+                    const coldRentFormatted = coldRentValue === undefined || coldRentValue === null
+                        ? ''
+                        : Domus.Utils.formatNumber(coldRentValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                    const coldRentValueLabel = coldRentFormatted ? `€ ${coldRentFormatted}` : '—';
                     const rentabilityYearLabel = latestClosedYear
-                        ? `${t('domus', 'Year')} ${Domus.Utils.formatYear(latestClosedYear)}`
+                        ? `(${Domus.Utils.formatYear(latestClosedYear)})`
                         : '';
                     const coldRentYearLabel = latestYear
-                        ? `${t('domus', 'Year')} ${Domus.Utils.formatYear(latestYear)}`
+                        ? `(${Domus.Utils.formatYear(latestYear)})`
                         : '';
                     const currentTenantLabel = currentTenantPartners || '—';
                     const openTaskCount = Domus.Role.isTenantView()
