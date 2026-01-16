@@ -1518,6 +1518,37 @@
             let selectedYear = defaultYear;
             let selectedGroup = null;
             let settlements = [];
+            let provisionalMap = {};
+            function collectStatisticsYears(statistics) {
+                const years = new Set();
+                ['revenue', 'cost'].forEach(key => {
+                    const rows = statistics?.[key]?.rows || [];
+                    rows.forEach(row => {
+                        const year = Number(row?.year);
+                        if (!Number.isNaN(year) && year) {
+                            years.add(year);
+                        }
+                    });
+                });
+                if (years.size === 0) {
+                    years.add(Domus.state.currentYear);
+                }
+                return Array.from(years).sort((a, b) => b - a);
+            }
+
+            function collectProvisionalMap(statistics) {
+                const map = {};
+                ['revenue', 'cost'].forEach(key => {
+                    const rows = statistics?.[key]?.rows || [];
+                    rows.forEach(row => {
+                        const year = Number(row?.year);
+                        if (!Number.isNaN(year) && year && map[year] === undefined) {
+                            map[year] = !!row?.isProvisional;
+                        }
+                    });
+                });
+                return map;
+            }
 
             const container = document.createElement('div');
             container.innerHTML = '<div class="domus-form">'
@@ -1539,9 +1570,6 @@
             const yearSelect = container.querySelector('#domus-settlement-year');
             const tableContainer = container.querySelector('#domus-settlement-table');
             const createBtn = container.querySelector('#domus-create-settlement');
-
-            yearSelect.innerHTML = buildYearOptions(defaultYear).map(y => '<option value="' + y + '">' + Domus.Utils.escapeHtml(y) + '</option>').join('');
-            yearSelect.value = String(defaultYear);
 
             yearSelect.addEventListener('change', () => {
                 selectedYear = parseInt(yearSelect.value, 10);
@@ -1569,16 +1597,37 @@
                     .finally(() => { createBtn.disabled = false; });
             });
 
-            function buildYearOptions(defaultYear) {
-                const current = (new Date()).getFullYear();
-                const years = [];
-                for (let i = 0; i < 6; i++) {
-                    years.push(current - i);
-                }
+            function buildYearOptions(defaultYear, statistics) {
+                const years = collectStatisticsYears(statistics);
                 if (!years.includes(defaultYear)) {
                     years.push(defaultYear);
                 }
                 return years.sort((a, b) => b - a);
+            }
+
+            function renderYearOptions(years, provisionalMap) {
+                yearSelect.innerHTML = years.map(year => {
+                    const isProvisional = provisionalMap[year] !== undefined ? provisionalMap[year] : true;
+                    const label = isProvisional
+                        ? `${year} (${t('domus', 'provisional')})`
+                        : String(year);
+                    return '<option value="' + Domus.Utils.escapeHtml(String(year)) + '">' + Domus.Utils.escapeHtml(label) + '</option>';
+                }).join('');
+                if (!years.includes(selectedYear)) {
+                    selectedYear = years[0];
+                }
+                yearSelect.value = String(selectedYear);
+            }
+
+            function loadYearOptions() {
+                return Domus.Api.getUnitStatistics(unitId)
+                    .then(statistics => {
+                        provisionalMap = collectProvisionalMap(statistics);
+                        renderYearOptions(buildYearOptions(defaultYear, statistics), provisionalMap);
+                    })
+                    .catch(() => {
+                        renderYearOptions(buildYearOptions(defaultYear), provisionalMap);
+                    });
             }
 
             function renderTable() {
@@ -1632,7 +1681,7 @@
                     });
             }
 
-            loadSettlements();
+            loadYearOptions().finally(loadSettlements);
         }
 
         return { openModal };

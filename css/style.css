@@ -853,6 +853,7 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+    padding: 0 14px 14px;
     flex-wrap: wrap;
 }
 
