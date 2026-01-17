@@ -38,7 +38,7 @@ class Version0003Date20251203000000 extends SimpleMigrationStep {
             $properties = $this->connection->getQueryBuilder();
             $properties->select('id', 'name', 'document_path')
                 ->from('domus_properties');
-            $results = $properties->executeQuery()->fetchAllAssociative();
+            $results = $properties->executeQuery()->fetchAll();
 
             foreach ($results as $row) {
                 $documentPath = $row['document_path'] ?? null;
@@ -63,7 +63,7 @@ class Version0003Date20251203000000 extends SimpleMigrationStep {
             $propertyQuery = $this->connection->getQueryBuilder();
             $propertyQuery->select('id', 'name')
                 ->from('domus_properties');
-            $propertyRows = $propertyQuery->executeQuery()->fetchAllAssociative();
+            $propertyRows = $propertyQuery->executeQuery()->fetchAll();
             foreach ($propertyRows as $row) {
                 $propertyLookup[(int)$row['id']] = $row['name'] ?? '';
             }
@@ -72,7 +72,7 @@ class Version0003Date20251203000000 extends SimpleMigrationStep {
         $units = $this->connection->getQueryBuilder();
         $units->select('id', 'label', 'unit_number', 'property_id', 'document_path')
             ->from('domus_units');
-        $unitRows = $units->executeQuery()->fetchAllAssociative();
+        $unitRows = $units->executeQuery()->fetchAll();
 
         foreach ($unitRows as $row) {
             $documentPath = $row['document_path'] ?? null;
