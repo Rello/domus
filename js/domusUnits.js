@@ -1225,6 +1225,8 @@
 
         function openDocumentLocationModal(unit) {
             const currentPath = unit.documentPath || '';
+            const pickerId = 'domus-unit-document-location-picker';
+            const displayId = 'domus-unit-document-location-display';
             const rows = [
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Current location'),
@@ -1233,7 +1235,11 @@
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Folder path'),
                     required: true,
-                    content: '<input name="documentPath" value="' + Domus.Utils.escapeHtml(currentPath) + '" required>'
+                    content: '<div class="domus-doc-picker-row">' +
+                        '<button type="button" class="domus-ghost" id="' + Domus.Utils.escapeHtml(pickerId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Select folder')) + '</button>' +
+                        '<div class="domus-doc-picker-display muted" id="' + Domus.Utils.escapeHtml(displayId) + '">' + Domus.Utils.escapeHtml(currentPath || t('domus', 'No folder selected')) + '</div>' +
+                        '<input type="hidden" name="documentPath" value="' + Domus.Utils.escapeHtml(currentPath) + '" required>' +
+                        '</div>'
                 })
             ];
             const modal = Domus.UI.openModal({
@@ -1250,6 +1256,19 @@
             });
 
             const form = modal.modalEl.querySelector('#domus-unit-document-location-form');
+            const pickerButton = modal.modalEl.querySelector('#' + pickerId);
+            const pickerDisplay = modal.modalEl.querySelector('#' + displayId);
+            if (pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
+                pickerButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    OC.dialogs.filepicker(t('domus', 'Select folder'), function(path) {
+                        form.documentPath.value = path || '';
+                        if (pickerDisplay) {
+                            pickerDisplay.textContent = path || t('domus', 'No folder selected');
+                        }
+                    }, false, 'httpd/unix-directory', true, 1);
+                });
+            }
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const value = form.documentPath?.value?.trim() || '';
