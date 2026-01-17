@@ -80,6 +80,13 @@ class UnitService {
         if ($this->permissionService->isBuildingManagement($role) && $unit->getPropertyId() === null && !isset($data['propertyId'])) {
             throw new \InvalidArgumentException($this->l10n->t('Property is required for building management.'));
         }
+        if (array_key_exists('documentPath', $data)) {
+            $documentPath = trim((string)$data['documentPath']);
+            if ($documentPath === '') {
+                throw new \InvalidArgumentException($this->l10n->t('Document location is required.'));
+            }
+            $unit->setDocumentPath($documentPath);
+        }
         $fields = ['label', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {

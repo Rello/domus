@@ -73,6 +73,13 @@ class PropertyService {
         if (isset($data['name']) && trim((string)$data['name']) === '') {
             throw new \InvalidArgumentException($this->l10n->t('Property name cannot be empty.'));
         }
+        if (array_key_exists('documentPath', $data)) {
+            $documentPath = trim((string)$data['documentPath']);
+            if ($documentPath === '') {
+                throw new \InvalidArgumentException($this->l10n->t('Document location is required.'));
+            }
+            $property->setDocumentPath($documentPath);
+        }
         $fields = ['name', 'street', 'zip', 'city', 'country', 'type', 'description'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {

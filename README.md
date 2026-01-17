@@ -43,11 +43,3 @@ const modal = Domus.UI.openModal({
 ```
 
 The two-column `domus-form-table` layout automatically stacks on mobile and uses `domus-form-value-text` for read-only rows.
-
-## Proposal: configurable document locations
-To support users moving folders, store the preferred document folder directly on the property/unit record and let them update it in the UI:
-
-- **Storage**: add a `documentPath` field to `domus_properties` and `domus_units`. Initialize it with the default `DomusApp` path when a property/unit is created, so all document services can always rely on the stored path.
-- **UI**: in the property/unit detail view, add a "Document location" row with a Nextcloud file picker that lets the user select an existing folder. Persist the selection via a new controller endpoint (e.g., `POST /documents/location/{entityType}/{entityId}`) that validates the folder is within the user's file system and stores it in the field.
-- **Behavior**: uploads go into the stored folder and still append the `Year` segment for consistency.
-- **Auditing**: change history is not required; optionally show the current folder path so users can verify where uploads will land.
