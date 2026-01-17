@@ -964,7 +964,17 @@
                         : '';
                     const currentTenantLabel = currentTenantPartners || '—';
                     const documentsTileValue = '<div class="domus-kpi-documents">' +
+                        '<div class="domus-kpi-documents-row">' +
                         '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
+                        (documentActionsEnabled
+                            ? '<button type="button" class="domus-kpi-documents-add" id="domus-unit-kpi-add-doc" title="' +
+                            Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Document') })) +
+                            '">' +
+                            '<span class="domus-icon domus-icon-add" aria-hidden="true"></span>' +
+                            '<span class="domus-visually-hidden">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Document') })) + '</span>' +
+                            '</button>'
+                            : '') +
+                        '</div>' +
                         '<span class="domus-kpi-documents-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
                         '</div>';
                     const openTaskCount = Domus.Role.isTenantView()
@@ -1071,6 +1081,12 @@
                     Domus.UI.bindCollapsibles();
                     if (!useKpiLayout) {
                         bindYearStatusAction(id, statistics);
+                    }
+                    if (useKpiLayout && documentActionsEnabled) {
+                        document.getElementById('domus-unit-kpi-add-doc')?.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            Domus.Documents.openLinkModal('unit', id, () => renderDetail(id));
+                        });
                     }
                     Domus.Partners.bindContactActions();
                     if (canManageDistributions && !useKpiLayout) {

@@ -78,7 +78,9 @@
                     return [
                         '<a class="domus-link" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(doc.fileUrl || '#') + '">' +
                         Domus.Utils.escapeHtml(fileName) + '</a>',
-                        Domus.Utils.escapeHtml(createdAt || '—')
+                        Domus.Utils.escapeHtml(createdAt || '—'),
+                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Show linked objects'), { dataset: { docInfo: doc.id } }),
+                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove'), { dataset: { docId: doc.id } })
                     ];
                 });
             }
@@ -89,7 +91,7 @@
                     return;
                 }
                 const rows = buildRows(docs);
-                const table = Domus.UI.buildTable([t('domus', 'File'), t('domus', 'Date')], rows, { wrapPanel: false });
+                const table = Domus.UI.buildTable([t('domus', 'File'), t('domus', 'Date'), t('domus', 'Info'), ''], rows, { wrapPanel: false });
                 const hasMore = docs.length > visibleCount;
                 const moreButton = hasMore
                     ? '<div class="domus-documents-more-row">' +
@@ -97,6 +99,7 @@
                     '</div>'
                     : '';
                 updateContainer('<div id="' + containerId + '">' + table + moreButton + '</div>');
+                bindDocumentActions(entityType, entityId, containerId);
                 const moreBtn = document.getElementById(containerId + '-more');
                 if (moreBtn) {
                     moreBtn.addEventListener('click', () => {

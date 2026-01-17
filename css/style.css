@@ -1131,9 +1131,28 @@ body {
     white-space: normal;
 }
 
+.domus-kpi-documents-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
 .domus-kpi-documents .domus-icon {
     width: 48px;
     height: 48px;
+}
+
+.domus-kpi-documents-add {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.domus-kpi-documents-add .domus-icon {
+    width: 24px;
+    height: 24px;
 }
 
 .domus-kpi-documents-label {
