@@ -20,6 +20,7 @@ class PropertyService {
         private DocumentLinkMapper $documentLinkMapper,
         private PartnerRelMapper $partnerRelMapper,
         private TenancyMapper $tenancyMapper,
+        private DocumentPathService $documentPathService,
         private IL10N $l10n,
         private LoggerInterface $logger,
     ) {
@@ -60,6 +61,7 @@ class PropertyService {
         $property->setCountry($data['country'] ?? null);
         $property->setType($data['type'] ?? null);
         $property->setDescription($data['description'] ?? null);
+        $property->setDocumentPath($this->documentPathService->buildPropertyPath($property->getName()));
         $property->setCreatedAt($now);
         $property->setUpdatedAt($now);
 

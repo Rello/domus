@@ -148,6 +148,7 @@ OC.L10N.register(
         "Import data is missing.": "Importdaten fehlen.",
         "Import data must be valid JSON.": "Importdaten müssen gültiges JSON sein.",
         "Import unit data": "Einheit importieren",
+        "Invalid document path.": "Ungültiger Dokumentenpfad.",
         "Label": "Bezeichnung",
         "Label is required.": "Bezeichnung ist erforderlich.",
         "Land register": "Grundbuch",

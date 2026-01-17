@@ -15,6 +15,7 @@ class Property extends Entity implements JsonSerializable {
     protected $country;
     protected $type;
     protected $description;
+    protected $documentPath;
     protected $createdAt;
     protected $updatedAt;
 
@@ -43,6 +44,7 @@ class Property extends Entity implements JsonSerializable {
             'country' => $this->country,
             'type' => $this->type,
             'description' => $this->description,
+            'documentPath' => $this->documentPath,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
             'unitCount' => $this->unitCount,

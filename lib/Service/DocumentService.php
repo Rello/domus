@@ -30,6 +30,7 @@ class DocumentService {
         private BookingMapper $bookingMapper,
         private PartnerMapper $partnerMapper,
         private AccountService $accountService,
+        private DocumentPathService $documentPathService,
         private LoggerInterface $logger,
     ) {
     }
@@ -392,10 +393,13 @@ class DocumentService {
         $context = $this->resolveStorageContext($userId, $entityType, $entityId, $year);
         $userFolder = $this->rootFolder->getUserFolder($userId);
 
-        $baseFolder = $this->getOrCreateFolder($userFolder, 'DomusApp');
-        $propertyFolder = $this->getOrCreateFolder($baseFolder, $this->sanitizeSegment($context['propertyFolder']));
-        $unitFolder = $this->getOrCreateFolder($propertyFolder, $this->sanitizeSegment($context['unitFolder']));
-        $yearFolder = $this->getOrCreateFolder($unitFolder, (string)$context['year']);
+        $baseFolder = $this->getOrCreateFolderFromPath($userFolder, $context['basePath']);
+        $yearFolder = $this->getOrCreateFolder($baseFolder, (string)$context['year']);
+
+        if (!$context['appendTypeFolder']) {
+            return $yearFolder;
+        }
+
         $typeSegment = $this->resolveTypeFolder($entityType, $typeFolder);
 
         return $this->getOrCreateFolder($yearFolder, $typeSegment);
@@ -411,26 +415,19 @@ class DocumentService {
                         throw new \RuntimeException($this->l10n->t('Property not found.'));
                     }
                     return [
-                        'propertyFolder' => $property->getName() ?: $this->l10n->t('Property'),
-                        'unitFolder' => $this->l10n->t('General'),
+                        'basePath' => $property->getDocumentPath(),
                         'year' => $targetYear,
+                        'appendTypeFolder' => false,
                     ];
                 case 'unit':
                     $unit = $this->unitMapper->findForUser($entityId, $userId);
                     if (!$unit) {
                         throw new \RuntimeException($this->l10n->t('Unit not found.'));
                     }
-                    $property = null;
-                    if ($unit->getPropertyId() !== null) {
-                        $property = $this->propertyMapper->findForUser($unit->getPropertyId(), $userId);
-                        if (!$property) {
-                            throw new \RuntimeException($this->l10n->t('Property not found.'));
-                        }
-                    }
                     return [
-                        'propertyFolder' => $property?->getName() ?: $this->l10n->t('General'),
-                        'unitFolder' => $unit->getLabel() ?: (string)$unit->getUnitNumber(),
+                        'basePath' => $unit->getDocumentPath(),
                         'year' => $targetYear,
+                        'appendTypeFolder' => false,
                     ];
                 case 'tenancy':
                     $tenancy = $this->tenancyMapper->findForUser($entityId, $userId);
@@ -441,46 +438,31 @@ class DocumentService {
                     if (!$unit) {
                         throw new \RuntimeException($this->l10n->t('Unit not found.'));
                     }
-                    $property = null;
-                    if ($unit->getPropertyId() !== null) {
-                        $property = $this->propertyMapper->findForUser($unit->getPropertyId(), $userId);
-                        if (!$property) {
-                            throw new \RuntimeException($this->l10n->t('Property not found.'));
-                        }
-                    }
                     $tenancyYear = $targetYear;
                     if ($year === null && $tenancy->getStartDate()) {
                         $tenancyYear = (int)date('Y', strtotime((string)$tenancy->getStartDate()));
                     }
                     return [
-                        'propertyFolder' => $property?->getName() ?: $this->l10n->t('General'),
-                        'unitFolder' => $unit->getLabel() ?: (string)$unit->getUnitNumber(),
+                        'basePath' => $unit->getDocumentPath(),
                         'year' => $tenancyYear,
+                        'appendTypeFolder' => true,
                     ];
                 case 'booking':
                     $booking = $this->bookingMapper->findForUser($entityId, $userId);
                     if (!$booking) {
                         throw new \RuntimeException($this->l10n->t('Booking not found.'));
                     }
-                    $property = $booking->getPropertyId() ? $this->propertyMapper->findForUser($booking->getPropertyId(), $userId) : null;
-                    $propertyFolder = $property?->getName() ?: $this->l10n->t('General');
-                    $unitFolder = $this->l10n->t('General');
-                    if ($booking->getUnitId()) {
-                        $unit = $this->unitMapper->findForUser($booking->getUnitId(), $userId);
-                        if ($unit) {
-                            $unitFolder = $unit->getLabel() ?: (string)$unit->getUnitNumber();
-                        }
-                    }
+                    $basePath = $this->resolveBookingBasePath($userId, $booking->getUnitId(), $booking->getPropertyId());
                     return [
-                        'propertyFolder' => $propertyFolder,
-                        'unitFolder' => $unitFolder,
+                        'basePath' => $basePath,
                         'year' => $booking->getYear() ?: $targetYear,
+                        'appendTypeFolder' => true,
                     ];
                 default:
                     return [
-                        'propertyFolder' => $this->l10n->t('General'),
-                        'unitFolder' => ucfirst($entityType),
+                        'basePath' => $this->buildGeneralBasePath(),
                         'year' => $targetYear,
+                        'appendTypeFolder' => true,
                     ];
             }
         } catch (\Throwable $e) {
@@ -502,6 +484,41 @@ class DocumentService {
         } catch (NotFoundException $e) {
             throw new \RuntimeException($this->l10n->t('Unable to create folder structure.'));
         }
+    }
+
+    private function getOrCreateFolderFromPath(Folder $userFolder, string $basePath): Folder {
+        $normalizedPath = $this->normalizePath($basePath);
+        $segments = array_values(array_filter(explode('/', $normalizedPath), static fn(string $segment) => $segment !== ''));
+        if ($segments === []) {
+            throw new \RuntimeException($this->l10n->t('Invalid document path.'));
+        }
+        $current = $userFolder;
+        foreach ($segments as $segment) {
+            $current = $this->getOrCreateFolder($current, $segment);
+        }
+        return $current;
+    }
+
+    private function buildGeneralBasePath(): string {
+        return $this->documentPathService->buildPropertyPath($this->l10n->t('General'));
+    }
+
+    private function resolveBookingBasePath(string $userId, ?int $unitId, ?int $propertyId): string {
+        if ($unitId) {
+            $unit = $this->unitMapper->findForUser($unitId, $userId);
+            if ($unit) {
+                return $unit->getDocumentPath();
+            }
+        }
+
+        if ($propertyId) {
+            $property = $this->propertyMapper->findForUser($propertyId, $userId);
+            if ($property) {
+                return $property->getDocumentPath();
+            }
+        }
+
+        return $this->buildGeneralBasePath();
     }
 
     private function getUniqueFileName(Folder $folder, string $fileName): string {
