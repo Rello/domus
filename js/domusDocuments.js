@@ -45,6 +45,84 @@
             return '<div id="' + containerId + '">' + t('domus', 'Loading {entity}…', { entity: t('domus', 'Documents') }) + '</div>';
         }
 
+        function renderLatestList(entityType, entityId, options = {}) {
+            const containerId = `domus-documents-latest-${entityType}-${entityId}`;
+            if (!options.defer) {
+                loadLatestList(entityType, entityId, options);
+            }
+            return '<div id="' + containerId + '">' + t('domus', 'Loading {entity}…', { entity: t('domus', 'Documents') }) + '</div>';
+        }
+
+        function loadLatestList(entityType, entityId, options = {}) {
+            const containerId = `domus-documents-latest-${entityType}-${entityId}`;
+            const pageSize = Math.max(1, Number(options.pageSize) || 10);
+            let visibleCount = pageSize;
+
+            function updateContainer(html) {
+                const placeholder = document.getElementById(containerId);
+                if (placeholder) {
+                    placeholder.outerHTML = html;
+                }
+            }
+
+            function buildEmptyState() {
+                return '<div id="' + containerId + '">' +
+                    Domus.Utils.escapeHtml(t('domus', 'No {entity} found.', { entity: t('domus', 'Documents') })) +
+                    '</div>';
+            }
+
+            function buildRows(docs) {
+                return docs.slice(0, visibleCount).map(doc => {
+                    const fileName = doc.fileName || doc.fileUrl || doc.fileId || '';
+                    const createdAt = doc?.createdAt ? Domus.Utils.formatDate(doc.createdAt * 1000) : '';
+                    return [
+                        '<a class="domus-link" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(doc.fileUrl || '#') + '">' +
+                        Domus.Utils.escapeHtml(fileName) + '</a>',
+                        Domus.Utils.escapeHtml(createdAt || '—'),
+                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Show linked objects'), { dataset: { docInfo: doc.id } }),
+                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove'), { dataset: { docId: doc.id } })
+                    ];
+                });
+            }
+
+            function renderView(docs) {
+                if (!docs.length) {
+                    updateContainer(buildEmptyState());
+                    return;
+                }
+                const rows = buildRows(docs);
+                const table = Domus.UI.buildTable([t('domus', 'File'), t('domus', 'Date'), t('domus', 'Info'), ''], rows, { wrapPanel: false });
+                const hasMore = docs.length > visibleCount;
+                const moreButton = hasMore
+                    ? '<div class="domus-documents-more-row">' +
+                    '<button type="button" class="domus-link" id="' + containerId + '-more">' + Domus.Utils.escapeHtml(t('domus', 'More')) + '</button>' +
+                    '</div>'
+                    : '';
+                updateContainer('<div id="' + containerId + '">' + table + moreButton + '</div>');
+                bindDocumentActions(entityType, entityId, containerId);
+                const moreBtn = document.getElementById(containerId + '-more');
+                if (moreBtn) {
+                    moreBtn.addEventListener('click', () => {
+                        visibleCount = Math.min(visibleCount + pageSize, docs.length);
+                        renderView(docs);
+                    });
+                }
+            }
+
+            Domus.Api.getDocuments(entityType, entityId)
+                .then(docs => {
+                    const sortedDocs = (docs || []).slice().sort((a, b) => {
+                        const aDate = Number(a?.createdAt) || 0;
+                        const bDate = Number(b?.createdAt) || 0;
+                        return bDate - aDate;
+                    });
+                    renderView(sortedDocs);
+                })
+                .catch(() => {
+                    updateContainer(buildEmptyState());
+                });
+        }
+
         function createAttachmentWidget(options = {}) {
             const defaultYear = options.defaultYear ?? Domus.state.currentYear;
             const showActions = options.showActions !== false;
@@ -361,7 +439,7 @@
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
-        return { renderList, openLinkModal, createAttachmentWidget };
+        return { renderList, renderLatestList, loadLatestList, openLinkModal, createAttachmentWidget };
     })();
 
     /**
