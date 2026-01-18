@@ -360,7 +360,11 @@
                         detailArea.setAttribute('hidden', '');
                         detailArea.dataset.kpiTarget = '';
                         detailArea.innerHTML = '';
+                        resetUnitBookingsPanel();
                         return;
+                    }
+                    if (target !== currentTarget) {
+                        resetUnitBookingsPanel();
                     }
                     detailArea.innerHTML = content;
                     detailArea.removeAttribute('hidden');
@@ -749,6 +753,16 @@
                 .catch(err => {
                     body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
                 });
+        }
+
+        function resetUnitBookingsPanel() {
+            const panel = document.getElementById('domus-unit-bookings-panel');
+            const body = document.getElementById('domus-unit-bookings-body');
+            if (!panel || !body) {
+                return;
+            }
+            panel.setAttribute('hidden', '');
+            body.innerHTML = '';
         }
 
         function renderUnitDocumentsByYear(unitId, year, options = {}) {
