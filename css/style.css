@@ -40,13 +40,19 @@ body {
     width: 100%;
 }
 
-.domus-top-navigation {
+.domus-top-navigation,
+.domus-bottom-navigation {
     max-width: 1200px;
     margin: 0 auto 16px;
     width: 100%;
 }
 
-.domus-top-navigation-inner {
+.domus-bottom-navigation {
+    margin: 16px auto 0;
+}
+
+.domus-top-navigation-inner,
+.domus-bottom-navigation-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -54,35 +60,43 @@ body {
     gap: 12px;
 }
 
-#app-content .domus-top-nav-primary {
+#app-content .domus-top-nav-primary,
+#app-content .domus-bottom-nav-primary {
     flex: 1 1 auto;
 }
 
-#app-content .domus-top-nav-secondary {
+#app-content .domus-top-nav-secondary,
+#app-content .domus-bottom-nav-secondary {
     display: flex;
     justify-content: flex-end;
     flex: 0 1 auto;
 }
 
-#app-content .domus-top-navigation .domus-nav {
+#app-content .domus-top-navigation .domus-nav,
+#app-content .domus-bottom-navigation .domus-nav {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
     margin: 0;
 }
 
-#app-content .domus-top-navigation .domus-nav li {
+#app-content .domus-top-navigation .domus-nav li,
+#app-content .domus-bottom-navigation .domus-nav li {
     margin-bottom: 0;
 }
 
 #app-content .domus-top-navigation .domus-nav li.active a,
-#app-content .domus-top-navigation .domus-nav a:hover {
+#app-content .domus-top-navigation .domus-nav a:hover,
+#app-content .domus-bottom-navigation .domus-nav li.active a,
+#app-content .domus-bottom-navigation .domus-nav a:hover {
     background: #4B5E53;
     color: #ffffff;
 }
 
 #app-content .domus-top-navigation .domus-nav li.active .domus-icon,
-#app-content .domus-top-navigation .domus-nav a:hover .domus-icon {
+#app-content .domus-top-navigation .domus-nav a:hover .domus-icon,
+#app-content .domus-bottom-navigation .domus-nav li.active .domus-icon,
+#app-content .domus-bottom-navigation .domus-nav a:hover .domus-icon {
     filter: brightness(0) invert(1);
 }
 
@@ -129,7 +143,7 @@ body {
     filter: initial !important;
     border-right: var(--domus-border);
     width: 180px !important;
-    display: flex;
+    display: none;
     flex-direction: column;
     min-height: 100%;
 }
@@ -193,6 +207,15 @@ body {
     margin-top: 16px;
     padding-top: 12px;
     border-top: var(--domus-border);
+}
+
+.domus-bottom-navigation .domus-role-switcher {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .domus-toolbar {
