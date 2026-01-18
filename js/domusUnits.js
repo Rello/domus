@@ -1041,8 +1041,13 @@
                         ? '<div class="domus-panel domus-kpi-detail" id="domus-unit-kpi-detail" hidden></div>'
                         : '';
 
-                    const bookingsPanel = canManageBookings
-                        ? '<div class="domus-panel" id="domus-unit-bookings-panel"' + (useKpiLayout ? ' hidden' : '') + '>' + bookingsHeader + '<div class="domus-panel-body" id="domus-unit-bookings-body">' +
+                    const bookingsPanelInline = canManageBookings
+                        ? '<div class="domus-panel" id="domus-unit-bookings-panel" hidden>' + bookingsHeader + '<div class="domus-panel-body" id="domus-unit-bookings-body">' +
+                        Domus.Bookings.renderInline(bookings || [], { refreshView: 'unitDetail', refreshId: id }) +
+                        '</div></div>'
+                        : '';
+                    const bookingsPanel = (!useKpiLayout && canManageBookings)
+                        ? '<div class="domus-panel" id="domus-unit-bookings-panel">' + bookingsHeader + '<div class="domus-panel-body" id="domus-unit-bookings-body">' +
                         Domus.Bookings.renderInline(bookings || [], { refreshView: 'unitDetail', refreshId: id }) +
                         '</div></div>'
                         : '';
@@ -1053,7 +1058,6 @@
                         hero +
                         kpiTiles +
                         kpiDetailArea +
-                        bookingsPanel +
                         partnersPanelWrapper +
                         '</div>'
                         : '<div class="domus-detail domus-dashboard">' +
@@ -1103,8 +1107,8 @@
                         renderKpiTileCharts(statistics);
                         const detailMap = {
                             tasks: tasksPanel,
-                            revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable, yearStatusAction),
-                            cost: buildKpiDetailPanel(t('domus', 'Costs'), renderStatisticsTable(statistics ? statistics.cost : null)),
+                            revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable, yearStatusAction) + bookingsPanelInline,
+                            cost: buildKpiDetailPanel(t('domus', 'Costs'), renderStatisticsTable(statistics ? statistics.cost : null)) + bookingsPanelInline,
                             tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies), (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action) ? {
                                 id: 'domus-add-tenancy-inline',
                                 title: tenancyLabels.action,
