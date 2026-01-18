@@ -264,7 +264,8 @@
                         return {
                             type: 'link',
                             filePath: selectedPath,
-                            year: yearValue
+                            year: yearValue,
+                            title: uploadTitleValue || undefined
                         };
                     }
                 }
@@ -371,7 +372,7 @@
                     Domus.UI.showNotification(t('domus', 'Please select a file to link.'), 'error');
                     return;
                 }
-                Domus.Api.linkDocument(entityType, entityId, { filePath: selection.filePath, year: selection.year })
+                Domus.Api.linkDocument(entityType, entityId, { filePath: selection.filePath, year: selection.year, title: selection.title })
                     .then(() => {
                         Domus.UI.showNotification(t('domus', 'Document linked.'), 'success');
                         handleSuccess();

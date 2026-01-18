@@ -110,6 +110,14 @@
                 Domus.Utils.escapeHtml(String(safeCount));
         }
 
+        function buildFilesFolderUrl(path) {
+            if (!path || typeof OC === 'undefined' || typeof OC.generateUrl !== 'function') {
+                return '';
+            }
+            const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+            return OC.generateUrl('/apps/files/?dir=' + encodeURIComponent(normalizedPath));
+        }
+
         function buildRentabilityChartPanel(statistics) {
             const chartSeries = getRentabilityChartSeries(statistics);
             const header = Domus.UI.buildSectionHeader(t('domus', 'Rentability & cold rent'));
@@ -786,15 +794,19 @@
                     const distributionsPromise = Domus.Role.isBuildingMgmtView()
                         ? Domus.Distributions.loadForUnit(id).catch(() => [])
                         : Promise.resolve([]);
+                    const propertyPromise = unit.propertyId
+                        ? Domus.Api.getProperty(unit.propertyId).catch(() => null)
+                        : Promise.resolve(null);
                     return Promise.all([
                         Promise.resolve(unit),
                         Domus.Api.getUnitStatistics(id).catch(() => null),
                         Domus.Api.getBookings({ unitId: id }).catch(() => []),
                         distributionsPromise,
-                        Domus.Api.getUnitPartners(id).catch(() => [])
+                        Domus.Api.getUnitPartners(id).catch(() => []),
+                        propertyPromise
                     ]);
                 })
-                .then(([unit, statistics, bookings, distributions, partners]) => {
+                .then(([unit, statistics, bookings, distributions, partners, property]) => {
 
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const unitDetailConfig = Domus.Role.getUnitDetailConfig();
@@ -964,6 +976,14 @@
                         ? `(${Domus.Utils.formatYear(latestYear)})`
                         : '';
                     const currentTenantLabel = currentTenantPartners || '—';
+                    const propertyDocumentPath = property?.documentPath || '';
+                    const propertyDocumentUrl = propertyDocumentPath ? buildFilesFolderUrl(propertyDocumentPath) : '';
+                    const propertyDocumentLink = propertyDocumentPath && propertyDocumentUrl
+                        ? '<a class="domus-kpi-documents-path" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(propertyDocumentUrl) + '">' +
+                        '<span class="domus-icon domus-icon-folder domus-kpi-documents-path-icon" aria-hidden="true"></span>' +
+                        Domus.Utils.escapeHtml(propertyDocumentPath) +
+                        '</a>'
+                        : '';
                     const documentsTileValue = '<div class="domus-kpi-documents">' +
                         '<div class="domus-kpi-documents-row">' +
                         '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
@@ -977,6 +997,7 @@
                             : '') +
                         '</div>' +
                         '<span class="domus-kpi-documents-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
+                        (propertyDocumentLink ? propertyDocumentLink : '') +
                         '</div>';
                     const openTaskCount = Domus.Role.isTenantView()
                         ? 0

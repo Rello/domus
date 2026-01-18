@@ -832,6 +832,8 @@
                 setTimeout(() => { isChoosing = false; }, 300);
             };
             container.addEventListener('click', triggerSelect);
+            area.addEventListener('click', triggerSelect);
+            fileName.addEventListener('click', triggerSelect);
             container.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     triggerSelect(e);
