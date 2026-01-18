@@ -85,7 +85,8 @@ class UnitController extends Controller {
                                                    ?string $taxId = null,
                                                    ?string $iban = null,
                                                    ?string $bic = null,
-                                                   ?string $notes = null
+                                                   ?string $notes = null,
+                                                   ?string $documentPath = null
         ): DataResponse {
                 $data = array_filter([
                         'propertyId' => $propertyId,
@@ -100,6 +101,7 @@ class UnitController extends Controller {
                         'iban' => $iban,
                         'bic' => $bic,
                         'notes' => $notes,
+                        'documentPath' => $documentPath,
 		], fn($value) => $value !== null);
                 try {
                         return new DataResponse($this->unitService->updateUnit($id, $data, $this->getUserId(), $this->getRole()));

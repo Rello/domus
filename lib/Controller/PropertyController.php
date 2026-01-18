@@ -48,7 +48,7 @@ class PropertyController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function update(int $id, ?string $name = null, ?string $usageRole = null, ?string $street = null, ?string $zip = null, ?string $city = null, ?string $country = null, ?string $type = null, ?string $description = null): DataResponse {
+    public function update(int $id, ?string $name = null, ?string $usageRole = null, ?string $street = null, ?string $zip = null, ?string $city = null, ?string $country = null, ?string $type = null, ?string $description = null, ?string $documentPath = null): DataResponse {
         $data = array_filter([
             'name' => $name,
             'usageRole' => $usageRole,
@@ -58,6 +58,7 @@ class PropertyController extends Controller {
             'country' => $country,
             'type' => $type,
             'description' => $description,
+            'documentPath' => $documentPath,
         ], fn($value) => $value !== null);
         try {
             $property = $this->propertyService->updateProperty($id, $data, $this->getUserId());
