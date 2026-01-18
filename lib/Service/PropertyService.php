@@ -20,6 +20,7 @@ class PropertyService {
         private DocumentLinkMapper $documentLinkMapper,
         private PartnerRelMapper $partnerRelMapper,
         private TenancyMapper $tenancyMapper,
+        private DocumentPathService $documentPathService,
         private IL10N $l10n,
         private LoggerInterface $logger,
     ) {
@@ -60,6 +61,7 @@ class PropertyService {
         $property->setCountry($data['country'] ?? null);
         $property->setType($data['type'] ?? null);
         $property->setDescription($data['description'] ?? null);
+        $property->setDocumentPath($this->documentPathService->buildPropertyPath($property->getName()));
         $property->setCreatedAt($now);
         $property->setUpdatedAt($now);
 
@@ -70,6 +72,13 @@ class PropertyService {
         $property = $this->getPropertyForUser($id, $userId);
         if (isset($data['name']) && trim((string)$data['name']) === '') {
             throw new \InvalidArgumentException($this->l10n->t('Property name cannot be empty.'));
+        }
+        if (array_key_exists('documentPath', $data)) {
+            $documentPath = trim((string)$data['documentPath']);
+            if ($documentPath === '') {
+                throw new \InvalidArgumentException($this->l10n->t('Document location is required.'));
+            }
+            $property->setDocumentPath($documentPath);
         }
         $fields = ['name', 'street', 'zip', 'city', 'country', 'type', 'description'];
         foreach ($fields as $field) {

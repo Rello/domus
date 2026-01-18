@@ -869,6 +869,7 @@
                     ]);
                     const standardActions = [
                         Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-unit-details' }),
+                        Domus.UI.buildIconButton('domus-icon-settings', t('domus', 'Document location'), { id: 'domus-unit-document-location' }),
                         Domus.UI.buildIconButton('domus-icon-document', t('domus', 'Export data'), { id: 'domus-unit-export' }),
                         Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-unit-delete' })
                     ];
@@ -1157,6 +1158,9 @@
             const partnersPanel = document.getElementById('domus-unit-partners-panel');
 
             detailsBtn?.addEventListener('click', () => openUnitModal(id, 'view'));
+            document.getElementById('domus-unit-document-location')?.addEventListener('click', () => {
+                openDocumentLocationModal(unit);
+            });
             deleteBtn?.addEventListener('click', () => {
                 Domus.UI.confirmAction({
                     message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Unit') }),
@@ -1233,6 +1237,73 @@
 
         function openEditModal(id) {
             openUnitModal(id, 'edit');
+        }
+
+        function openDocumentLocationModal(unit) {
+            const currentPath = unit.documentPath || '';
+            const pickerId = 'domus-unit-document-location-picker';
+            const displayId = 'domus-unit-document-location-display';
+            const rows = [
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Current location'),
+                    content: '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(currentPath || '—') + '</div>'
+                }),
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Folder path'),
+                    required: true,
+                    content: '<div class="domus-doc-picker-row">' +
+                        '<button type="button" class="domus-ghost" id="' + Domus.Utils.escapeHtml(pickerId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Select folder')) + '</button>' +
+                        '<div class="domus-doc-picker-display muted" id="' + Domus.Utils.escapeHtml(displayId) + '">' + Domus.Utils.escapeHtml(currentPath || t('domus', 'No folder selected')) + '</div>' +
+                        '<input type="hidden" name="documentPath" value="' + Domus.Utils.escapeHtml(currentPath) + '" required>' +
+                        '</div>'
+                })
+            ];
+            const modal = Domus.UI.openModal({
+                title: t('domus', 'Change document location'),
+                content: '<div class="domus-form">' +
+                    '<form id="domus-unit-document-location-form">' +
+                    Domus.UI.buildFormTable(rows) +
+                    '<div class="domus-form-actions">' +
+                    '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                    '<button type="button" id="domus-unit-document-location-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                    '</div>' +
+                    '</form>' +
+                    '</div>'
+            });
+
+            const form = modal.modalEl.querySelector('#domus-unit-document-location-form');
+            const documentPathInput = form?.querySelector('input[name="documentPath"]');
+            const pickerButton = modal.modalEl.querySelector('#' + pickerId);
+            const pickerDisplay = modal.modalEl.querySelector('#' + displayId);
+            if (pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
+                pickerButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    OC.dialogs.filepicker(t('domus', 'Select folder'), function(path) {
+                        if (documentPathInput) {
+                            documentPathInput.value = path || '';
+                        }
+                        if (pickerDisplay) {
+                            pickerDisplay.textContent = path || t('domus', 'No folder selected');
+                        }
+                    }, false, 'httpd/unix-directory', true, 1);
+                });
+            }
+            form?.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const value = documentPathInput?.value?.trim() || '';
+                if (!value) {
+                    Domus.UI.showNotification(t('domus', 'Document location is required.'), 'error');
+                    return;
+                }
+                Domus.Api.updateUnit(unit.id, { documentPath: value })
+                    .then(() => {
+                        Domus.UI.showNotification(t('domus', 'Document location updated.'), 'success');
+                        modal.close();
+                        renderDetail(unit.id);
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
+            modal.modalEl.querySelector('#domus-unit-document-location-cancel')?.addEventListener('click', modal.close);
         }
 
         function openUnitModal(id, mode = 'edit') {

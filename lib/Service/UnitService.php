@@ -18,6 +18,7 @@ class UnitService {
         private PartnerRelMapper $partnerRelMapper,
         private TenancyService $tenancyService,
         private PermissionService $permissionService,
+        private DocumentPathService $documentPathService,
         private IL10N $l10n,
     ) {
     }
@@ -43,12 +44,14 @@ class UnitService {
 
     public function createUnit(array $data, string $userId, string $role): Unit {
         $propertyId = $data['propertyId'] ?? null;
+        $propertyName = null;
         $this->permissionService->assertPropertyRequirement($role, $propertyId ? (int)$propertyId : null);
         if ($propertyId !== null) {
             $property = $this->propertyMapper->findForUser((int)$propertyId, $userId);
             if (!$property) {
                 throw new \RuntimeException($this->l10n->t('Property not found.'));
             }
+            $propertyName = $property->getName();
         }
         $now = time();
         $unit = new Unit();
@@ -65,6 +68,7 @@ class UnitService {
         $unit->setIban($data['iban'] ?? null);
         $unit->setBic($data['bic'] ?? null);
         $unit->setNotes($data['notes'] ?? null);
+        $unit->setDocumentPath($this->documentPathService->buildUnitPath($unit->getLabel(), $unit->getUnitNumber(), $propertyName));
         $unit->setCreatedAt($now);
         $unit->setUpdatedAt($now);
 
@@ -75,6 +79,13 @@ class UnitService {
         $unit = $this->getUnitForUser($id, $userId);
         if ($this->permissionService->isBuildingManagement($role) && $unit->getPropertyId() === null && !isset($data['propertyId'])) {
             throw new \InvalidArgumentException($this->l10n->t('Property is required for building management.'));
+        }
+        if (array_key_exists('documentPath', $data)) {
+            $documentPath = trim((string)$data['documentPath']);
+            if ($documentPath === '') {
+                throw new \InvalidArgumentException($this->l10n->t('Document location is required.'));
+            }
+            $unit->setDocumentPath($documentPath);
         }
         $fields = ['label', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes'];
         foreach ($fields as $field) {

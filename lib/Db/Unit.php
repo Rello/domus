@@ -19,6 +19,7 @@ class Unit extends Entity implements JsonSerializable {
     protected $iban;
     protected $bic;
     protected $notes;
+    protected $documentPath;
     protected $createdAt;
     protected $updatedAt;
 
@@ -49,6 +50,7 @@ class Unit extends Entity implements JsonSerializable {
             'iban' => $this->iban,
             'bic' => $this->bic,
             'notes' => $this->notes,
+            'documentPath' => $this->documentPath,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
             'activeTenancies' => $this->activeTenancies,
