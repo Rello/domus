@@ -797,9 +797,17 @@
             fileName.className = 'domus-dropzone-filename muted';
             fileName.textContent = options.placeholder || t('domus', 'No file selected');
 
+            const inputId = 'domus-dropzone-input-' + Math.random().toString(36).slice(2);
+            input.id = inputId;
+
+            const label = document.createElement('label');
+            label.className = 'domus-dropzone-label';
+            label.setAttribute('for', inputId);
+            label.appendChild(area);
+            label.appendChild(fileName);
+
             container.appendChild(input);
-            container.appendChild(area);
-            container.appendChild(fileName);
+            container.appendChild(label);
 
             function updateFileName(file) {
                 fileName.textContent = file ? file.name : (options.placeholder || t('domus', 'No file selected'));
@@ -834,6 +842,8 @@
             container.addEventListener('click', triggerSelect);
             area.addEventListener('click', triggerSelect);
             fileName.addEventListener('click', triggerSelect);
+            area.addEventListener('mousedown', triggerSelect);
+            fileName.addEventListener('mousedown', triggerSelect);
             container.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     triggerSelect(e);

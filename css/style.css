@@ -1574,6 +1574,11 @@ body {
     font-weight: 700;
 }
 
+.domus-dropzone-label {
+    display: contents;
+    cursor: pointer;
+}
+
 .domus-dropzone-actions {
     display: flex;
     gap: 8px;
