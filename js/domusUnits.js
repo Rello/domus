@@ -1256,13 +1256,16 @@
             });
 
             const form = modal.modalEl.querySelector('#domus-unit-document-location-form');
+            const documentPathInput = form?.querySelector('input[name="documentPath"]');
             const pickerButton = modal.modalEl.querySelector('#' + pickerId);
             const pickerDisplay = modal.modalEl.querySelector('#' + displayId);
             if (pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
                 pickerButton.addEventListener('click', function(e) {
                     e.preventDefault();
                     OC.dialogs.filepicker(t('domus', 'Select folder'), function(path) {
-                        form.documentPath.value = path || '';
+                        if (documentPathInput) {
+                            documentPathInput.value = path || '';
+                        }
                         if (pickerDisplay) {
                             pickerDisplay.textContent = path || t('domus', 'No folder selected');
                         }
@@ -1271,7 +1274,7 @@
             }
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
-                const value = form.documentPath?.value?.trim() || '';
+                const value = documentPathInput?.value?.trim() || '';
                 if (!value) {
                     Domus.UI.showNotification(t('domus', 'Document location is required.'), 'error');
                     return;
