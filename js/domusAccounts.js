@@ -162,6 +162,36 @@
                 (usedInBookings ? `<span class="domus-badge domus-badge-muted">${Domus.Utils.escapeHtml(t('domus', 'Used in bookings'))}</span>` : ''),
                 (isSystem ? `<span class="domus-badge domus-badge-muted">${Domus.Utils.escapeHtml(t('domus', 'System'))}</span>` : '')
             ].filter(Boolean).join('');
+            const actionButtons = [
+                buildAccountActionButton({
+                    iconClass: 'domus-icon-add-child',
+                    label: t('domus', 'Add child'),
+                    action: 'addChild',
+                    id: account.id
+                }),
+                buildAccountActionButton({
+                    iconClass: 'domus-icon-edit',
+                    label: t('domus', 'Edit'),
+                    action: 'edit',
+                    id: account.id
+                }),
+                buildAccountActionButton({
+                    iconClass: isDisabled ? 'domus-icon-checkmark' : 'domus-icon-disable',
+                    label: disableLabel,
+                    action: 'toggle',
+                    id: account.id,
+                    disabled: cannotModify,
+                    title: cannotModify ? disableTitle : undefined
+                }),
+                buildAccountActionButton({
+                    iconClass: 'domus-icon-delete',
+                    label: t('domus', 'Delete'),
+                    action: 'delete',
+                    id: account.id,
+                    disabled: deleteBlocked,
+                    title: deleteBlocked ? deleteTitle : undefined
+                })
+            ].join('');
 
             const childrenHtml = buildAccountTree(account.children || [], level + 1);
             return '<li class="domus-account-node" style="--level:' + level + '">' +
@@ -174,18 +204,26 @@
                 '</div>' +
                 '</div>' +
                 '<div class="domus-account-actions">' +
-                '<button type="button" class="domus-account-action" data-account-action="addChild" data-account-id="' + account.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Add child')) + '</button>' +
-                '<button type="button" class="domus-account-action" data-account-action="edit" data-account-id="' + account.id + '">' + Domus.Utils.escapeHtml(t('domus', 'Edit')) + '</button>' +
-                '<button type="button" class="domus-account-action" data-account-action="toggle" data-account-id="' + account.id + '"' +
-                (cannotModify ? ' disabled title="' + Domus.Utils.escapeHtml(disableTitle) + '"' : '') + '>' +
-                Domus.Utils.escapeHtml(disableLabel) + '</button>' +
-                '<button type="button" class="domus-account-action" data-account-action="delete" data-account-id="' + account.id + '"' +
-                (deleteBlocked ? ' disabled title="' + Domus.Utils.escapeHtml(deleteTitle) + '"' : '') + '>' +
-                Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
+                actionButtons +
                 '</div>' +
                 '</div>' +
                 childrenHtml +
                 '</li>';
+        }
+
+        function buildAccountActionButton(options) {
+            const label = options.label || '';
+            const safeLabel = Domus.Utils.escapeHtml(label);
+            const safeTitle = Domus.Utils.escapeHtml(options.title || label);
+            const iconClass = Domus.Utils.escapeHtml(options.iconClass || '');
+            const action = Domus.Utils.escapeHtml(options.action || '');
+            const id = Domus.Utils.escapeHtml(String(options.id || ''));
+            const disabledAttr = options.disabled ? ' disabled' : '';
+            return '<button type="button" class="domus-icon-only-button domus-account-action" data-account-action="' + action + '" data-account-id="' + id + '" aria-label="' + safeLabel + '" title="' + safeTitle + '"' +
+                disabledAttr + '>' +
+                '<span class="domus-icon ' + iconClass + '" aria-hidden="true"></span>' +
+                '<span class="domus-visually-hidden">' + safeLabel + '</span>' +
+                '</button>';
         }
 
         function buildAccountForm(account, options = {}) {
