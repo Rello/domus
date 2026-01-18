@@ -26,5 +26,11 @@ Util::addScript('domus', 'domusDocuments');
         </div>
     </div>
     <div id="domus-content" class="domus-content"></div>
+    <div id="domus-bottom-navigation" class="domus-bottom-navigation">
+        <div class="domus-bottom-navigation-inner">
+            <div id="domus-bottom-nav-primary" class="domus-bottom-nav-primary"></div>
+            <div id="domus-bottom-nav-secondary" class="domus-bottom-nav-secondary"></div>
+        </div>
+    </div>
 </div>
 <div id="app-sidebar"></div>

@@ -1219,6 +1219,8 @@
         function render() {
             const container = document.getElementById('app-navigation');
             const topNavContainer = document.getElementById('domus-top-nav-primary');
+            const bottomNavPrimary = document.getElementById('domus-bottom-nav-primary');
+            const bottomNavSecondary = document.getElementById('domus-bottom-nav-secondary');
             if (!container && !topNavContainer) return;
 
             const activeView = getActiveView();
@@ -1241,10 +1243,18 @@
                 }
             }
 
+            if (bottomNavPrimary) {
+                bottomNavPrimary.innerHTML = '';
+            }
+
+            if (bottomNavSecondary) {
+                bottomNavSecondary.innerHTML = '';
+            }
+
             const roleOptions = Domus.Role.getRoleOptions();
             if (roleOptions.length > 1) {
                 const roleSwitcher = document.createElement('div');
-                roleSwitcher.className = 'domus-role-switcher';
+                roleSwitcher.className = 'domus-role-switcher domus-role-switcher-bottom';
                 const label = document.createElement('label');
                 label.textContent = t('domus', 'View as');
                 const select = document.createElement('select');
@@ -1257,7 +1267,9 @@
                 });
                 roleSwitcher.appendChild(label);
                 roleSwitcher.appendChild(select);
-                if (container) {
+                if (bottomNavSecondary) {
+                    bottomNavSecondary.appendChild(roleSwitcher);
+                } else if (container) {
                     container.appendChild(roleSwitcher);
                 }
             }
@@ -1266,7 +1278,9 @@
             if (bottomItems.length) {
                 const bottomList = buildNavList(bottomItems, activeView);
                 bottomList.classList.add('domus-nav-bottom');
-                if (container) {
+                if (bottomNavPrimary) {
+                    bottomNavPrimary.appendChild(bottomList);
+                } else if (container) {
                     container.appendChild(bottomList);
                 }
             }
