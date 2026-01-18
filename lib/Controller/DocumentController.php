@@ -37,8 +37,8 @@ class DocumentController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function link(string $entityType, int $entityId, string $filePath, ?int $year = null): DataResponse {
-        $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $filePath, $year);
+    public function link(string $entityType, int $entityId, string $filePath, ?int $year = null, ?string $title = null): DataResponse {
+        $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $filePath, $year, $title);
         return new DataResponse($link, Http::STATUS_CREATED);
     }
 

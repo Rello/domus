@@ -1138,11 +1138,6 @@ body {
     gap: 8px;
 }
 
-.domus-kpi-documents .domus-icon {
-    width: 48px;
-    height: 48px;
-}
-
 .domus-kpi-documents-add {
     border: none;
     background: none;
@@ -1155,10 +1150,18 @@ body {
     height: 24px;
 }
 
-.domus-kpi-documents-label {
+.domus-kpi-documents-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
     font-size: 13px;
     font-weight: 600;
     color: var(--color-text-maxcontrast);
+}
+
+.domus-kpi-documents-open .domus-icon {
+    width: 48px;
+    height: 48px;
 }
 
 .domus-kpi-subline {
@@ -1554,6 +1557,24 @@ body {
 
 .domus-dropzone-area strong {
     font-weight: 700;
+}
+
+.domus-dropzone-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.domus-dropzone-label {
+    display: contents;
+    cursor: pointer;
 }
 
 .domus-dropzone-actions {

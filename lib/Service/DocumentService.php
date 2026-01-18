@@ -68,7 +68,7 @@ class DocumentService {
         ];
     }
 
-    public function linkFile(string $userId, string $entityType, int $entityId, string $filePath, ?int $year = null): DocumentLink {
+    public function linkFile(string $userId, string $entityType, int $entityId, string $filePath, ?int $year = null, ?string $title = null): DocumentLink {
         $this->assertEntityType($entityType);
         $normalizedPath = $this->normalizePath($filePath);
         $userFolder = $this->rootFolder->getUserFolder($userId);
@@ -81,7 +81,7 @@ class DocumentService {
             throw new \InvalidArgumentException($this->l10n->t('Selected item is not a file.'));
         }
 
-        return $this->persistLink($userId, $entityType, $entityId, $node, null);
+        return $this->persistLink($userId, $entityType, $entityId, $node, $title);
     }
 
     public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null, ?string $title = null, ?string $typeFolder = null): DocumentLink {

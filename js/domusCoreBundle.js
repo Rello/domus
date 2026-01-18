@@ -785,7 +785,7 @@
             input.name = options.name || 'file';
             input.required = options.required === true;
             input.accept = options.accept || '';
-            input.style.display = 'none';
+            input.className = 'domus-dropzone-input';
 
             const area = document.createElement('div');
             area.className = 'domus-dropzone-area';
@@ -797,9 +797,17 @@
             fileName.className = 'domus-dropzone-filename muted';
             fileName.textContent = options.placeholder || t('domus', 'No file selected');
 
+            const inputId = 'domus-dropzone-input-' + Math.random().toString(36).slice(2);
+            input.id = inputId;
+
+            const label = document.createElement('label');
+            label.className = 'domus-dropzone-label';
+            label.setAttribute('for', inputId);
+            label.appendChild(area);
+            label.appendChild(fileName);
+
             container.appendChild(input);
-            container.appendChild(area);
-            container.appendChild(fileName);
+            container.appendChild(label);
 
             function updateFileName(file) {
                 fileName.textContent = file ? file.name : (options.placeholder || t('domus', 'No file selected'));
@@ -824,14 +832,33 @@
 
             let isChoosing = false;
             const triggerSelect = (e) => {
-                e?.preventDefault();
-                e?.stopPropagation();
+                if (e?.type === 'keydown') {
+                    e.preventDefault();
+                }
+                console.debug('[Domus] Dropzone trigger select', {
+                    target: e?.target,
+                    currentTarget: e?.currentTarget,
+                    isChoosing,
+                    disabled: input.disabled,
+                    inputId: input.id
+                });
                 if (isChoosing) return;
                 isChoosing = true;
-                input.click();
+                try {
+                    console.debug('[Domus] Dropzone input click', { inputId: input.id });
+                    if (typeof input.showPicker === 'function') {
+                        input.showPicker();
+                    } else {
+                        input.click();
+                    }
+                } catch (error) {
+                    console.warn('[Domus] Dropzone input click failed', error);
+                }
                 setTimeout(() => { isChoosing = false; }, 300);
             };
             container.addEventListener('click', triggerSelect);
+            area.addEventListener('click', triggerSelect);
+            fileName.addEventListener('click', triggerSelect);
             container.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     triggerSelect(e);

@@ -110,6 +110,14 @@
                 Domus.Utils.escapeHtml(String(safeCount));
         }
 
+        function buildFilesFolderUrl(path) {
+            if (!path || typeof OC === 'undefined' || typeof OC.generateUrl !== 'function') {
+                return '';
+            }
+            const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+            return OC.generateUrl('/apps/files/?dir=' + encodeURIComponent(normalizedPath));
+        }
+
         function buildRentabilityChartPanel(statistics) {
             const chartSeries = getRentabilityChartSeries(statistics);
             const header = Domus.UI.buildSectionHeader(t('domus', 'Rentability & cold rent'));
@@ -786,15 +794,19 @@
                     const distributionsPromise = Domus.Role.isBuildingMgmtView()
                         ? Domus.Distributions.loadForUnit(id).catch(() => [])
                         : Promise.resolve([]);
+                    const propertyPromise = unit.propertyId
+                        ? Domus.Api.getProperty(unit.propertyId).catch(() => null)
+                        : Promise.resolve(null);
                     return Promise.all([
                         Promise.resolve(unit),
                         Domus.Api.getUnitStatistics(id).catch(() => null),
                         Domus.Api.getBookings({ unitId: id }).catch(() => []),
                         distributionsPromise,
-                        Domus.Api.getUnitPartners(id).catch(() => [])
+                        Domus.Api.getUnitPartners(id).catch(() => []),
+                        propertyPromise
                     ]);
                 })
-                .then(([unit, statistics, bookings, distributions, partners]) => {
+                .then(([unit, statistics, bookings, distributions, partners, property]) => {
 
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const unitDetailConfig = Domus.Role.getUnitDetailConfig();
@@ -964,9 +976,20 @@
                         ? `(${Domus.Utils.formatYear(latestYear)})`
                         : '';
                     const currentTenantLabel = currentTenantPartners || '—';
+                    const unitDocumentPath = unit.documentPath || '';
+                    const unitDocumentUrl = unitDocumentPath ? buildFilesFolderUrl(unitDocumentPath) : '';
+                    const documentsOpenLink = unitDocumentUrl
+                        ? '<a class="domus-kpi-documents-open" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(unitDocumentUrl) + '">' +
+                        '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
+                        '<span class="domus-kpi-documents-open-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
+                        '</a>'
+                        : '<div class="domus-kpi-documents-open">' +
+                        '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
+                        '<span class="domus-kpi-documents-open-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
+                        '</div>';
                     const documentsTileValue = '<div class="domus-kpi-documents">' +
                         '<div class="domus-kpi-documents-row">' +
-                        '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
+                        documentsOpenLink +
                         (documentActionsEnabled
                             ? '<button type="button" class="domus-kpi-documents-add" id="domus-unit-kpi-add-doc" title="' +
                             Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Document') })) +
@@ -976,7 +999,6 @@
                             '</button>'
                             : '') +
                         '</div>' +
-                        '<span class="domus-kpi-documents-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
                         '</div>';
                     const openTaskCount = Domus.Role.isTenantView()
                         ? 0
