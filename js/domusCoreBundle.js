@@ -834,9 +834,21 @@
             const triggerSelect = (e) => {
                 e?.preventDefault();
                 e?.stopPropagation();
+                console.debug('[Domus] Dropzone trigger select', {
+                    target: e?.target,
+                    currentTarget: e?.currentTarget,
+                    isChoosing,
+                    disabled: input.disabled,
+                    inputId: input.id
+                });
                 if (isChoosing) return;
                 isChoosing = true;
-                input.click();
+                try {
+                    console.debug('[Domus] Dropzone input click', { inputId: input.id });
+                    input.click();
+                } catch (error) {
+                    console.warn('[Domus] Dropzone input click failed', error);
+                }
                 setTimeout(() => { isChoosing = false; }, 300);
             };
             container.addEventListener('click', triggerSelect);

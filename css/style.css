@@ -1150,21 +1150,6 @@ body {
     height: 24px;
 }
 
-.domus-kpi-documents-path {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-text-maxcontrast);
-    word-break: break-word;
-}
-
-.domus-kpi-documents-path .domus-icon {
-    width: 18px;
-    height: 18px;
-}
-
 .domus-kpi-documents-open {
     display: inline-flex;
     align-items: center;

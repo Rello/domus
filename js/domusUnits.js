@@ -978,12 +978,6 @@
                     const currentTenantLabel = currentTenantPartners || '—';
                     const unitDocumentPath = unit.documentPath || '';
                     const unitDocumentUrl = unitDocumentPath ? buildFilesFolderUrl(unitDocumentPath) : '';
-                    const unitDocumentLink = unitDocumentPath && unitDocumentUrl
-                        ? '<a class="domus-kpi-documents-path" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(unitDocumentUrl) + '">' +
-                        '<span class="domus-icon domus-icon-folder domus-kpi-documents-path-icon" aria-hidden="true"></span>' +
-                        Domus.Utils.escapeHtml(unitDocumentPath) +
-                        '</a>'
-                        : '';
                     const documentsOpenLink = unitDocumentUrl
                         ? '<a class="domus-kpi-documents-open" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(unitDocumentUrl) + '">' +
                         '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
@@ -1005,7 +999,6 @@
                             '</button>'
                             : '') +
                         '</div>' +
-                        (unitDocumentLink ? unitDocumentLink : '') +
                         '</div>';
                     const openTaskCount = Domus.Role.isTenantView()
                         ? 0
