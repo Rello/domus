@@ -548,11 +548,7 @@ body {
 }
 
 .domus-account-action {
-    border: var(--domus-border);
-    background: var(--color-background-dark);
-    border-radius: 6px;
-    padding: 2px 8px;
-    cursor: pointer;
+    color: var(--color-main-text);
 }
 
 .domus-account-main {
@@ -1692,6 +1688,10 @@ body {
     background-image: url(../img/add.svg);
 }
 
+.domus-icon-add-child {
+    background-image: url(../img/addChild.svg);
+}
+
 .domus-icon-edit {
     background-image: url(../img/edit.svg);
 }
@@ -1706,6 +1706,10 @@ body {
 
 .domus-icon-delete {
     background-image: url(../img/delete.svg);
+}
+
+.domus-icon-disable {
+    background-image: url(../img/disable.svg);
 }
 
 .domus-icon-document {
