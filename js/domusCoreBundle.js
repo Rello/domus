@@ -835,17 +835,9 @@
                 if (e?.type === 'keydown') {
                     e.preventDefault();
                 }
-                console.debug('[Domus] Dropzone trigger select', {
-                    target: e?.target,
-                    currentTarget: e?.currentTarget,
-                    isChoosing,
-                    disabled: input.disabled,
-                    inputId: input.id
-                });
                 if (isChoosing) return;
                 isChoosing = true;
                 try {
-                    console.debug('[Domus] Dropzone input click', { inputId: input.id });
                     if (typeof input.showPicker === 'function') {
                         input.showPicker();
                     } else {
