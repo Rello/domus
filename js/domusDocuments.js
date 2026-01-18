@@ -317,7 +317,7 @@
 
             document.querySelectorAll('#' + containerId + ' button[data-doc-info]').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    openDetailModal(Number(this.getAttribute('data-doc-info')));
+                    openDetailModal(this.getAttribute('data-doc-info'));
                 });
             });
         }

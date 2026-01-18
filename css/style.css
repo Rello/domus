@@ -1138,11 +1138,6 @@ body {
     gap: 8px;
 }
 
-.domus-kpi-documents .domus-icon {
-    width: 48px;
-    height: 48px;
-}
-
 .domus-kpi-documents-add {
     border: none;
     background: none;
@@ -1153,12 +1148,6 @@ body {
 .domus-kpi-documents-add .domus-icon {
     width: 24px;
     height: 24px;
-}
-
-.domus-kpi-documents-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-maxcontrast);
 }
 
 .domus-kpi-documents-path {
@@ -1174,6 +1163,20 @@ body {
 .domus-kpi-documents-path .domus-icon {
     width: 18px;
     height: 18px;
+}
+
+.domus-kpi-documents-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-maxcontrast);
+}
+
+.domus-kpi-documents-open .domus-icon {
+    width: 48px;
+    height: 48px;
 }
 
 .domus-kpi-subline {

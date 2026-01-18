@@ -984,9 +984,18 @@
                         Domus.Utils.escapeHtml(propertyDocumentPath) +
                         '</a>'
                         : '';
+                    const documentsOpenLink = propertyDocumentUrl
+                        ? '<a class="domus-kpi-documents-open" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(propertyDocumentUrl) + '">' +
+                        '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
+                        '<span class="domus-kpi-documents-open-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
+                        '</a>'
+                        : '<div class="domus-kpi-documents-open">' +
+                        '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
+                        '<span class="domus-kpi-documents-open-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
+                        '</div>';
                     const documentsTileValue = '<div class="domus-kpi-documents">' +
                         '<div class="domus-kpi-documents-row">' +
-                        '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
+                        documentsOpenLink +
                         (documentActionsEnabled
                             ? '<button type="button" class="domus-kpi-documents-add" id="domus-unit-kpi-add-doc" title="' +
                             Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Document') })) +
@@ -996,7 +1005,6 @@
                             '</button>'
                             : '') +
                         '</div>' +
-                        '<span class="domus-kpi-documents-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
                         (propertyDocumentLink ? propertyDocumentLink : '') +
                         '</div>';
                     const openTaskCount = Domus.Role.isTenantView()
