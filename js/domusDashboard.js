@@ -41,7 +41,7 @@
             const cards = [
                 { label: t('domus', 'Units'), value: data.unitCount || 0 },
                 { label: tenancyLabels.plural, value: data.tenancyCount || 0 },
-                { label: t('domus', 'Monthly income'), value: data.monthlyBaseRentSum || 0, formatter: Domus.Utils.formatCurrency }
+                { label: t('domus', 'Monthly base rents'), value: data.monthlyBaseRentSum || 0, formatter: Domus.Utils.formatCurrency }
             ];
 
             const cardHtml = cards.map(card => {

@@ -4,7 +4,7 @@
     <name>Domus</name>
     <summary>Property and tenancy management</summary>
     <description>Domus brings property operations into Nextcloud with modules for dashboard, properties, units, tenancies, bookings, partners, tasks, documents, distributions, analytics, and settings.</description>
-    <version>0.3.2</version>
+    <version>0.3.3</version>
     <licence>agpl</licence>
     <author>Domus</author>
     <namespace>Domus</namespace>

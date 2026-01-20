@@ -178,6 +178,7 @@ OC.L10N.register(
         "Maintenance fee": "Instandhaltungsgebühr",
         "Manager": "Verwalter",
         "Monthly base rent": "Monatliche Kaltmiete",
+        "Monthly base rents": "Monatliche Kaltmieten",
         "My reports": "Meine Berichte",
         "My tenancies": "Meine Mietverhältnisse",
         "Name": "Name",

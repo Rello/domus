@@ -3,6 +3,8 @@
     --domus-hero-background: #ffffff;
     --domus-kpi-tile-background: #ffffff;
     --domus-kpi-detail-background: #ffffff;
+    --domus-nextcloud-body-background: #0f6b2f;
+    --domus-table-heaer-background: #f2f6f4;
     --domus-border-width: 0px;
     --domus-border-style: solid;
     --domus-border-color: var(--color-border);
@@ -28,7 +30,7 @@
 
 body {
     background-image: initial !important;
-    background-color: #0f6b2f !important;
+    background-color: var(--domus-nextcloud-body-background) !important;
 }
 .app-domus {
     background: var(--domus-content-background);
@@ -335,6 +337,11 @@ body {
     overflow-wrap: anywhere;
 }
 
+.domus-table th {
+    /*font-weight: 600;*/
+    background-color: var(--domus-table-heaer-background);
+}
+
 .domus-table th.domus-cell-number,
 .domus-table td.domus-cell-number {
     text-align: right;
@@ -348,7 +355,7 @@ body {
 }
 
 .domus-table tbody tr:nth-child(even) {
-    background-color: var(--color-background-hover);
+    /*background-color: var(--color-background-hover);*/
 }
 
 .domus-table tbody tr:nth-child(odd) {
