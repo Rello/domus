@@ -31,12 +31,14 @@ class PropertyController extends OCSController {
         return $this->index();
     }
 
+    #[FrontpageRoute(verb: 'GET', url: '/properties')]
     #[NoAdminRequired]
     #[OCSDescription('List properties for the current user.')]
     public function index(): DataResponse {
         return new DataResponse($this->propertyService->listPropertiesForUser($this->getUserId()));
     }
 
+    #[FrontpageRoute(verb: 'GET', url: '/properties/{id}')]
     #[NoAdminRequired]
     #[OCSDescription('Fetch a single property for the current user.')]
     public function show(int $id): DataResponse {
@@ -48,6 +50,7 @@ class PropertyController extends OCSController {
         }
     }
 
+    #[FrontpageRoute(verb: 'POST', url: '/properties')]
     #[NoAdminRequired]
     #[OCSDescription('Create a new property for the current user.')]
     public function create(string $name, string $usageRole, ?string $street = null, ?string $zip = null, ?string $city = null, ?string $country = null, ?string $type = null, ?string $description = null): DataResponse {
@@ -59,6 +62,7 @@ class PropertyController extends OCSController {
         }
     }
 
+    #[FrontpageRoute(verb: 'PUT', url: '/properties/{id}')]
     #[NoAdminRequired]
     #[OCSDescription('Update an existing property for the current user.')]
     public function update(int $id, ?string $name = null, ?string $usageRole = null, ?string $street = null, ?string $zip = null, ?string $city = null, ?string $country = null, ?string $type = null, ?string $description = null, ?string $documentPath = null): DataResponse {
@@ -83,6 +87,7 @@ class PropertyController extends OCSController {
         }
     }
 
+    #[FrontpageRoute(verb: 'DELETE', url: '/properties/{id}')]
     #[NoAdminRequired]
     #[OCSDescription('Delete a property for the current user.')]
     public function destroy(int $id): DataResponse {
