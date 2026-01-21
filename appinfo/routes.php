@@ -5,6 +5,11 @@ return [
         ['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 
         // Property
+        ['name' => 'Property#index', 'url' => '/properties', 'verb' => 'GET'],
+        ['name' => 'Property#show', 'url' => '/properties/{id}', 'verb' => 'GET'],
+        ['name' => 'Property#create', 'url' => '/properties', 'verb' => 'POST'],
+        ['name' => 'Property#update', 'url' => '/properties/{id}', 'verb' => 'PUT'],
+        ['name' => 'Property#destroy', 'url' => '/properties/{id}', 'verb' => 'DELETE'],
         ['name' => 'Distribution#listByProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'GET'],
         ['name' => 'Distribution#createForProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'POST'],
         ['name' => 'PartnerRelation#listByProperty', 'url' => '/properties/{propertyId}/partners', 'verb' => 'GET'],
@@ -109,13 +114,5 @@ return [
         ['name' => 'Task#close', 'url' => '/api/tasks/{taskId}/close', 'verb' => 'POST'],
         ['name' => 'Task#reopen', 'url' => '/api/tasks/{taskId}/reopen', 'verb' => 'POST'],
         ['name' => 'Task#delete', 'url' => '/api/tasks/{taskId}', 'verb' => 'DELETE'],
-    ],
-    'ocs' => [
-        ['name' => 'Property#frontpage', 'url' => '/', 'verb' => 'GET'],
-        ['name' => 'Property#index', 'url' => '/properties', 'verb' => 'GET'],
-        ['name' => 'Property#show', 'url' => '/properties/{id}', 'verb' => 'GET'],
-        ['name' => 'Property#create', 'url' => '/properties', 'verb' => 'POST'],
-        ['name' => 'Property#update', 'url' => '/properties/{id}', 'verb' => 'PUT'],
-        ['name' => 'Property#destroy', 'url' => '/properties/{id}', 'verb' => 'DELETE'],
     ],
 ];

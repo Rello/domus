@@ -110,7 +110,6 @@
      */
     Domus.Api = (function() {
         const baseUrl = OC.generateUrl('/apps/domus');
-        const ocsBaseUrl = OC.generateUrl('/ocs/v2.php/apps/domus');
         const baseJsonHeaders = {
             'Content-Type': 'application/json',
             'OCS-APIREQUEST': 'true',
@@ -157,10 +156,6 @@
             return requestWithBase(baseUrl, method, path, data);
         }
 
-        function requestOcs(method, path, data) {
-            return requestWithBase(ocsBaseUrl, method, path, data);
-        }
-
         function handleResponse(response) {
             if (!response.ok) {
                 return response.text().then(msg => {
@@ -187,11 +182,11 @@
             getSettings: () => request('GET', '/settings'),
             updateSettings: data => request('PUT', '/settings', data),
             createDemoContent: data => request('POST', '/settings/demo-content', data),
-            getProperties: () => requestOcs('GET', buildYearUrl('/properties')),
-            createProperty: data => requestOcs('POST', '/properties', data),
-            updateProperty: (id, data) => requestOcs('PUT', `/properties/${id}`, data),
-            deleteProperty: id => requestOcs('DELETE', `/properties/${id}`),
-            getProperty: id => requestOcs('GET', `/properties/${id}`),
+            getProperties: () => request('GET', buildYearUrl('/properties')),
+            createProperty: data => request('POST', '/properties', data),
+            updateProperty: (id, data) => request('PUT', `/properties/${id}`, data),
+            deleteProperty: id => request('DELETE', `/properties/${id}`),
+            getProperty: id => request('GET', `/properties/${id}`),
             getTaskTemplates: (activeOnly = true) => request('GET', buildUrl('/api/task-templates', appendFilters(new URLSearchParams(), { activeOnly: activeOnly ? 1 : 0 }))),
             getTaskTemplate: id => request('GET', `/api/task-templates/${id}`),
             createTaskTemplate: data => request('POST', '/api/task-templates', data),
