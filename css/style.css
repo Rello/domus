@@ -1057,6 +1057,46 @@ body {
     white-space: nowrap;
 }
 
+.domus-completion-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: var(--domus-border);
+    background: var(--color-background-dark);
+}
+
+.domus-completion-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: conic-gradient(var(--color-success) 0 var(--domus-completion-progress, 0%), var(--color-border) var(--domus-completion-progress, 0%) 100%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-main-text);
+    font-weight: 600;
+}
+
+.domus-completion-count {
+    font-size: 14px;
+}
+
+.domus-completion-label {
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: var(--color-main-text);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.domus-completion-label:hover,
+.domus-completion-label:focus {
+    text-decoration: underline;
+}
+
 .domus-task-action-buttons {
     display: flex;
     justify-content: flex-end;

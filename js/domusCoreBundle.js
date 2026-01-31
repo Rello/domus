@@ -630,6 +630,49 @@
             return createIconLabelButton(iconClass, label, options).outerHTML;
         }
 
+        function buildCompletionIndicator(label, completed, total, options = {}) {
+            const container = document.createElement('div');
+            const classes = ['domus-completion-indicator'];
+            if (options.className) {
+                classes.push(options.className);
+            }
+            container.className = classes.join(' ');
+
+            const circle = document.createElement('div');
+            circle.className = 'domus-completion-circle';
+            const safeTotal = Number.isFinite(Number(total)) ? Number(total) : 0;
+            const safeCompleted = Number.isFinite(Number(completed)) ? Number(completed) : 0;
+            const clampedCompleted = safeTotal > 0 ? Math.max(0, Math.min(safeCompleted, safeTotal)) : Math.max(0, safeCompleted);
+            const progress = safeTotal > 0 ? Math.round((clampedCompleted / safeTotal) * 100) : 0;
+            circle.style.setProperty('--domus-completion-progress', `${progress}%`);
+
+            const count = document.createElement('span');
+            count.className = 'domus-completion-count';
+            count.textContent = String(clampedCompleted);
+            circle.appendChild(count);
+            container.appendChild(circle);
+
+            const labelBtn = document.createElement('button');
+            labelBtn.type = 'button';
+            labelBtn.className = 'domus-completion-label';
+            if (options.id) {
+                labelBtn.id = options.id;
+            }
+            labelBtn.textContent = label || '';
+            if (label) {
+                const labelTitle = options.title || t('domus', '{label} ({completed}/{total})', {
+                    label,
+                    completed: clampedCompleted,
+                    total: safeTotal
+                });
+                labelBtn.setAttribute('aria-label', labelTitle);
+                labelBtn.title = labelTitle;
+            }
+            container.appendChild(labelBtn);
+
+            return container.outerHTML;
+        }
+
         function buildEmptyStateAction(message, options = {}) {
             const iconClass = options.iconClass || 'domus-icon-add';
             const btn = document.createElement('button');
@@ -1157,6 +1200,7 @@
             confirmAction,
             buildIconButton,
             buildIconLabelButton,
+            buildCompletionIndicator,
             buildEmptyStateAction,
             buildScopeAddButton,
             createIconButton,

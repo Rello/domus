@@ -783,6 +783,45 @@
             });
         }
 
+        function isValueFilled(value) {
+            return value !== undefined && value !== null && value !== '';
+        }
+
+        function getUnitMasterdataStatus(unit, options = {}) {
+            const includeManagementExcludedFields = options.includeManagementExcludedFields !== false;
+            const showPropertySelect = options.showPropertySelect === true;
+            let total = 0;
+            let completed = 0;
+
+            const addField = (value) => {
+                total += 1;
+                if (isValueFilled(value)) {
+                    completed += 1;
+                }
+            };
+
+            if (showPropertySelect) {
+                addField(unit?.propertyId);
+            }
+            addField(unit?.label);
+            addField(unit?.unitNumber);
+            addField(unit?.unitType);
+            if (includeManagementExcludedFields) {
+                addField(unit?.landRegister);
+            }
+            addField(unit?.livingArea);
+            addField(unit?.notes);
+            if (includeManagementExcludedFields) {
+                addField(unit?.buyDate);
+                addField(unit?.totalCosts);
+                addField(unit?.taxId);
+                addField(unit?.iban);
+                addField(unit?.bic);
+            }
+
+            return { completed, total };
+        }
+
         function bindStatisticsBookingRows(unitId, options = {}) {
             const detailArea = document.getElementById('domus-unit-kpi-detail');
             if (!detailArea) {
@@ -820,10 +859,11 @@
                         Domus.Api.getBookings({ unitId: id }).catch(() => []),
                         distributionsPromise,
                         Domus.Api.getUnitPartners(id).catch(() => []),
-                        propertyPromise
+                        propertyPromise,
+                        Domus.Api.getProperties().catch(() => [])
                     ]);
                 })
-                .then(([unit, statistics, bookings, distributions, partners, property]) => {
+                .then(([unit, statistics, bookings, distributions, partners, property, properties]) => {
 
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const unitDetailConfig = Domus.Role.getUnitDetailConfig();
@@ -880,6 +920,21 @@
                         addressParts.push(unit.address);
                     }
                     const addressLine = addressParts.join(', ');
+                    const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
+                        value: p.id,
+                        label: p.name || `${t('domus', 'Property')} #${p.id}`
+                    })));
+                    const availableProperties = propertyOptions.slice(1);
+                    const hidePropertyField = Domus.Permission.shouldHidePropertyField(unit || {});
+                    const showPropertySelect = !hidePropertyField
+                        && (Domus.Role.isBuildingMgmtView() || availableProperties.length > 1);
+                    const masterdataStatus = getUnitMasterdataStatus(unit, {
+                        showPropertySelect,
+                        includeManagementExcludedFields: !Domus.Role.isBuildingMgmtView()
+                    });
+                    const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata'), masterdataStatus.completed, masterdataStatus.total, {
+                        id: 'domus-unit-masterdata'
+                    });
                     const stats = useKpiLayout ? '' : Domus.UI.buildStatCards([
                         {
                             label: t('domus', 'Current Tenancy'),
@@ -897,7 +952,7 @@
                         { label: t('domus', 'Year'), value: Domus.Utils.formatYear(Domus.state.currentYear), hint: t('domus', 'Reporting context'), formatValue: false }
                     ]);
                     const standardActions = [
-                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-unit-details' }),
+                        masterdataIndicator,
                         Domus.UI.buildIconButton('domus-icon-settings', t('domus', 'Document location'), { id: 'domus-unit-document-location' }),
                         Domus.UI.buildIconButton('domus-icon-document', t('domus', 'Export data'), { id: 'domus-unit-export' }),
                         Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-unit-delete' })
@@ -1223,7 +1278,7 @@
         }
 
         function bindDetailActions(id, unit) {
-            const detailsBtn = document.getElementById('domus-unit-details');
+            const detailsBtn = document.getElementById('domus-unit-masterdata');
             const deleteBtn = document.getElementById('domus-unit-delete');
             const exportBtn = document.getElementById('domus-unit-export');
             const partnersToggleBtn = document.getElementById('domus-unit-toggle-partners');

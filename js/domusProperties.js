@@ -55,6 +55,33 @@
                 .catch(err => Domus.UI.showNotification(err.message, 'error')));
         }
 
+        function isValueFilled(value) {
+            return value !== undefined && value !== null && value !== '';
+        }
+
+        function getPropertyMasterdataStatus(property) {
+            let total = 0;
+            let completed = 0;
+
+            const addField = (value) => {
+                total += 1;
+                if (isValueFilled(value)) {
+                    completed += 1;
+                }
+            };
+
+            addField(property?.name);
+            addField(property?.usageRole);
+            addField(property?.street);
+            addField(property?.zip);
+            addField(property?.city);
+            addField(property?.country);
+            addField(property?.type);
+            addField(property?.description);
+
+            return { completed, total };
+        }
+
         function renderDetail(id) {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Property') }));
@@ -74,8 +101,12 @@
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
                     const isBuildingManagement = Domus.Role.isBuildingMgmtView();
+                    const masterdataStatus = getPropertyMasterdataStatus(property);
+                    const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata'), masterdataStatus.completed, masterdataStatus.total, {
+                        id: 'domus-property-masterdata'
+                    });
                     const standardActions = [
-                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-property-details' }),
+                        masterdataIndicator,
                         Domus.UI.buildIconButton('domus-icon-settings', t('domus', 'Document location'), { id: 'domus-property-document-location' }),
                         Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-property-delete' })
                     ];
@@ -168,7 +199,7 @@
         }
 
         function bindDetailActions(id, property) {
-            const detailsBtn = document.getElementById('domus-property-details');
+            const detailsBtn = document.getElementById('domus-property-masterdata');
             const deleteBtn = document.getElementById('domus-property-delete');
             detailsBtn?.addEventListener('click', () => openPropertyModal(id, 'view'));
             document.getElementById('domus-property-document-location')?.addEventListener('click', () => {
