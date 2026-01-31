@@ -937,7 +937,8 @@ body {
 }
 
 .domus-guided-step.is-complete .domus-guided-step-bullet {
-    background: currentColor;
+    background: var(--color-success);
+    border-color: var(--color-success);
 }
 
 .domus-guided-content {
