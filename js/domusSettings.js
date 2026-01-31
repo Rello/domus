@@ -4,6 +4,18 @@
     window.Domus = window.Domus || {};
 
     Domus.Settings = (function() {
+        function buildSettingsSection(config) {
+            return '<div class="domus-panel domus-settings-section domus-collapsed" id="' + Domus.Utils.escapeHtml(config.id) + '">' +
+                '<div class="domus-section-header domus-settings-section-header" role="button" tabindex="0" aria-expanded="false">' +
+                '<h3>' + Domus.Utils.escapeHtml(config.title) + '</h3>' +
+                (config.headerActions || '') +
+                '</div>' +
+                '<div class="domus-panel-body domus-settings-section-body">' +
+                config.body +
+                '</div>' +
+                '</div>';
+        }
+
         function buildForm(settings) {
             const taxRate = settings?.taxRate ?? '';
             const rows = [
@@ -17,46 +29,40 @@
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>';
 
-            return '<div class="domus-panel">' +
-                '<div class="domus-section-header">' +
-                '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h3>' +
-                '</div>' +
-                '<div class="domus-panel-body">' +
-                '<div class="domus-form">' +
-                '<form id="domus-settings-form">' +
-                Domus.UI.buildFormTable(rows) +
-                actions +
-                '</form>' +
-                '</div>' +
-                '</div>' +
-                '</div>';
+            return buildSettingsSection({
+                id: 'domus-general-settings-panel',
+                title: t('domus', 'General Settings'),
+                body: '<div class="domus-form">' +
+                    '<form id="domus-settings-form">' +
+                    Domus.UI.buildFormTable(rows) +
+                    actions +
+                    '</form>' +
+                    '</div>'
+            });
         }
 
         function buildDemoSection(role) {
             const showLandlord = role === 'landlord';
             const showBuilding = role === 'buildingMgmt';
-            return '<div class="domus-panel">' +
-                '<div class="domus-section-header">' +
-                '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Demo content')) + '</h3>' +
-                '</div>' +
-                '<div class="domus-panel-body">' +
-                '<div class="domus-form">' +
-                '<p>' + Domus.Utils.escapeHtml(t('domus', 'Create a demo dataset to explore units, partners, tenancies, tasks, and bookings.')) + '</p>' +
-                '<div class="domus-form-actions">' +
-                (showLandlord
-                    ? '<button type="button" class="secondary" id="domus-demo-content-button">' +
-                        Domus.Utils.escapeHtml(t('domus', 'Create demo content')) +
-                        '</button>'
-                    : '') +
-                (showBuilding
-                    ? '<button type="button" class="secondary" id="domus-demo-content-building-button">' +
-                        Domus.Utils.escapeHtml(t('domus', 'Create demo content (Building Mgmt)')) +
-                        '</button>'
-                    : '') +
-                '</div>' +
-                '</div>' +
-                '</div>' +
-                '</div>';
+            return buildSettingsSection({
+                id: 'domus-demo-settings-panel',
+                title: t('domus', 'Create Demo Content'),
+                body: '<div class="domus-form">' +
+                    '<p>' + Domus.Utils.escapeHtml(t('domus', 'Create a demo dataset to explore units, partners, tenancies, tasks, and bookings.')) + '</p>' +
+                    '<div class="domus-form-actions">' +
+                    (showLandlord
+                        ? '<button type="button" class="secondary" id="domus-demo-content-button">' +
+                            Domus.Utils.escapeHtml(t('domus', 'Create demo content')) +
+                            '</button>'
+                        : '') +
+                    (showBuilding
+                        ? '<button type="button" class="secondary" id="domus-demo-content-building-button">' +
+                            Domus.Utils.escapeHtml(t('domus', 'Create demo content (Building Mgmt)')) +
+                            '</button>'
+                        : '') +
+                    '</div>' +
+                    '</div>'
+            });
         }
 
         function bindForm() {
@@ -141,6 +147,31 @@
             }
         }
 
+        function bindSectionToggles() {
+            document.querySelectorAll('.domus-settings-section-header').forEach(header => {
+                const toggleSection = () => {
+                    const panel = header.closest('.domus-settings-section');
+                    if (!panel) {
+                        return;
+                    }
+                    panel.classList.toggle('domus-collapsed');
+                    header.setAttribute('aria-expanded', (!panel.classList.contains('domus-collapsed')).toString());
+                };
+                header.addEventListener('click', event => {
+                    if (event.target.closest('button')) {
+                        return;
+                    }
+                    toggleSection();
+                });
+                header.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleSection();
+                    }
+                });
+            });
+        }
+
         function render() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading…'));
@@ -151,13 +182,16 @@
                     const content = '<div class="domus-settings">' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
                         buildForm(settings) +
-                        buildDemoSection(currentRole) +
                         Domus.TaskTemplates.renderSection() +
+                        Domus.Accounts.renderSettingsSection() +
+                        buildDemoSection(currentRole) +
                         '</div>';
                     Domus.UI.renderContent(content);
                     bindForm();
                     bindDemoButton();
+                    bindSectionToggles();
                     Domus.TaskTemplates.loadTemplates();
+                    Domus.Accounts.loadSettingsSection();
                 })
                 .catch(err => Domus.UI.showError(err.message || t('domus', 'An error occurred')));
         }

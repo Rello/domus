@@ -750,14 +750,14 @@
         }
 
         function renderSection() {
-            return '<div class="domus-panel" id="domus-task-templates-panel">' +
-                '<div class="domus-section-header">' +
-                '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Task templates')) + '</h3>' +
+            return '<div class="domus-panel domus-settings-section domus-collapsed" id="domus-task-templates-panel">' +
+                '<div class="domus-section-header domus-settings-section-header" role="button" tabindex="0" aria-expanded="false">' +
+                '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Task Templates')) + '</h3>' +
                 Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add template'), {
                     id: 'domus-task-template-create'
                 }) +
                 '</div>' +
-                '<div class="domus-panel-body" id="domus-task-templates-body">' +
+                '<div class="domus-panel-body domus-settings-section-body" id="domus-task-templates-body">' +
                 Domus.Utils.escapeHtml(t('domus', 'Loading templates…')) +
                 '</div>' +
                 '</div>';

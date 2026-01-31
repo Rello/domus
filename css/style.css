@@ -702,6 +702,24 @@ body {
     margin: 0;
 }
 
+.domus-settings-section-header {
+    cursor: pointer;
+}
+
+.domus-settings-section-header::after {
+    content: '▾';
+    margin-left: auto;
+    font-size: 14px;
+}
+
+.domus-settings-section.domus-collapsed .domus-settings-section-header::after {
+    content: '▸';
+}
+
+.domus-settings-section.domus-collapsed .domus-settings-section-body {
+    display: none;
+}
+
 .domus-section-action {
     padding: 2px 8px;
     border-radius: 4px;
