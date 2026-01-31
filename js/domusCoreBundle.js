@@ -1075,6 +1075,32 @@
             return '<div class="domus-form-table">' + content + '</div>';
         }
 
+        function buildGuidedSteps(steps = [], currentIndex = 0) {
+            const items = (steps || []).map((step, index) => {
+                const label = step?.label || '';
+                let statusClass = 'is-upcoming';
+                if (index < currentIndex) {
+                    statusClass = 'is-complete';
+                } else if (index === currentIndex) {
+                    statusClass = 'is-current';
+                }
+                const ariaCurrent = index === currentIndex ? ' aria-current="step"' : '';
+                return '<li class="domus-guided-step ' + Domus.Utils.escapeHtml(statusClass) + '"' + ariaCurrent + '>' +
+                    '<span class="domus-guided-step-bullet" aria-hidden="true"></span>' +
+                    '<span class="domus-guided-step-label">' + Domus.Utils.escapeHtml(label) + '</span>' +
+                    '</li>';
+            }).join('');
+
+            return '<ol class="domus-guided-steps">' + items + '</ol>';
+        }
+
+        function buildGuidedWorkflowLayout(steps, currentIndex, content) {
+            return '<div class="domus-guided-workflow">' +
+                '<div class="domus-guided-steps-wrapper">' + buildGuidedSteps(steps, currentIndex) + '</div>' +
+                '<div class="domus-guided-content">' + (content || '') + '</div>' +
+                '</div>';
+        }
+
         function bindBackButtons() {
             document.querySelectorAll('button[data-back]').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -1109,6 +1135,8 @@
             buildFormSection,
             buildFormRow,
             buildFormTable,
+            buildGuidedSteps,
+            buildGuidedWorkflowLayout,
             openModal,
             confirmAction,
             buildIconButton,

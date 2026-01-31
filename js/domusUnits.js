@@ -686,7 +686,15 @@
             });
         }
 
-        function openCreateModal(defaults = {}, onCreated) {
+        function getUnitWorkflowSteps(partnerTypeLabel) {
+            return [
+                { label: t('domus', 'Create unit') },
+                { label: t('domus', 'Create {partnerType}', { partnerType: partnerTypeLabel }) },
+                { label: t('domus', 'Create tenancy') }
+            ];
+        }
+
+        function openUnitCreateForm(defaults = {}, onCreated, modalOptions = {}) {
             Domus.Api.getProperties()
                 .then(properties => {
                     const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
@@ -707,20 +715,101 @@
                         && (requireProperty || availableProperties.length > 1);
                     const defaultPropertyId = effectiveDefaults.propertyId;
 
+                    const content = buildUnitForm(propertyOptions, effectiveDefaults, { showPropertySelect, requireProperty, defaultPropertyId });
+                    const wrappedContent = typeof modalOptions.wrapContent === 'function' ? modalOptions.wrapContent(content) : content;
                     const modal = Domus.UI.openModal({
-                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }),
-                        content: buildUnitForm(propertyOptions, effectiveDefaults, { showPropertySelect, requireProperty, defaultPropertyId })
+                        title: modalOptions.title || t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }),
+                        content: wrappedContent,
+                        size: modalOptions.size
                     });
                     bindUnitForm(modal, data => Domus.Api.createUnit(data)
-                        .then(() => {
+                        .then(created => {
                             Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Unit') }), 'success');
                             modal.close();
-                            (onCreated || renderList)();
+                            if (typeof onCreated === 'function') {
+                                onCreated(created);
+                            } else {
+                                renderList();
+                            }
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error')),
                     { requireProperty });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        function openGuidedPartnerStep(unit, steps, partnerType, partnerTypeLabel, onFinished) {
+            const partnerTypeConfig = {
+                defaultType: partnerType,
+                hideField: true,
+                disabled: true
+            };
+            Domus.Partners.openCreateModal(
+                { partnerType },
+                createdPartner => {
+                    openGuidedTenancyStep(unit, createdPartner, steps, onFinished);
+                },
+                {
+                    title: t('domus', 'Create {partnerType}', { partnerType: partnerTypeLabel }),
+                    successMessage: t('domus', '{entity} created.', { entity: partnerTypeLabel }),
+                    partnerTypeConfig,
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 1, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function openGuidedTenancyStep(unit, partner, steps, onFinished) {
+            const prefill = {
+                unitId: unit?.id,
+                partnerIds: partner?.id ? [partner.id] : []
+            };
+            Domus.Tenancies.openCreateModal(
+                prefill,
+                created => {
+                    if (typeof onFinished === 'function') {
+                        onFinished(created);
+                        return;
+                    }
+                    if (unit?.id) {
+                        Domus.Router.navigate('unitDetail', [unit.id]);
+                        return;
+                    }
+                    renderList();
+                },
+                Domus.Api.createTenancy,
+                t('domus', 'Create tenancy'),
+                null,
+                {
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 2, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function openGuidedCreateWorkflow(defaults = {}, onFinished) {
+            const partnerType = Domus.Permission.getTenancyPartnerFilter();
+            const partnerTypeLabel = Domus.Partners.getPartnerTypeLabel(partnerType);
+            const steps = getUnitWorkflowSteps(partnerTypeLabel);
+            openUnitCreateForm(
+                defaults,
+                createdUnit => {
+                    openGuidedPartnerStep(createdUnit, steps, partnerType, partnerTypeLabel, onFinished);
+                },
+                {
+                    title: t('domus', 'Create unit'),
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 0, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function openCreateModal(defaults = {}, onCreated, options = {}) {
+            if (options.useGuidedWorkflow === false) {
+                openUnitCreateForm(defaults, onCreated, options);
+                return;
+            }
+            openGuidedCreateWorkflow(defaults, onCreated);
         }
 
         function getStatisticsRowYear(row, statistics) {

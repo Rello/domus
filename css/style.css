@@ -889,6 +889,72 @@ body {
     overflow-y: auto;
 }
 
+.domus-guided-workflow {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.domus-guided-steps-wrapper {
+    flex: 0 0 200px;
+}
+
+.domus-guided-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.domus-guided-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--color-text-maxcontrast);
+    font-weight: 500;
+}
+
+.domus-guided-step.is-complete {
+    color: var(--color-main-text);
+}
+
+.domus-guided-step.is-current {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.domus-guided-step-bullet {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.domus-guided-step.is-complete .domus-guided-step-bullet {
+    background: currentColor;
+}
+
+.domus-guided-content {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 720px) {
+    .domus-guided-workflow {
+        flex-direction: column;
+    }
+
+    .domus-guided-steps-wrapper {
+        flex: 1 1 auto;
+    }
+}
+
 .domus-modal-message {
     margin: 0 0 16px;
 }
