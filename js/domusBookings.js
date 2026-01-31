@@ -56,7 +56,6 @@
                             id: 'domus-booking-create',
                             className: 'primary'
                         }) +
-                        Domus.UI.buildYearFilter(renderList) +
                         '</div>';
 
                     const isBuildingMgmt = Domus.Role.isBuildingMgmtView();

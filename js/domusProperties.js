@@ -14,7 +14,6 @@
                             id: 'domus-property-create-btn',
                             className: 'primary'
                         }) +
-                        Domus.UI.buildYearFilter(renderList) +
                         '</div>';
                     const rows = (properties || []).map(p => ({
                         cells: [

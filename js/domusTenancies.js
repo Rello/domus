@@ -30,7 +30,6 @@
                     const canManageTenancies = Domus.Role.hasCapability('manageTenancies');
                     const toolbar = '<div class="domus-toolbar">' +
                         (canManageTenancies && tenancyLabels.action ? Domus.UI.buildIconButton('domus-icon-add', tenancyLabels.action, { id: 'domus-tenancy-create' }) : '') +
-                        Domus.UI.buildYearFilter(renderList) +
                         '</div>';
                     const rows = (tenancies || []).map(tn => {
                         const partnerLabel = Domus.Partners.renderPartnerContactList(tn.partners, {

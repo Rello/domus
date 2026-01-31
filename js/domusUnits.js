@@ -399,7 +399,6 @@
                             className: 'primary'
                         }) +
                         importButton +
-                        Domus.UI.buildYearFilter(renderList) +
                         '</div>';
 
                     const table = renderStatisticsTable(statistics, {

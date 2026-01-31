@@ -923,27 +923,6 @@
             });
         }
 
-        function buildYearFilter(onChange) {
-            const currentYear = Domus.state.currentYear;
-            const years = [currentYear - 1, currentYear, currentYear + 1];
-            let html = '<label class="domus-inline-label">' + Domus.Utils.escapeHtml(t('domus', 'Year')) + ' ';
-            html += '<select id="domus-year-select">';
-            years.forEach(y => {
-                html += '<option value="' + y + '"' + (y === currentYear ? ' selected' : '') + '>' + y + '</option>';
-            });
-            html += '</select></label>';
-            setTimeout(() => {
-                const select = document.getElementById('domus-year-select');
-                if (select) {
-                    select.addEventListener('change', function() {
-                        Domus.state.currentYear = parseInt(this.value, 10);
-                        onChange && onChange(Domus.state.currentYear);
-                    });
-                }
-            }, 0);
-            return html;
-        }
-
         function buildBackButton(targetView, args) {
             const serializedArgs = (args || []).join(',');
             return createIconLabelButton('domus-icon-back', t('domus', 'Back'), {
@@ -1118,7 +1097,6 @@
             showError,
             showNotification,
             buildTable,
-            buildYearFilter,
             buildBackButton,
             buildSectionHeader,
             bindBackButtons,
