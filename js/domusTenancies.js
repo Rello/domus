@@ -95,7 +95,7 @@
             ], rows, { wrapPanel: false });
         }
 
-        function openCreateModal(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage) {
+        function openCreateModal(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage, modalOptions = {}) {
             const tenancyLabels = Domus.Role.getTenancyLabels();
             const effectiveTitle = title || t('domus', 'Add {entity}', { entity: tenancyLabels.singular });
             const effectiveSuccessMessage = successMessage || t('domus', '{entity} created.', { entity: Domus.Role.getTenancyLabels().singular });
@@ -116,9 +116,12 @@
                         label: p.name || `${t('domus', 'Partner')} #${p.id}`
                     }));
 
+                    const content = buildTenancyForm(unitOptions, partnerOptions, prefill, { hideFinancialFields: Domus.Permission.hideTenancyFinancialFields() });
+                    const wrappedContent = typeof modalOptions.wrapContent === 'function' ? modalOptions.wrapContent(content) : content;
                     const modal = Domus.UI.openModal({
                         title: effectiveTitle,
-                        content: buildTenancyForm(unitOptions, partnerOptions, prefill, { hideFinancialFields: Domus.Permission.hideTenancyFinancialFields() })
+                        content: wrappedContent,
+                        size: modalOptions.size
                     });
                     bindTenancyForm(modal, data => submitFn(data)
                         .then(created => {

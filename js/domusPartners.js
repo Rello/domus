@@ -207,16 +207,28 @@
             bindContactActions();
         }
 
-        function openCreateModal() {
+        function openCreateModal(defaults = {}, onCreated, options = {}) {
+            const title = options.title || t('domus', 'Add {entity}', { entity: t('domus', 'Partner') });
+            const successMessage = options.successMessage || t('domus', '{entity} created.', { entity: t('domus', 'Partner') });
+            const content = buildPartnerForm(defaults, {
+                partnerTypeConfig: options.partnerTypeConfig,
+                partnerTypeOptions: options.partnerTypeOptions
+            });
+            const wrappedContent = typeof options.wrapContent === 'function' ? options.wrapContent(content) : content;
             const modal = Domus.UI.openModal({
-                title: t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }),
-                content: buildPartnerForm()
+                title,
+                content: wrappedContent,
+                size: options.size
             });
             bindPartnerForm(modal, data => Domus.Api.createPartner(data)
-                .then(() => {
-                    Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Partner') }), 'success');
+                .then(created => {
+                    Domus.UI.showNotification(successMessage, 'success');
                     modal.close();
-                    renderList();
+                    if (typeof onCreated === 'function') {
+                        onCreated(created);
+                    } else {
+                        renderList();
+                    }
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error')));
         }
@@ -453,7 +465,7 @@
             const mode = options.mode || 'edit';
             const isView = mode === 'view';
             const rowClassName = options.rowClassName;
-            const partnerTypeConfig = Domus.Permission.getPartnerTypeConfig();
+            const partnerTypeConfig = options.partnerTypeConfig || Domus.Permission.getPartnerTypeConfig();
             const partnerTypeOptions = options.partnerTypeOptions || getPartnerTypeOptions();
             const defaultPartnerType = partner?.partnerType || partnerTypeConfig.defaultType;
             const hiddenFields = [];
@@ -484,7 +496,11 @@
         function buildPartnerForm(partner, options = {}) {
             const mode = options.mode || 'edit';
             const isView = mode === 'view';
-            const fields = buildPartnerFields(partner, { mode });
+            const fields = buildPartnerFields(partner, {
+                mode,
+                partnerTypeConfig: options.partnerTypeConfig,
+                partnerTypeOptions: options.partnerTypeOptions
+            });
 
             const actions = isView
                 ? '<div class="domus-form-actions"><button type="button" id="domus-partner-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
@@ -511,7 +527,8 @@
             bindContactActions,
             getPartnerTypeOptions,
             getPartnerTypeLabel,
-            buildPartnerFields
+            buildPartnerFields,
+            openCreateModal
         };
     })();
 
