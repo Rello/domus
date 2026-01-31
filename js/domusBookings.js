@@ -84,7 +84,12 @@
                             };
                         });
 
-                        Domus.UI.renderContent(toolbar + Domus.UI.buildTable(headers, rows) + buildImportPanel());
+                        Domus.UI.renderContent(toolbar + Domus.UI.buildTable(headers, rows, {
+                            emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                                entity: t('domus', 'Bookings')
+                            }),
+                            emptyActionId: 'domus-bookings-empty-create'
+                        }) + buildImportPanel());
                         bindList();
                     }).catch(err => Domus.UI.showError(err.message));
                 })
@@ -109,6 +114,7 @@
 
         function bindList() {
             document.getElementById('domus-booking-create')?.addEventListener('click', () => openCreateModal());
+            document.getElementById('domus-bookings-empty-create')?.addEventListener('click', () => openCreateModal());
             Domus.UI.bindRowNavigation();
             bindImportActions();
         }

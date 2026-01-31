@@ -170,7 +170,11 @@
                 return { cells, dataset, className: (!showUnit && item.type === 'process') ? 'domus-task-process-row' : '' };
             });
 
-            return Domus.UI.buildTable(headers, rows, { wrapPanel });
+            return Domus.UI.buildTable(headers, rows, {
+                wrapPanel,
+                emptyMessage: options.emptyMessage,
+                emptyActionId: options.emptyActionId
+            });
         }
 
         function bindOpenTaskActions(options = {}) {
@@ -497,7 +501,14 @@
         function buildUnitTasksContent(unitId, data, options = {}) {
             const openItems = buildUnitOpenItems(unitId, data);
 
-            const openTable = buildOpenTasksTable(openItems, { showUnit: false, wrapPanel: false });
+            const openTable = buildOpenTasksTable(openItems, {
+                showUnit: false,
+                wrapPanel: false,
+                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                    entity: t('domus', 'Tasks')
+                }),
+                emptyActionId: 'domus-unit-tasks-empty-create'
+            });
             const openSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</h4>' + openTable;
 
             const closedItems = [];
@@ -706,6 +717,9 @@
                 openStartProcessModal(unitId, onRefresh);
             });
             document.getElementById('domus-unit-new-task')?.addEventListener('click', () => {
+                openCreateTaskModal(unitId, onRefresh);
+            });
+            document.getElementById('domus-unit-tasks-empty-create')?.addEventListener('click', () => {
                 openCreateTaskModal(unitId, onRefresh);
             });
         }

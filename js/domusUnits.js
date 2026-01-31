@@ -407,7 +407,11 @@
                         sortByYear: false,
                         totals: [
                             { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
-                        ]
+                        ],
+                        emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                            entity: t('domus', 'Units')
+                        }),
+                        emptyActionId: 'domus-units-empty-create'
                     });
 
                     Domus.UI.renderContent(header + table);
@@ -419,6 +423,7 @@
         function bindList() {
             const createBtn = document.getElementById('domus-unit-create');
             if (createBtn) createBtn.addEventListener('click', () => openCreateModal());
+            document.getElementById('domus-units-empty-create')?.addEventListener('click', () => openCreateModal());
             const importBtn = document.getElementById('domus-unit-import');
             if (importBtn) importBtn.addEventListener('click', () => openImportModal());
             Domus.UI.bindRowNavigation();
@@ -508,7 +513,11 @@
             });
 
             const totalsHtml = buildStatisticsTotals(columnMeta, rowsData, options.totals || []);
-            const tableHtml = Domus.UI.buildTable(headers, rows, { wrapPanel: false });
+            const tableHtml = Domus.UI.buildTable(headers, rows, {
+                wrapPanel: false,
+                emptyMessage: options.emptyMessage,
+                emptyActionId: options.emptyActionId
+            });
             if (!wrapPanel) {
                 return '<div class="domus-panel-table">' + tableHtml + totalsHtml + '</div>';
             }

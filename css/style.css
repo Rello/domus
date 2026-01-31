@@ -374,6 +374,16 @@ body {
     background-color: #f8f8f8;
 }
 
+.domus-empty-state {
+    text-align: center;
+    padding: 8px 0;
+    color: var(--color-text-maxcontrast);
+}
+
+.domus-empty-action {
+    font-weight: 600;
+}
+
 .domus-table-summary {
     display: flex;
     flex-direction: column;

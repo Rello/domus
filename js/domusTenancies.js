@@ -48,7 +48,12 @@
                     });
                     Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
                         t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Status')
-                    ], rows));
+                    ], rows, {
+                        emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                            entity: tenancyLabels.plural
+                        }),
+                        emptyActionId: 'domus-tenancies-empty-create'
+                    }));
                     bindList();
                     Domus.Partners.bindContactActions();
                 })
@@ -57,6 +62,7 @@
 
         function bindList() {
             document.getElementById('domus-tenancy-create')?.addEventListener('click', () => openCreateModal());
+            document.getElementById('domus-tenancies-empty-create')?.addEventListener('click', () => openCreateModal());
             Domus.UI.bindRowNavigation();
         }
 

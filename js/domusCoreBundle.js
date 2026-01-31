@@ -711,7 +711,23 @@
             }).join('') + '</tr></thead>';
             html += '<tbody>';
             if (!rows || rows.length === 0) {
-                html += '<tr><td colspan="' + headers.length + '">' + Domus.Utils.escapeHtml(t('domus', 'No entries found.')) + '</td></tr>';
+                const emptyMessage = options.emptyMessage;
+                const emptyActionId = options.emptyActionId;
+                if (emptyMessage) {
+                    const buttonStart = emptyActionId
+                        ? '<button type="button" class="domus-link domus-empty-action" id="' + Domus.Utils.escapeHtml(emptyActionId) + '">'
+                        : '';
+                    const buttonEnd = emptyActionId ? '</button>' : '';
+                    html += '<tr><td colspan="' + headers.length + '">' +
+                        '<div class="domus-empty-state">' +
+                        buttonStart +
+                        Domus.Utils.escapeHtml(emptyMessage) +
+                        buttonEnd +
+                        '</div>' +
+                        '</td></tr>';
+                } else {
+                    html += '<tr><td colspan="' + headers.length + '">' + Domus.Utils.escapeHtml(t('domus', 'No entries found.')) + '</td></tr>';
+                }
             } else {
                 rows.forEach(row => {
                     const rowData = Array.isArray(row) ? { cells: row } : (row || {});

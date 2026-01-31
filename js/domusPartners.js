@@ -137,7 +137,12 @@
                     }));
                     Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
                         t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
-                    ], rows));
+                    ], rows, {
+                        emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                            entity: t('domus', 'Partners')
+                        }),
+                        emptyActionId: 'domus-partners-empty-create'
+                    }));
                     bindList();
                     bindContactActions();
                 })
@@ -146,10 +151,15 @@
 
         function bindList() {
             document.getElementById('domus-partner-create')?.addEventListener('click', openCreateModal);
+            bindEmptyCreateAction();
             document.getElementById('domus-partner-filter')?.addEventListener('change', function() {
                 Domus.Api.getPartners(this.value).then(renderPartnersTable).catch(err => Domus.UI.showError(err.message));
             });
             Domus.UI.bindRowNavigation();
+        }
+
+        function bindEmptyCreateAction() {
+            document.getElementById('domus-partners-empty-create')?.addEventListener('click', openCreateModal);
         }
 
         function renderPartnersTable(partners) {
@@ -163,7 +173,12 @@
             }));
             const table = Domus.UI.buildTable([
                 t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
-            ], rows);
+            ], rows, {
+                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                    entity: t('domus', 'Partners')
+                }),
+                emptyActionId: 'domus-partners-empty-create'
+            });
             const content = document.getElementById('app-content');
             if (content) {
                 const tables = content.querySelectorAll('.domus-table');
@@ -172,6 +187,7 @@
                 }
             }
             Domus.UI.bindRowNavigation();
+            bindEmptyCreateAction();
             bindContactActions();
         }
 
