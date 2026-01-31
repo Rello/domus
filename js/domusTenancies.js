@@ -45,9 +45,20 @@
                             dataset: { navigate: 'tenancyDetail', args: tn.id }
                         };
                     });
-                    Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
+                    const hasRows = rows.length > 0;
+                    const table = Domus.UI.buildTable([
                         t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Status')
-                    ], rows));
+                    ], rows);
+                    const emptyState = Domus.UI.buildEmptyStateAction(
+                        t('domus', 'There is no {entity} yet. Create the first one', {
+                            entity: tenancyLabels.plural
+                        }),
+                        {
+                            iconClass: 'domus-icon-tenancy',
+                            actionId: 'domus-tenancies-empty-create'
+                        }
+                    );
+                    Domus.UI.renderContent(toolbar + (hasRows ? table : emptyState));
                     bindList();
                     Domus.Partners.bindContactActions();
                 })
@@ -56,10 +67,11 @@
 
         function bindList() {
             document.getElementById('domus-tenancy-create')?.addEventListener('click', () => openCreateModal());
+            document.getElementById('domus-tenancies-empty-create')?.addEventListener('click', () => openCreateModal());
             Domus.UI.bindRowNavigation();
         }
 
-        function renderInline(tenancies) {
+        function renderInline(tenancies, options = {}) {
             const rows = (tenancies || []).map(tn => ({
                 cells: [
                     Domus.Utils.escapeHtml(formatUnitLabel(tn)),
@@ -72,6 +84,12 @@
                 ],
                 dataset: tn.id ? { navigate: 'tenancyDetail', args: tn.id } : null
             }));
+            if (!rows.length && options.emptyMessage) {
+                return Domus.UI.buildEmptyStateAction(options.emptyMessage, {
+                    iconClass: options.emptyIconClass,
+                    actionId: options.emptyActionId
+                });
+            }
             return Domus.UI.buildTable([
                 t('domus', 'Unit'), t('domus', 'Partners'), t('domus', 'Status'), t('domus', 'Period')
             ], rows, { wrapPanel: false });

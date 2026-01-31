@@ -401,6 +401,7 @@
                         importButton +
                         '</div>';
 
+                    const hasRows = (statistics?.rows || []).length > 0;
                     const table = renderStatisticsTable(statistics, {
                         buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null,
                         sortByYear: false,
@@ -408,8 +409,17 @@
                             { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
                         ]
                     });
+                    const emptyState = Domus.UI.buildEmptyStateAction(
+                        t('domus', 'There is no {entity} yet. Create the first one', {
+                            entity: t('domus', 'Units')
+                        }),
+                        {
+                            iconClass: 'domus-icon-unit',
+                            actionId: 'domus-units-empty-create'
+                        }
+                    );
 
-                    Domus.UI.renderContent(header + table);
+                    Domus.UI.renderContent(header + (hasRows ? table : emptyState));
                     bindList();
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -418,6 +428,7 @@
         function bindList() {
             const createBtn = document.getElementById('domus-unit-create');
             if (createBtn) createBtn.addEventListener('click', () => openCreateModal());
+            document.getElementById('domus-units-empty-create')?.addEventListener('click', () => openCreateModal());
             const importBtn = document.getElementById('domus-unit-import');
             if (importBtn) importBtn.addEventListener('click', () => openImportModal());
             Domus.UI.bindRowNavigation();
@@ -444,6 +455,13 @@
             const columns = statistics.columns || [];
             const rowsData = statistics.rows || [];
             const yearColumn = columns.find(col => (col.key || '').toLowerCase() === 'year' || (col.label || '').toLowerCase() === 'year');
+
+            if (!rowsData.length && options.emptyMessage) {
+                return Domus.UI.buildEmptyStateAction(options.emptyMessage, {
+                    iconClass: options.emptyIconClass,
+                    actionId: options.emptyActionId
+                });
+            }
 
             function shouldAlignRight(format, hasNumericValues) {
                 if (!format && !hasNumericValues) return false;
@@ -940,12 +958,20 @@
                         iconClass: 'domus-icon-confirm-year'
                     };
                     const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'), yearStatusAction);
+                    const bookingEmptyState = canManageBookings ? {
+                        emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                            entity: t('domus', 'Booking')
+                        }),
+                        emptyActionId: 'domus-unit-statistics-booking-create',
+                        emptyIconClass: 'domus-icon-booking'
+                    } : {};
                     const revenueTable = renderStatisticsTable(statistics ? statistics.revenue : null, {
                         buildRowDataset: row => {
                             const year = getStatisticsRowYear(row, statistics ? statistics.revenue : null);
                             return year ? { 'stat-year': year } : null;
                         },
-                        wrapPanel: false
+                        wrapPanel: false,
+                        ...bookingEmptyState
                     });
                     const costTable = statistics && statistics.cost
                         ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost, {
@@ -953,7 +979,8 @@
                                 const year = getStatisticsRowYear(row, statistics ? statistics.cost : null);
                                 return year ? { 'stat-year': year } : null;
                             },
-                            wrapPanel: false
+                            wrapPanel: false,
+                            ...bookingEmptyState
                         }) + '</div>'
                         : '';
                     const rentabilityChartPanel = (useKpiLayout || !showRentabilityPanels) ? '' : (isLandlord ? buildRentabilityChartPanel(statistics) : '');
@@ -1126,11 +1153,20 @@
                     }
                     if (useKpiLayout) {
                         renderKpiTileCharts(statistics);
+                        const costDetailTable = renderStatisticsTable(statistics ? statistics.cost : null, {
+                            ...bookingEmptyState
+                        });
                         const detailMap = {
                             tasks: tasksPanel,
                             revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable, yearStatusAction) + bookingsPanelInline,
-                            cost: buildKpiDetailPanel(t('domus', 'Costs'), renderStatisticsTable(statistics ? statistics.cost : null)) + bookingsPanelInline,
-                            tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies), (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action) ? {
+                            cost: buildKpiDetailPanel(t('domus', 'Costs'), costDetailTable) + bookingsPanelInline,
+                            tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies, {
+                                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                                    entity: tenancyLabels.plural
+                                }),
+                                emptyActionId: 'domus-unit-tenancies-empty-create',
+                                emptyIconClass: 'domus-icon-tenancy'
+                            }), (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action) ? {
                                 id: 'domus-add-tenancy-inline',
                                 title: tenancyLabels.action,
                                 iconClass: 'domus-icon-add'
@@ -1141,6 +1177,17 @@
                             document.getElementById('domus-add-tenancy-inline')?.addEventListener('click', () => {
                                 Domus.Tenancies.openCreateModal({ unitId: id }, () => renderDetail(id));
                             });
+                            document.getElementById('domus-unit-tenancies-empty-create')?.addEventListener('click', () => {
+                                Domus.Tenancies.openCreateModal({ unitId: id }, () => renderDetail(id));
+                            });
+                            if (target === 'revenue' || target === 'cost') {
+                                document.getElementById('domus-unit-statistics-booking-create')?.addEventListener('click', () => {
+                                    Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id), {
+                                        accountFilter: (nr) => String(nr).startsWith('2'),
+                                        hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
+                                    });
+                                });
+                            }
                             if (target === 'tasks') {
                                 Domus.Tasks.loadUnitTasks(id, {
                                     onOpenCount: (count, status) => {
@@ -1227,6 +1274,12 @@
                 });
             });
             document.getElementById('domus-add-unit-booking-inline')?.addEventListener('click', () => {
+                Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id), {
+                    accountFilter: (nr) => String(nr).startsWith('2'),
+                    hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
+                });
+            });
+            document.getElementById('domus-unit-statistics-booking-create')?.addEventListener('click', () => {
                 Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id), {
                     accountFilter: (nr) => String(nr).startsWith('2'),
                     hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'

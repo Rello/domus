@@ -186,6 +186,7 @@ OC.L10N.register(
         "No": "Nein",
         "No conditions provided.": "Keine Bedingungen angegeben.",
         "No entries found.": "Keine Einträge gefunden.",
+        "There is no {entity} yet. Create the first one": "Es gibt noch keine {entity}. Erstellen Sie die erste.",
         "No existing file selected": "Keine vorhandene Datei ausgewählt",
         "No file selected": "Keine Datei ausgewählt",
         "No folder selected": "Kein Ordner ausgewählt",

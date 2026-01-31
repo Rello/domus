@@ -626,6 +626,50 @@
             return createIconButton(iconClass, label, options).outerHTML;
         }
 
+        function buildIconLabelButton(iconClass, label, options = {}) {
+            return createIconLabelButton(iconClass, label, options).outerHTML;
+        }
+
+        function buildEmptyStateAction(message, options = {}) {
+            const iconClass = options.iconClass || 'domus-icon-add';
+            const btn = document.createElement('button');
+            const classes = ['domus-empty-state-action'];
+            if (options.className) {
+                classes.push(options.className);
+            }
+            btn.className = classes.join(' ');
+            btn.type = 'button';
+            if (options.actionId) {
+                btn.id = options.actionId;
+            }
+            if (message) {
+                btn.setAttribute('aria-label', message);
+                btn.title = message;
+            }
+
+            const parts = String(message || '').split('. ');
+            const head = parts.shift() || '';
+            const headLine = head && !head.endsWith('.') && parts.length ? `${head}.` : head;
+            const subLine = parts.length ? parts.join('. ') : '';
+
+            btn.appendChild(createIconSpan(iconClass));
+            const text = document.createElement('span');
+            text.className = 'domus-empty-state-text';
+            const headSpan = document.createElement('span');
+            headSpan.className = 'domus-empty-state-head';
+            headSpan.textContent = headLine;
+            text.appendChild(headSpan);
+            if (subLine) {
+                const subSpan = document.createElement('span');
+                subSpan.className = 'domus-empty-state-sub';
+                subSpan.textContent = subLine;
+                text.appendChild(subSpan);
+            }
+            btn.appendChild(text);
+
+            return '<div class="domus-empty-state">' + btn.outerHTML + '</div>';
+        }
+
         function buildScopeAddButton(iconClass, label, options = {}) {
             const btn = document.createElement('button');
             const classes = ['domus-scope-add-button'];
@@ -1112,6 +1156,8 @@
             openModal,
             confirmAction,
             buildIconButton,
+            buildIconLabelButton,
+            buildEmptyStateAction,
             buildScopeAddButton,
             createIconButton,
             buildModalAction,

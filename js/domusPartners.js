@@ -135,9 +135,20 @@
                         ],
                         dataset: { navigate: 'partnerDetail', args: p.id }
                     }));
-                    Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
+                    const hasRows = rows.length > 0;
+                    const table = Domus.UI.buildTable([
                         t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
-                    ], rows));
+                    ], rows);
+                    const emptyState = Domus.UI.buildEmptyStateAction(
+                        t('domus', 'There is no {entity} yet. Create the first one', {
+                            entity: t('domus', 'Partners')
+                        }),
+                        {
+                            iconClass: 'domus-icon-partner',
+                            actionId: 'domus-partners-empty-create'
+                        }
+                    );
+                    Domus.UI.renderContent(toolbar + (hasRows ? table : emptyState));
                     bindList();
                     bindContactActions();
                 })
@@ -146,10 +157,15 @@
 
         function bindList() {
             document.getElementById('domus-partner-create')?.addEventListener('click', openCreateModal);
+            bindEmptyCreateAction();
             document.getElementById('domus-partner-filter')?.addEventListener('change', function() {
                 Domus.Api.getPartners(this.value).then(renderPartnersTable).catch(err => Domus.UI.showError(err.message));
             });
             Domus.UI.bindRowNavigation();
+        }
+
+        function bindEmptyCreateAction() {
+            document.getElementById('domus-partners-empty-create')?.addEventListener('click', openCreateModal);
         }
 
         function renderPartnersTable(partners) {
@@ -161,17 +177,33 @@
                 ],
                 dataset: { navigate: 'partnerDetail', args: p.id }
             }));
+            const hasRows = rows.length > 0;
             const table = Domus.UI.buildTable([
                 t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
             ], rows);
+            const emptyState = Domus.UI.buildEmptyStateAction(
+                t('domus', 'There is no {entity} yet. Create the first one', {
+                    entity: t('domus', 'Partners')
+                }),
+                {
+                    iconClass: 'domus-icon-partner',
+                    actionId: 'domus-partners-empty-create'
+                }
+            );
             const content = document.getElementById('app-content');
             if (content) {
                 const tables = content.querySelectorAll('.domus-table');
                 if (tables.length) {
-                    tables[0].outerHTML = table;
+                    tables[0].outerHTML = hasRows ? table : emptyState;
+                } else {
+                    const panels = content.querySelectorAll('.domus-empty-state');
+                    if (panels.length) {
+                        panels[0].outerHTML = hasRows ? table : emptyState;
+                    }
                 }
             }
             Domus.UI.bindRowNavigation();
+            bindEmptyCreateAction();
             bindContactActions();
         }
 

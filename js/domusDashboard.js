@@ -47,24 +47,44 @@
                     Domus.Utils.escapeHtml(safeValue) + '</div></div>';
             }).join('');
 
-            const table = unitsOverview
+            const hasUnits = (unitsOverview?.rows || []).length > 0;
+            const table = hasUnits
                 ? Domus.Units.renderStatisticsTable(unitsOverview, {
                     buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null,
                     totals: [
                         { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
                     ]
                 })
-                : '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Units') })) + '</div>';
+                : Domus.UI.buildEmptyStateAction(
+                    t('domus', 'There is no {entity} yet. Create the first one', {
+                        entity: t('domus', 'Units')
+                    }),
+                    {
+                        iconClass: 'domus-icon-unit',
+                        actionId: 'domus-dashboard-unit-create'
+                    }
+                );
 
             const openTasksTable = Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
                 showDescription: false,
                 showType: false,
-                showAction: false
+                showAction: false,
+                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                    entity: t('domus', 'Tasks')
+                }),
+                emptyActionId: 'domus-dashboard-task-create',
+                emptyIconClass: 'domus-icon-task'
             });
 
             setTimeout(() => {
                 Domus.UI.bindRowNavigation();
                 Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
+                document.getElementById('domus-dashboard-unit-create')?.addEventListener('click', () => {
+                    Domus.Units.openCreateModal();
+                });
+                document.getElementById('domus-dashboard-task-create')?.addEventListener('click', () => {
+                    Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
+                });
             }, 0);
 
             return '<div class="domus-stat-grid">' + cardHtml + '</div>' +
@@ -94,19 +114,41 @@
                 dataset: { navigate: 'propertyDetail', args: p.id }
             }));
 
-            const table = Domus.UI.buildTable([
-                t('domus', 'Name'), t('domus', 'City'), t('domus', 'Units')
-            ], propertyRows);
+            const hasProperties = propertyRows.length > 0;
+            const table = hasProperties
+                ? Domus.UI.buildTable([
+                    t('domus', 'Name'), t('domus', 'City'), t('domus', 'Units')
+                ], propertyRows)
+                : Domus.UI.buildEmptyStateAction(
+                    t('domus', 'There is no {entity} yet. Create the first one', {
+                        entity: t('domus', 'Properties')
+                    }),
+                    {
+                        iconClass: 'domus-icon-property',
+                        actionId: 'domus-dashboard-property-create'
+                    }
+                );
 
             const openTasksTable = Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
                 showDescription: false,
                 showType: false,
-                showAction: false
+                showAction: false,
+                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                    entity: t('domus', 'Tasks')
+                }),
+                emptyActionId: 'domus-dashboard-task-create',
+                emptyIconClass: 'domus-icon-task'
             });
 
             setTimeout(() => {
                 Domus.UI.bindRowNavigation();
                 Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
+                document.getElementById('domus-dashboard-property-create')?.addEventListener('click', () => {
+                    Domus.Properties.openCreateModal?.();
+                });
+                document.getElementById('domus-dashboard-task-create')?.addEventListener('click', () => {
+                    Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
+                });
             }, 0);
 
             return '<div class="domus-stat-grid">' + cardHtml + '</div>' +

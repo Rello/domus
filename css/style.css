@@ -374,6 +374,53 @@ body {
     background-color: #f8f8f8;
 }
 
+.domus-empty-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 0;
+    text-align: center;
+}
+
+.domus-empty-state-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: var(--domus-border);
+    background: var(--domus-kpi-detail-background);
+    color: var(--color-main-text);
+    cursor: pointer;
+}
+
+.domus-empty-state-action:hover,
+.domus-empty-state-action:focus {
+    background: var(--color-background-hover);
+}
+
+.domus-empty-state-action .domus-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.domus-empty-state-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.domus-empty-state-head {
+    font-weight: 600;
+}
+
+.domus-empty-state-sub {
+    font-size: 0.9em;
+    color: var(--color-text-maxcontrast);
+}
+
 .domus-table-summary {
     display: flex;
     flex-direction: column;
