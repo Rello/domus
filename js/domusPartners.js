@@ -135,14 +135,20 @@
                         ],
                         dataset: { navigate: 'partnerDetail', args: p.id }
                     }));
-                    Domus.UI.renderContent(toolbar + Domus.UI.buildTable([
+                    const hasRows = rows.length > 0;
+                    const table = Domus.UI.buildTable([
                         t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
-                    ], rows, {
-                        emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                    ], rows);
+                    const emptyState = Domus.UI.buildEmptyStateAction(
+                        t('domus', 'There is no {entity} yet. Create the first one', {
                             entity: t('domus', 'Partners')
                         }),
-                        emptyActionId: 'domus-partners-empty-create'
-                    }));
+                        {
+                            iconClass: 'domus-icon-partner',
+                            actionId: 'domus-partners-empty-create'
+                        }
+                    );
+                    Domus.UI.renderContent(toolbar + (hasRows ? table : emptyState));
                     bindList();
                     bindContactActions();
                 })
@@ -171,19 +177,29 @@
                 ],
                 dataset: { navigate: 'partnerDetail', args: p.id }
             }));
+            const hasRows = rows.length > 0;
             const table = Domus.UI.buildTable([
                 t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
-            ], rows, {
-                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+            ], rows);
+            const emptyState = Domus.UI.buildEmptyStateAction(
+                t('domus', 'There is no {entity} yet. Create the first one', {
                     entity: t('domus', 'Partners')
                 }),
-                emptyActionId: 'domus-partners-empty-create'
-            });
+                {
+                    iconClass: 'domus-icon-partner',
+                    actionId: 'domus-partners-empty-create'
+                }
+            );
             const content = document.getElementById('app-content');
             if (content) {
                 const tables = content.querySelectorAll('.domus-table');
                 if (tables.length) {
-                    tables[0].outerHTML = table;
+                    tables[0].outerHTML = hasRows ? table : emptyState;
+                } else {
+                    const panels = content.querySelectorAll('.domus-empty-state');
+                    if (panels.length) {
+                        panels[0].outerHTML = hasRows ? table : emptyState;
+                    }
                 }
             }
             Domus.UI.bindRowNavigation();

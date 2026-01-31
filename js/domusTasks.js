@@ -170,11 +170,13 @@
                 return { cells, dataset, className: (!showUnit && item.type === 'process') ? 'domus-task-process-row' : '' };
             });
 
-            return Domus.UI.buildTable(headers, rows, {
-                wrapPanel,
-                emptyMessage: options.emptyMessage,
-                emptyActionId: options.emptyActionId
-            });
+            if (!rows.length && options.emptyMessage) {
+                return Domus.UI.buildEmptyStateAction(options.emptyMessage, {
+                    iconClass: options.emptyIconClass,
+                    actionId: options.emptyActionId
+                });
+            }
+            return Domus.UI.buildTable(headers, rows, { wrapPanel });
         }
 
         function bindOpenTaskActions(options = {}) {
@@ -381,8 +383,70 @@
                         modal.close();
                         onSaved && onSaved();
                     })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                .catch(err => Domus.UI.showNotification(err.message, 'error'));
             });
+        }
+
+        function openCreateTaskModalWithUnitSelect(onSaved) {
+            Domus.Api.getUnits()
+                .then(units => {
+                    const options = (units || []).map(unit => {
+                        const label = unit.label || `${t('domus', 'Unit')} #${unit.id}`;
+                        return '<option value="' + Domus.Utils.escapeHtml(unit.id) + '">' + Domus.Utils.escapeHtml(label) + '</option>';
+                    });
+                    if (!options.length) {
+                        Domus.UI.showNotification(t('domus', 'No {entity} available.', { entity: t('domus', 'Units') }), 'error');
+                        return;
+                    }
+                    const rows = [
+                        Domus.UI.buildFormRow({
+                            label: t('domus', 'Unit'),
+                            required: true,
+                            content: '<select name="unitId" required>' + options.join('') + '</select>'
+                        }),
+                        Domus.UI.buildFormRow({
+                            label: t('domus', 'Title'),
+                            required: true,
+                            content: '<input name="title" required>'
+                        }),
+                        Domus.UI.buildFormRow({
+                            label: t('domus', 'Description'),
+                            content: '<textarea name="description"></textarea>'
+                        }),
+                        Domus.UI.buildFormRow({
+                            label: t('domus', 'Due date'),
+                            content: '<input name="dueDate" type="date">'
+                        })
+                    ];
+                    const content = '<div class="domus-form"><form id="domus-task-create-form">' +
+                        Domus.UI.buildFormTable(rows) +
+                        '<div class="domus-form-actions">' +
+                        '<button type="button" id="domus-task-create-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Create task')) + '</button>' +
+                        '</div>' +
+                        '</form></div>';
+                    const modal = Domus.UI.openModal({ title: t('domus', 'New task'), content });
+                    const form = modal.modalEl.querySelector('#domus-task-create-form');
+                    modal.modalEl.querySelector('#domus-task-create-cancel')?.addEventListener('click', modal.close);
+                    form?.addEventListener('submit', (event) => {
+                        event.preventDefault();
+                        const data = new FormData(form);
+                        const unitId = data.get('unitId');
+                        const payload = {
+                            title: data.get('title'),
+                            description: data.get('description'),
+                            dueDate: data.get('dueDate')
+                        };
+                        Domus.Api.createTask(unitId, payload)
+                            .then(() => {
+                                Domus.UI.showNotification(t('domus', 'Task created.'), 'success');
+                                modal.close();
+                                onSaved && onSaved();
+                            })
+                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                    });
+                })
+                .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
         function buildWorkflowStepsTable(run, options = {}) {
@@ -507,7 +571,8 @@
                 emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                     entity: t('domus', 'Tasks')
                 }),
-                emptyActionId: 'domus-unit-tasks-empty-create'
+                emptyActionId: 'domus-unit-tasks-empty-create',
+                emptyIconClass: 'domus-icon-task'
             });
             const openSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</h4>' + openTable;
 
@@ -729,7 +794,8 @@
             bindOpenTaskActions,
             buildUnitTasksPanel,
             loadUnitTasks,
-            bindUnitTaskButtons
+            bindUnitTaskButtons,
+            openCreateTaskModalWithUnitSelect
         };
     })();
 

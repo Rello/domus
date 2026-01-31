@@ -402,19 +402,25 @@
                         Domus.UI.buildYearFilter(renderList) +
                         '</div>';
 
+                    const hasRows = (statistics?.rows || []).length > 0;
                     const table = renderStatisticsTable(statistics, {
                         buildRowDataset: (row) => row.unitId ? { navigate: 'unitDetail', args: row.unitId } : null,
                         sortByYear: false,
                         totals: [
                             { key: 'gwb', label: t('domus', 'Total {label}', { label: t('domus', 'Gross profit') }) }
-                        ],
-                        emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                        ]
+                    });
+                    const emptyState = Domus.UI.buildEmptyStateAction(
+                        t('domus', 'There is no {entity} yet. Create the first one', {
                             entity: t('domus', 'Units')
                         }),
-                        emptyActionId: 'domus-units-empty-create'
-                    });
+                        {
+                            iconClass: 'domus-icon-unit',
+                            actionId: 'domus-units-empty-create'
+                        }
+                    );
 
-                    Domus.UI.renderContent(header + table);
+                    Domus.UI.renderContent(header + (hasRows ? table : emptyState));
                     bindList();
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -513,11 +519,7 @@
             });
 
             const totalsHtml = buildStatisticsTotals(columnMeta, rowsData, options.totals || []);
-            const tableHtml = Domus.UI.buildTable(headers, rows, {
-                wrapPanel: false,
-                emptyMessage: options.emptyMessage,
-                emptyActionId: options.emptyActionId
-            });
+            const tableHtml = Domus.UI.buildTable(headers, rows, { wrapPanel: false });
             if (!wrapPanel) {
                 return '<div class="domus-panel-table">' + tableHtml + totalsHtml + '</div>';
             }

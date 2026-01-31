@@ -626,6 +626,19 @@
             return createIconButton(iconClass, label, options).outerHTML;
         }
 
+        function buildIconLabelButton(iconClass, label, options = {}) {
+            return createIconLabelButton(iconClass, label, options).outerHTML;
+        }
+
+        function buildEmptyStateAction(message, options = {}) {
+            const iconClass = options.iconClass || 'domus-icon-add';
+            const button = createIconLabelButton(iconClass, message, {
+                id: options.actionId,
+                className: ['domus-empty-state-action', options.className].filter(Boolean).join(' ')
+            });
+            return '<div class="domus-empty-state">' + button.outerHTML + '</div>';
+        }
+
         function buildScopeAddButton(iconClass, label, options = {}) {
             const btn = document.createElement('button');
             const classes = ['domus-scope-add-button'];
@@ -711,23 +724,7 @@
             }).join('') + '</tr></thead>';
             html += '<tbody>';
             if (!rows || rows.length === 0) {
-                const emptyMessage = options.emptyMessage;
-                const emptyActionId = options.emptyActionId;
-                if (emptyMessage) {
-                    const buttonStart = emptyActionId
-                        ? '<button type="button" class="domus-link domus-empty-action" id="' + Domus.Utils.escapeHtml(emptyActionId) + '">'
-                        : '';
-                    const buttonEnd = emptyActionId ? '</button>' : '';
-                    html += '<tr><td colspan="' + headers.length + '">' +
-                        '<div class="domus-empty-state">' +
-                        buttonStart +
-                        Domus.Utils.escapeHtml(emptyMessage) +
-                        buttonEnd +
-                        '</div>' +
-                        '</td></tr>';
-                } else {
-                    html += '<tr><td colspan="' + headers.length + '">' + Domus.Utils.escapeHtml(t('domus', 'No entries found.')) + '</td></tr>';
-                }
+                html += '<tr><td colspan="' + headers.length + '">' + Domus.Utils.escapeHtml(t('domus', 'No entries found.')) + '</td></tr>';
             } else {
                 rows.forEach(row => {
                     const rowData = Array.isArray(row) ? { cells: row } : (row || {});
@@ -1150,6 +1147,8 @@
             openModal,
             confirmAction,
             buildIconButton,
+            buildIconLabelButton,
+            buildEmptyStateAction,
             buildScopeAddButton,
             createIconButton,
             buildModalAction,

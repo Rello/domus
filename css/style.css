@@ -375,13 +375,35 @@ body {
 }
 
 .domus-empty-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 0;
     text-align: center;
-    padding: 8px 0;
-    color: var(--color-text-maxcontrast);
 }
 
-.domus-empty-action {
-    font-weight: 600;
+.domus-empty-state-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: var(--domus-border);
+    background: var(--color-background-dark);
+    color: var(--color-main-text);
+    cursor: pointer;
+}
+
+.domus-empty-state-action:hover,
+.domus-empty-state-action:focus {
+    background: var(--color-background-hover);
+}
+
+.domus-empty-state-action .domus-icon {
+    width: 16px;
+    height: 16px;
 }
 
 .domus-table-summary {

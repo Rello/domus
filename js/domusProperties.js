@@ -434,6 +434,7 @@
         return {
             renderList,
             renderDetail,
+            openCreateModal,
             renderListInline: (units) => Domus.Units.renderListInline(units)
         };
     })();
