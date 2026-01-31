@@ -730,6 +730,7 @@
             return {
                 cells: [
                     Domus.Utils.escapeHtml(template.name || ''),
+                    Domus.Utils.escapeHtml(String(template.stepsCount ?? 0)),
                     Domus.Utils.escapeHtml(statusLabel),
                     '<div class="domus-task-template-actions">' +
                         Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), {
@@ -772,6 +773,7 @@
                     const rows = (templates || []).map(buildTemplateRow);
                     container.innerHTML = Domus.UI.buildTable([
                         t('domus', 'Name'),
+                        t('domus', 'Steps'),
                         t('domus', 'Status'),
                         ''
                     ], rows);

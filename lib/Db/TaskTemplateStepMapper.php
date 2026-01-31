@@ -51,4 +51,29 @@ class TaskTemplateStepMapper extends QBMapper {
         $entities = $this->findEntities($qb);
         return $entities[0] ?? null;
     }
+
+    /**
+     * @throws Exception
+     */
+    public function countByTemplateIds(array $templateIds): array {
+        if ($templateIds === []) {
+            return [];
+        }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('template_id')
+            ->selectAlias($qb->createFunction('COUNT(*)'), 'step_count')
+            ->from($this->getTableName())
+            ->where($qb->expr()->in('template_id', $qb->createNamedParameter($templateIds, $qb::PARAM_INT_ARRAY)))
+            ->groupBy('template_id');
+
+        $result = $qb->executeQuery();
+        $counts = [];
+        while ($row = $result->fetch()) {
+            $counts[(int)$row['template_id']] = (int)$row['step_count'];
+        }
+        $result->closeCursor();
+
+        return $counts;
+    }
 }
