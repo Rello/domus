@@ -1154,10 +1154,13 @@
                     }
                     if (useKpiLayout) {
                         renderKpiTileCharts(statistics);
+                        const costDetailTable = renderStatisticsTable(statistics ? statistics.cost : null, {
+                            ...bookingEmptyState
+                        });
                         const detailMap = {
                             tasks: tasksPanel,
                             revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable, yearStatusAction) + bookingsPanelInline,
-                            cost: buildKpiDetailPanel(t('domus', 'Costs'), renderStatisticsTable(statistics ? statistics.cost : null)) + bookingsPanelInline,
+                            cost: buildKpiDetailPanel(t('domus', 'Costs'), costDetailTable) + bookingsPanelInline,
                             tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies, {
                                 emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                                     entity: tenancyLabels.plural
