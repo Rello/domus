@@ -69,7 +69,7 @@ class TaskTemplateStepMapper extends QBMapper {
 
         $result = $qb->executeQuery();
         $counts = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $counts[(int)$row['template_id']] = (int)$row['step_count'];
         }
         $result->closeCursor();
