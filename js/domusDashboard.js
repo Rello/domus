@@ -15,15 +15,10 @@
 
             Promise.all([summaryPromise, unitsPromise])
                 .then(([data, unitsOverview]) => {
-                    const html = buildHeader() + buildContent(data || {}, unitsOverview);
+                    const html = buildContent(data || {}, unitsOverview);
                     Domus.UI.renderContent(html);
                 })
                 .catch(err => Domus.UI.showError(err.message));
-        }
-
-        function buildHeader() {
-            const filter = Domus.UI.buildYearFilter(() => Domus.Router.navigate('dashboard'));
-            return '<div class="domus-toolbar">' + filter + '</div>';
         }
 
         function buildContent(data, unitsOverview) {
