@@ -1341,7 +1341,6 @@
                     { view: 'units', label: t('domus', 'Units'), icon: 'domus-icon-unit' },
                     { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
                     { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' },
-                    { view: 'accounts', label: t('domus', 'Accounts'), icon: 'domus-icon-account' },
                     { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' }
                 ],
                 tenancyLabels: { singular: t('domus', 'Tenancy'), plural: t('domus', 'Tenancies'), action: t('domus', 'Add {entity}', { entity: t('domus', 'Tenancy') }) },
@@ -1355,7 +1354,6 @@
                     { view: 'properties', label: t('domus', 'Properties'), icon: 'domus-icon-property' },
                     { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
                     { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' },
-                    { view: 'accounts', label: t('domus', 'Accounts'), icon: 'domus-icon-account' },
                     { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' }
                 ],
                 tenancyLabels: { singular: t('domus', 'Owner'), plural: t('domus', 'Owners'), action: t('domus', 'Add {entity}', { entity: t('domus', 'Owner') }) },

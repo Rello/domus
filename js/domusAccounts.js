@@ -418,7 +418,41 @@
                 .catch(err => Domus.UI.showError(err.message));
         }
 
-        return { toOptions, label, renderList };
+        function renderSettingsSection() {
+            return '<div class="domus-panel domus-settings-section domus-collapsed" id="domus-settings-accounts-panel">' +
+                '<div class="domus-section-header domus-settings-section-header" role="button" tabindex="0" aria-expanded="false">' +
+                '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Accounts')) + '</h3>' +
+                '</div>' +
+                '<div class="domus-panel-body domus-settings-section-body" id="domus-settings-accounts-body">' +
+                Domus.Utils.escapeHtml(t('domus', 'Loading {entity}…', { entity: t('domus', 'Accounts') })) +
+                '</div>' +
+                '</div>';
+        }
+
+        function loadSettingsSection() {
+            const container = document.getElementById('domus-settings-accounts-body');
+            if (!container) {
+                return;
+            }
+            container.innerHTML = Domus.Utils.escapeHtml(t('domus', 'Loading {entity}…', { entity: t('domus', 'Accounts') }));
+            Domus.Api.getAccounts()
+                .then(nodes => {
+                    const toolbar = '<div class="domus-toolbar">' +
+                        Domus.UI.buildScopeAddButton('domus-icon-account', t('domus', 'Add {entity}', { entity: t('domus', 'Account') }), {
+                            id: 'domus-account-create-btn',
+                            className: 'primary'
+                        }) +
+                        '</div>';
+                    container.innerHTML = toolbar + '<div class="domus-account-tree-wrapper">' + buildAccountTree(nodes || []) + '</div>';
+                    updateAccountsFromHierarchy(nodes || []);
+                    bindAccountActions(nodes || []);
+                })
+                .catch(err => {
+                    container.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
+                });
+        }
+
+        return { toOptions, label, renderList, renderSettingsSection, loadSettingsSection };
     })();
 
     /**
