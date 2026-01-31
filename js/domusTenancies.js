@@ -72,7 +72,7 @@
             Domus.UI.bindRowNavigation();
         }
 
-        function renderInline(tenancies) {
+        function renderInline(tenancies, options = {}) {
             const rows = (tenancies || []).map(tn => ({
                 cells: [
                     Domus.Utils.escapeHtml(formatUnitLabel(tn)),
@@ -85,6 +85,12 @@
                 ],
                 dataset: tn.id ? { navigate: 'tenancyDetail', args: tn.id } : null
             }));
+            if (!rows.length && options.emptyMessage) {
+                return Domus.UI.buildEmptyStateAction(options.emptyMessage, {
+                    iconClass: options.emptyIconClass,
+                    actionId: options.emptyActionId
+                });
+            }
             return Domus.UI.buildTable([
                 t('domus', 'Unit'), t('domus', 'Partners'), t('domus', 'Status'), t('domus', 'Period')
             ], rows, { wrapPanel: false });

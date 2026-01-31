@@ -1142,7 +1142,13 @@
                             tasks: tasksPanel,
                             revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable, yearStatusAction) + bookingsPanelInline,
                             cost: buildKpiDetailPanel(t('domus', 'Costs'), renderStatisticsTable(statistics ? statistics.cost : null)) + bookingsPanelInline,
-                            tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies), (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action) ? {
+                            tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies, {
+                                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                                    entity: tenancyLabels.plural
+                                }),
+                                emptyActionId: 'domus-unit-tenancies-empty-create',
+                                emptyIconClass: 'domus-icon-tenancy'
+                            }), (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action) ? {
                                 id: 'domus-add-tenancy-inline',
                                 title: tenancyLabels.action,
                                 iconClass: 'domus-icon-add'
@@ -1151,6 +1157,9 @@
                         };
                         bindKpiDetailArea(detailMap, (target) => {
                             document.getElementById('domus-add-tenancy-inline')?.addEventListener('click', () => {
+                                Domus.Tenancies.openCreateModal({ unitId: id }, () => renderDetail(id));
+                            });
+                            document.getElementById('domus-unit-tenancies-empty-create')?.addEventListener('click', () => {
                                 Domus.Tenancies.openCreateModal({ unitId: id }, () => renderDetail(id));
                             });
                             if (target === 'tasks') {
