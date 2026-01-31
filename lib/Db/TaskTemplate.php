@@ -15,6 +15,7 @@ class TaskTemplate extends Entity implements JsonSerializable {
     protected $scope;
     protected $createdAt;
     protected $updatedAt;
+    protected $stepsCount;
 
     private array $steps = [];
 
@@ -23,6 +24,7 @@ class TaskTemplate extends Entity implements JsonSerializable {
         $this->addType('isActive', 'int');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
+        $this->addType('stepsCount', 'int');
     }
 
     public function jsonSerialize(): array {
@@ -35,6 +37,7 @@ class TaskTemplate extends Entity implements JsonSerializable {
             'isActive' => (bool)$this->isActive,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
+            'stepsCount' => $this->stepsCount,
             'steps' => $this->steps,
         ];
     }

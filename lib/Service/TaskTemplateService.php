@@ -23,7 +23,14 @@ class TaskTemplateService {
      * @throws DbException
      */
     public function listTemplates(bool $activeOnly = true): array {
-        return $this->templateMapper->findAll($activeOnly ? true : null);
+        $templates = $this->templateMapper->findAll($activeOnly ? true : null);
+        $templateIds = array_map(fn(TaskTemplate $template) => $template->getId(), $templates);
+        $counts = $this->stepMapper->countByTemplateIds($templateIds);
+        foreach ($templates as $template) {
+            $template->setStepsCount($counts[$template->getId()] ?? 0);
+        }
+
+        return $templates;
     }
 
     /**
@@ -36,6 +43,7 @@ class TaskTemplateService {
         }
         $steps = $this->stepMapper->findByTemplate($templateId);
         $template->setSteps($steps);
+        $template->setStepsCount(count($steps));
 
         return $template;
     }
