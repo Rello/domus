@@ -457,6 +457,13 @@
             const rowsData = statistics.rows || [];
             const yearColumn = columns.find(col => (col.key || '').toLowerCase() === 'year' || (col.label || '').toLowerCase() === 'year');
 
+            if (!rowsData.length && options.emptyMessage) {
+                return Domus.UI.buildEmptyStateAction(options.emptyMessage, {
+                    iconClass: options.emptyIconClass,
+                    actionId: options.emptyActionId
+                });
+            }
+
             function shouldAlignRight(format, hasNumericValues) {
                 if (!format && !hasNumericValues) return false;
                 if (format === 'year') return false;
@@ -952,12 +959,20 @@
                         iconClass: 'domus-icon-confirm-year'
                     };
                     const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'), yearStatusAction);
+                    const bookingEmptyState = canManageBookings ? {
+                        emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                            entity: t('domus', 'Booking')
+                        }),
+                        emptyActionId: 'domus-unit-statistics-booking-create',
+                        emptyIconClass: 'domus-icon-booking'
+                    } : {};
                     const revenueTable = renderStatisticsTable(statistics ? statistics.revenue : null, {
                         buildRowDataset: row => {
                             const year = getStatisticsRowYear(row, statistics ? statistics.revenue : null);
                             return year ? { 'stat-year': year } : null;
                         },
-                        wrapPanel: false
+                        wrapPanel: false,
+                        ...bookingEmptyState
                     });
                     const costTable = statistics && statistics.cost
                         ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost, {
@@ -965,7 +980,8 @@
                                 const year = getStatisticsRowYear(row, statistics ? statistics.cost : null);
                                 return year ? { 'stat-year': year } : null;
                             },
-                            wrapPanel: false
+                            wrapPanel: false,
+                            ...bookingEmptyState
                         }) + '</div>'
                         : '';
                     const rentabilityChartPanel = (useKpiLayout || !showRentabilityPanels) ? '' : (isLandlord ? buildRentabilityChartPanel(statistics) : '');
@@ -1248,6 +1264,12 @@
                 });
             });
             document.getElementById('domus-add-unit-booking-inline')?.addEventListener('click', () => {
+                Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id), {
+                    accountFilter: (nr) => String(nr).startsWith('2'),
+                    hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
+                });
+            });
+            document.getElementById('domus-unit-statistics-booking-create')?.addEventListener('click', () => {
                 Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id), {
                     accountFilter: (nr) => String(nr).startsWith('2'),
                     hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
