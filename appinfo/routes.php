@@ -22,6 +22,7 @@ return [
         ['name' => 'Unit#create', 'url' => '/units', 'verb' => 'POST'],
         ['name' => 'Unit#update', 'url' => '/units/{id}', 'verb' => 'PUT'],
         ['name' => 'Unit#destroy', 'url' => '/units/{id}', 'verb' => 'DELETE'],
+        ['name' => 'Unit#deletionSummary', 'url' => '/units/{id}/deletion-summary', 'verb' => 'GET'],
         ['name' => 'Unit#listSettlements', 'url' => '/units/{id}/settlements', 'verb' => 'GET'],
         ['name' => 'Unit#createSettlement', 'url' => '/units/{id}/settlements', 'verb' => 'POST'],
         ['name' => 'Unit#exportDataset', 'url' => '/units/{id}/export', 'verb' => 'GET'],

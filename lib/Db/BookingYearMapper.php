@@ -83,4 +83,27 @@ class BookingYearMapper extends QBMapper {
 
         return $this->findEntities($qb);
     }
+
+    /**
+     * @throws Exception
+     */
+    public function countByUnit(int $unitId): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
+
+        return (int)$qb->executeQuery()->fetchOne();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function deleteByUnit(int $unitId): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
+
+        $qb->executeStatement();
+    }
 }
