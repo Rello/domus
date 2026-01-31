@@ -1181,6 +1181,14 @@
                             document.getElementById('domus-unit-tenancies-empty-create')?.addEventListener('click', () => {
                                 Domus.Tenancies.openCreateModal({ unitId: id }, () => renderDetail(id));
                             });
+                            if (target === 'revenue' || target === 'cost') {
+                                document.getElementById('domus-unit-statistics-booking-create')?.addEventListener('click', () => {
+                                    Domus.Bookings.openCreateModal({ propertyId: unit?.propertyId, unitId: id }, () => renderDetail(id), {
+                                        accountFilter: (nr) => String(nr).startsWith('2'),
+                                        hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
+                                    });
+                                });
+                            }
                             if (target === 'tasks') {
                                 Domus.Tasks.loadUnitTasks(id, {
                                     onOpenCount: (count, status) => {
