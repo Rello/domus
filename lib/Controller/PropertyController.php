@@ -86,6 +86,15 @@ class PropertyController extends Controller {
         }
     }
 
+    #[NoAdminRequired]
+    public function deletionSummary(int $id): DataResponse {
+        try {
+            return new DataResponse($this->propertyService->getDeletionSummary($id, $this->getUserId()));
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
     }

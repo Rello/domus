@@ -800,15 +800,11 @@
             Domus.Tenancies.openCreateModal(
                 prefill,
                 created => {
-                    if (typeof onFinished === 'function') {
-                        onFinished(created);
+                    if (Domus.Permission.isBuildingManagement()) {
+                        openGuidedUnitDistributionStep(unit, steps, onFinished);
                         return;
                     }
-                    if (unit?.id) {
-                        Domus.Router.navigate('unitDetail', [unit.id]);
-                        return;
-                    }
-                    renderList();
+                    finalizeGuidedUnitWorkflow(unit, onFinished, created);
                 },
                 Domus.Api.createTenancy,
                 t('domus', 'Create tenancy'),
@@ -818,6 +814,32 @@
                     size: 'large'
                 }
             );
+        }
+
+        function openGuidedUnitDistributionStep(unit, steps, onFinished) {
+            Domus.Distributions.openCreateUnitValueModal(
+                unit,
+                null,
+                {},
+                {
+                    allowMultiple: true,
+                    onContinue: () => finalizeGuidedUnitWorkflow(unit, onFinished),
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 3, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function finalizeGuidedUnitWorkflow(unit, onFinished, createdTenancy) {
+            if (typeof onFinished === 'function') {
+                onFinished(createdTenancy);
+                return;
+            }
+            if (unit?.id) {
+                Domus.Router.navigate('unitDetail', [unit.id]);
+                return;
+            }
+            renderList();
         }
 
         function openGuidedCreateWorkflow(defaults = {}, onFinished) {

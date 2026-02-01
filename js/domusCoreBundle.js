@@ -182,6 +182,7 @@
             createProperty: data => request('POST', '/properties', data),
             updateProperty: (id, data) => request('PUT', `/properties/${id}`, data),
             deleteProperty: id => request('DELETE', `/properties/${id}`),
+            getPropertyDeletionSummary: id => request('GET', `/properties/${id}/deletion-summary`),
             getProperty: id => request('GET', `/properties/${id}`),
             getTaskTemplates: (activeOnly = true) => request('GET', buildUrl('/api/task-templates', appendFilters(new URLSearchParams(), { activeOnly: activeOnly ? 1 : 0 }))),
             getTaskTemplate: id => request('GET', `/api/task-templates/${id}`),

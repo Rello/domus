@@ -41,18 +41,87 @@
             Domus.UI.bindRowNavigation();
         }
 
-        function openCreateModal() {
+        function getPropertyWorkflowSteps() {
+            const steps = [
+                { label: t('domus', 'Create property') }
+            ];
+            if (Domus.Distributions.canManageDistributions()) {
+                steps.push({ label: t('domus', 'Create distribution key') });
+            }
+            steps.push({ label: t('domus', 'Create unit') });
+            return steps;
+        }
+
+        function openPropertyCreateForm(defaults = {}, onCreated, modalOptions = {}) {
+            const content = buildPropertyForm(defaults);
+            const wrappedContent = typeof modalOptions.wrapContent === 'function' ? modalOptions.wrapContent(content) : content;
             const modal = Domus.UI.openModal({
-                title: t('domus', 'Add {entity}', { entity: t('domus', 'Property') }),
-                content: buildPropertyForm()
+                title: modalOptions.title || t('domus', 'Add {entity}', { entity: t('domus', 'Property') }),
+                content: wrappedContent,
+                size: modalOptions.size
             });
             bindPropertyForm(modal, data => Domus.Api.createProperty(data)
-                .then(() => {
+                .then(created => {
                     Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Property') }), 'success');
                     modal.close();
-                    renderList();
+                    if (typeof onCreated === 'function') {
+                        onCreated(created);
+                    } else {
+                        renderList();
+                    }
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error')));
+        }
+
+        function openGuidedDistributionStep(property, steps, onFinished) {
+            if (!Domus.Distributions.canManageDistributions()) {
+                openGuidedUnitStep(property, steps, onFinished);
+                return;
+            }
+            Domus.Distributions.openCreateKeyModal(
+                property?.id,
+                null,
+                {
+                    allowMultiple: true,
+                    onContinue: () => openGuidedUnitStep(property, steps, onFinished),
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 1, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function openGuidedUnitStep(property, steps, onFinished) {
+            Domus.Units.openCreateModal(
+                { propertyId: property?.id, lockProperty: true },
+                createdUnit => {
+                    if (typeof onFinished === 'function') {
+                        onFinished(createdUnit);
+                        return;
+                    }
+                    if (property?.id) {
+                        renderDetail(property.id);
+                        return;
+                    }
+                    renderList();
+                }
+            );
+        }
+
+        function openGuidedCreateWorkflow(defaults = {}, onFinished) {
+            const steps = getPropertyWorkflowSteps();
+            openPropertyCreateForm(
+                defaults,
+                createdProperty => openGuidedDistributionStep(createdProperty, steps, onFinished),
+                {
+                    title: t('domus', 'Create property'),
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 0, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function openCreateModal() {
+            openGuidedCreateWorkflow();
         }
 
         function isValueFilled(value) {
@@ -207,21 +276,17 @@
             });
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', () => {
-                    Domus.UI.confirmAction({
-                        message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Property') }),
-                        confirmLabel: t('domus', 'Delete')
-                    }).then(confirmed => {
-                        if (!confirmed) {
-                            return;
-                        }
-                        Domus.Api.deleteProperty(id)
-                            .then(() => {
-                                Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Property') }), 'success');
-                                Domus.UI.renderSidebar('');
-                                renderList();
-                            })
-                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                    });
+                    Domus.Api.getPropertyDeletionSummary(id)
+                        .then(summary => openPropertyDeleteModal(property, summary, () => {
+                            Domus.Api.deleteProperty(id)
+                                .then(() => {
+                                    Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Property') }), 'success');
+                                    Domus.UI.renderSidebar('');
+                                    renderList();
+                                })
+                                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        }))
+                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
                 });
             }
 
@@ -258,6 +323,108 @@
 
         function openEditModal(id) {
             openPropertyModal(id, 'edit');
+        }
+
+        function openPropertyDeleteModal(property, summary, onConfirm) {
+            const expectedTitle = property?.name || '';
+            const content = document.createElement('div');
+            const warning = document.createElement('p');
+            warning.className = 'domus-modal-message';
+            warning.textContent = `${t('domus', 'Deleting this property will remove the linked data listed below.')} ${t('domus', 'This action cannot be undone.')}`;
+            content.appendChild(warning);
+
+            const summaryTitle = document.createElement('h4');
+            summaryTitle.textContent = t('domus', 'Linked objects');
+            content.appendChild(summaryTitle);
+
+            const summaryList = document.createElement('ul');
+            summaryList.className = 'domus-delete-summary';
+            [
+                { label: t('domus', 'Units'), value: summary?.units },
+                { label: t('domus', 'Distribution keys'), value: summary?.distributionKeys },
+                { label: t('domus', 'Distribution values'), value: summary?.distributionValues },
+                { label: t('domus', 'Partner relations'), value: summary?.partnerRelations }
+            ].forEach(item => {
+                const listItem = document.createElement('li');
+                const label = document.createElement('span');
+                label.className = 'domus-delete-summary-label';
+                label.textContent = item.label;
+                const value = document.createElement('span');
+                value.className = 'domus-delete-summary-value';
+                value.textContent = String(item.value || 0);
+                listItem.appendChild(label);
+                listItem.appendChild(value);
+                summaryList.appendChild(listItem);
+            });
+            content.appendChild(summaryList);
+
+            const form = document.createElement('form');
+            form.className = 'domus-form';
+            form.addEventListener('submit', event => event.preventDefault());
+
+            const inputId = 'domus-property-delete-confirm-title';
+            const row = document.createElement('div');
+            row.className = 'domus-form-row domus-form-row-full';
+            const labelWrap = document.createElement('div');
+            labelWrap.className = 'domus-form-label';
+            labelWrap.classList.add('domus-delete-confirm-field');
+            const label = document.createElement('label');
+            label.setAttribute('for', inputId);
+            label.textContent = t('domus', 'Type the property title to confirm.');
+            const help = document.createElement('div');
+            help.className = 'domus-form-help';
+            help.textContent = t('domus', 'Expected title: {title}', { title: expectedTitle });
+            labelWrap.appendChild(label);
+            labelWrap.appendChild(help);
+            const valueWrap = document.createElement('div');
+            valueWrap.className = 'domus-form-value';
+            valueWrap.classList.add('domus-delete-confirm-field');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = inputId;
+            input.required = true;
+            input.autocomplete = 'off';
+            valueWrap.appendChild(input);
+            row.appendChild(labelWrap);
+            row.appendChild(valueWrap);
+            form.appendChild(row);
+            content.appendChild(form);
+
+            const footer = document.createElement('div');
+            footer.className = 'domus-modal-footer';
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.textContent = t('domus', 'Cancel');
+            const confirmButton = document.createElement('button');
+            confirmButton.type = 'button';
+            confirmButton.textContent = t('domus', 'Delete');
+            confirmButton.className = 'primary';
+            confirmButton.disabled = true;
+            footer.appendChild(cancelButton);
+            footer.appendChild(confirmButton);
+            content.appendChild(footer);
+
+            let modal;
+            const closeModal = () => modal?.close();
+
+            const checkInput = () => {
+                const value = input.value.trim();
+                confirmButton.disabled = value !== expectedTitle.trim();
+            };
+            input.addEventListener('input', checkInput);
+            checkInput();
+
+            modal = Domus.UI.openModal({
+                title: t('domus', 'Delete {entity}?', { entity: t('domus', 'Property') }),
+                content
+            });
+            cancelButton.addEventListener('click', closeModal);
+            confirmButton.addEventListener('click', () => {
+                closeModal();
+                if (typeof onConfirm === 'function') {
+                    onConfirm();
+                }
+            });
         }
 
         function openDocumentLocationModal(property) {
