@@ -54,6 +54,8 @@ OC.L10N.register(
         "Provisional": "Vorläufig",
         "provisional": "vorläufig",
         "Manage year status": "Jahresstatus verwalten",
+        "Masterdata": "Stammdaten",
+        "{label} ({completed}/{total})": "{label} ({completed}/{total})",
         "This year is still open. Figures are provisional.": "Dieses Jahr ist noch offen. Die Werte sind vorläufig.",
         "This year is closed.": "Dieses Jahr ist abgeschlossen.",
         "Close year": "Jahr abschließen",
