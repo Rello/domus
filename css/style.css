@@ -1177,11 +1177,14 @@ body {
 }
 
 .domus-action-menu-toggle {
-    border-radius: 999px;
-    border: var(--domus-border);
-    padding: 6px 12px;
+    border: none;
+    padding: 0;
     background: transparent;
     color: var(--color-main-text);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    font-weight: 500;
 }
 
 .domus-action-menu-panel {
@@ -1222,6 +1225,24 @@ body {
 
 .domus-action-menu-item .domus-button-label {
     flex: 1;
+}
+
+.domus-completion-label {
+    border: none;
+    padding: 0;
+    background: transparent;
+    color: var(--color-main-text);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    font-weight: 500;
+}
+
+.domus-completion-label:hover,
+.domus-completion-label:focus-visible,
+.domus-action-menu-toggle:hover,
+.domus-action-menu-toggle:focus-visible {
+    color: var(--color-primary);
 }
 
 .domus-completion-indicator {
