@@ -960,11 +960,17 @@ body {
 
 .domus-delete-summary-label {
     font-weight: 600;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .domus-delete-summary-value {
     font-weight: 600;
     color: var(--color-text-maxcontrast);
+    flex: 0 0 auto;
 }
 
 .domus-delete-export {
