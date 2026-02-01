@@ -19,6 +19,33 @@
             return match?.label || type || t('domus', 'Partner');
         }
 
+        function isValueFilled(value) {
+            return value !== undefined && value !== null && value !== '';
+        }
+
+        function getPartnerMasterdataStatus(partner) {
+            let total = 0;
+            let completed = 0;
+
+            const addField = (value) => {
+                total += 1;
+                if (isValueFilled(value)) {
+                    completed += 1;
+                }
+            };
+
+            addField(partner?.name);
+            addField(partner?.partnerType);
+            addField(partner?.street);
+            addField(partner?.zip);
+            addField(partner?.city);
+            addField(partner?.country);
+            addField(partner?.email);
+            addField(partner?.phone);
+
+            return { completed, total };
+        }
+
         function normalizePartnerList(partners, fallbackName) {
             const normalized = (partners || [])
                 .filter(partner => partner && (partner.name || partner.email || partner.phone))
@@ -242,15 +269,15 @@
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const canManageTenancies = Domus.Role.hasCapability('manageTenancies');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
+                    const masterdataStatus = getPartnerMasterdataStatus(partner);
+                    const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata'), masterdataStatus.completed, masterdataStatus.total, {
+                        id: 'domus-partner-masterdata'
+                    });
                     const stats = Domus.UI.buildStatCards([
                         { label: tenancyLabels.plural, value: tenancies.length, hint: t('domus', 'Linked contracts'), formatValue: false },
                         { label: t('domus', 'Type'), value: getPartnerTypeLabel(partner.partnerType) || '—', hint: t('domus', 'Partner category') }
                     ]);
                     const menuActions = [
-                        Domus.UI.buildIconLabelButton('domus-icon-details', t('domus', 'Details'), {
-                            id: 'domus-partner-details',
-                            className: 'domus-action-menu-item'
-                        }),
                         Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
                             id: 'domus-partner-delete',
                             className: 'domus-action-menu-item'
@@ -275,6 +302,7 @@
                         '</div>' +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
+                        '<div class="domus-hero-actions-row domus-hero-actions-indicator">' + masterdataIndicator + '</div>' +
                         (actionMenu ? '<div class="domus-hero-actions-row domus-hero-actions-more">' + actionMenu + '</div>' : '') +
                         (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
@@ -328,10 +356,13 @@
         }
 
         function bindDetailActions(id) {
-            const detailsBtn = document.getElementById('domus-partner-details');
+            const detailsBtn = document.getElementById('domus-partner-masterdata');
             const deleteBtn = document.getElementById('domus-partner-delete');
 
-            detailsBtn?.addEventListener('click', () => openPartnerModal(id, 'view'));
+            detailsBtn?.addEventListener('click', (event) => {
+                event.preventDefault();
+                openPartnerModal(id, 'view');
+            });
             deleteBtn?.addEventListener('click', () => {
                 Domus.UI.confirmAction({
                     message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Partner') }),
