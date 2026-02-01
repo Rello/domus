@@ -1,4 +1,4 @@
-# domus
+# DomusNC
 
 Domus is a full property operations workspace built directly into Nextcloud. Manage portfolios, units, and tenancies alongside tasks, documents, bookings, and distributions in one secure place so property teams stay aligned without leaving their cloud.
 
@@ -20,26 +20,24 @@ Built for teams who want the clarity of purpose-built property management withou
 - Analytics & Reports: insights across occupancy, performance, and financials.
 - Settings: configuration and reference data.
 
-## Modal table layout
-Use the shared modal helpers to keep dialogs compact and consistent:
+## Languages
+- EN, DE
 
-```js
-const rows = [
-    Domus.UI.buildFormRow({
-        label: t('domus', 'Name'),
-        required: true,
-        content: '<input name="name" required>'
-    }),
-    Domus.UI.buildFormRow({
-        label: t('domus', 'Notes'),
-        content: '<textarea name="notes"></textarea>'
-    })
-];
+## Maintainers
+- [Marcel Scherello](https://github.com/rello) (author, project leader)
 
-const modal = Domus.UI.openModal({
-    title: t('domus', 'Example'),
-    content: '<div class="domus-form"><form>' + Domus.UI.buildFormTable(rows) + '</form></div>'
-});
-```
+## Support
+Supported by PhpStorm from [JetBrains](https://www.jetbrains.com/?from=AudioPlayerforNextcloudandownCloud)
 
-The two-column `domus-form-table` layout automatically stacks on mobile and uses `domus-form-value-text` for read-only rows.
+<p>
+  <img src="https://raw.githubusercontent.com/rello/analytics/master/screenshots/jetbrains.svg" alt="JetBrains" width="250" title="JetBrains">
+</p>
+
+---
+
+[![Version](https://img.shields.io/github/release/rello/domus.svg)](https://github.com/rello/domus/blob/main/CHANGELOG.md)
+[![License: AGPLv3](https://img.shields.io/badge/license-AGPLv3-blue.svg)](http://www.gnu.org/licenses/agpl-3.0)
+[![REUSE status](https://api.reuse.software/badge/github.com/rello/domus)](https://api.reuse.software/info/github.com/rello/domus)
+[![Sponsor](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/Rello)
+[![Bitcoin](https://img.shields.io/badge/donate-Bitcoin-blue.svg)](https://github.com/rello/audioplayer/wiki/donate)
+[![PayPal](https://img.shields.io/badge/donate-PayPal-blue.svg)](https://github.com/rello/audioplayer/wiki/donate)
