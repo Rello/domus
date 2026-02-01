@@ -281,7 +281,10 @@
         function bindDetailActions(id, property) {
             const detailsBtn = document.getElementById('domus-property-masterdata');
             const deleteBtn = document.getElementById('domus-property-delete');
-            detailsBtn?.addEventListener('click', () => openPropertyModal(id, 'view'));
+            detailsBtn?.addEventListener('click', (event) => {
+                event.preventDefault();
+                openPropertyModal(id, 'view');
+            });
             document.getElementById('domus-property-document-location')?.addEventListener('click', () => {
                 openDocumentLocationModal(property);
             });

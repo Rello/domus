@@ -1457,7 +1457,10 @@
             const partnersToggleBtn = document.getElementById('domus-unit-toggle-partners');
             const partnersPanel = document.getElementById('domus-unit-partners-panel');
 
-            detailsBtn?.addEventListener('click', () => openUnitModal(id, 'view'));
+            detailsBtn?.addEventListener('click', (event) => {
+                event.preventDefault();
+                openUnitModal(id, 'view');
+            });
             document.getElementById('domus-unit-document-location')?.addEventListener('click', () => {
                 openDocumentLocationModal(unit);
             });
