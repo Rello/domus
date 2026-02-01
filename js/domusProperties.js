@@ -41,18 +41,87 @@
             Domus.UI.bindRowNavigation();
         }
 
-        function openCreateModal() {
+        function getPropertyWorkflowSteps() {
+            const steps = [
+                { label: t('domus', 'Create property') }
+            ];
+            if (Domus.Distributions.canManageDistributions()) {
+                steps.push({ label: t('domus', 'Create distribution key') });
+            }
+            steps.push({ label: t('domus', 'Create unit') });
+            return steps;
+        }
+
+        function openPropertyCreateForm(defaults = {}, onCreated, modalOptions = {}) {
+            const content = buildPropertyForm(defaults);
+            const wrappedContent = typeof modalOptions.wrapContent === 'function' ? modalOptions.wrapContent(content) : content;
             const modal = Domus.UI.openModal({
-                title: t('domus', 'Add {entity}', { entity: t('domus', 'Property') }),
-                content: buildPropertyForm()
+                title: modalOptions.title || t('domus', 'Add {entity}', { entity: t('domus', 'Property') }),
+                content: wrappedContent,
+                size: modalOptions.size
             });
             bindPropertyForm(modal, data => Domus.Api.createProperty(data)
-                .then(() => {
+                .then(created => {
                     Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Property') }), 'success');
                     modal.close();
-                    renderList();
+                    if (typeof onCreated === 'function') {
+                        onCreated(created);
+                    } else {
+                        renderList();
+                    }
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error')));
+        }
+
+        function openGuidedDistributionStep(property, steps, onFinished) {
+            if (!Domus.Distributions.canManageDistributions()) {
+                openGuidedUnitStep(property, steps, onFinished);
+                return;
+            }
+            Domus.Distributions.openCreateKeyModal(
+                property?.id,
+                null,
+                {
+                    allowMultiple: true,
+                    onContinue: () => openGuidedUnitStep(property, steps, onFinished),
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 1, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function openGuidedUnitStep(property, steps, onFinished) {
+            Domus.Units.openCreateModal(
+                { propertyId: property?.id, lockProperty: true },
+                createdUnit => {
+                    if (typeof onFinished === 'function') {
+                        onFinished(createdUnit);
+                        return;
+                    }
+                    if (property?.id) {
+                        renderDetail(property.id);
+                        return;
+                    }
+                    renderList();
+                }
+            );
+        }
+
+        function openGuidedCreateWorkflow(defaults = {}, onFinished) {
+            const steps = getPropertyWorkflowSteps();
+            openPropertyCreateForm(
+                defaults,
+                createdProperty => openGuidedDistributionStep(createdProperty, steps, onFinished),
+                {
+                    title: t('domus', 'Create property'),
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 0, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function openCreateModal() {
+            openGuidedCreateWorkflow();
         }
 
         function isValueFilled(value) {

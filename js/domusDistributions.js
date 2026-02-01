@@ -168,11 +168,13 @@
             }).join('') + '</select>';
         }
 
-        function openCreateKeyModal(propertyId, onCreated) {
+        function openCreateKeyModal(propertyId, onCreated, options = {}) {
             if (!canManageDistributions()) {
                 Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
                 return;
             }
+            const allowMultiple = options.allowMultiple === true;
+            const saveLabel = allowMultiple ? t('domus', 'Save and add another') : t('domus', 'Save');
             const today = (new Date()).toISOString().slice(0, 10);
             const rows = [
                 Domus.UI.buildFormRow({
@@ -213,16 +215,22 @@
                 Domus.UI.buildFormTable(rows) +
                 '<div class="domus-form-actions">' +
                 '<button type="button" id="domus-distribution-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                (options.onContinue ? '<button type="button" id="domus-distribution-continue">' + Domus.Utils.escapeHtml(t('domus', 'Continue')) + '</button>' : '') +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(saveLabel) + '</button>' +
                 '</div>' +
                 '</form>';
 
             const modal = Domus.UI.openModal({
                 title: t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') }),
-                content: form
+                content: typeof options.wrapContent === 'function' ? options.wrapContent(form) : form,
+                size: options.size
             });
 
             modal.modalEl.querySelector('#domus-distribution-cancel')?.addEventListener('click', modal.close);
+            modal.modalEl.querySelector('#domus-distribution-continue')?.addEventListener('click', () => {
+                modal.close();
+                options.onContinue?.();
+            });
             const typeSelect = modal.modalEl.querySelector('select[name="type"]');
             if (typeSelect) {
                 toggleConfigFields(modal.modalEl, typeSelect.value);
@@ -242,14 +250,22 @@
                 Domus.Api.createDistribution(propertyId, payload)
                     .then(() => {
                         Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Distribution') }), 'success');
-                        modal.close();
                         onCreated?.();
+                        if (!allowMultiple) {
+                            modal.close();
+                            return;
+                        }
+                        this.reset();
+                        const nextTypeSelect = modal.modalEl.querySelector('select[name="type"]');
+                        if (nextTypeSelect) {
+                            toggleConfigFields(modal.modalEl, nextTypeSelect.value);
+                        }
                     })
                     .catch(err => Domus.UI.showNotification(err.message, 'error'));
             });
         }
 
-        function openCreateUnitValueModal(unit, onCreated, defaults = {}) {
+        function openCreateUnitValueModal(unit, onCreated, defaults = {}, options = {}) {
             if (!canManageDistributions()) {
                 Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
                 return;
@@ -296,20 +312,28 @@
                         })
                     ];
 
+                    const allowMultiple = options.allowMultiple === true;
+                    const saveLabel = allowMultiple ? t('domus', 'Save and add another') : t('domus', 'Save');
                     const form = '<form id="domus-unit-distribution-form">' +
                         Domus.UI.buildFormTable(rows) +
                         '<div class="domus-form-actions">' +
                         '<button type="button" id="domus-unit-distribution-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                        (options.onContinue ? '<button type="button" id="domus-unit-distribution-continue">' + Domus.Utils.escapeHtml(t('domus', 'Continue')) + '</button>' : '') +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(saveLabel) + '</button>' +
                         '</div>' +
                         '</form>';
 
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Distribution value') }),
-                        content: form
+                        content: typeof options.wrapContent === 'function' ? options.wrapContent(form) : form,
+                        size: options.size
                     });
 
                     modal.modalEl.querySelector('#domus-unit-distribution-cancel')?.addEventListener('click', modal.close);
+                    modal.modalEl.querySelector('#domus-unit-distribution-continue')?.addEventListener('click', () => {
+                        modal.close();
+                        options.onContinue?.();
+                    });
                     if (defaults.distributionKeyId) {
                         const select = modal.modalEl.querySelector('select[name="distributionKeyId"]');
                         if (select) {
@@ -327,8 +351,16 @@
                         Domus.Api.createUnitDistribution(unit.id, payload)
                             .then(() => {
                                 Domus.UI.showNotification(t('domus', '{entity} created.', { entity: t('domus', 'Distribution value') }), 'success');
-                                modal.close();
                                 onCreated?.();
+                                if (!allowMultiple) {
+                                    modal.close();
+                                    return;
+                                }
+                                this.reset();
+                                const distSelect = modal.modalEl.querySelector('select[name="distributionKeyId"]');
+                                if (distSelect && defaults.distributionKeyId) {
+                                    distSelect.value = String(defaults.distributionKeyId);
+                                }
                             })
                             .catch(err => Domus.UI.showNotification(err.message, 'error'));
                     });

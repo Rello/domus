@@ -1176,14 +1176,14 @@ body {
     padding: 6px 10px;
     border-radius: 999px;
     border: var(--domus-border);
-    background: var(--color-background-dark);
+    background: transparent;
 }
 
 .domus-completion-circle {
-    width: 44px;
-    height: 44px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
-    background: conic-gradient(var(--color-success) 0 var(--domus-completion-progress, 0%), var(--color-border) var(--domus-completion-progress, 0%) 100%);
+    background: conic-gradient(var(--color-element-success) 0 var(--domus-completion-progress, 0%), var(--color-border) var(--domus-completion-progress, 0%) 100%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1203,7 +1203,7 @@ body {
     position: absolute;
     inset: 5px;
     border-radius: 50%;
-    background: var(--color-background-dark);
+    background: var(--color-main-background);
 }
 
 .domus-completion-label {

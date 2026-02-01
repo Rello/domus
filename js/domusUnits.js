@@ -705,11 +705,15 @@
         }
 
         function getUnitWorkflowSteps(partnerTypeLabel) {
-            return [
+            const steps = [
                 { label: t('domus', 'Create unit') },
                 { label: t('domus', 'Create {partnerType}', { partnerType: partnerTypeLabel }) },
-                { label: t('domus', 'Create tenancy') }
+                { label: Domus.Permission.isBuildingManagement() ? t('domus', 'Assign Owner') : t('domus', 'Create tenancy') }
             ];
+            if (Domus.Permission.isBuildingManagement()) {
+                steps.push({ label: t('domus', 'Maintain unit distributions') });
+            }
+            return steps;
         }
 
         function openUnitCreateForm(defaults = {}, onCreated, modalOptions = {}) {
@@ -785,15 +789,11 @@
             Domus.Tenancies.openCreateModal(
                 prefill,
                 created => {
-                    if (typeof onFinished === 'function') {
-                        onFinished(created);
+                    if (Domus.Permission.isBuildingManagement()) {
+                        openGuidedUnitDistributionStep(unit, steps, onFinished);
                         return;
                     }
-                    if (unit?.id) {
-                        Domus.Router.navigate('unitDetail', [unit.id]);
-                        return;
-                    }
-                    renderList();
+                    finalizeGuidedUnitWorkflow(unit, onFinished, created);
                 },
                 Domus.Api.createTenancy,
                 t('domus', 'Create tenancy'),
@@ -803,6 +803,32 @@
                     size: 'large'
                 }
             );
+        }
+
+        function openGuidedUnitDistributionStep(unit, steps, onFinished) {
+            Domus.Distributions.openCreateUnitValueModal(
+                unit,
+                null,
+                {},
+                {
+                    allowMultiple: true,
+                    onContinue: () => finalizeGuidedUnitWorkflow(unit, onFinished),
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 3, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function finalizeGuidedUnitWorkflow(unit, onFinished, createdTenancy) {
+            if (typeof onFinished === 'function') {
+                onFinished(createdTenancy);
+                return;
+            }
+            if (unit?.id) {
+                Domus.Router.navigate('unitDetail', [unit.id]);
+                return;
+            }
+            renderList();
         }
 
         function openGuidedCreateWorkflow(defaults = {}, onFinished) {
