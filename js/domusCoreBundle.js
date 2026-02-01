@@ -644,23 +644,29 @@
             const clampedCompleted = safeTotal > 0 ? Math.max(0, Math.min(safeCompleted, safeTotal)) : Math.max(0, safeCompleted);
             const progress = safeTotal > 0 ? Math.round((clampedCompleted / safeTotal) * 100) : 0;
 
-            const labelBtn = document.createElement('button');
-            labelBtn.type = 'button';
-            labelBtn.className = 'domus-completion-label';
+            const labelLink = document.createElement('a');
+            labelLink.href = '#';
+            labelLink.className = 'domus-completion-label';
             if (options.id) {
-                labelBtn.id = options.id;
+                labelLink.id = options.id;
             }
-            labelBtn.textContent = label || '';
+            labelLink.textContent = label || '';
+            labelLink.addEventListener('click', event => {
+                event.preventDefault();
+                if (typeof options.onClick === 'function') {
+                    options.onClick(event);
+                }
+            });
             if (label) {
                 const labelTitle = options.title || t('domus', '{label} ({completed}/{total})', {
                     label,
                     completed: clampedCompleted,
                     total: safeTotal
                 });
-                labelBtn.setAttribute('aria-label', labelTitle);
-                labelBtn.title = labelTitle;
+                labelLink.setAttribute('aria-label', labelTitle);
+                labelLink.title = labelTitle;
             }
-            container.appendChild(labelBtn);
+            container.appendChild(labelLink);
 
             const circle = document.createElement('div');
             circle.className = 'domus-completion-circle';

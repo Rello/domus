@@ -102,7 +102,7 @@
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
                     const isBuildingManagement = Domus.Role.isBuildingMgmtView();
                     const masterdataStatus = getPropertyMasterdataStatus(property);
-                    const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata'), masterdataStatus.completed, masterdataStatus.total, {
+                    const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata:'), masterdataStatus.completed, masterdataStatus.total, {
                         id: 'domus-property-masterdata'
                     });
                     const standardActions = [

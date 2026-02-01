@@ -1021,7 +1021,7 @@
                         showPropertySelect,
                         includeManagementExcludedFields: !Domus.Role.isBuildingMgmtView()
                     });
-                    const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata'), masterdataStatus.completed, masterdataStatus.total, {
+                    const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata:'), masterdataStatus.completed, masterdataStatus.total, {
                         id: 'domus-unit-masterdata'
                     });
                     const stats = useKpiLayout ? '' : Domus.UI.buildStatCards([

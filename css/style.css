@@ -1176,7 +1176,7 @@ body {
     padding: 6px 10px;
     border-radius: 999px;
     border: var(--domus-border);
-    background: var(--color-background-dark);
+    background: transparent;
 }
 
 .domus-completion-circle {
@@ -1203,7 +1203,7 @@ body {
     position: absolute;
     inset: 5px;
     border-radius: 50%;
-    background: var(--color-background-dark);
+    background: var(--color-main-background);
 }
 
 .domus-completion-label {
@@ -1213,6 +1213,7 @@ body {
     color: var(--color-main-text);
     font-weight: 600;
     cursor: pointer;
+    text-decoration: none;
 }
 
 .domus-completion-label:hover,
