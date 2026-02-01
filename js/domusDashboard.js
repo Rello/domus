@@ -65,31 +65,36 @@
                     }
                 );
 
-            const openTasksTable = Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
-                showDescription: false,
-                showType: false,
-                showAction: false,
-                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
-                    entity: t('domus', 'Tasks')
-                }),
-                emptyActionId: 'domus-dashboard-task-create',
-                emptyIconClass: 'domus-icon-task'
-            });
+            const openTasksTable = hasUnits
+                ? Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
+                    showDescription: false,
+                    showType: false,
+                    showAction: false,
+                    emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                        entity: t('domus', 'Tasks')
+                    }),
+                    emptyActionId: 'domus-dashboard-task-create',
+                    emptyIconClass: 'domus-icon-task'
+                })
+                : '';
 
             setTimeout(() => {
                 Domus.UI.bindRowNavigation();
-                Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
+                if (hasUnits) {
+                    Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
+                }
                 document.getElementById('domus-dashboard-unit-create')?.addEventListener('click', () => {
                     Domus.Units.openCreateModal();
                 });
-                document.getElementById('domus-dashboard-task-create')?.addEventListener('click', () => {
-                    Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
-                });
+                if (hasUnits) {
+                    document.getElementById('domus-dashboard-task-create')?.addEventListener('click', () => {
+                        Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
+                    });
+                }
             }, 0);
 
             return '<div class="domus-stat-grid">' + cardHtml + '</div>' +
-                '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' +
-                openTasksTable +
+                (hasUnits ? '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' + openTasksTable : '') +
                 '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Units overview')) + '</h2>' + table;
         }
 
@@ -129,31 +134,36 @@
                     }
                 );
 
-            const openTasksTable = Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
-                showDescription: false,
-                showType: false,
-                showAction: false,
-                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
-                    entity: t('domus', 'Tasks')
-                }),
-                emptyActionId: 'domus-dashboard-task-create',
-                emptyIconClass: 'domus-icon-task'
-            });
+            const openTasksTable = hasProperties
+                ? Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
+                    showDescription: false,
+                    showType: false,
+                    showAction: false,
+                    emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                        entity: t('domus', 'Tasks')
+                    }),
+                    emptyActionId: 'domus-dashboard-task-create',
+                    emptyIconClass: 'domus-icon-task'
+                })
+                : '';
 
             setTimeout(() => {
                 Domus.UI.bindRowNavigation();
-                Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
+                if (hasProperties) {
+                    Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
+                }
                 document.getElementById('domus-dashboard-property-create')?.addEventListener('click', () => {
                     Domus.Properties.openCreateModal?.();
                 });
-                document.getElementById('domus-dashboard-task-create')?.addEventListener('click', () => {
-                    Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
-                });
+                if (hasProperties) {
+                    document.getElementById('domus-dashboard-task-create')?.addEventListener('click', () => {
+                        Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
+                    });
+                }
             }, 0);
 
             return '<div class="domus-stat-grid">' + cardHtml + '</div>' +
-                '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' +
-                openTasksTable +
+                (hasProperties ? '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' + openTasksTable : '') +
                 '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Properties overview')) + '</h2>' + table;
         }
 
