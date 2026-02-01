@@ -10,6 +10,7 @@ return [
         ['name' => 'Property#create', 'url' => '/properties', 'verb' => 'POST'],
         ['name' => 'Property#update', 'url' => '/properties/{id}', 'verb' => 'PUT'],
         ['name' => 'Property#destroy', 'url' => '/properties/{id}', 'verb' => 'DELETE'],
+        ['name' => 'Property#deletionSummary', 'url' => '/properties/{id}/deletion-summary', 'verb' => 'GET'],
         ['name' => 'Distribution#listByProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'GET'],
         ['name' => 'Distribution#createForProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'POST'],
         ['name' => 'PartnerRelation#listByProperty', 'url' => '/properties/{propertyId}/partners', 'verb' => 'GET'],

@@ -46,4 +46,37 @@ class DistributionKeyUnitMapper extends QBMapper {
         $entities = $this->findEntities($qb);
         return $entities[0] ?? null;
     }
+
+    /**
+     * @throws Exception
+     */
+    public function countForKeys(array $distributionKeyIds, string $userId): int {
+        if ($distributionKeyIds === []) {
+            return 0;
+        }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->select($qb->func()->count('*'))
+            ->from($this->getTableName())
+            ->where($qb->expr()->in('distribution_key_id', $qb->createNamedParameter($distributionKeyIds, $qb::PARAM_INT_ARRAY)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        return (int)$qb->executeQuery()->fetchOne();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function deleteForKeys(array $distributionKeyIds, string $userId): void {
+        if ($distributionKeyIds === []) {
+            return;
+        }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->in('distribution_key_id', $qb->createNamedParameter($distributionKeyIds, $qb::PARAM_INT_ARRAY)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        $qb->executeStatement();
+    }
 }

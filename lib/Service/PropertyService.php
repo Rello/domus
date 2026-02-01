@@ -3,6 +3,8 @@
 namespace OCA\Domus\Service;
 
 use OCA\Domus\Db\BookingMapper;
+use OCA\Domus\Db\DistributionKeyMapper;
+use OCA\Domus\Db\DistributionKeyUnitMapper;
 use OCA\Domus\Db\DocumentLinkMapper;
 use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Db\Property;
@@ -18,9 +20,12 @@ class PropertyService {
         private UnitMapper $unitMapper,
         private BookingMapper $bookingMapper,
         private DocumentLinkMapper $documentLinkMapper,
+        private DistributionKeyMapper $distributionKeyMapper,
+        private DistributionKeyUnitMapper $distributionKeyUnitMapper,
         private PartnerRelMapper $partnerRelMapper,
         private TenancyMapper $tenancyMapper,
         private DocumentPathService $documentPathService,
+        private UnitService $unitService,
         private IL10N $l10n,
         private LoggerInterface $logger,
     ) {
@@ -100,12 +105,40 @@ class PropertyService {
 
     public function deleteProperty(int $id, string $userId): void {
         $property = $this->getPropertyForUser($id, $userId);
-        $unitCount = $this->unitMapper->countByProperty($id, $userId);
-        if ($unitCount > 0) {
-            throw new \RuntimeException($this->l10n->t('Cannot delete property with existing units.'));
+        $units = $this->unitMapper->findByUser($userId, $property->getId());
+        $distributionKeys = $this->distributionKeyMapper->findByProperty($property->getId(), $userId);
+        $distributionKeyIds = array_values(array_filter(array_map(fn($key) => $key->getId(), $distributionKeys)));
+
+        foreach ($units as $unit) {
+            $this->unitService->deleteUnit($unit->getId(), $userId);
         }
+
+        if ($distributionKeyIds !== []) {
+            $this->distributionKeyUnitMapper->deleteForKeys($distributionKeyIds, $userId);
+        }
+        foreach ($distributionKeys as $key) {
+            $this->distributionKeyMapper->delete($key);
+        }
+
         $this->partnerRelMapper->deleteForRelation('property', $property->getId(), $userId);
+        $this->documentLinkMapper->deleteForEntity($userId, 'property', $property->getId());
         $this->propertyMapper->delete($property);
+    }
+
+    public function getDeletionSummary(int $id, string $userId): array {
+        $property = $this->getPropertyForUser($id, $userId);
+        $distributionKeys = $this->distributionKeyMapper->findByProperty($property->getId(), $userId);
+        $distributionKeyIds = array_values(array_filter(array_map(fn($key) => $key->getId(), $distributionKeys)));
+        $distributionValues = $distributionKeyIds === []
+            ? 0
+            : $this->distributionKeyUnitMapper->countForKeys($distributionKeyIds, $userId);
+
+        return [
+            'units' => $this->unitMapper->countByProperty($property->getId(), $userId),
+            'distributionKeys' => count($distributionKeys),
+            'distributionValues' => $distributionValues,
+            'partnerRelations' => count($this->partnerRelMapper->findForProperty($property->getId(), $userId)),
+        ];
     }
 
     private function enrichProperty(Property $property): void {
