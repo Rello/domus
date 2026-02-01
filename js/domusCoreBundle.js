@@ -347,6 +347,7 @@
         };
     })();
     Domus.UI = (function() {
+        let actionMenuHandlersBound = false;
         function renderContent(html) {
             const appContent = document.getElementById('app-content');
             if (appContent) {
@@ -632,6 +633,22 @@
             return createIconLabelButton(iconClass, label, options).outerHTML;
         }
 
+        function buildActionMenu(actions, options = {}) {
+            if (!actions || actions.length === 0) {
+                return '';
+            }
+            const label = options.label || t('domus', 'Settings');
+            const ariaLabel = options.ariaLabel || t('domus', 'Settings');
+            const buttonLabel = options.buttonLabel || `${label}`;
+            const menuId = options.id || ('domus-action-menu-' + Math.random().toString(36).slice(2));
+            return '<div class="domus-action-menu" id="' + Domus.Utils.escapeHtml(menuId) + '">' +
+                '<a href="#" role="button" class="domus-action-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-label="' + Domus.Utils.escapeHtml(ariaLabel) + '">' +
+                Domus.Utils.escapeHtml(buttonLabel) +
+                '</a>' +
+                '<div class="domus-action-menu-panel" role="menu">' + actions.join('') + '</div>' +
+                '</div>';
+        }
+
         function buildCompletionIndicator(label, completed, total, options = {}) {
             const container = document.createElement('div');
             const classes = ['domus-completion-indicator'];
@@ -645,8 +662,9 @@
             const clampedCompleted = safeTotal > 0 ? Math.max(0, Math.min(safeCompleted, safeTotal)) : Math.max(0, safeCompleted);
             const progress = safeTotal > 0 ? Math.round((clampedCompleted / safeTotal) * 100) : 0;
 
-            const labelBtn = document.createElement('button');
-            labelBtn.type = 'button';
+            const labelBtn = document.createElement('a');
+            labelBtn.href = '#';
+            labelBtn.setAttribute('role', 'button');
             labelBtn.className = 'domus-completion-label';
             if (options.id) {
                 labelBtn.id = options.id;
@@ -849,6 +867,57 @@
                     Domus.Router.navigate(target, args);
                 });
             });
+        }
+
+        function closeActionMenus() {
+            document.querySelectorAll('.domus-action-menu.is-open').forEach(menu => {
+                menu.classList.remove('is-open');
+                const toggle = menu.querySelector('.domus-action-menu-toggle');
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        function bindActionMenus() {
+            document.querySelectorAll('.domus-action-menu').forEach(menu => {
+                const toggle = menu.querySelector('.domus-action-menu-toggle');
+                if (toggle && !toggle.dataset.domusBound) {
+                    toggle.dataset.domusBound = 'true';
+                    toggle.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const isOpen = menu.classList.contains('is-open');
+                        closeActionMenus();
+                        if (!isOpen) {
+                            menu.classList.add('is-open');
+                            toggle.setAttribute('aria-expanded', 'true');
+                        }
+                    });
+                }
+                menu.querySelectorAll('.domus-action-menu-item').forEach(item => {
+                    if (!item.dataset.domusBound) {
+                        item.dataset.domusBound = 'true';
+                        item.addEventListener('click', () => {
+                            closeActionMenus();
+                        });
+                    }
+                });
+            });
+
+            if (!actionMenuHandlersBound) {
+                document.addEventListener('click', event => {
+                    if (!event.target.closest('.domus-action-menu')) {
+                        closeActionMenus();
+                    }
+                });
+                document.addEventListener('keydown', event => {
+                    if (event.key === 'Escape') {
+                        closeActionMenus();
+                    }
+                });
+                actionMenuHandlersBound = true;
+            }
         }
 
         function buildCollapsible(content, options = {}) {
@@ -1217,6 +1286,7 @@
             buildSectionHeader,
             bindBackButtons,
             bindRowNavigation,
+            bindActionMenus,
             buildCollapsible,
             bindCollapsibles,
             buildStatCards,
@@ -1231,6 +1301,7 @@
             confirmAction,
             buildIconButton,
             buildIconLabelButton,
+            buildActionMenu,
             buildCompletionIndicator,
             buildEmptyStateAction,
             buildScopeAddButton,

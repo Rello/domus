@@ -1092,12 +1092,24 @@
                             formatValue: false
                         }
                     ]);
-                    const standardActions = [
-                        masterdataIndicator,
-                        Domus.UI.buildIconButton('domus-icon-settings', t('domus', 'Document location'), {id: 'domus-unit-document-location'}),
-                        Domus.UI.buildIconButton('domus-icon-document', t('domus', 'Export data'), {id: 'domus-unit-export'}),
-                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {id: 'domus-unit-delete'})
+                    const menuActions = [
+                        Domus.UI.buildIconLabelButton('domus-icon-settings', t('domus', 'Document location'), {
+                            id: 'domus-unit-document-location',
+                            className: 'domus-action-menu-item'
+                        }),
+                        Domus.UI.buildIconLabelButton('domus-icon-document', t('domus', 'Export data'), {
+                            id: 'domus-unit-export',
+                            className: 'domus-action-menu-item'
+                        }),
+                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
+                            id: 'domus-unit-delete',
+                            className: 'domus-action-menu-item'
+                        })
                     ];
+                    const actionMenu = Domus.UI.buildActionMenu(menuActions, {
+                        label: t('domus', 'Settings'),
+                        ariaLabel: t('domus', 'Settings')
+                    });
                     const contextActions = isBuildingManagement
                         ? [
                             (canManageDistributions ? '<button id="domus-unit-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : '')
@@ -1128,7 +1140,8 @@
                         '</div>' +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
-                        (standardActions.length ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + standardActions.join('') + '</div>' : '') +
+                        '<div class="domus-hero-actions-row domus-hero-actions-indicator">' + masterdataIndicator + '</div>' +
+                        (actionMenu ? '<div class="domus-hero-actions-row domus-hero-actions-more">' + actionMenu + '</div>' : '') +
                         (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
@@ -1335,6 +1348,7 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
+                    Domus.UI.bindActionMenus();
                     Domus.UI.bindCollapsibles();
                     if (!useKpiLayout) {
                         bindYearStatusAction(id, statistics);
@@ -1443,7 +1457,10 @@
             const partnersToggleBtn = document.getElementById('domus-unit-toggle-partners');
             const partnersPanel = document.getElementById('domus-unit-partners-panel');
 
-            detailsBtn?.addEventListener('click', () => openUnitModal(id, 'view'));
+            detailsBtn?.addEventListener('click', (event) => {
+                event.preventDefault();
+                openUnitModal(id, 'view');
+            });
             document.getElementById('domus-unit-document-location')?.addEventListener('click', () => {
                 openDocumentLocationModal(unit);
             });
