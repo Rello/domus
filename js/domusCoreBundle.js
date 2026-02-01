@@ -638,19 +638,10 @@
             }
             container.className = classes.join(' ');
 
-            const circle = document.createElement('div');
-            circle.className = 'domus-completion-circle';
             const safeTotal = Number.isFinite(Number(total)) ? Number(total) : 0;
             const safeCompleted = Number.isFinite(Number(completed)) ? Number(completed) : 0;
             const clampedCompleted = safeTotal > 0 ? Math.max(0, Math.min(safeCompleted, safeTotal)) : Math.max(0, safeCompleted);
             const progress = safeTotal > 0 ? Math.round((clampedCompleted / safeTotal) * 100) : 0;
-            circle.style.setProperty('--domus-completion-progress', `${progress}%`);
-
-            const count = document.createElement('span');
-            count.className = 'domus-completion-count';
-            count.textContent = String(clampedCompleted);
-            circle.appendChild(count);
-            container.appendChild(circle);
 
             const labelBtn = document.createElement('button');
             labelBtn.type = 'button';
@@ -669,6 +660,16 @@
                 labelBtn.title = labelTitle;
             }
             container.appendChild(labelBtn);
+
+            const circle = document.createElement('div');
+            circle.className = 'domus-completion-circle';
+            circle.style.setProperty('--domus-completion-progress', `${progress}%`);
+
+            const count = document.createElement('span');
+            count.className = 'domus-completion-count';
+            count.textContent = String(clampedCompleted);
+            circle.appendChild(count);
+            container.appendChild(circle);
 
             return container.outerHTML;
         }
