@@ -148,10 +148,20 @@
                         { label: t('domus', 'Service charge'), value: Domus.Utils.formatCurrency(tenancy.serviceCharge), hint: t('domus', 'Service charge') },
                         { label: t('domus', 'Deposit'), value: Domus.Utils.formatCurrency(tenancy.deposit), hint: t('domus', 'Security deposit') }
                     ]);
-                    const standardActions = [
-                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-tenancy-details' }),
-                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-tenancy-delete' })
+                    const menuActions = [
+                        Domus.UI.buildIconLabelButton('domus-icon-details', t('domus', 'Details'), {
+                            id: 'domus-tenancy-details',
+                            className: 'domus-action-menu-item'
+                        }),
+                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
+                            id: 'domus-tenancy-delete',
+                            className: 'domus-action-menu-item'
+                        })
                     ];
+                    const actionMenu = Domus.UI.buildActionMenu(menuActions, {
+                        label: t('domus', 'More'),
+                        ariaLabel: t('domus', 'More actions')
+                    });
                     const contextActions = [
                         '<button id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>'
                     ];
@@ -169,7 +179,7 @@
                         '</div>' +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
-                        (standardActions.length ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + standardActions.join('') + '</div>' : '') +
+                        (actionMenu ? '<div class="domus-hero-actions-row domus-hero-actions-more">' + actionMenu + '</div>' : '') +
                         (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
@@ -211,6 +221,7 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
+                    Domus.UI.bindActionMenus();
                     Domus.Partners.bindContactActions();
                     bindDetailActions(id, tenancy);
                 })

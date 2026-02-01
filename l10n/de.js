@@ -31,6 +31,7 @@ OC.L10N.register(
         "Maintenance fee (allocable)": "Instandhaltungsgebühr (umlagefähig)",
         "Non-allocable costs": "Nicht umlagef. Kosten",
         "More": "mehr",
+        "More actions": "Weitere Aktionen",
         "Net profit": "Nettogewinn",
         "No parent": "Kein übergeordnetes Konto",
         "0 to dos": "0 To-dos",

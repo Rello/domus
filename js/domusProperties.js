@@ -174,11 +174,20 @@
                     const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata'), masterdataStatus.completed, masterdataStatus.total, {
                         id: 'domus-property-masterdata'
                     });
-                    const standardActions = [
-                        masterdataIndicator,
-                        Domus.UI.buildIconButton('domus-icon-settings', t('domus', 'Document location'), { id: 'domus-property-document-location' }),
-                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-property-delete' })
+                    const menuActions = [
+                        Domus.UI.buildIconLabelButton('domus-icon-settings', t('domus', 'Document location'), {
+                            id: 'domus-property-document-location',
+                            className: 'domus-action-menu-item'
+                        }),
+                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
+                            id: 'domus-property-delete',
+                            className: 'domus-action-menu-item'
+                        })
                     ];
+                    const actionMenu = Domus.UI.buildActionMenu(menuActions, {
+                        label: t('domus', 'More'),
+                        ariaLabel: t('domus', 'More actions')
+                    });
                     const contextActions = isBuildingManagement
                         ? [
                             canManageDistributions ? '<button id="domus-property-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : ''
@@ -205,7 +214,8 @@
                         '</div>' +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
-                        (standardActions.length ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + standardActions.join('') + '</div>' : '') +
+                        '<div class="domus-hero-actions-row domus-hero-actions-indicator">' + masterdataIndicator + '</div>' +
+                        (actionMenu ? '<div class="domus-hero-actions-row domus-hero-actions-more">' + actionMenu + '</div>' : '') +
                         (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
@@ -256,6 +266,7 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
+                    Domus.UI.bindActionMenus();
                     Domus.Distributions.bindTable('domus-property-distributions', visibleDistributions, {
                         mode: 'property',
                         propertyId: id,

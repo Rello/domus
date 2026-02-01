@@ -246,10 +246,20 @@
                         { label: tenancyLabels.plural, value: tenancies.length, hint: t('domus', 'Linked contracts'), formatValue: false },
                         { label: t('domus', 'Type'), value: getPartnerTypeLabel(partner.partnerType) || '—', hint: t('domus', 'Partner category') }
                     ]);
-                    const standardActions = [
-                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Details'), { id: 'domus-partner-details' }),
-                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), { id: 'domus-partner-delete' })
+                    const menuActions = [
+                        Domus.UI.buildIconLabelButton('domus-icon-details', t('domus', 'Details'), {
+                            id: 'domus-partner-details',
+                            className: 'domus-action-menu-item'
+                        }),
+                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
+                            id: 'domus-partner-delete',
+                            className: 'domus-action-menu-item'
+                        })
                     ];
+                    const actionMenu = Domus.UI.buildActionMenu(menuActions, {
+                        label: t('domus', 'More'),
+                        ariaLabel: t('domus', 'More actions')
+                    });
                     const contextActions = [
                         (canManageTenancies && tenancyLabels.action ? '<button id="domus-add-partner-tenancy" data-partner-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : '')
                     ].filter(Boolean);
@@ -265,7 +275,7 @@
                         '</div>' +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
-                        (standardActions.length ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + standardActions.join('') + '</div>' : '') +
+                        (actionMenu ? '<div class="domus-hero-actions-row domus-hero-actions-more">' + actionMenu + '</div>' : '') +
                         (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
@@ -311,6 +321,7 @@
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
+                    Domus.UI.bindActionMenus();
                     bindDetailActions(id);
                 })
                 .catch(err => Domus.UI.showError(err.message));
