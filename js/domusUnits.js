@@ -157,7 +157,11 @@
                 if (Number.isNaN(numeric)) {
                     return '';
                 }
-                return `${Domus.Utils.formatNumber(numeric * 100, { minimumFractionDigits: 0, maximumFractionDigits: 0, useGrouping: false })}%`;
+                return `${Domus.Utils.formatNumber(numeric * 100, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                    useGrouping: false
+                })}%`;
             };
             const formatAxisCurrency = (value) => {
                 const numeric = Number(value);
@@ -705,15 +709,11 @@
         }
 
         function getUnitWorkflowSteps(partnerTypeLabel) {
-            const steps = [
+            return [
                 { label: t('domus', 'Create unit') },
                 { label: t('domus', 'Create {partnerType}', { partnerType: partnerTypeLabel }) },
-                { label: Domus.Permission.isBuildingManagement() ? t('domus', 'Assign Owner') : t('domus', 'Create tenancy') }
+                { label: t('domus', 'Create tenancy') }
             ];
-            if (Domus.Permission.isBuildingManagement()) {
-                steps.push({ label: t('domus', 'Maintain unit distributions') });
-            }
-            return steps;
         }
 
         function openUnitCreateForm(defaults = {}, onCreated, modalOptions = {}) {
