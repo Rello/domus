@@ -1469,13 +1469,8 @@
             const content = document.createElement('div');
             const warning = document.createElement('p');
             warning.className = 'domus-modal-message';
-            warning.textContent = t('domus', 'Deleting this unit will remove the linked data listed below.');
+            warning.textContent = `${t('domus', 'Deleting this unit will remove the linked data listed below.')} ${t('domus', 'This action cannot be undone.')}`;
             content.appendChild(warning);
-
-            const warningDetails = document.createElement('p');
-            warningDetails.className = 'domus-modal-message';
-            warningDetails.textContent = t('domus', 'This action cannot be undone.');
-            content.appendChild(warningDetails);
 
             const summaryTitle = document.createElement('h4');
             summaryTitle.textContent = t('domus', 'Linked objects');
@@ -1485,31 +1480,46 @@
             summaryList.className = 'domus-delete-summary';
             [
                 { label: t('domus', 'Tasks'), value: summary?.tasks },
+                { label: t('domus', 'Task steps'), value: summary?.taskSteps },
                 { label: t('domus', 'Tenancies'), value: summary?.tenancies },
                 { label: t('domus', 'Bookings'), value: summary?.bookings },
                 { label: t('domus', 'Document links'), value: summary?.documentLinks },
                 { label: t('domus', 'Year status'), value: summary?.yearStatus }
             ].forEach(item => {
                 const listItem = document.createElement('li');
-                listItem.textContent = `${item.label}: ${item.value || 0}`;
+                const label = document.createElement('span');
+                label.className = 'domus-delete-summary-label';
+                label.textContent = item.label;
+                const value = document.createElement('span');
+                value.className = 'domus-delete-summary-value';
+                value.textContent = String(item.value || 0);
+                listItem.appendChild(label);
+                listItem.appendChild(value);
                 summaryList.appendChild(listItem);
             });
             content.appendChild(summaryList);
 
             const exportHint = document.createElement('p');
-            exportHint.className = 'domus-modal-message';
-            exportHint.textContent = t('domus', 'Export a backup before deleting this unit.');
-            content.appendChild(exportHint);
-
-            const exportLink = document.createElement('a');
-            exportLink.href = '#';
+            exportHint.className = 'domus-modal-message domus-delete-export';
+            const exportActionLabel = t('domus', 'Export');
+            const exportHintText = t('domus', '{action} a backup before deleting this unit.', { action: exportActionLabel });
+            const exportTextParts = exportHintText.split(exportActionLabel);
+            const exportLink = document.createElement('button');
+            exportLink.type = 'button';
             exportLink.id = 'domus-unit-delete-export';
-            exportLink.textContent = t('domus', 'Export data');
-            exportLink.addEventListener('click', event => {
-                event.preventDefault();
-                openExportModal(unit?.id);
-            });
-            content.appendChild(exportLink);
+            exportLink.className = 'domus-link domus-link-underline';
+            exportLink.textContent = exportActionLabel;
+            exportLink.addEventListener('click', () => openExportModal(unit?.id));
+            if (exportTextParts.length === 2) {
+                exportHint.appendChild(document.createTextNode(exportTextParts[0]));
+                exportHint.appendChild(exportLink);
+                exportHint.appendChild(document.createTextNode(exportTextParts[1]));
+            } else {
+                exportHint.textContent = exportHintText;
+                exportHint.appendChild(document.createTextNode(' '));
+                exportHint.appendChild(exportLink);
+            }
+            content.appendChild(exportHint);
 
             const form = document.createElement('form');
             form.className = 'domus-form';
@@ -1520,6 +1530,7 @@
             row.className = 'domus-form-row domus-form-row-full';
             const labelWrap = document.createElement('div');
             labelWrap.className = 'domus-form-label';
+            labelWrap.classList.add('domus-delete-confirm-field');
             const label = document.createElement('label');
             label.setAttribute('for', inputId);
             label.textContent = t('domus', 'Type the unit title to confirm.');
@@ -1530,6 +1541,7 @@
             labelWrap.appendChild(help);
             const valueWrap = document.createElement('div');
             valueWrap.className = 'domus-form-value';
+            valueWrap.classList.add('domus-delete-confirm-field');
             const input = document.createElement('input');
             input.type = 'text';
             input.id = inputId;

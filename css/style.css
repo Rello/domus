@@ -940,6 +940,45 @@ body {
     margin: 0 0 16px;
 }
 
+.domus-delete-summary {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 18px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px 16px;
+}
+
+.domus-delete-summary li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--color-background-hover);
+}
+
+.domus-delete-summary-label {
+    font-weight: 600;
+}
+
+.domus-delete-summary-value {
+    font-weight: 600;
+    color: var(--color-text-maxcontrast);
+}
+
+.domus-delete-export {
+    margin-top: 8px;
+}
+
+.domus-link-underline {
+    text-decoration: underline;
+}
+
+.domus-delete-confirm-field {
+    margin-top: 16px;
+}
+
 .domus-modal-footer {
     display: flex;
     justify-content: flex-end;
