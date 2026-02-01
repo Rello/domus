@@ -257,8 +257,8 @@
                         })
                     ];
                     const actionMenu = Domus.UI.buildActionMenu(menuActions, {
-                        label: t('domus', 'More'),
-                        ariaLabel: t('domus', 'More actions')
+                        label: t('domus', 'Settings'),
+                        ariaLabel: t('domus', 'Settings')
                     });
                     const contextActions = [
                         (canManageTenancies && tenancyLabels.action ? '<button id="domus-add-partner-tenancy" data-partner-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : '')

@@ -1232,7 +1232,6 @@ body {
     padding: 0;
     background: transparent;
     color: var(--color-main-text);
-    text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;
     font-weight: 500;

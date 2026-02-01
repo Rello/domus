@@ -637,9 +637,9 @@
             if (!actions || actions.length === 0) {
                 return '';
             }
-            const label = options.label || t('domus', 'More');
-            const ariaLabel = options.ariaLabel || t('domus', 'More actions');
-            const buttonLabel = options.buttonLabel || `… ${label}`;
+            const label = options.label || t('domus', 'Settings');
+            const ariaLabel = options.ariaLabel || t('domus', 'Settings');
+            const buttonLabel = options.buttonLabel || `${label}`;
             const menuId = options.id || ('domus-action-menu-' + Math.random().toString(36).slice(2));
             return '<div class="domus-action-menu" id="' + Domus.Utils.escapeHtml(menuId) + '">' +
                 '<a href="#" role="button" class="domus-action-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-label="' + Domus.Utils.escapeHtml(ariaLabel) + '">' +
