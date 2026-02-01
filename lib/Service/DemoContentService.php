@@ -18,6 +18,7 @@ class DemoContentService {
         private PartnerRelationService $partnerRelationService,
         private TaskService $taskService,
         private BookingService $bookingService,
+        private BookingYearService $bookingYearService,
         private DistributionKeyMapper $distributionKeyMapper,
         private DistributionKeyUnitMapper $distributionKeyUnitMapper,
         private IDBConnection $connection,
@@ -74,7 +75,7 @@ class DemoContentService {
             'notes' => $this->l10n->t('Facilities partner for cleaning and minor repairs.'),
         ], $userId, $role);
 
-        $startDate = (new \DateTimeImmutable('first day of january'))->format('Y-m-d');
+        $startDate = (new \DateTimeImmutable('first day of january last year'))->format('Y-m-d');
 
         $this->tenancyService->createTenancy([
             'unitId' => $unit->getId(),
@@ -91,7 +92,7 @@ class DemoContentService {
         ], $userId, $role);
 
         $this->createDemoTask($unit->getId(), $userId);
-        $this->createDemoBookings($userId, ['unitId' => $unit->getId()]);
+        $this->createDemoBookings($userId, ['unitId' => $unit->getId()], $unit->getId());
 
         return [
             'unitId' => $unit->getId(),
@@ -183,56 +184,92 @@ class DemoContentService {
         );
     }
 
-    private function createDemoBookings(string $userId, array $relation): void {
-        $year = (new \DateTimeImmutable('today'))->format('Y');
+    private function createDemoBookings(string $userId, array $relation, int $unitId): void {
+        $currentYear = (int)(new \DateTimeImmutable('today'))->format('Y');
+        $previousYear = $currentYear - 1;
         $bookings = [
             [
                 'account' => 2000,
-                'date' => $year . '-01-15',
-                'amount' => '320.50',
+                'monthDay' => '01-15',
+                'amounts' => [
+                    'current' => '320.50',
+                    'previous' => '315.50',
+                ],
                 'description' => $this->l10n->t('Heating and water maintenance'),
             ],
             [
                 'account' => 2100,
-                'date' => $year . '-02-10',
-                'amount' => '110.00',
+                'monthDay' => '02-10',
+                'amounts' => [
+                    'current' => '110.00',
+                    'previous' => '105.00',
+                ],
                 'description' => $this->l10n->t('Elevator service contract'),
             ],
             [
                 'account' => 2200,
-                'date' => $year . '-03-05',
-                'amount' => '150.00',
+                'monthDay' => '03-05',
+                'amounts' => [
+                    'current' => '150.00',
+                    'previous' => '145.00',
+                ],
                 'description' => $this->l10n->t('Reserve fund contribution'),
             ],
             [
                 'account' => 2300,
-                'date' => $year . '-04-08',
-                'amount' => '85.00',
+                'monthDay' => '04-08',
+                'amounts' => [
+                    'current' => '85.00',
+                    'previous' => '80.00',
+                ],
                 'description' => $this->l10n->t('Minor repairs and supplies'),
             ],
             [
                 'account' => 2400,
-                'date' => $year . '-05-20',
-                'amount' => '240.00',
+                'monthDay' => '05-20',
+                'amounts' => [
+                    'current' => '240.00',
+                    'previous' => '235.00',
+                ],
                 'description' => $this->l10n->t('Quarterly property tax'),
             ],
             [
                 'account' => 2600,
-                'date' => $year . '-06-12',
-                'amount' => '300.00',
+                'monthDay' => '06-12',
+                'amounts' => [
+                    'current' => '300.00',
+                    'previous' => '295.00',
+                ],
                 'description' => $this->l10n->t('Annual depreciation booking'),
             ],
             [
                 'account' => 2700,
-                'date' => $year . '-07-18',
-                'amount' => '65.00',
+                'monthDay' => '07-18',
+                'amounts' => [
+                    'current' => '65.00',
+                    'previous' => '60.00',
+                ],
                 'description' => $this->l10n->t('Tax advisor fees'),
             ],
         ];
 
         foreach ($bookings as $booking) {
-            $this->bookingService->createBooking(array_merge($booking, $relation), $userId);
+            $this->bookingService->createBooking(array_merge($relation, [
+                'account' => $booking['account'],
+                'date' => $previousYear . '-' . $booking['monthDay'],
+                'amount' => $booking['amounts']['previous'],
+                'description' => $booking['description'],
+            ]), $userId);
+
+            $this->bookingService->createBooking(array_merge($relation, [
+                'account' => $booking['account'],
+                'date' => $currentYear . '-' . $booking['monthDay'],
+                'amount' => $booking['amounts']['current'],
+                'description' => $booking['description'],
+            ]), $userId);
         }
+
+        $this->bookingYearService->closeYear($previousYear, null, $unitId, $userId);
     }
 
     /**
