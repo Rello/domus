@@ -8,6 +8,7 @@ use OCA\Domus\Db\DocumentLinkMapper;
 use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\TaskMapper;
+use OCA\Domus\Db\TaskStepMapper;
 use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
@@ -20,6 +21,7 @@ class UnitService {
         private PropertyMapper $propertyMapper,
         private TenancyMapper $tenancyMapper,
         private TaskMapper $taskMapper,
+        private TaskStepMapper $taskStepMapper,
         private BookingMapper $bookingMapper,
         private BookingYearMapper $bookingYearMapper,
         private DocumentLinkMapper $documentLinkMapper,
@@ -147,6 +149,7 @@ class UnitService {
 
         return [
             'tasks' => $this->taskMapper->countByUnit($unit->getId()),
+            'taskSteps' => $this->taskStepMapper->countByUnit($unit->getId()),
             'tenancies' => count($tenancies),
             'bookings' => count($bookings),
             'documentLinks' => $documentLinks,
