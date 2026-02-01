@@ -984,8 +984,8 @@ body {
 }
 
 .domus-guided-step.is-complete .domus-guided-step-bullet {
-    background: var(--color-success);
-    border-color: var(--color-success);
+    background: var(--color-element-success);
+    border-color: var(--color-element-success);
 }
 
 .domus-guided-content {

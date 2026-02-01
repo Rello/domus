@@ -183,11 +183,11 @@ class ServiceChargeSettlementService {
 		$saldo = $entry['saldo'];
 
 		$title = $saldo >= 0
-			? $this->l10n->t('Guthaben')
-			: $this->l10n->t('Nachzahlung');
+			? $this->l10n->t('Credit')
+			: $this->l10n->t('Pay back');
 
         $lines = [
-            sprintf('# %s %d', $this->l10n->t('Nebenkostenabrechnung'), $year),
+            sprintf('# %s %d', $this->l10n->t('Utility Bill Statement'), $year),
             '',
             sprintf('## %s', $partnerName),
         ];
@@ -202,13 +202,13 @@ class ServiceChargeSettlementService {
         $lines[] = '';
         $lines[] = '| ' . $this->l10n->t('Position') . ' | ' . $this->l10n->t('Amount') . ' |';
         $lines[] = '| --- | ---: |';
-        $lines[] = sprintf('| %s | %.2f € |', $this->l10n->t('Nebenkosten bezahlt'), $entry['serviceCharge']);
+        $lines[] = sprintf('| %s | %.2f € |', $this->l10n->t('Prepayment'), $entry['serviceCharge']);
 
-        $houseFeeLabel = $this->l10n->t('Hausgeld');
-        $propertyTaxLabel = $this->l10n->t('Grundsteuer');
+        $houseFeeLabel = $this->l10n->t('Maintenance fee');
+        $propertyTaxLabel = $this->l10n->t('Property tax');
 
         if (($entry['months'] ?? 0) < 12) {
-            $anteilig = $this->l10n->t('anteilig');
+            $anteilig = $this->l10n->t('proportional');
             $houseFeeLabel .= ' (' . $anteilig . ')';
             $propertyTaxLabel .= ' (' . $anteilig . ')';
         }

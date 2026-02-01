@@ -2202,7 +2202,7 @@
                 tableContainer.innerHTML = Domus.UI.buildTable([
                     '',
                     t('domus', 'Partner'),
-                    t('domus', 'Utility costs'),
+                    t('domus', 'Prepayment'),
                     t('domus', 'Maintenance fee'),
                     t('domus', 'Property tax'),
                     t('domus', 'Saldo')
@@ -2270,13 +2270,20 @@
                         '<button id="domus-settlement-back">' + Domus.Utils.escapeHtml(t('domus', 'Back')) + '</button>' +
                         '</div>';
                 }
+
+                let saldoText = t('domus', 'Credit');
+
+                if (selected.saldo < 0) {
+                    saldoText = t('domus', 'Pay back');
+                }
+
                 const info = Domus.UI.buildInfoList([
                     { label: t('domus', 'Partner'), value: selected.partnerName || '' },
                     { label: t('domus', 'Year'), value: selectedYear },
-                    { label: t('domus', 'Utility costs'), value: Domus.Utils.formatCurrency(selected.serviceCharge) },
+                    { label: t('domus', 'Prepayment'), value: Domus.Utils.formatCurrency(selected.serviceCharge) },
                     { label: t('domus', 'Maintenance fee'), value: Domus.Utils.formatCurrency(selected.houseFee) },
                     { label: t('domus', 'Property tax'), value: Domus.Utils.formatCurrency(selected.propertyTax) },
-                    { label: t('domus', 'Saldo'), value: Domus.Utils.formatCurrency(selected.saldo) }
+                    { label: saldoText, value: Domus.Utils.formatCurrency(selected.saldo) }
                 ]);
                 return '<div class="domus-form">' + info + '</div>' +
                     '<div class="domus-modal-footer">' +
