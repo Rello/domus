@@ -130,6 +130,7 @@ OC.L10N.register(
         "Description": "Beschreibung",
         "Details": "Details",
         "Distribution": "Umlageschlüssel",
+        "Distribution values": "Umlagewerte",
         "Distribution Report": "Umlage Bericht",
         "Distribution keys": "Umlageschlüssel",
         "Distribution values": "Umlagewerte",

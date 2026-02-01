@@ -47,6 +47,31 @@ class DistributionKeyUnitMapper extends QBMapper {
         return $entities[0] ?? null;
     }
 
+     /**
+     * @throws Exception
+     */
+    public function countByUnit(string $userId, int $unitId): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
+
+        return (int)$qb->executeQuery()->fetchOne();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function deleteByUnit(string $userId, int $unitId): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
+
+        $qb->executeStatement();
+    }
+  
     /**
      * @throws Exception
      */

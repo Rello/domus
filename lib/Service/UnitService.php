@@ -4,6 +4,7 @@ namespace OCA\Domus\Service;
 
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\BookingYearMapper;
+use OCA\Domus\Db\DistributionKeyUnitMapper;
 use OCA\Domus\Db\DocumentLinkMapper;
 use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Db\PropertyMapper;
@@ -24,6 +25,7 @@ class UnitService {
         private TaskStepMapper $taskStepMapper,
         private BookingMapper $bookingMapper,
         private BookingYearMapper $bookingYearMapper,
+        private DistributionKeyUnitMapper $distributionKeyUnitMapper,
         private DocumentLinkMapper $documentLinkMapper,
         private PartnerRelMapper $partnerRelMapper,
         private TenancyService $tenancyService,
@@ -128,6 +130,7 @@ class UnitService {
         $this->documentLinkMapper->deleteForEntities($userId, 'tenancy', $tenancyIds);
         $this->documentLinkMapper->deleteForEntities($userId, 'booking', $bookingIds);
         $this->bookingMapper->deleteByUnit($userId, $unit->getId());
+        $this->distributionKeyUnitMapper->deleteByUnit($userId, $unit->getId());
         foreach ($tenancies as $tenancy) {
             $this->tenancyService->deleteTenancy($tenancy->getId(), $userId);
         }
@@ -152,6 +155,7 @@ class UnitService {
             'taskSteps' => $this->taskStepMapper->countByUnit($unit->getId()),
             'tenancies' => count($tenancies),
             'bookings' => count($bookings),
+            'distributions' => $this->distributionKeyUnitMapper->countByUnit($userId, $unit->getId()),
             'documentLinks' => $documentLinks,
             'yearStatus' => $this->bookingYearMapper->countByUnit($unit->getId()),
         ];

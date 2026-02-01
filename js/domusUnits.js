@@ -1706,14 +1706,18 @@
 
             const summaryList = document.createElement('ul');
             summaryList.className = 'domus-delete-summary';
-            [
+            const summaryItems = [
                 {label: t('domus', 'Tasks'), value: summary?.tasks},
                 {label: t('domus', 'Task steps'), value: summary?.taskSteps},
                 {label: t('domus', 'Tenancies'), value: summary?.tenancies},
                 {label: t('domus', 'Bookings'), value: summary?.bookings},
+                ...(Domus.Role.isBuildingMgmtView()
+                    ? [{label: t('domus', 'Distribution values'), value: summary?.distributions}]
+                    : []),
                 {label: t('domus', 'Document links'), value: summary?.documentLinks},
                 {label: t('domus', 'Year status'), value: summary?.yearStatus}
-            ].forEach(item => {
+            ];
+            summaryItems.forEach(item => {
                 const listItem = document.createElement('li');
                 const label = document.createElement('span');
                 label.className = 'domus-delete-summary-label';
