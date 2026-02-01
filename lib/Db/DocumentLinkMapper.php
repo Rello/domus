@@ -76,4 +76,66 @@ class DocumentLinkMapper extends QBMapper {
 
         return $ids;
     }
+
+    /**
+     * @throws Exception
+     */
+    public function countForEntity(string $userId, string $entityType, int $entityId): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
+
+        return (int)$qb->executeQuery()->fetchOne();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function countForEntities(string $userId, string $entityType, array $entityIds): int {
+        if ($entityIds === []) {
+            return 0;
+        }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->in('entity_id', $qb->createNamedParameter($entityIds, $qb::PARAM_INT_ARRAY)));
+
+        return (int)$qb->executeQuery()->fetchOne();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function deleteForEntity(string $userId, string $entityType, int $entityId): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
+
+        $qb->executeStatement();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function deleteForEntities(string $userId, string $entityType, array $entityIds): void {
+        if ($entityIds === []) {
+            return;
+        }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->in('entity_id', $qb->createNamedParameter($entityIds, $qb::PARAM_INT_ARRAY)));
+
+        $qb->executeStatement();
+    }
 }

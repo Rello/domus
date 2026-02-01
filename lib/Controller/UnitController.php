@@ -129,6 +129,15 @@ class UnitController extends Controller {
 	}
 
 	#[NoAdminRequired]
+	public function deletionSummary(int $id): DataResponse {
+		try {
+			return new DataResponse($this->unitService->getDeletionSummary($id, $this->getUserId()));
+		} catch (\Throwable $e) {
+			return $this->notFound();
+		}
+	}
+
+	#[NoAdminRequired]
 	public function listSettlements(int $id, ?int $year = null): DataResponse {
 		$targetYear = $year ?? ((int)date('Y') - 1);
 		try {
