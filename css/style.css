@@ -1077,10 +1077,21 @@ body {
     justify-content: center;
     color: var(--color-main-text);
     font-weight: 600;
+    position: relative;
 }
 
 .domus-completion-count {
     font-size: 14px;
+    position: relative;
+    z-index: 1;
+}
+
+.domus-completion-circle::after {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    background: var(--color-background-dark);
 }
 
 .domus-completion-label {
