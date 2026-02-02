@@ -1,7 +1,7 @@
 <?php
 
 namespace OCA\Domus\Migration;
-
+#sudo -u www-data php occ migrations:execute domus 0002Date20251202000000
 use Closure;
 use OCP\IDBConnection;
 use OCP\Migration\SimpleMigrationStep;
