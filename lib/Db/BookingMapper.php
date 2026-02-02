@@ -36,6 +36,9 @@ class BookingMapper extends QBMapper {
             }
         }
 
+        $qb->orderBy('date', 'DESC')
+            ->addOrderBy('id', 'DESC');
+
         return $this->findEntities($qb);
     }
 

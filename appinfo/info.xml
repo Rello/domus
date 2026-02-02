@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <info>
     <id>domus</id>
-    <name>Domus</name>
-    <summary>Property and tenancy management</summary>
+    <name>DomusNC</name>
+    <summary>Property operations workspace for Nextcloud</summary>
     <description><![CDATA[
 Domus is a full property operations workspace built directly into Nextcloud. Manage portfolios, units, and tenancies alongside tasks, documents, bookings, and distributions in one secure place so property teams stay aligned without leaving their cloud.
 

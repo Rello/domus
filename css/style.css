@@ -374,6 +374,29 @@ body {
     background-color: #f8f8f8;
 }
 
+.domus-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0 4px;
+}
+
+.domus-pagination-info {
+    font-size: 12px;
+    color: var(--color-text-maxcontrast);
+}
+
+.domus-pagination-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.domus-pagination button[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .domus-empty-state {
     display: flex;
     justify-content: center;

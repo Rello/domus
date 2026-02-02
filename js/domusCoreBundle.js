@@ -265,8 +265,10 @@
             updateTenancy: (id, data) => request('PUT', `/tenancies/${id}`, data),
             deleteTenancy: id => request('DELETE', `/tenancies/${id}`),
             getBookings: filters => {
-                const params = withYear();
                 const sanitizedFilters = Object.assign({}, filters || {});
+                const includeAll = sanitizedFilters.includeAll === true;
+                delete sanitizedFilters.includeAll;
+                const params = includeAll ? new URLSearchParams() : withYear();
                 if (sanitizedFilters.year !== undefined && sanitizedFilters.year !== null && sanitizedFilters.year !== '') {
                     params.set('year', sanitizedFilters.year);
                     delete sanitizedFilters.year;
@@ -810,6 +812,91 @@
             return { label: header, classAttr: '' };
         }
 
+        function paginateArray(items, page, pageSize) {
+            const safeItems = items || [];
+            const safePageSize = Math.max(1, parseInt(pageSize, 10) || 20);
+            const total = safeItems.length;
+            const totalPages = Math.max(1, Math.ceil(total / safePageSize));
+            const safePage = Math.min(Math.max(1, parseInt(page, 10) || 1), totalPages);
+            const startIndex = (safePage - 1) * safePageSize;
+            const endIndex = Math.min(startIndex + safePageSize, total);
+            return {
+                items: safeItems.slice(startIndex, endIndex),
+                page: safePage,
+                total,
+                totalPages,
+                startIndex,
+                endIndex,
+                pageSize: safePageSize
+            };
+        }
+
+        function buildPagination(pageInfo, options = {}) {
+            if (!pageInfo) {
+                return '';
+            }
+            const pageSize = pageInfo.pageSize || options.pageSize || 20;
+            if (!options.force && pageInfo.total <= pageSize) {
+                return '';
+            }
+            const from = pageInfo.total === 0 ? 0 : pageInfo.startIndex + 1;
+            const to = pageInfo.endIndex;
+            const infoLabel = t('domus', 'Showing {from} - {to} of {total}', {
+                from,
+                to,
+                total: pageInfo.total
+            });
+            const prevLabel = t('domus', 'Previous');
+            const nextLabel = t('domus', 'Next');
+            const prevDisabled = pageInfo.page <= 1 ? ' disabled' : '';
+            const nextDisabled = pageInfo.page >= pageInfo.totalPages ? ' disabled' : '';
+            const wrapperId = options.id ? ' id="' + Domus.Utils.escapeHtml(options.id) + '"' : '';
+            const wrapperClass = options.className ? ' ' + Domus.Utils.escapeHtml(options.className) : '';
+            return '<div class="domus-pagination' + wrapperClass + '"' + wrapperId + '>' +
+                '<div class="domus-pagination-info">' + Domus.Utils.escapeHtml(infoLabel) + '</div>' +
+                '<div class="domus-pagination-actions">' +
+                '<button type="button" class="domus-ghost" data-domus-page="prev"' + prevDisabled + '>' +
+                Domus.Utils.escapeHtml(prevLabel) +
+                '</button>' +
+                '<button type="button" class="domus-ghost" data-domus-page="next"' + nextDisabled + '>' +
+                Domus.Utils.escapeHtml(nextLabel) +
+                '</button>' +
+                '</div>' +
+                '</div>';
+        }
+
+        function bindPagination(root, options = {}) {
+            const container = root || document;
+            const currentPage = parseInt(options.currentPage, 10) || 1;
+            const onPageChange = options.onPageChange;
+            container.querySelectorAll('[data-domus-page]').forEach(button => {
+                if (button.dataset.domusBound) {
+                    return;
+                }
+                button.dataset.domusBound = 'true';
+                button.addEventListener('click', () => {
+                    if (button.disabled) {
+                        return;
+                    }
+                    const action = button.getAttribute('data-domus-page');
+                    let nextPage = currentPage;
+                    if (action === 'prev') {
+                        nextPage -= 1;
+                    } else if (action === 'next') {
+                        nextPage += 1;
+                    } else {
+                        const parsed = parseInt(action, 10);
+                        if (!Number.isNaN(parsed)) {
+                            nextPage = parsed;
+                        }
+                    }
+                    if (typeof onPageChange === 'function') {
+                        onPageChange(nextPage, action);
+                    }
+                });
+            });
+        }
+
         function buildTable(headers, rows, options = {}) {
             const wrapPanel = options.wrapPanel !== false;
             let html = '<table class="domus-table">';
@@ -1282,6 +1369,9 @@
             showError,
             showNotification,
             buildTable,
+            paginateArray,
+            buildPagination,
+            bindPagination,
             buildBackButton,
             buildSectionHeader,
             bindBackButtons,

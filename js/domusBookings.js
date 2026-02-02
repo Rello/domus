@@ -46,56 +46,110 @@
             'description'
         ];
 
+        const bookingsPageSize = 10;
+        let bookingsCache = [];
+        let bookingsCurrentPage = 1;
+        let bookingListContext = { distMap: {}, isBuildingMgmt: false };
+
+        function sortBookings(bookings) {
+            return (bookings || []).slice().sort((first, second) => {
+                const firstDate = first?.date || '';
+                const secondDate = second?.date || '';
+                if (firstDate === secondDate) {
+                    const firstId = Number(first?.id || 0);
+                    const secondId = Number(second?.id || 0);
+                    return secondId - firstId;
+                }
+                return firstDate < secondDate ? 1 : -1;
+            });
+        }
+
+        function paginateBookings(bookings, page) {
+            return Domus.UI.paginateArray(bookings, page, bookingsPageSize);
+        }
+
+        function buildBookingsTableMarkup(pageInfo) {
+            const headers = [t('domus', 'Invoice date'), t('domus', 'Account')];
+            if (bookingListContext.isBuildingMgmt) headers.push(t('domus', 'Distribution'));
+            headers.push(t('domus', 'Amount'));
+
+            const rows = pageInfo.items.map(b => {
+                const cells = [
+                    Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
+                    buildAccountCell(b)
+                ];
+                if (bookingListContext.isBuildingMgmt) {
+                    const key = `${b.propertyId || ''}:${b.distributionKeyId || ''}`;
+                    cells.push(Domus.Utils.escapeHtml(bookingListContext.distMap[key] || '—'));
+                }
+                cells.push({ content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true });
+                return {
+                    cells,
+                    dataset: { 'booking-id': b.id, 'refresh-view': 'bookings' }
+                };
+            });
+
+            const table = Domus.UI.buildTable(headers, rows, { wrapPanel: false });
+            const pagination = Domus.UI.buildPagination(pageInfo);
+            return { table, pagination };
+        }
+
+        function renderBookingsPage(page) {
+            const panel = document.getElementById('domus-bookings-table');
+            if (!panel) {
+                renderBookingListContent();
+                return;
+            }
+            const pageInfo = paginateBookings(bookingsCache, page);
+            bookingsCurrentPage = pageInfo.page;
+            const markup = buildBookingsTableMarkup(pageInfo);
+            panel.innerHTML = markup.table + markup.pagination;
+            bindTableNavigation();
+        }
+
+        function renderBookingListContent() {
+            const toolbar = '<div class="domus-toolbar">' +
+                Domus.UI.buildScopeAddButton('domus-icon-booking', t('domus', 'Add {entity}', { entity: t('domus', 'Booking') }), {
+                    id: 'domus-booking-create',
+                    className: 'primary'
+                }) +
+                '</div>';
+
+            const pageInfo = paginateBookings(bookingsCache, bookingsCurrentPage);
+            bookingsCurrentPage = pageInfo.page;
+            const markup = buildBookingsTableMarkup(pageInfo);
+
+            const hasRows = bookingsCache.length > 0;
+            const panel = hasRows
+                ? '<div class="domus-panel domus-panel-table" id="domus-bookings-table">' + markup.table + markup.pagination + '</div>'
+                : '';
+            const emptyState = Domus.UI.buildEmptyStateAction(
+                t('domus', 'There is no {entity} yet. Create the first one', {
+                    entity: t('domus', 'Bookings')
+                }),
+                {
+                    iconClass: 'domus-icon-booking',
+                    actionId: 'domus-bookings-empty-create'
+                }
+            );
+            Domus.UI.renderContent(toolbar + (hasRows ? panel : emptyState) + buildImportPanel());
+            bindList();
+        }
+
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Bookings') }));
-            Domus.Api.getBookings()
+            Domus.Api.getBookings({ includeAll: true })
                 .then(bookings => {
-                    const toolbar = '<div class="domus-toolbar">' +
-                        Domus.UI.buildScopeAddButton('domus-icon-booking', t('domus', 'Add {entity}', { entity: t('domus', 'Booking') }), {
-                            id: 'domus-booking-create',
-                            className: 'primary'
-                        }) +
-                        '</div>';
-
                     const isBuildingMgmt = Domus.Role.isBuildingMgmtView();
                     const bookingsList = filterBookingsForRole(bookings || []);
                     const distributionPromise = isBuildingMgmt ? buildDistributionTitleMap(bookingsList) : Promise.resolve({});
 
                     distributionPromise.then(distMap => {
-                        const headers = [t('domus', 'Invoice date'), t('domus', 'Account')];
-                        if (isBuildingMgmt) headers.push(t('domus', 'Distribution'));
-                        headers.push(t('domus', 'Amount'));
-
-                        const rows = bookingsList.map(b => {
-                            const cells = [
-                                Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
-                                buildAccountCell(b)
-                            ];
-                            if (isBuildingMgmt) {
-                                const key = `${b.propertyId || ''}:${b.distributionKeyId || ''}`;
-                                cells.push(Domus.Utils.escapeHtml(distMap[key] || '—'));
-                            }
-                            cells.push({ content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true });
-                            return {
-                                cells,
-                                dataset: { 'booking-id': b.id, 'refresh-view': 'bookings' }
-                            };
-                        });
-
-                        const hasRows = rows.length > 0;
-                        const table = Domus.UI.buildTable(headers, rows);
-                        const emptyState = Domus.UI.buildEmptyStateAction(
-                            t('domus', 'There is no {entity} yet. Create the first one', {
-                                entity: t('domus', 'Bookings')
-                            }),
-                            {
-                                iconClass: 'domus-icon-booking',
-                                actionId: 'domus-bookings-empty-create'
-                            }
-                        );
-                        Domus.UI.renderContent(toolbar + (hasRows ? table : emptyState) + buildImportPanel());
-                        bindList();
+                        bookingsCache = sortBookings(bookingsList);
+                        bookingsCurrentPage = 1;
+                        bookingListContext = { distMap, isBuildingMgmt };
+                        renderBookingListContent();
                     }).catch(err => Domus.UI.showError(err.message));
                 })
                 .catch(err => Domus.UI.showError(err.message));
@@ -117,10 +171,18 @@
             });
         }
 
+        function bindTableNavigation() {
+            Domus.UI.bindPagination(document, {
+                currentPage: bookingsCurrentPage,
+                onPageChange: nextPage => renderBookingsPage(nextPage)
+            });
+            Domus.UI.bindRowNavigation();
+        }
+
         function bindList() {
             document.getElementById('domus-booking-create')?.addEventListener('click', () => openCreateModal());
             document.getElementById('domus-bookings-empty-create')?.addEventListener('click', () => openCreateModal());
-            Domus.UI.bindRowNavigation();
+            bindTableNavigation();
             bindImportActions();
         }
 
