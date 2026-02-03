@@ -1277,6 +1277,13 @@ body {
     background: transparent;
 }
 
+.domus-completion-indicator-compact {
+    padding: 0;
+    border: none;
+    background: transparent;
+    gap: 0;
+}
+
 .domus-completion-circle {
     width: 30px;
     height: 30px;
@@ -1321,6 +1328,12 @@ body {
 .domus-task-action-buttons {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.domus-task-type {
+    display: inline-flex;
     align-items: center;
     gap: 8px;
 }

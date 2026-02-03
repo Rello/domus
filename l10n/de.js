@@ -62,6 +62,7 @@ OC.L10N.register(
         "Showing {from} - {to} of {total}": "Zeige {from} - {to} von {total}",
         "Manage year status": "Jahresstatus verwalten",
         "Masterdata": "Stammdaten",
+        "Completion": "Fortschritt",
         "Maintain unit distributions": "Umlagen der Einheit pflegen",
         "{label} ({completed}/{total})": "{label} ({completed}/{total})",
         "This year is still open. Figures are provisional.": "Dieses Jahr ist noch offen. Die Werte sind vorläufig.",

@@ -156,12 +156,27 @@
                     }) +
                     '</div>'
                     : '';
+                let typeCell = showType ? buildTypeBadge(item.type) : null;
+                if (showType && item.type === 'process' && item.completion) {
+                    const completionLabel = t('domus', 'Completion');
+                    const completionIndicator = Domus.UI.buildCompletionIndicator(completionLabel, item.completion.completed, item.completion.total, {
+                        className: 'domus-completion-indicator-compact',
+                        showLabel: false,
+                        showCount: false,
+                        title: t('domus', '{label} ({completed}/{total})', {
+                            label: completionLabel,
+                            completed: item.completion.completed,
+                            total: item.completion.total
+                        })
+                    });
+                    typeCell = '<div class="domus-task-type">' + typeCell + completionIndicator + '</div>';
+                }
                 const cells = [
                     showUnit ? unitCell : null,
                     titleParts.join(''),
                     showDescription ? descriptionBtn : null,
                     dueHtml,
-                    showType ? buildTypeBadge(item.type) : null,
+                    typeCell,
                     showAction ? actionBtn : null
                 ].filter(itemCell => itemCell !== null);
                 const dataset = showUnit
@@ -531,8 +546,10 @@
         function buildUnitOpenItems(unitId, data) {
             const openItems = [];
             (data.runs || []).forEach(run => {
-                const openStep = (run.steps || []).find(step => step.status === 'open');
+                const steps = run.steps || [];
+                const openStep = steps.find(step => step.status === 'open');
                 if (openStep) {
+                    const completedSteps = steps.filter(step => step.status === 'closed').length;
                     openItems.push({
                         type: 'process',
                         stepId: openStep.id,
@@ -544,7 +561,11 @@
                         actionType: openStep.actionType,
                         actionUrl: openStep.actionUrl,
                         dueDate: openStep.dueDate,
-                        workflowName: run.name
+                        workflowName: run.name,
+                        completion: {
+                            completed: completedSteps,
+                            total: steps.length
+                        }
                     });
                 }
             });

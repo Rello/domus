@@ -663,34 +663,45 @@
             const safeCompleted = Number.isFinite(Number(completed)) ? Number(completed) : 0;
             const clampedCompleted = safeTotal > 0 ? Math.max(0, Math.min(safeCompleted, safeTotal)) : Math.max(0, safeCompleted);
             const progress = safeTotal > 0 ? Math.round((clampedCompleted / safeTotal) * 100) : 0;
+            const showLabel = options.showLabel !== false;
+            const showCount = options.showCount !== false;
+            const labelText = label || '';
+            const labelTitle = options.title || (labelText ? t('domus', '{label} ({completed}/{total})', {
+                label: labelText,
+                completed: clampedCompleted,
+                total: safeTotal
+            }) : '');
 
-            const labelBtn = document.createElement('a');
-            labelBtn.href = '#';
-            labelBtn.setAttribute('role', 'button');
-            labelBtn.className = 'domus-completion-label';
-            if (options.id) {
-                labelBtn.id = options.id;
+            if (showLabel) {
+                const labelBtn = document.createElement('a');
+                labelBtn.href = '#';
+                labelBtn.setAttribute('role', 'button');
+                labelBtn.className = 'domus-completion-label';
+                if (options.id) {
+                    labelBtn.id = options.id;
+                }
+                labelBtn.textContent = labelText;
+                if (labelTitle) {
+                    labelBtn.setAttribute('aria-label', labelTitle);
+                    labelBtn.title = labelTitle;
+                }
+                container.appendChild(labelBtn);
             }
-            labelBtn.textContent = label || '';
-            if (label) {
-                const labelTitle = options.title || t('domus', '{label} ({completed}/{total})', {
-                    label,
-                    completed: clampedCompleted,
-                    total: safeTotal
-                });
-                labelBtn.setAttribute('aria-label', labelTitle);
-                labelBtn.title = labelTitle;
-            }
-            container.appendChild(labelBtn);
 
             const circle = document.createElement('div');
             circle.className = 'domus-completion-circle';
             circle.style.setProperty('--domus-completion-progress', `${progress}%`);
+            if (labelTitle) {
+                circle.setAttribute('aria-label', labelTitle);
+                circle.title = labelTitle;
+            }
 
-            const count = document.createElement('span');
-            count.className = 'domus-completion-count';
-            count.textContent = String(clampedCompleted);
-            circle.appendChild(count);
+            if (showCount) {
+                const count = document.createElement('span');
+                count.className = 'domus-completion-count';
+                count.textContent = String(clampedCompleted);
+                circle.appendChild(count);
+            }
             container.appendChild(circle);
 
             return container.outerHTML;
