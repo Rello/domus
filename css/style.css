@@ -1414,6 +1414,25 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
+.domus-stat-card-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    height: 100%;
+}
+
+.domus-stat-card-link:hover,
+.domus-stat-card-link:focus {
+    color: inherit;
+    text-decoration: none;
+}
+
+.domus-stat-card-link:focus-visible {
+    outline: 2px solid var(--color-primary-element);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
 .domus-stat-label {
     font-size: 12px;
     text-transform: uppercase;
