@@ -351,11 +351,36 @@
             return header + '<div class="domus-panel-body">' + body + '</div>';
         }
 
-        function bindKpiDetailArea(detailMap, onRender) {
+        function bindKpiDetailArea(detailMap, onRender, options = {}) {
             const detailArea = document.getElementById('domus-unit-kpi-detail');
             if (!detailArea) {
                 return;
             }
+
+            const openTarget = (target, forceOpen = false) => {
+                const content = target ? detailMap[target] : null;
+                if (!content) {
+                    return;
+                }
+                const currentTarget = detailArea.dataset.kpiTarget || '';
+                const isVisible = !detailArea.hasAttribute('hidden');
+                if (!forceOpen && isVisible && currentTarget === target) {
+                    detailArea.setAttribute('hidden', '');
+                    detailArea.dataset.kpiTarget = '';
+                    detailArea.innerHTML = '';
+                    return;
+                }
+                detailArea.innerHTML = content;
+                detailArea.removeAttribute('hidden');
+                detailArea.dataset.kpiTarget = target;
+                Domus.UI.bindRowNavigation();
+                if (typeof onRender === 'function') {
+                    onRender(target);
+                }
+                if (target === 'tasks') {
+                    detailArea.scrollIntoView({behavior: 'smooth', block: 'start'});
+                }
+            };
 
             document.querySelectorAll('.domus-kpi-more[data-kpi-target]').forEach(btn => {
                 btn.addEventListener('click', (event) => {
@@ -363,27 +388,13 @@
                         event.preventDefault();
                     }
                     const target = btn.getAttribute('data-kpi-target');
-                    const content = target ? detailMap[target] : null;
-                    if (!content) {
-                        return;
-                    }
-                    const currentTarget = detailArea.dataset.kpiTarget || '';
-                    const isVisible = !detailArea.hasAttribute('hidden');
-                    if (isVisible && currentTarget === target) {
-                        detailArea.setAttribute('hidden', '');
-                        detailArea.dataset.kpiTarget = '';
-                        detailArea.innerHTML = '';
-                        return;
-                    }
-                    detailArea.innerHTML = content;
-                    detailArea.removeAttribute('hidden');
-                    detailArea.dataset.kpiTarget = target;
-                    Domus.UI.bindRowNavigation();
-                    if (typeof onRender === 'function') {
-                        onRender(target);
-                    }
+                    openTarget(target);
                 });
             });
+
+            if (options.initialTarget) {
+                openTarget(options.initialTarget, true);
+            }
         }
 
         function renderList() {
@@ -972,7 +983,7 @@
             });
         }
 
-        function renderDetail(id) {
+        function renderDetail(id, initialTarget) {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', {entity: t('domus', 'Unit')}));
             Domus.Api.get('/units/' + id)
@@ -1435,6 +1446,8 @@
                             }
                             bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled});
                             Domus.Bookings.bindInlineTables();
+                        }, {
+                            initialTarget: initialTarget
                         });
                     } else if (showRentabilityPanels) {
                         renderRentabilityChart(isLandlord ? statistics : null);

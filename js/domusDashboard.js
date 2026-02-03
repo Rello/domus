@@ -53,6 +53,7 @@
                     showDescription: false,
                     showType: false,
                     showAction: false,
+                    detailTarget: 'tasks',
                     emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                         entity: t('domus', 'Tasks')
                     }),
@@ -100,6 +101,7 @@
                     showDescription: false,
                     showType: false,
                     showAction: false,
+                    detailTarget: 'tasks',
                     emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                         entity: t('domus', 'Tasks')
                     }),

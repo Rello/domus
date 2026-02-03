@@ -94,6 +94,7 @@
             const showType = options.showType !== false;
             const showAction = options.showAction !== false;
             const wrapPanel = options.wrapPanel !== false;
+            const detailTarget = options.detailTarget;
             const headers = [
                 showUnit ? t('domus', 'Unit') : null,
                 t('domus', 'Title'),
@@ -179,8 +180,12 @@
                     typeCell,
                     showAction ? actionBtn : null
                 ].filter(itemCell => itemCell !== null);
+                const detailValue = typeof detailTarget === 'function' ? detailTarget(item) : detailTarget;
+                const argsValue = (showUnit && item.unitId && detailValue)
+                    ? [item.unitId, detailValue].join(',')
+                    : item.unitId;
                 const dataset = showUnit
-                    ? { navigate: 'unitDetail', args: item.unitId }
+                    ? { navigate: 'unitDetail', args: argsValue }
                     : (item.type === 'process' ? { 'process-run-id': item.runId } : null);
                 return { cells, dataset, className: (!showUnit && item.type === 'process') ? 'domus-task-process-row' : '' };
             });
