@@ -46,10 +46,11 @@
             'description'
         ];
 
-        const bookingsPageSize = 10;
+        const bookingsPageSize = 20;
         let bookingsCache = [];
         let bookingsCurrentPage = 1;
         let bookingListContext = { distMap: {}, isBuildingMgmt: false };
+        const inlineBookingsState = {};
 
         function sortBookings(bookings) {
             return (bookings || []).slice().sort((first, second) => {
@@ -66,6 +67,62 @@
 
         function paginateBookings(bookings, page) {
             return Domus.UI.paginateArray(bookings, page, bookingsPageSize);
+        }
+
+        function getInlineKey(options = {}) {
+            if (options.inlineKey) {
+                return String(options.inlineKey);
+            }
+            const view = options.refreshView || 'inline';
+            const id = options.refreshId !== undefined && options.refreshId !== null ? String(options.refreshId) : 'list';
+            return `${view}-${id}`;
+        }
+
+        function getInlineWrapperId(key) {
+            return 'domus-inline-bookings-' + String(key).replace(/[^a-zA-Z0-9-]/g, '-');
+        }
+
+        function buildInlineBookingsMarkup(pageInfo, options = {}) {
+            const rows = (pageInfo.items || []).map(b => ({
+                cells: [
+                    Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
+                    buildAccountCell(b),
+                    { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
+                ],
+                dataset: b.id ? {
+                    'booking-id': b.id,
+                    'refresh-view': options.refreshView,
+                    'refresh-id': options.refreshId
+                } : null
+            }));
+            const table = Domus.UI.buildTable([
+                t('domus', 'Invoice date'), t('domus', 'Account'), t('domus', 'Amount')
+            ], rows, { wrapPanel: false });
+            const pagination = Domus.UI.buildPagination(pageInfo);
+            return { table, pagination };
+        }
+
+        function renderInlineBookingsPage(key) {
+            const state = inlineBookingsState[key];
+            if (!state) {
+                return;
+            }
+            const wrapper = document.getElementById(state.wrapperId);
+            if (!wrapper) {
+                return;
+            }
+            const pageInfo = paginateBookings(state.bookings, state.currentPage);
+            state.currentPage = pageInfo.page;
+            const markup = buildInlineBookingsMarkup(pageInfo, state.options);
+            wrapper.innerHTML = markup.table + markup.pagination;
+            Domus.UI.bindRowNavigation();
+            Domus.UI.bindPagination(wrapper, {
+                currentPage: state.currentPage,
+                onPageChange: nextPage => {
+                    state.currentPage = nextPage;
+                    renderInlineBookingsPage(key);
+                }
+            });
         }
 
         function buildBookingsTableMarkup(pageInfo) {
@@ -206,21 +263,36 @@
         }
 
         function renderInline(bookings, options = {}) {
-            const rows = (bookings || []).map(b => ({
-                cells: [
-                    Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
-                    buildAccountCell(b),
-                    { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
-                ],
-                dataset: b.id ? {
-                    'booking-id': b.id,
-                    'refresh-view': options.refreshView,
-                    'refresh-id': options.refreshId
-                } : null
-            }));
-            return Domus.UI.buildTable([
-                t('domus', 'Invoice date'), t('domus', 'Account'), t('domus', 'Amount')
-            ], rows, { wrapPanel: false });
+            const key = getInlineKey(options);
+            const wrapperId = getInlineWrapperId(key);
+            inlineBookingsState[key] = {
+                bookings: sortBookings(bookings || []),
+                currentPage: 1,
+                options,
+                wrapperId
+            };
+            const pageInfo = paginateBookings(inlineBookingsState[key].bookings, 1);
+            const markup = buildInlineBookingsMarkup(pageInfo, options);
+            return '<div class="domus-inline-bookings" id="' + Domus.Utils.escapeHtml(wrapperId) +
+                '" data-inline-key="' + Domus.Utils.escapeHtml(key) + '">' +
+                markup.table + markup.pagination + '</div>';
+        }
+
+        function bindInlineTables() {
+            document.querySelectorAll('.domus-inline-bookings').forEach(wrapper => {
+                const key = wrapper.getAttribute('data-inline-key') || '';
+                const state = inlineBookingsState[key];
+                if (!state) {
+                    return;
+                }
+                Domus.UI.bindPagination(wrapper, {
+                    currentPage: state.currentPage,
+                    onPageChange: nextPage => {
+                        state.currentPage = nextPage;
+                        renderInlineBookingsPage(key);
+                    }
+                });
+            });
         }
 
         function buildImportPanel() {
@@ -1151,7 +1223,7 @@
             return { entries, error };
         }
 
-        return { renderList, renderInline, openCreateModal, openEditModal };
+        return { renderList, renderInline, bindInlineTables, openCreateModal, openEditModal };
     })();
 
     /**

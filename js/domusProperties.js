@@ -266,6 +266,7 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
+                    Domus.Bookings.bindInlineTables();
                     Domus.UI.bindActionMenus();
                     Domus.Distributions.bindTable('domus-property-distributions', visibleDistributions, {
                         mode: 'property',

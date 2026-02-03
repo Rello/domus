@@ -898,6 +898,7 @@
                         refreshId: unitId
                     });
                     Domus.UI.bindRowNavigation();
+                    Domus.Bookings.bindInlineTables();
                     panel.scrollIntoView({behavior: 'smooth', block: 'start'});
                 })
                 .catch(err => {
@@ -1348,6 +1349,7 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
+                    Domus.Bookings.bindInlineTables();
                     Domus.UI.bindActionMenus();
                     Domus.UI.bindCollapsibles();
                     if (!useKpiLayout) {
@@ -1432,6 +1434,7 @@
                                 Domus.Documents.loadLatestList('unit', id, {pageSize: 10});
                             }
                             bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled});
+                            Domus.Bookings.bindInlineTables();
                         });
                     } else if (showRentabilityPanels) {
                         renderRentabilityChart(isLandlord ? statistics : null);
