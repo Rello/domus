@@ -599,7 +599,7 @@
                 };
             });
             const body = rows.length
-                ? Domus.UI.buildTable([t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Contact')], rows)
+                ? Domus.UI.buildTable([t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Contact')], rows, { wrapPanel: false })
                 : '<div class="domus-empty-state">' +
                 '<p>' + Domus.Utils.escapeHtml(t('domus', 'No partners linked yet.')) + '</p>' +
                 Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }), { id: emptyAddId }) +

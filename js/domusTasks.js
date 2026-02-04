@@ -76,6 +76,18 @@
             return '<span class="domus-badge domus-badge-muted">' + Domus.Utils.escapeHtml(label) + '</span>';
         }
 
+        function getStatusLabel(status) {
+            if (!status) return '';
+            const normalized = String(status).toLowerCase();
+            const map = {
+                open: t('domus', 'Open'),
+                closed: t('domus', 'Closed'),
+                new: t('domus', 'New'),
+                cancelled: t('domus', 'Cancelled')
+            };
+            return map[normalized] || status;
+        }
+
         function getActionMeta(actionType) {
             const map = {
                 booking: { label: t('domus', 'Add booking'), icon: 'domus-icon-booking' },
@@ -282,182 +294,139 @@
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
-        function openStartProcessModal(unitId, onSaved) {
-            Domus.Api.getTaskTemplates(true)
-                .then(templates => {
-                    const options = (templates || []).map(template => (
-                        '<option value="' + Domus.Utils.escapeHtml(String(template.id)) + '" data-key="' + Domus.Utils.escapeHtml(template.key || '') + '">' +
-                        Domus.Utils.escapeHtml(template.name || '') +
-                        '</option>'
-                    )).join('');
+        function openNewTaskModal(options = {}) {
+            const unitId = options.unitId || null;
+            const onSaved = options.onSaved;
+            const requireUnitSelect = options.requireUnitSelect;
+            const loadData = [
+                Domus.Api.getTaskTemplates(true),
+                requireUnitSelect ? Domus.Api.getUnits() : Promise.resolve(null)
+            ];
+
+            Promise.all(loadData)
+                .then(([templates, units]) => {
+                    const templateOptions = ['<option value="">' + Domus.Utils.escapeHtml(t('domus', 'No template')) + '</option>']
+                        .concat((templates || []).map(template => (
+                            '<option value="' + Domus.Utils.escapeHtml(String(template.id)) + '">' +
+                            Domus.Utils.escapeHtml(template.name || '') +
+                            '</option>'
+                        ))).join('');
+
+                    let unitSelectRow = '';
+                    if (requireUnitSelect) {
+                        const unitOptions = (units || []).map(unit => {
+                            const label = unit.label || `${t('domus', 'Unit')} #${unit.id}`;
+                            return '<option value="' + Domus.Utils.escapeHtml(unit.id) + '">' + Domus.Utils.escapeHtml(label) + '</option>';
+                        });
+                        if (!unitOptions.length) {
+                            Domus.UI.showNotification(t('domus', 'No {entity} available.', { entity: t('domus', 'Units') }), 'error');
+                            return;
+                        }
+                        unitSelectRow = Domus.UI.buildFormRow({
+                            label: t('domus', 'Unit'),
+                            required: true,
+                            content: '<select id="domus-task-unit" name="unitId" required>' + unitOptions.join('') + '</select>'
+                        });
+                    }
+
                     const rows = [
                         Domus.UI.buildFormRow({
                             label: t('domus', 'Template'),
-                            required: true,
-                            content: '<select id="domus-task-template" name="templateId" required>' + options + '</select>'
+                            content: '<select id="domus-task-template" name="templateId">' + templateOptions + '</select>'
                         }),
-                        Domus.UI.buildFormRow({
-                            label: t('domus', 'Year'),
-                            content: '<input id="domus-task-year" name="year" type="number" value="' + Domus.Utils.escapeHtml(String(Domus.state.currentYear)) + '">'
-                        }),
-                        Domus.UI.buildFormRow({
-                            label: t('domus', 'Name'),
-                            content: '<input id="domus-task-run-name" name="name" type="text">'
-                        })
-                    ];
-                    const content = '<div class="domus-form"><form id="domus-task-start-form">' +
-                        Domus.UI.buildFormTable(rows) +
-                        '<div class="domus-form-actions">' +
-                        '<button type="button" id="domus-task-start-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Start process')) + '</button>' +
-                        '</div>' +
-                        '</form></div>';
-                    const modal = Domus.UI.openModal({ title: t('domus', 'Start process'), content });
-                    const form = modal.modalEl.querySelector('#domus-task-start-form');
-                    const templateSelect = modal.modalEl.querySelector('#domus-task-template');
-                    const yearInput = modal.modalEl.querySelector('#domus-task-year');
-                    const nameInput = modal.modalEl.querySelector('#domus-task-run-name');
-                    const cancelBtn = modal.modalEl.querySelector('#domus-task-start-cancel');
-
-                    function updateVisibility() {
-                        const selected = templateSelect?.selectedOptions?.[0];
-                        const key = selected?.getAttribute('data-key');
-                        const showYear = key === 'year_end';
-                        const yearRow = yearInput?.closest('tr');
-                        if (yearRow) {
-                            yearRow.style.display = showYear ? '' : 'none';
-                        }
-                        const templateName = selected?.textContent || '';
-                        const yearValue = yearInput?.value || '';
-                        const nameValue = showYear && yearValue ? `${templateName} ${yearValue}` : templateName;
-                        if (nameInput) {
-                            nameInput.value = nameValue.trim();
-                        }
-                    }
-
-                    templateSelect?.addEventListener('change', updateVisibility);
-                    yearInput?.addEventListener('input', updateVisibility);
-                    updateVisibility();
-
-                    cancelBtn?.addEventListener('click', modal.close);
-                    form?.addEventListener('submit', (event) => {
-                        event.preventDefault();
-                        const data = new FormData(form);
-                        const payload = {
-                            templateId: parseInt(data.get('templateId'), 10),
-                            name: data.get('name'),
-                        };
-                        const yearValue = data.get('year');
-                        if (yearInput && yearInput.closest('tr')?.style.display !== 'none') {
-                            payload.year = yearValue ? parseInt(yearValue, 10) : Domus.state.currentYear;
-                        }
-                        Domus.Api.startWorkflowRun(unitId, payload)
-                            .then(() => {
-                                Domus.UI.showNotification(t('domus', 'Process started.'), 'success');
-                                modal.close();
-                                onSaved && onSaved();
-                            })
-                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                    });
-                })
-                .catch(err => Domus.UI.showNotification(err.message, 'error'));
-        }
-
-        function openCreateTaskModal(unitId, onSaved) {
-            const rows = [
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Title'),
-                    required: true,
-                    content: '<input name="title" required>'
-                }),
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Description'),
-                    content: '<textarea name="description"></textarea>'
-                }),
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Due date'),
-                    content: '<input name="dueDate" type="date">'
-                })
-            ];
-            const content = '<div class="domus-form"><form id="domus-task-create-form">' +
-                Domus.UI.buildFormTable(rows) +
-                '<div class="domus-form-actions">' +
-                '<button type="button" id="domus-task-create-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Create task')) + '</button>' +
-                '</div>' +
-                '</form></div>';
-            const modal = Domus.UI.openModal({ title: t('domus', 'New task'), content });
-            const form = modal.modalEl.querySelector('#domus-task-create-form');
-            modal.modalEl.querySelector('#domus-task-create-cancel')?.addEventListener('click', modal.close);
-            form?.addEventListener('submit', (event) => {
-                event.preventDefault();
-                const data = new FormData(form);
-                const payload = {
-                    title: data.get('title'),
-                    description: data.get('description'),
-                    dueDate: data.get('dueDate')
-                };
-                Domus.Api.createTask(unitId, payload)
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Task created.'), 'success');
-                        modal.close();
-                        onSaved && onSaved();
-                    })
-                .catch(err => Domus.UI.showNotification(err.message, 'error'));
-            });
-        }
-
-        function openCreateTaskModalWithUnitSelect(onSaved) {
-            Domus.Api.getUnits()
-                .then(units => {
-                    const options = (units || []).map(unit => {
-                        const label = unit.label || `${t('domus', 'Unit')} #${unit.id}`;
-                        return '<option value="' + Domus.Utils.escapeHtml(unit.id) + '">' + Domus.Utils.escapeHtml(label) + '</option>';
-                    });
-                    if (!options.length) {
-                        Domus.UI.showNotification(t('domus', 'No {entity} available.', { entity: t('domus', 'Units') }), 'error');
-                        return;
-                    }
-                    const rows = [
-                        Domus.UI.buildFormRow({
-                            label: t('domus', 'Unit'),
-                            required: true,
-                            content: '<select name="unitId" required>' + options.join('') + '</select>'
-                        }),
+                        unitSelectRow,
                         Domus.UI.buildFormRow({
                             label: t('domus', 'Title'),
                             required: true,
-                            content: '<input name="title" required>'
+                            content: '<input id="domus-task-title" name="title" required>'
                         }),
                         Domus.UI.buildFormRow({
                             label: t('domus', 'Description'),
-                            content: '<textarea name="description"></textarea>'
+                            content: '<textarea id="domus-task-description" name="description"></textarea>'
                         }),
                         Domus.UI.buildFormRow({
                             label: t('domus', 'Due date'),
-                            content: '<input name="dueDate" type="date">'
+                            content: '<input id="domus-task-due-date" name="dueDate" type="date">'
                         })
-                    ];
+                    ].filter(Boolean);
+
                     const content = '<div class="domus-form"><form id="domus-task-create-form">' +
                         Domus.UI.buildFormTable(rows) +
                         '<div class="domus-form-actions">' +
                         '<button type="button" id="domus-task-create-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Create task')) + '</button>' +
+                        '<button type="submit" class="primary" id="domus-task-create-submit">' + Domus.Utils.escapeHtml(t('domus', 'Create task')) + '</button>' +
                         '</div>' +
                         '</form></div>';
+
                     const modal = Domus.UI.openModal({ title: t('domus', 'New task'), content });
                     const form = modal.modalEl.querySelector('#domus-task-create-form');
+                    const templateSelect = modal.modalEl.querySelector('#domus-task-template');
+                    const titleInput = modal.modalEl.querySelector('#domus-task-title');
+                    const descriptionInput = modal.modalEl.querySelector('#domus-task-description');
+                    const dueDateInput = modal.modalEl.querySelector('#domus-task-due-date');
+                    const submitBtn = modal.modalEl.querySelector('#domus-task-create-submit');
+
+                    function updateTemplateState() {
+                        const hasTemplate = !!templateSelect?.value;
+                        if (titleInput && hasTemplate && !titleInput.value) {
+                            const selected = templateSelect?.selectedOptions?.[0];
+                            titleInput.value = (selected?.textContent || '').trim();
+                        }
+                        if (descriptionInput) {
+                            descriptionInput.disabled = hasTemplate;
+                        }
+                        if (dueDateInput) {
+                            dueDateInput.disabled = hasTemplate;
+                        }
+                        if (submitBtn) {
+                            submitBtn.textContent = hasTemplate ? t('domus', 'Start process') : t('domus', 'Create task');
+                        }
+                    }
+
+                    templateSelect?.addEventListener('change', updateTemplateState);
+                    updateTemplateState();
+
                     modal.modalEl.querySelector('#domus-task-create-cancel')?.addEventListener('click', modal.close);
                     form?.addEventListener('submit', (event) => {
                         event.preventDefault();
-                        const data = new FormData(form);
-                        const unitId = data.get('unitId');
+                        const selectedTemplateId = templateSelect?.value || '';
+                        const resolvedUnitId = requireUnitSelect
+                            ? modal.modalEl.querySelector('#domus-task-unit')?.value
+                            : unitId;
+                        if (!resolvedUnitId) {
+                            Domus.UI.showNotification(t('domus', 'Unit is required.'), 'error');
+                            return;
+                        }
+
+                        if (selectedTemplateId) {
+                            const titleValue = (titleInput?.value || '').trim();
+                            const selected = templateSelect?.selectedOptions?.[0];
+                            const fallbackTitle = (selected?.textContent || '').trim();
+                            const payload = {
+                                templateId: parseInt(selectedTemplateId, 10),
+                                name: titleValue || fallbackTitle
+                            };
+                            Domus.Api.startWorkflowRun(resolvedUnitId, payload)
+                                .then(() => {
+                                    Domus.UI.showNotification(t('domus', 'Process started.'), 'success');
+                                    modal.close();
+                                    onSaved && onSaved();
+                                })
+                                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                            return;
+                        }
+
+                        const titleValue = (titleInput?.value || '').trim();
+                        if (!titleValue) {
+                            Domus.UI.showNotification(t('domus', 'Title is required.'), 'error');
+                            return;
+                        }
                         const payload = {
-                            title: data.get('title'),
-                            description: data.get('description'),
-                            dueDate: data.get('dueDate')
+                            title: titleValue,
+                            description: descriptionInput?.value || '',
+                            dueDate: dueDateInput?.value || ''
                         };
-                        Domus.Api.createTask(unitId, payload)
+                        Domus.Api.createTask(resolvedUnitId, payload)
                             .then(() => {
                                 Domus.UI.showNotification(t('domus', 'Task created.'), 'success');
                                 modal.close();
@@ -469,10 +438,18 @@
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
+        function openCreateTaskModal(unitId, onSaved) {
+            openNewTaskModal({ unitId, onSaved });
+        }
+
+        function openCreateTaskModalWithUnitSelect(onSaved) {
+            openNewTaskModal({ onSaved, requireUnitSelect: true });
+        }
+
         function buildWorkflowStepsTable(run, options = {}) {
             const rows = (run.steps || []).map(step => {
                 const dueLabel = Domus.Utils.formatDate(step.dueDate) || '—';
-                const statusLabel = step.status || '';
+                const statusLabel = getStatusLabel(step.status);
                 const actionBtn = step.status === 'open'
                     ? Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
                         className: 'domus-task-close',
@@ -519,6 +496,7 @@
         function openProcessTasksModal(run) {
             const rows = (run.steps || []).map(step => {
                 const completedLabel = Domus.Utils.formatDate(step.closedAt ? step.closedAt * 1000 : step.closedAt) || '—';
+                const statusLabel = getStatusLabel(step.status);
                 const actionBtn = step.description
                     ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
                         className: 'domus-step-description',
@@ -530,7 +508,7 @@
                     : '';
                 return [
                     Domus.Utils.escapeHtml(step.title || ''),
-                    Domus.Utils.escapeHtml(step.status || ''),
+                    Domus.Utils.escapeHtml(statusLabel),
                     Domus.Utils.escapeHtml(completedLabel),
                     actionBtn
                 ];
@@ -818,7 +796,6 @@
             const panelContent = '<div class="domus-section-header">' +
                 '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Tasks')) + '</h3>' +
                 '<div class="domus-section-actions">' +
-                '<button id="domus-unit-start-process">' + Domus.Utils.escapeHtml(t('domus', 'Start process')) + '</button>' +
                 '<button id="domus-unit-new-task">' + Domus.Utils.escapeHtml(t('domus', 'New task')) + '</button>' +
                 '</div>' +
                 '</div>' +
@@ -829,20 +806,17 @@
                 return panelContent;
             }
             const panelId = options.panelId || 'domus-unit-tasks-panel';
-            return '<div class="domus-panel" id="' + Domus.Utils.escapeHtml(panelId) + '">' +
+            return '<div class="domus-panel-body" id="' + Domus.Utils.escapeHtml(panelId) + '">' +
                 panelContent +
                 '</div>';
         }
 
         function bindUnitTaskButtons(unitId, onRefresh) {
-            document.getElementById('domus-unit-start-process')?.addEventListener('click', () => {
-                openStartProcessModal(unitId, onRefresh);
-            });
             document.getElementById('domus-unit-new-task')?.addEventListener('click', () => {
-                openCreateTaskModal(unitId, onRefresh);
+                openNewTaskModal({ unitId, onSaved: onRefresh });
             });
             document.getElementById('domus-unit-tasks-empty-create')?.addEventListener('click', () => {
-                openCreateTaskModal(unitId, onRefresh);
+                openNewTaskModal({ unitId, onSaved: onRefresh });
             });
         }
 

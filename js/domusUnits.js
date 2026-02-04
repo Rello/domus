@@ -543,7 +543,7 @@
             const totalsHtml = buildStatisticsTotals(columnMeta, rowsData, options.totals || []);
             const tableHtml = Domus.UI.buildTable(headers, rows, {wrapPanel: false});
             if (!wrapPanel) {
-                return '<div class="domus-panel-table">' + tableHtml + totalsHtml + '</div>';
+                return tableHtml + totalsHtml;
             }
             return '<div class="domus-panel domus-panel-table">' + tableHtml + totalsHtml + '</div>';
         }
@@ -821,6 +821,7 @@
                 t('domus', 'Create tenancy'),
                 null,
                 {
+                    useGuidedWorkflow: false,
                     wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 2, content),
                     size: 'large'
                 }
@@ -900,6 +901,7 @@
             if (!panel || !body) {
                 return;
             }
+            const wasHidden = panel.hasAttribute('hidden');
             panel.removeAttribute('hidden');
             body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(t('domus', 'Loading bookings…')) + '</div>';
             Domus.Api.getBookings({unitId, year})
@@ -910,7 +912,9 @@
                     });
                     Domus.UI.bindRowNavigation();
                     Domus.Bookings.bindInlineTables();
-                    panel.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    if (wasHidden) {
+                        panel.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    }
                 })
                 .catch(err => {
                     body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
@@ -968,6 +972,12 @@
             if (!detailArea) {
                 return;
             }
+            const selectedClass = 'domus-stat-year-selected';
+            const updateSelectedRow = (selectedRow) => {
+                detailArea.querySelectorAll('table.domus-table tr[data-stat-year]').forEach(currentRow => {
+                    currentRow.classList.toggle(selectedClass, currentRow === selectedRow);
+                });
+            };
             detailArea.querySelectorAll('table.domus-table tr[data-stat-year]').forEach(row => {
                 row.addEventListener('click', (event) => {
                     if (event.target.closest('a') || event.target.closest('button')) {
@@ -977,6 +987,7 @@
                     if (!year) {
                         return;
                     }
+                    updateSelectedRow(row);
                     renderUnitBookingsByYear(unitId, year);
                     renderUnitDocumentsByYear(unitId, year, options);
                 });
@@ -1195,14 +1206,14 @@
                         ...bookingEmptyState
                     });
                     const costTable = statistics && statistics.cost
-                        ? '<div class="domus-section">' + Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost, {
+                        ? Domus.UI.buildSectionHeader(t('domus', 'Costs')) + renderStatisticsTable(statistics.cost, {
                         buildRowDataset: row => {
                             const year = getStatisticsRowYear(row, statistics ? statistics.cost : null);
                             return year ? {'stat-year': year} : null;
                         },
                         wrapPanel: false,
                         ...bookingEmptyState
-                    }) + '</div>'
+                    })
                         : '';
                     const rentabilityChartPanel = (useKpiLayout || !showRentabilityPanels) ? '' : (isLandlord ? buildRentabilityChartPanel(statistics) : '');
 
@@ -1311,12 +1322,12 @@
                         : '';
 
                     const bookingsPanelInline = canManageBookings
-                        ? '<div class="domus-panel" id="domus-unit-bookings-panel" hidden>' + bookingsHeader + '<div class="domus-panel-body" id="domus-unit-bookings-body">' +
+                        ? '<div class="domus-panel-body" id="domus-unit-bookings-panel" hidden>' + bookingsHeader + '<div class="domus-panel-body" id="domus-unit-bookings-body">' +
                         Domus.Bookings.renderInline(bookings || [], {refreshView: 'unitDetail', refreshId: id}) +
                         '</div></div>'
                         : '';
                     const bookingsPanel = (!useKpiLayout && canManageBookings)
-                        ? '<div class="domus-panel" id="domus-unit-bookings-panel">' + bookingsHeader + '<div class="domus-panel-body" id="domus-unit-bookings-body">' +
+                        ? '<div class="domus-panel-body" id="domus-unit-bookings-panel">' + bookingsHeader + '<div class="domus-panel-body" id="domus-unit-bookings-body">' +
                         Domus.Bookings.renderInline(bookings || [], {refreshView: 'unitDetail', refreshId: id}) +
                         '</div></div>'
                         : '';

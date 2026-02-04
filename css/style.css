@@ -374,6 +374,10 @@ body {
     background-color: #f8f8f8;
 }
 
+.domus-table tr.domus-stat-year-selected {
+    background: var(--color-background-hover);
+}
+
 .domus-pagination {
     display: flex;
     align-items: center;

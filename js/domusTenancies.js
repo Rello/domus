@@ -103,7 +103,7 @@
             ], rows, { wrapPanel: false });
         }
 
-        function openCreateModal(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage, modalOptions = {}) {
+        function openTenancyCreateForm(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage, modalOptions = {}) {
             const tenancyLabels = Domus.Role.getTenancyLabels();
             const effectiveTitle = title || t('domus', 'Add {entity}', { entity: tenancyLabels.singular });
             const effectiveSuccessMessage = successMessage || t('domus', '{entity} created.', { entity: Domus.Role.getTenancyLabels().singular });
@@ -141,6 +141,73 @@
                     { requireFinancialFields: !Domus.Permission.hideTenancyFinancialFields() });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        function getTenancyWorkflowSteps(partnerTypeLabel) {
+            return [
+                { label: t('domus', 'Create {partnerType}', { partnerType: partnerTypeLabel }) },
+                { label: t('domus', 'Create tenancy') }
+            ];
+        }
+
+        function openGuidedPartnerStep(prefill, steps, partnerType, partnerTypeLabel, onFinished) {
+            const partnerTypeConfig = {
+                defaultType: partnerType,
+                hideField: true,
+                disabled: true
+            };
+            Domus.Partners.openCreateModal(
+                { partnerType },
+                createdPartner => {
+                    openGuidedTenancyStep(prefill, createdPartner, steps, onFinished);
+                },
+                {
+                    title: t('domus', 'Create {partnerType}', { partnerType: partnerTypeLabel }),
+                    successMessage: t('domus', '{entity} created.', { entity: partnerTypeLabel }),
+                    partnerTypeConfig,
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 0, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function openGuidedTenancyStep(prefill, partner, steps, onFinished) {
+            const effectivePrefill = Object.assign({}, prefill, {
+                partnerIds: partner?.id ? [partner.id] : (prefill?.partnerIds || (prefill?.partnerId ? [prefill.partnerId] : []))
+            });
+            openTenancyCreateForm(
+                effectivePrefill,
+                created => {
+                    if (typeof onFinished === 'function') {
+                        onFinished(created);
+                        return;
+                    }
+                    renderList();
+                },
+                Domus.Api.createTenancy,
+                t('domus', 'Create tenancy'),
+                null,
+                {
+                    wrapContent: content => Domus.UI.buildGuidedWorkflowLayout(steps, 1, content),
+                    size: 'large'
+                }
+            );
+        }
+
+        function openGuidedCreateWorkflow(prefill = {}, onFinished) {
+            const partnerType = Domus.Role.isBuildingMgmtView() ? 'owner' : 'tenant';
+            const partnerTypeLabel = Domus.Partners.getPartnerTypeLabel(partnerType);
+            const steps = getTenancyWorkflowSteps(partnerTypeLabel);
+            openGuidedPartnerStep(prefill, steps, partnerType, partnerTypeLabel, onFinished);
+        }
+
+        function openCreateModal(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage, modalOptions = {}) {
+            const hasPartnerPrefill = Boolean(prefill?.partnerId || (prefill?.partnerIds && prefill.partnerIds.length));
+            if (modalOptions.useGuidedWorkflow === false || hasPartnerPrefill) {
+                openTenancyCreateForm(prefill, onCreated, submitFn, title, successMessage, modalOptions);
+                return;
+            }
+            openGuidedCreateWorkflow(prefill, onCreated);
         }
 
         function renderDetail(id) {
@@ -199,16 +266,8 @@
                         iconClass: 'domus-icon-add',
                         dataset: { entityType: 'tenancy', entityId: id }
                     } : null);
-                    const detailsHeader = Domus.UI.buildSectionHeader(t('domus', 'Details'));
                     const partnersHeader = Domus.UI.buildSectionHeader(t('domus', 'Partners'));
                     const conditionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Conditions'));
-
-                    const infoList = Domus.UI.buildInfoList([
-                        { label: t('domus', 'Unit'), value: formatUnitLabel(tenancy) },
-                        { label: t('domus', 'Partners'), value: partnerLabel || t('domus', 'None') },
-                        { label: t('domus', 'Start date'), value: Domus.Utils.formatDate(tenancy.startDate) },
-                        { label: t('domus', 'End date'), value: Domus.Utils.formatDate(tenancy.endDate) }
-                    ]);
 
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('tenancies') +
@@ -216,11 +275,12 @@
                         stats +
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
-                        '<div class="domus-panel">' + detailsHeader + '<div class="domus-panel-body">' + infoList + '</div></div>' +
                         '<div class="domus-panel">' + partnersHeader + '<div class="domus-panel-body">' +
                         Domus.Partners.renderInline(tenancy.partners || []) + '</div></div>' +
                         '<div class="domus-panel">' + conditionsHeader + '<div class="domus-panel-body">' +
                         '<p>' + Domus.Utils.escapeHtml(tenancy.conditions || t('domus', 'No conditions provided.')) + '</p></div></div>' +
+                        '</div>' +
+                        '<div class="domus-dashboard-side">' +
                         '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
                         Domus.Documents.renderList('tenancy', id, { showLinkAction: documentActionsEnabled }) + '</div></div>' +
                         '</div>' +
