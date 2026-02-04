@@ -1354,6 +1354,33 @@ body {
     margin-top: 16px;
 }
 
+.domus-task-closed-toggle {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 6px 0;
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-maxcontrast);
+    cursor: pointer;
+}
+
+.domus-task-closed-toggle::after {
+    content: '▸';
+    float: right;
+    font-size: 14px;
+}
+
+.domus-task-closed-toggle.is-open::after {
+    content: '▾';
+}
+
+.domus-task-closed-body {
+    margin-top: 6px;
+}
+
 .domus-task-run-header {
     display: flex;
     justify-content: space-between;
@@ -1591,7 +1618,7 @@ body {
 }
 
 .domus-kpi-more:hover {
-    color: var(--color-primary-text);
+    color: var(--color-primary);
 }
 
 .domus-kpi-chart {

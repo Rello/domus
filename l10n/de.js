@@ -441,6 +441,9 @@ OC.L10N.register(
         "Quarterly property tax": "Vierteljährliche Grundsteuer",
         "Annual depreciation booking": "Jährliche Abschreibung",
         "Tax advisor fees": "Steuerberaterhonorar",
+        "Due date": "Fälligkeitsdatum",
+        "IBAN is invalid.": "IBAN ist ungültig.",
+        "Invalid IBAN.": "Ungültige IBAN.",
         "{entity} created.": "{entity} erstellt.",
         "{entity} deleted.": "{entity} gelöscht.",
         "{entity} updated.": "{entity} aktualisiert."

@@ -21,6 +21,14 @@
             return '';
         }
 
+        function formatStatusLabel(status) {
+            if (!status) return '';
+            const normalized = String(status).toLowerCase();
+            if (normalized === 'active') return t('domus', 'Active');
+            if (normalized === 'future' || normalized === 'historical') return t('domus', 'Inactive');
+            return String(status);
+        }
+
         function renderList() {
             Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().plural }));
@@ -40,7 +48,7 @@
                             cells: [
                                 Domus.Utils.escapeHtml(formatUnitLabel(tn)),
                                 partnerLabel || Domus.Utils.escapeHtml(''),
-                                Domus.Utils.escapeHtml(tn.status || '')
+                                Domus.Utils.escapeHtml(formatStatusLabel(tn.status))
                             ],
                             dataset: { navigate: 'tenancyDetail', args: tn.id }
                         };
@@ -79,7 +87,7 @@
                         fallbackName: tn.partnerName,
                         emptyLabel: '—'
                     }) || Domus.Utils.escapeHtml(''),
-                    Domus.Utils.escapeHtml(tn.status || ''),
+                    Domus.Utils.escapeHtml(formatStatusLabel(tn.status)),
                     Domus.Utils.escapeHtml(tn.period || '')
                 ],
                 dataset: tn.id ? { navigate: 'tenancyDetail', args: tn.id } : null
@@ -166,7 +174,7 @@
                         '<button id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>'
                     ];
 
-                    const statusTag = tenancy.status ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(tenancy.status) + '</span>' : '';
+                    const statusTag = tenancy.status ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(formatStatusLabel(tenancy.status)) + '</span>' : '';
                     const heroMeta = [Domus.Utils.formatDate(tenancy.startDate), Domus.Utils.formatDate(tenancy.endDate)].filter(Boolean).join(' • ');
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-content">' +

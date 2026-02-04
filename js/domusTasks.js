@@ -600,7 +600,7 @@
                 emptyActionId: 'domus-unit-tasks-empty-create',
                 emptyIconClass: 'domus-icon-task'
             });
-            const openSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Open')) + '</h4>' + openTable;
+            const openSection = openTable;
 
             const closedItems = [];
             (data.tasks || []).filter(task => task.status === 'closed').forEach(task => {
@@ -665,14 +665,21 @@
                         actionParts.join('')
                     ];
                 });
-            const closedTable = Domus.UI.buildTable([t('domus', 'Title'), t('domus', 'Description'), t('domus', 'Closed'), t('domus', 'Type'), ''], closedRows);
-            const closedSection = '<h4>' + Domus.Utils.escapeHtml(t('domus', 'Closed')) + '</h4>' + closedTable;
+            const closedTable = Domus.UI.buildTable([t('domus', 'Title'), t('domus', 'Description'), t('domus', 'Closed'), t('domus', 'Type'), ''], closedRows, {
+                wrapPanel: false
+            });
+            const closedBodyId = 'domus-closed-tasks-' + Math.random().toString(36).slice(2);
+            const closedHeader = '<button type="button" class="domus-task-closed-toggle" data-target="' + Domus.Utils.escapeHtml(closedBodyId) + '" aria-expanded="false">' +
+                Domus.Utils.escapeHtml(t('domus', 'Closed')) +
+                '</button>';
+            const closedSection = closedHeader + '<div class="domus-task-closed-body" id="' + Domus.Utils.escapeHtml(closedBodyId) + '" hidden>' + closedTable + '</div>';
 
             return '<div class="domus-task-section">' + openSection + closedSection + '</div>';
         }
 
         function bindUnitTaskActions(unitId, runs, options = {}) {
             bindOpenTaskActions({ onRefresh: options.onRefresh });
+            bindClosedTaskToggles();
             document.querySelectorAll('table.domus-table tr[data-process-run-id]').forEach(row => {
                 row.addEventListener('click', (event) => {
                     if (event.target.closest('a') || event.target.closest('button')) {
@@ -744,6 +751,30 @@
                             options.onRefresh && options.onRefresh();
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                });
+            });
+        }
+
+        function bindClosedTaskToggles() {
+            document.querySelectorAll('.domus-task-closed-toggle').forEach(btn => {
+                if (btn.dataset.domusBound) {
+                    return;
+                }
+                btn.dataset.domusBound = 'true';
+                btn.addEventListener('click', () => {
+                    const targetId = btn.getAttribute('data-target');
+                    const body = targetId ? document.getElementById(targetId) : null;
+                    if (!body) return;
+                    const isHidden = body.hasAttribute('hidden');
+                    if (isHidden) {
+                        body.removeAttribute('hidden');
+                        btn.setAttribute('aria-expanded', 'true');
+                        btn.classList.add('is-open');
+                    } else {
+                        body.setAttribute('hidden', '');
+                        btn.setAttribute('aria-expanded', 'false');
+                        btn.classList.remove('is-open');
+                    }
                 });
             });
         }

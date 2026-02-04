@@ -442,7 +442,10 @@
         "Minor repairs and supplies": "Kleinreparaturen und Material",
         "Quarterly property tax": "Vierteljährliche Grundsteuer",
         "Annual depreciation booking": "Jährliche Abschreibung",
-        "Tax advisor fees": "Steuerberaterhonorar"
+        "Tax advisor fees": "Steuerberaterhonorar",
+        "Due date": "Fälligkeitsdatum",
+        "IBAN is invalid.": "IBAN ist ungültig.",
+        "Invalid IBAN.": "Ungültige IBAN."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

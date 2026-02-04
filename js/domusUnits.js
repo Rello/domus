@@ -1965,6 +1965,14 @@
                     Domus.UI.showNotification(t('domus', 'Label is required.'), 'error');
                     return;
                 }
+                if (data.iban) {
+                    const normalizedIban = Domus.Utils.normalizeIban(data.iban);
+                    if (!Domus.Utils.isValidIban(normalizedIban)) {
+                        Domus.UI.showNotification(t('domus', 'IBAN is invalid.'), 'error');
+                        return;
+                    }
+                    data.iban = normalizedIban;
+                }
                 if (options.hidePropertyField) {
                     data.propertyId = null;
                 }
