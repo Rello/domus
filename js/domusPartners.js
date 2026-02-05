@@ -140,7 +140,6 @@
         }
 
         function renderList() {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Partners') }));
             const typeOptions = [{ value: '', label: t('domus', 'All types') }].concat(getPartnerTypeOptions());
             Domus.Api.getPartners()
@@ -261,7 +260,6 @@
         }
 
         function renderDetail(id) {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Partner') }));
             Domus.Api.get('/partners/' + id)
                 .then(partner => {
@@ -374,7 +372,6 @@
                     Domus.Api.deletePartner(id)
                         .then(() => {
                             Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Partner') }), 'success');
-                            Domus.UI.renderSidebar('');
                             renderList();
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error'));

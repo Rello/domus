@@ -5,7 +5,6 @@
 
     Domus.Properties = (function() {
         function renderList() {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Properties') }));
             Domus.Api.getProperties()
                 .then(properties => {
@@ -152,7 +151,6 @@
         }
 
         function renderDetail(id) {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Property') }));
             Domus.Api.getProperty(id)
                 .then(property => Promise.all([
@@ -296,7 +294,6 @@
                             Domus.Api.deleteProperty(id)
                                 .then(() => {
                                     Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Property') }), 'success');
-                                    Domus.UI.renderSidebar('');
                                     renderList();
                                 })
                                 .catch(err => Domus.UI.showNotification(err.message, 'error'));

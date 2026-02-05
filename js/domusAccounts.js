@@ -401,7 +401,6 @@
         }
 
         function renderList() {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Accounts') }));
             Domus.Api.getAccounts()
                 .then(nodes => {

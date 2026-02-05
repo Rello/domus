@@ -533,11 +533,15 @@
 
         function openModal(options) {
             const { title, content, size, headerActions = [], onClose } = options || {};
+            const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
             const backdrop = document.createElement('div');
             backdrop.className = 'domus-modal-backdrop';
+            backdrop.setAttribute('role', 'presentation');
 
             const modal = document.createElement('div');
             modal.className = 'domus-modal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
             if (size) {
                 modal.classList.add(`domus-modal-${size}`);
             }
@@ -546,6 +550,9 @@
             header.className = 'domus-modal-header';
             const heading = document.createElement('h3');
             heading.textContent = title || '';
+            const headingId = 'domus-modal-title-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+            heading.id = headingId;
+            modal.setAttribute('aria-labelledby', headingId);
             const actionsEl = document.createElement('div');
             actionsEl.className = 'domus-modal-header-actions';
             (headerActions || []).forEach(action => {
@@ -589,26 +596,82 @@
                     return;
                 }
                 closed = true;
-                document.removeEventListener('keydown', onEsc);
+                document.removeEventListener('keydown', onKeyDown);
                 backdrop.remove();
+                if (previousActiveElement && document.body.contains(previousActiveElement)) {
+                    previousActiveElement.focus();
+                }
                 if (typeof onClose === 'function') {
                     onClose();
                 }
             }
 
-            function onEsc(event) {
+            function getFocusableElements() {
+                const selector = [
+                    'a[href]',
+                    'button:not([disabled])',
+                    'textarea:not([disabled])',
+                    'input:not([type="hidden"]):not([disabled])',
+                    'select:not([disabled])',
+                    '[tabindex]:not([tabindex="-1"])'
+                ].join(',');
+                return Array.from(modal.querySelectorAll(selector)).filter(el =>
+                    el instanceof HTMLElement &&
+                    !el.hasAttribute('disabled') &&
+                    el.getAttribute('aria-hidden') !== 'true' &&
+                    (el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement)
+                );
+            }
+
+            function onKeyDown(event) {
                 if (event.key === 'Escape') {
                     closeModal();
+                    return;
+                }
+                if (event.key !== 'Tab') {
+                    return;
+                }
+                const focusableElements = getFocusableElements();
+                if (!focusableElements.length) {
+                    event.preventDefault();
+                    modal.focus();
+                    return;
+                }
+                const first = focusableElements[0];
+                const last = focusableElements[focusableElements.length - 1];
+                const active = document.activeElement;
+                if (!modal.contains(active)) {
+                    event.preventDefault();
+                    (event.shiftKey ? last : first).focus();
+                    return;
+                }
+                if (event.shiftKey && active === first) {
+                    event.preventDefault();
+                    last.focus();
+                    return;
+                }
+                if (!event.shiftKey && active === last) {
+                    event.preventDefault();
+                    first.focus();
                 }
             }
 
-            document.addEventListener('keydown', onEsc);
+            document.addEventListener('keydown', onKeyDown);
             closeBtn.addEventListener('click', closeModal);
             backdrop.addEventListener('click', function(e) {
                 if (e.target === backdrop) {
                     closeModal();
                 }
             });
+
+            modal.setAttribute('tabindex', '-1');
+            const focusableElements = getFocusableElements();
+            if (focusableElements.length) {
+                const autofocusTarget = focusableElements.find(el => el.hasAttribute('autofocus'));
+                (autofocusTarget || focusableElements[0]).focus();
+            } else {
+                modal.focus();
+            }
 
             return { modalEl: modal, close: closeModal };
         }

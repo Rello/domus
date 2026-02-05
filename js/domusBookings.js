@@ -194,7 +194,6 @@
         }
 
         function renderList() {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Bookings') }));
             Domus.Api.getBookings({ includeAll: true })
                 .then(bookings => {

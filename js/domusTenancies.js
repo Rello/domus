@@ -30,7 +30,6 @@
         }
 
         function renderList() {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().plural }));
             Domus.Api.getTenancies()
                 .then(tenancies => {
@@ -211,7 +210,6 @@
         }
 
         function renderDetail(id) {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().singular }));
             Domus.Api.get('/tenancies/' + id)
                 .then(tenancy => {
@@ -309,7 +307,6 @@
                     Domus.Api.deleteTenancy(id)
                         .then(() => {
                             Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: Domus.Role.getTenancyLabels().singular }), 'success');
-                            Domus.UI.renderSidebar('');
                             renderList();
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error'));

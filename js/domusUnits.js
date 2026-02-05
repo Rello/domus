@@ -398,7 +398,6 @@
         }
 
         function renderList() {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', {entity: t('domus', 'Units')}));
             Domus.Api.getUnitsStatisticsOverview()
                 .then(statistics => {
@@ -995,7 +994,6 @@
         }
 
         function renderDetail(id, initialTarget) {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', {entity: t('domus', 'Unit')}));
             Domus.Api.get('/units/' + id)
                 .then(unit => {
@@ -1497,7 +1495,6 @@
                         Domus.Api.deleteUnit(id)
                             .then(() => {
                                 Domus.UI.showNotification(t('domus', '{entity} deleted.', {entity: t('domus', 'Unit')}), 'success');
-                                Domus.UI.renderSidebar('');
                                 renderList();
                             })
                             .catch(err => Domus.UI.showNotification(err.message, 'error'));

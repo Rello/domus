@@ -5,7 +5,6 @@
 
     Domus.Dashboard = (function() {
         function render() {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Dashboard') }));
 
             const summaryPromise = Domus.Api.getDashboardSummary();

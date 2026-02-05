@@ -132,12 +132,8 @@ body {
     width: 100%;
 }
 
-#app-navigation, #app-content, #app-sidebar {
+#app-navigation, #app-content {
     padding: 16px;
-}
-
-#app-sidebar.domus-sidebar-hidden {
-    display: none;
 }
 
 #app-navigation {
@@ -745,12 +741,6 @@ body {
     margin-top: 8px;
     justify-content: flex-end;
     flex-wrap: wrap;
-}
-
-.domus-detail-sidebar button {
-    display: block;
-    width: 100%;
-    margin-bottom: 8px;
 }
 
 .domus-detail h2 {

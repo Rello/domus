@@ -10,7 +10,6 @@
         let units = [];
 
         function render() {
-            Domus.UI.renderSidebar('');
             Domus.UI.renderContent(buildLayout());
             bindControls();
             loadFilters();

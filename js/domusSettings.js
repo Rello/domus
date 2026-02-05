@@ -173,7 +173,6 @@
         }
 
         function render() {
-            Domus.UI.renderSidebar('');
             Domus.UI.showLoading(t('domus', 'Loading…'));
             Domus.Api.getSettings()
                 .then(response => {
