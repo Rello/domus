@@ -2256,7 +2256,7 @@
                     t('domus', 'Maintenance fee'),
                     t('domus', 'Property tax'),
                     t('domus', 'Saldo')
-                ], rows);
+                ], rows, { wrapPanel: false });
 
                 const radios = tableContainer.querySelectorAll('input[name="domus-settlement-select"]');
                 radios.forEach(radio => {
@@ -2302,8 +2302,8 @@
                 const info = Domus.UI.buildInfoList([
                     { label: t('domus', 'Year'), value: selectedYear }
                 ]);
-                return '<div class="domus-form">' + info + '</div>' +
-                    '<div class="domus-table" id="domus-settlement-table"></div>' +
+                return info +
+                    '<div id="domus-settlement-table"></div>' +
                     '<div class="domus-modal-footer">' +
                     '<button id="domus-settlement-back">' + Domus.Utils.escapeHtml(t('domus', 'Back')) + '</button>' +
                     '<button id="domus-settlement-next" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Continue')) + '</button>' +
