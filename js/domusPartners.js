@@ -614,7 +614,8 @@
             const entityType = options.entityType || 'unit';
             const addId = `domus-${entityType}-add-partner`;
             const emptyAddId = `domus-${entityType}-add-partner-empty`;
-            const header = Domus.UI.buildSectionHeader(t('domus', 'Partners'), {
+            const sectionTitle = options.sectionTitle || t('domus', 'Partners');
+            const header = Domus.UI.buildSectionHeader(sectionTitle, {
                 id: addId,
                 title: t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }),
                 iconClass: 'domus-icon-add'

@@ -1137,16 +1137,16 @@
                         ].filter(Boolean)
                         : (isLandlord
                                 ? [
-                                    '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>',
-                                    '<button id="domus-unit-toggle-partners">' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + '</button>'
+                                    '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Create utility report')) + '</button>',
+                                    '<button id="domus-unit-toggle-partners">' + Domus.Utils.escapeHtml(t('domus', 'Contacts')) + '</button>'
                                 ]
                                 : [
                                     (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action ? '<button id="domus-add-tenancy" data-unit-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : ''),
                                     (canManageBookings ? '<button id="domus-add-unit-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', {entity: t('domus', 'Booking')})) + '</button>' : ''),
                                     (canManageDistributions ? '<button id="domus-add-unit-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', {entity: t('domus', 'Distribution')})) + '</button>' : ''),
                                     (canManageDistributions ? '<button id="domus-unit-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : ''),
-                                    '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Utility Bill Statement')) + '</button>',
-                                    (showPartners ? '<button id="domus-unit-toggle-partners">' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + '</button>' : '')
+                                    '<button id="domus-unit-service-charge">' + Domus.Utils.escapeHtml(t('domus', 'Create utility report')) + '</button>',
+                                    (showPartners ? '<button id="domus-unit-toggle-partners">' + Domus.Utils.escapeHtml(t('domus', 'Contacts')) + '</button>' : '')
                                 ]
                         ).filter(Boolean);
 
@@ -1307,7 +1307,7 @@
                         : '';
 
                     const partnersPanel = showPartners
-                        ? Domus.PartnerRelations.renderSection(partners || [], {entityType: 'unit', entityId: id})
+                        ? Domus.PartnerRelations.renderSection(partners || [], {entityType: 'unit', entityId: id, sectionTitle: t('domus', 'Contacts')})
                         : '';
                     const partnersPanelWrapper = showPartners
                         ? '<div id="domus-unit-partners-panel"' + (useKpiLayout ? ' class="domus-hidden"' : '') + '>' +
@@ -2180,7 +2180,7 @@
             const container = document.createElement('div');
 
             const modal = Domus.UI.openModal({
-                title: t('domus', 'Utility Bill Statement'),
+                title: t('domus', 'Create utility report'),
                 content: container,
                 size: 'large'
             });
@@ -2251,7 +2251,7 @@
 
                 tableContainer.innerHTML = Domus.UI.buildTable([
                     '',
-                    t('domus', 'Partner'),
+                    t('domus', 'Tenant'),
                     t('domus', 'Prepayment'),
                     t('domus', 'Maintenance fee'),
                     t('domus', 'Property tax'),
@@ -2314,7 +2314,7 @@
                 const selected = getSelectedSettlement();
                 if (!selected) {
                     return '<div class="domus-empty-state">' +
-                        Domus.Utils.escapeHtml(t('domus', 'Select a partner first.')) +
+                        Domus.Utils.escapeHtml(t('domus', 'Select a tenant first.')) +
                         '</div>' +
                         '<div class="domus-modal-footer">' +
                         '<button id="domus-settlement-back">' + Domus.Utils.escapeHtml(t('domus', 'Back')) + '</button>' +
@@ -2328,7 +2328,7 @@
                 }
 
                 const info = Domus.UI.buildInfoList([
-                    { label: t('domus', 'Partner'), value: selected.partnerName || '' },
+                    { label: t('domus', 'Tenant'), value: selected.partnerName || '' },
                     { label: t('domus', 'Year'), value: selectedYear },
                     { label: t('domus', 'Prepayment'), value: Domus.Utils.formatCurrency(selected.serviceCharge) },
                     { label: t('domus', 'Maintenance fee'), value: Domus.Utils.formatCurrency(selected.houseFee) },

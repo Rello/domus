@@ -54,6 +54,13 @@ class TenancyService {
     public function createTenancy(array $data, string $userId, string $role): Tenancy {
         $data = $this->permissionService->guardTenancyFinancialFields($role, $data);
         $this->assertTenancyInput($data, $userId, $role);
+        $startDate = $this->parseDate($data['startDate'] ?? null);
+        if ($startDate === null) {
+            throw new \InvalidArgumentException($this->l10n->t('Start date is required.'));
+        }
+
+        $this->closeOpenTenanciesForUnit((int)$data['unitId'], $startDate, $userId);
+
         $now = time();
         $tenancy = new Tenancy();
         $tenancy->setUserId($userId);
@@ -319,6 +326,26 @@ class TenancyService {
 
             $existingEnd = $this->parseDate($tenancy->getEndDate());
             if ($existingEnd !== null && $existingEnd < $newStartDate) {
+                continue;
+            }
+
+            $tenancy->setEndDate($newEndDate->format('Y-m-d'));
+            $tenancy->setUpdatedAt(time());
+            $this->tenancyMapper->update($tenancy);
+        }
+    }
+
+    private function closeOpenTenanciesForUnit(int $unitId, \DateTimeImmutable $newStartDate, string $userId): void {
+        $tenancies = $this->tenancyMapper->findByUser($userId, $unitId);
+        $newEndDate = $newStartDate->modify('-1 day');
+
+        foreach ($tenancies as $tenancy) {
+            if ($tenancy->getEndDate() !== null) {
+                continue;
+            }
+
+            $existingStart = $this->parseDate($tenancy->getStartDate());
+            if ($existingStart === null || $existingStart >= $newStartDate) {
                 continue;
             }
 
