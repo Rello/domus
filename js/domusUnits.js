@@ -1150,6 +1150,15 @@
                                 ]
                         ).filter(Boolean);
 
+                    const actionRowActions = contextActions.slice();
+                    if (actionMenu) {
+                        actionRowActions.push(actionMenu);
+                    }
+                    const actionRowLabel = '<span class="domus-detail-action-label">' + Domus.Utils.escapeHtml(t('domus', 'Actions:')) + '</span>';
+                    const actionRow = actionRowActions.length
+                        ? '<div class="domus-detail-action-row">' + actionRowLabel + actionRowActions.join('') + '</div>'
+                        : '';
+
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-content">' +
                         '<div class="domus-hero-indicator"><span class="domus-icon domus-icon-unit" aria-hidden="true"></span></div>' +
@@ -1162,8 +1171,6 @@
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         '<div class="domus-hero-actions-row domus-hero-actions-indicator">' + masterdataIndicator + '</div>' +
-                        (actionMenu ? '<div class="domus-hero-actions-row domus-hero-actions-more">' + actionMenu + '</div>' : '') +
-                        (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
 
@@ -1334,6 +1341,7 @@
                         ? '<div class="domus-detail domus-dashboard domus-unit-detail-landlord">' +
                         Domus.UI.buildBackButton('units') +
                         hero +
+                        actionRow +
                         kpiTiles +
                         kpiDetailArea +
                         partnersPanelWrapper +
@@ -1341,6 +1349,7 @@
                         : '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('units') +
                         hero +
+                        actionRow +
                         stats +
                         '<div class="domus-dashboard-grid domus-dashboard-grid-single">' +
                         '<div class="domus-dashboard-main">' +

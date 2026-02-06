@@ -195,6 +195,14 @@
                             showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : '',
                             canManageDistributions ? '<button id="domus-add-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : ''
                         ].filter(Boolean);
+                    const actionRowActions = contextActions.slice();
+                    if (actionMenu) {
+                        actionRowActions.push(actionMenu);
+                    }
+                    const actionRowLabel = '<span class="domus-detail-action-label">' + Domus.Utils.escapeHtml(t('domus', 'Actions:')) + '</span>';
+                    const actionRow = actionRowActions.length
+                        ? '<div class="domus-detail-action-row">' + actionRowLabel + actionRowActions.join('') + '</div>'
+                        : '';
                     const stats = Domus.UI.buildStatCards([
                         { label: t('domus', 'Units'), value: (property.units || []).length, hint: t('domus', 'Total units in this property'), formatValue: false },
                         { label: t('domus', 'Bookings'), value: (property.bookings || []).length, hint: t('domus', 'Entries for the selected year'), formatValue: false },
@@ -213,8 +221,6 @@
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         '<div class="domus-hero-actions-row domus-hero-actions-indicator">' + masterdataIndicator + '</div>' +
-                        (actionMenu ? '<div class="domus-hero-actions-row domus-hero-actions-more">' + actionMenu + '</div>' : '') +
-                        (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
 
@@ -246,6 +252,7 @@
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('properties') +
                         hero +
+                        actionRow +
                         stats +
                         '<div class="domus-dashboard-grid domus-dashboard-grid-single">' +
                         '<div class="domus-dashboard-main">' +

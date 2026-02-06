@@ -823,9 +823,9 @@
             const buttonLabel = options.buttonLabel || `${label}`;
             const menuId = options.id || ('domus-action-menu-' + Math.random().toString(36).slice(2));
             return '<div class="domus-action-menu" id="' + Domus.Utils.escapeHtml(menuId) + '">' +
-                '<a href="#" role="button" class="domus-action-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-label="' + Domus.Utils.escapeHtml(ariaLabel) + '">' +
+                '<button type="button" class="domus-action-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-label="' + Domus.Utils.escapeHtml(ariaLabel) + '">' +
                 Domus.Utils.escapeHtml(buttonLabel) +
-                '</a>' +
+                '</button>' +
                 '<div class="domus-action-menu-panel" role="menu">' + actions.join('') + '</div>' +
                 '</div>';
         }

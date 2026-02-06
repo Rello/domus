@@ -1186,22 +1186,58 @@ body {
     white-space: nowrap;
 }
 
+.domus-detail-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 0 0 16px;
+}
+
+.domus-detail-action-label {
+    font-weight: 600;
+    margin-right: 2px;
+}
+
+.domus-detail-action-row > button,
+.domus-detail-action-row .domus-action-menu-toggle {
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    padding: 6px 12px;
+    background: #ffffff;
+    color: var(--color-main-text);
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    transition: background 120ms ease, box-shadow 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.domus-detail-action-row > button:hover,
+.domus-detail-action-row > button:focus-visible,
+.domus-detail-action-row .domus-action-menu-toggle:hover,
+.domus-detail-action-row .domus-action-menu-toggle:focus-visible {
+    background: #f8fafc;
+    border-color: rgba(15, 23, 42, 0.24);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+    transform: translateY(-1px);
+}
+
 .domus-action-menu {
     position: relative;
     display: inline-flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
 }
 
 .domus-action-menu-toggle {
-    border: none;
-    padding: 0;
-    background: transparent;
-    color: var(--color-main-text);
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
-    font-weight: 500;
+    border: var(--domus-button-secondary-border);
+    padding: 6px 12px;
+    background: var(--domus-button-secondary-background);
+    color: var(--domus-button-secondary-text);
+    border-radius: var(--border-radius-element);
+    text-decoration: none;
+    font-weight: 400;
 }
 
 .domus-action-menu-panel {
@@ -1255,10 +1291,14 @@ body {
 }
 
 .domus-completion-label:hover,
-.domus-completion-label:focus-visible,
+.domus-completion-label:focus-visible {
+    color: var(--color-primary);
+}
+
 .domus-action-menu-toggle:hover,
 .domus-action-menu-toggle:focus-visible {
-    color: var(--color-primary);
+    color: var(--domus-button-secondary-text);
+    background: var(--color-background-hover);
 }
 
 .domus-completion-indicator {

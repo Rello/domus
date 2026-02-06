@@ -10,6 +10,7 @@ OC.L10N.register(
         "Accounts in bookings cannot be deleted.": "Konten mit Buchungen können nicht gelöscht werden.",
         "Accounts with children cannot be deleted.": "Konten mit Unterkonten können nicht gelöscht werden.",
         "Action": "Aktion",
+        "Actions:": "Aktionen:",
         "Active": "Aktiv",
         "proportional": "anteilig",
         "Credit": "Guthaben",

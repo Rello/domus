@@ -288,6 +288,14 @@
                     const contextActions = [
                         (canManageTenancies && tenancyLabels.action ? '<button id="domus-add-partner-tenancy" data-partner-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : '')
                     ].filter(Boolean);
+                    const actionRowActions = contextActions.slice();
+                    if (actionMenu) {
+                        actionRowActions.push(actionMenu);
+                    }
+                    const actionRowLabel = '<span class="domus-detail-action-label">' + Domus.Utils.escapeHtml(t('domus', 'Actions:')) + '</span>';
+                    const actionRow = actionRowActions.length
+                        ? '<div class="domus-detail-action-row">' + actionRowLabel + actionRowActions.join('') + '</div>'
+                        : '';
 
                     const contactMeta = [partner.phone, partner.email].filter(Boolean).join(' • ');
                     const hero = '<div class="domus-detail-hero">' +
@@ -301,8 +309,6 @@
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         '<div class="domus-hero-actions-row domus-hero-actions-indicator">' + masterdataIndicator + '</div>' +
-                        (actionMenu ? '<div class="domus-hero-actions-row domus-hero-actions-more">' + actionMenu + '</div>' : '') +
-                        (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
                         '</div>' +
                         '</div>';
 
@@ -331,6 +337,7 @@
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('partners') +
                         hero +
+                        actionRow +
                         stats +
                         '<div class="domus-dashboard-grid domus-dashboard-grid-single">' +
                         '<div class="domus-dashboard-main">' +
