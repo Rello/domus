@@ -1520,6 +1520,12 @@ body {
     margin-top: 6px;
 }
 
+.domus-stat-value-text {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
 .domus-stat-hint {
     color: var(--color-text-maxcontrast);
     font-size: 12px;
@@ -1528,8 +1534,8 @@ body {
 
 .domus-kpi-tiles {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
     margin: 16px 0;
 }
 
@@ -1549,8 +1555,10 @@ body {
 .domus-kpi-content {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 6px;
+    justify-content: center;
+    align-items: stretch;
+    text-align: center;
+    gap: 4px;
     flex: 1 1 auto;
     min-width: 0;
 }
@@ -1558,6 +1566,15 @@ body {
 .domus-kpi-headline {
     font-size: 16px;
     /*font-weight: 600;*/
+    min-height: 2.4em;
+    line-height: 1.2;
+    text-align: left;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .domus-kpi-value {
@@ -1565,6 +1582,9 @@ body {
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
+    margin-top: auto;
+    margin-bottom: 0;
+    align-self: center;
 }
 
 .domus-kpi-documents {
@@ -1579,7 +1599,7 @@ body {
 .domus-kpi-documents-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 8px;
 }
 
@@ -1612,6 +1632,11 @@ body {
 .domus-kpi-subline {
     font-size: 12px;
     color: var(--color-text-maxcontrast);
+    text-align: center;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .domus-kpi-number {
@@ -1641,6 +1666,8 @@ body {
 
 .domus-kpi-more {
     align-self: flex-start;
+    margin-top: auto;
+    text-align: left;
     background: none;
     border: none;
     padding: 0;
@@ -1649,6 +1676,10 @@ body {
     /*color: var(--color-primary);*/
     cursor: pointer;
     text-decoration: underline;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .domus-kpi-more:hover {
@@ -1656,10 +1687,13 @@ body {
 }
 
 .domus-kpi-chart {
-    flex: 0 1 42%;
-    min-width: 120px;
+    flex: 0 1 38%;
+    min-width: 0;
+    width: 38%;
+    max-width: 120px;
     display: flex;
     align-items: center;
+    justify-content: center;
 }
 
 .domus-kpi-chart-inner {
@@ -1684,6 +1718,21 @@ body {
 }
 
 @media (max-width: 1200px) {
+    .domus-kpi-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .domus-kpi-tile {
+        flex-direction: column;
+    }
+
+    .domus-kpi-chart {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+@media (max-width: 900px) {
     .domus-kpi-tiles {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1862,7 +1911,7 @@ body {
 .domus-partner-contact {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 0px;
     flex-wrap: wrap;
 }
 

@@ -4,13 +4,6 @@
     window.Domus = window.Domus || {};
 
     Domus.Tenancies = (function() {
-        function formatPartnerNames(partners) {
-            return (partners || [])
-                .map(p => p.name)
-                .filter(Boolean)
-                .join(', ');
-        }
-
         function formatUnitLabel(tenancy) {
             if (tenancy.unitLabel) {
                 return tenancy.unitLabel;
@@ -27,6 +20,16 @@
             if (normalized === 'active') return t('domus', 'Active');
             if (normalized === 'future' || normalized === 'historical') return t('domus', 'Inactive');
             return String(status);
+        }
+
+        function renderStatusBadge(status) {
+            const label = formatStatusLabel(status);
+            if (!label) {
+                return '';
+            }
+            const normalized = String(status || '').toLowerCase();
+            const badgeClass = normalized === 'active' ? 'domus-badge' : 'domus-badge domus-badge-muted';
+            return '<span class="' + badgeClass + '">' + Domus.Utils.escapeHtml(label) + '</span>';
         }
 
         function renderList() {
@@ -79,27 +82,41 @@
         }
 
         function renderInline(tenancies, options = {}) {
-            const rows = (tenancies || []).map(tn => ({
-                cells: [
-                    Domus.Utils.escapeHtml(formatUnitLabel(tn)),
+            const hideUnitColumn = Boolean(options.hideUnitColumn);
+            const statusAsBadge = Boolean(options.statusAsBadge);
+            const headers = [];
+            if (!hideUnitColumn) {
+                headers.push(t('domus', 'Unit'));
+            }
+            headers.push(t('domus', 'Partners'), t('domus', 'Status'), t('domus', 'Period'));
+
+            const rows = (tenancies || []).map(tn => {
+                const cells = [];
+                if (!hideUnitColumn) {
+                    cells.push(Domus.Utils.escapeHtml(formatUnitLabel(tn)));
+                }
+                cells.push(
                     Domus.Partners.renderPartnerContactList(tn.partners, {
                         fallbackName: tn.partnerName,
                         emptyLabel: '—'
                     }) || Domus.Utils.escapeHtml(''),
-                    Domus.Utils.escapeHtml(formatStatusLabel(tn.status)),
+                    statusAsBadge
+                        ? renderStatusBadge(tn.status)
+                        : Domus.Utils.escapeHtml(formatStatusLabel(tn.status)),
                     Domus.Utils.escapeHtml(tn.period || '')
-                ],
-                dataset: tn.id ? { navigate: 'tenancyDetail', args: tn.id } : null
-            }));
+                );
+                return {
+                    cells,
+                    dataset: tn.id ? { navigate: 'tenancyDetail', args: tn.id } : null
+                };
+            });
             if (!rows.length && options.emptyMessage) {
                 return Domus.UI.buildEmptyStateAction(options.emptyMessage, {
                     iconClass: options.emptyIconClass,
                     actionId: options.emptyActionId
                 });
             }
-            return Domus.UI.buildTable([
-                t('domus', 'Unit'), t('domus', 'Partners'), t('domus', 'Status'), t('domus', 'Period')
-            ], rows, { wrapPanel: false });
+            return Domus.UI.buildTable(headers, rows, { wrapPanel: false });
         }
 
         function openTenancyCreateForm(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage, modalOptions = {}) {
@@ -215,11 +232,11 @@
                 .then(tenancy => {
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
-                    const partnerLabel = formatPartnerNames(tenancy.partners);
                     const stats = Domus.UI.buildStatCards([
                         { label: t('domus', 'Base rent'), value: Domus.Utils.formatCurrency(tenancy.baseRent), hint: t('domus', 'Monthly base rent') },
                         { label: t('domus', 'Service charge'), value: Domus.Utils.formatCurrency(tenancy.serviceCharge), hint: t('domus', 'Service charge') },
-                        { label: t('domus', 'Deposit'), value: Domus.Utils.formatCurrency(tenancy.deposit), hint: t('domus', 'Security deposit') }
+                        { label: t('domus', 'Deposit'), value: Domus.Utils.formatCurrency(tenancy.deposit), hint: t('domus', 'Security deposit') },
+                        { label: t('domus', 'Conditions'), value: tenancy.conditions || t('domus', 'No conditions provided.'), valueClassName: 'domus-stat-value-text' }
                     ]);
                     const menuActions = [
                         Domus.UI.buildIconLabelButton('domus-icon-details', t('domus', 'Details'), {
@@ -237,7 +254,15 @@
                     });
                     const contextActions = [
                         '<button id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>'
-                    ];
+                    ].filter(Boolean);
+                    const actionRowActions = contextActions.slice();
+                    if (actionMenu) {
+                        actionRowActions.push(actionMenu);
+                    }
+                    const actionRowLabel = '<span class="domus-detail-action-label">' + Domus.Utils.escapeHtml(t('domus', 'Actions:')) + '</span>';
+                    const actionRow = actionRowActions.length
+                        ? '<div class="domus-detail-action-row">' + actionRowLabel + actionRowActions.join('') + '</div>'
+                        : '';
 
                     const statusTag = tenancy.status ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(formatStatusLabel(tenancy.status)) + '</span>' : '';
                     const heroMeta = [Domus.Utils.formatDate(tenancy.startDate), Domus.Utils.formatDate(tenancy.endDate)].filter(Boolean).join(' • ');
@@ -251,10 +276,6 @@
                         '<div class="domus-hero-tags">' + statusTag + '</div>' +
                         '</div>' +
                         '</div>' +
-                        '<div class="domus-hero-actions">' +
-                        (actionMenu ? '<div class="domus-hero-actions-row domus-hero-actions-more">' + actionMenu + '</div>' : '') +
-                        (contextActions.length ? '<div class="domus-hero-actions-row">' + contextActions.join('') + '</div>' : '') +
-                        '</div>' +
                         '</div>';
 
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
@@ -264,19 +285,17 @@
                         iconClass: 'domus-icon-add',
                         dataset: { entityType: 'tenancy', entityId: id }
                     } : null);
-                    const partnersHeader = Domus.UI.buildSectionHeader(t('domus', 'Partners'));
-                    const conditionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Conditions'));
+                    const partnersHeader = Domus.UI.buildSectionHeader(t('domus', 'Tenant'));
 
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('tenancies') +
                         hero +
+                        actionRow +
                         stats +
                         '<div class="domus-dashboard-grid">' +
                         '<div class="domus-dashboard-main">' +
                         '<div class="domus-panel">' + partnersHeader + '<div class="domus-panel-body">' +
-                        Domus.Partners.renderInline(tenancy.partners || []) + '</div></div>' +
-                        '<div class="domus-panel">' + conditionsHeader + '<div class="domus-panel-body">' +
-                        '<p>' + Domus.Utils.escapeHtml(tenancy.conditions || t('domus', 'No conditions provided.')) + '</p></div></div>' +
+                        Domus.Partners.renderInline(tenancy.partners || [], { linkNameToDetail: true, includeTypeColumn: false, includeEmailColumn: false, showHeader: false }) + '</div></div>' +
                         '</div>' +
                         '<div class="domus-dashboard-side">' +
                         '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +

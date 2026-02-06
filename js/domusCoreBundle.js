@@ -1089,11 +1089,14 @@
 
         function buildTable(headers, rows, options = {}) {
             const wrapPanel = options.wrapPanel !== false;
+            const showHeader = options.showHeader !== false;
             let html = '<table class="domus-table">';
-            html += '<thead><tr>' + headers.map(h => {
-                const { label, classAttr } = normalizeHeader(h);
-                return '<th' + classAttr + '>' + Domus.Utils.escapeHtml(label) + '</th>';
-            }).join('') + '</tr></thead>';
+            if (showHeader) {
+                html += '<thead><tr>' + headers.map(h => {
+                    const { label, classAttr } = normalizeHeader(h);
+                    return '<th' + classAttr + '>' + Domus.Utils.escapeHtml(label) + '</th>';
+                }).join('') + '</tr></thead>';
+            }
             html += '<tbody>';
             if (!rows || rows.length === 0) {
                 html += '<tr><td colspan="' + headers.length + '">' + Domus.Utils.escapeHtml(t('domus', 'No entries found.')) + '</td></tr>';
@@ -1415,9 +1418,10 @@
                     ? '—'
                     : (card.formatValue === false ? card.value : Domus.Utils.formatAmount(card.value));
                 const hint = card.hint ? '<div class="domus-stat-hint">' + Domus.Utils.escapeHtml(card.hint) + '</div>' : '';
+                const valueClass = card.valueClassName ? ' ' + Domus.Utils.escapeHtml(card.valueClassName) : '';
                 return '<div class="domus-stat-card">' +
                     '<div class="domus-stat-label">' + Domus.Utils.escapeHtml(card.label || '') + '</div>' +
-                    '<div class="domus-stat-value">' + Domus.Utils.escapeHtml(String(value)) + '</div>' +
+                    '<div class="domus-stat-value' + valueClass + '">' + Domus.Utils.escapeHtml(String(value)) + '</div>' +
                     hint +
                     '</div>';
             }).join('');

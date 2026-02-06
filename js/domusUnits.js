@@ -1242,25 +1242,18 @@
                     const unitDocumentPath = unit.documentPath || '';
                     const unitDocumentUrl = unitDocumentPath ? buildFilesFolderUrl(unitDocumentPath) : '';
                     const documentsOpenLink = unitDocumentUrl
-                        ? '<a class="domus-kpi-documents-open" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(unitDocumentUrl) + '">' +
+                        ? '<a class="domus-kpi-documents-open" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(unitDocumentUrl) + '"' +
+                        ' title="' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '">' +
                         '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
-                        '<span class="domus-kpi-documents-open-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
+                        '<span class="domus-visually-hidden">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
                         '</a>'
-                        : '<div class="domus-kpi-documents-open">' +
+                        : '<div class="domus-kpi-documents-open" title="' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '">' +
                         '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
-                        '<span class="domus-kpi-documents-open-label">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
+                        '<span class="domus-visually-hidden">' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '</span>' +
                         '</div>';
                     const documentsTileValue = '<div class="domus-kpi-documents">' +
                         '<div class="domus-kpi-documents-row">' +
                         documentsOpenLink +
-                        (documentActionsEnabled
-                            ? '<button type="button" class="domus-kpi-documents-add" id="domus-unit-kpi-add-doc" title="' +
-                            Domus.Utils.escapeHtml(t('domus', 'Add {entity}', {entity: t('domus', 'Document')})) +
-                            '">' +
-                            '<span class="domus-icon domus-icon-add" aria-hidden="true"></span>' +
-                            '<span class="domus-visually-hidden">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', {entity: t('domus', 'Document')})) + '</span>' +
-                            '</button>'
-                            : '') +
                         '</div>' +
                         '</div>';
                     const openTaskCount = Domus.Role.isTenantView()
@@ -1362,7 +1355,10 @@
                                 wrapPanel: false
                             }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
-                        Domus.Tenancies.renderInline(allTenancies) + '</div></div>' +
+                        Domus.Tenancies.renderInline(allTenancies, {
+                            hideUnitColumn: true,
+                            statusAsBadge: true
+                        }) + '</div></div>' +
                         tasksPanel +
                         partnersPanelWrapper +
                         (showRentabilityPanels ? '<div class="domus-panel">' + statisticsHeader + '<div class="domus-panel-body">' +
@@ -1383,12 +1379,6 @@
                     Domus.UI.bindCollapsibles();
                     if (!useKpiLayout) {
                         bindYearStatusAction(id, statistics);
-                    }
-                    if (useKpiLayout && documentActionsEnabled) {
-                        document.getElementById('domus-unit-kpi-add-doc')?.addEventListener('click', (event) => {
-                            event.preventDefault();
-                            Domus.Documents.openLinkModal('unit', id, () => renderDetail(id));
-                        });
                     }
                     Domus.Partners.bindContactActions();
                     if (canManageDistributions && !useKpiLayout) {
@@ -1414,6 +1404,8 @@
                             revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable, yearStatusAction) + bookingsPanelInline,
                             cost: buildKpiDetailPanel(t('domus', 'Costs'), costDetailTable) + bookingsPanelInline,
                             tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies, {
+                                hideUnitColumn: true,
+                                statusAsBadge: true,
                                 emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                                     entity: tenancyLabels.plural
                                 }),
