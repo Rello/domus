@@ -142,6 +142,9 @@ class UnitTransferService {
             $unit->setUserId($userId);
             $unit->setPropertyId($propertyId);
             $unit->setLabel($label);
+            $unit->setStreet($unitData['street'] ?? null);
+            $unit->setZip($unitData['zip'] ?? null);
+            $unit->setCity($unitData['city'] ?? null);
             $unit->setUnitNumber($unitData['unitNumber'] ?? null);
             $unit->setLandRegister($unitData['landRegister'] ?? null);
             $unit->setLivingArea($unitData['livingArea'] ?? null);

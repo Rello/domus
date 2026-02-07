@@ -444,7 +444,7 @@
                     Domus.Api.deleteTenancy(id)
                         .then(() => {
                             Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: Domus.Role.getTenancyLabels().singular }), 'success');
-                            renderList();
+                            Domus.Router.back('tenancies');
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error'));
                 });

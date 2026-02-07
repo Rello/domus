@@ -9,6 +9,9 @@ class Unit extends Entity implements JsonSerializable {
     protected $userId;
     protected $propertyId;
     protected $label;
+    protected $street;
+    protected $zip;
+    protected $city;
     protected $unitNumber;
     protected $landRegister;
     protected $livingArea;
@@ -40,6 +43,9 @@ class Unit extends Entity implements JsonSerializable {
             'userId' => $this->userId,
             'propertyId' => $this->propertyId,
             'label' => $this->label,
+            'street' => $this->street,
+            'zip' => $this->zip,
+            'city' => $this->city,
             'unitNumber' => $this->unitNumber,
             'landRegister' => $this->landRegister,
             'livingArea' => $this->livingArea,

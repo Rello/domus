@@ -23,7 +23,7 @@ Built for teams who want the clarity of purpose-built property management withou
 - Distributions & Ledger: allocations, reports, and ledger-facing views.
 - Analytics & Reports: insights across occupancy, performance, and financials.
 - Settings: configuration and reference data.   ]]></description>
-    <version>0.3.3</version>
+    <version>0.4.0</version>
     <licence>agpl</licence>
     <author>Domus</author>
     <namespace>Domus</namespace>

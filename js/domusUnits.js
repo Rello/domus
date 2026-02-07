@@ -6,6 +6,72 @@
     Domus.Units = (function () {
         let rentabilityChartInstance = null;
         let kpiChartInstances = [];
+        const statisticsPaginationState = {};
+        const statisticsTablePageSize = 10;
+
+        function resetStatisticsPaginationState() {
+            Object.keys(statisticsPaginationState).forEach(key => {
+                delete statisticsPaginationState[key];
+            });
+        }
+
+        function getStatisticsPaginationWrapperId(paginationKey) {
+            const safeKey = String(paginationKey || '').replace(/[^a-zA-Z0-9-]/g, '-');
+            return 'domus-unit-statistics-' + safeKey;
+        }
+
+        function bindStatisticsPagination(root = document) {
+            const container = root || document;
+            container.querySelectorAll('[data-domus-stat-pagination]').forEach(wrapper => {
+                const paginationKey = wrapper.getAttribute('data-domus-stat-pagination');
+                if (!paginationKey || !statisticsPaginationState[paginationKey]) {
+                    return;
+                }
+                const state = statisticsPaginationState[paginationKey];
+                Domus.UI.bindPagination(wrapper, {
+                    currentPage: state.currentPage || 1,
+                    onPageChange: nextPage => {
+                        renderStatisticsTablePage(paginationKey, nextPage);
+                    }
+                });
+            });
+        }
+
+        function resetStatisticsPaginationForContainer(container) {
+            if (!container) {
+                return;
+            }
+            container.querySelectorAll('[data-domus-stat-pagination]').forEach(wrapper => {
+                const paginationKey = wrapper.getAttribute('data-domus-stat-pagination');
+                if (!paginationKey || !statisticsPaginationState[paginationKey]) {
+                    return;
+                }
+                statisticsPaginationState[paginationKey].currentPage = 1;
+            });
+        }
+
+        function renderStatisticsTablePage(paginationKey, page) {
+            const state = statisticsPaginationState[paginationKey];
+            if (!state) {
+                return;
+            }
+            const wrapper = document.getElementById(getStatisticsPaginationWrapperId(paginationKey));
+            if (!wrapper) {
+                return;
+            }
+            const markup = renderStatisticsTable(state.statistics, {
+                ...state.options,
+                page: page,
+                wrapPanel: false
+            });
+            wrapper.outerHTML = markup;
+            Domus.UI.bindRowNavigation();
+            bindStatisticsPagination();
+            const nextState = statisticsPaginationState[paginationKey];
+            if (nextState && typeof nextState.options?.onPageRender === 'function') {
+                nextState.options.onPageRender();
+            }
+        }
 
         function formatPartnerNames(partners) {
             return (partners || [])
@@ -356,6 +422,7 @@
             if (!detailArea) {
                 return;
             }
+            const routeId = options.routeId ? String(options.routeId) : '';
 
             const openTarget = (target, forceOpen = false) => {
                 const content = target ? detailMap[target] : null;
@@ -368,11 +435,21 @@
                     detailArea.setAttribute('hidden', '');
                     detailArea.dataset.kpiTarget = '';
                     detailArea.innerHTML = '';
+                    Domus.state.unitDetailTarget = '';
+                    if (routeId && Domus.state.currentView === 'unitDetail') {
+                        Domus.Router.setCurrentArgs([routeId], {replaceHash: true});
+                    }
                     return;
                 }
                 detailArea.innerHTML = content;
+                resetStatisticsPaginationForContainer(detailArea);
                 detailArea.removeAttribute('hidden');
                 detailArea.dataset.kpiTarget = target;
+                Domus.state.unitDetailTarget = target || '';
+                if (routeId && Domus.state.currentView === 'unitDetail') {
+                    const routeArgs = target ? [routeId, target] : [routeId];
+                    Domus.Router.setCurrentArgs(routeArgs, {replaceHash: true});
+                }
                 Domus.UI.bindRowNavigation();
                 if (typeof onRender === 'function') {
                     onRender(target);
@@ -398,6 +475,8 @@
         }
 
         function renderList() {
+            Domus.state.selectedUnitId = null;
+            Domus.state.unitDetailTarget = '';
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', {entity: t('domus', 'Units')}));
             Domus.Api.getUnitsStatisticsOverview()
                 .then(statistics => {
@@ -502,8 +581,34 @@
             if (yearColumn && options.sortByYear !== false) {
                 sortedRows.sort((a, b) => (parseInt(b[yearColumn.key], 10) || 0) - (parseInt(a[yearColumn.key], 10) || 0));
             }
+            const paginationEnabled = options.pagination === true && !!options.paginationKey;
+            const paginationKey = paginationEnabled ? String(options.paginationKey) : '';
+            const pageSize = Math.max(1, parseInt(options.pageSize, 10) || statisticsTablePageSize);
+            const requestedPage = parseInt(options.page, 10);
+            const currentPage = Number.isNaN(requestedPage)
+                ? (statisticsPaginationState[paginationKey]?.currentPage || 1)
+                : requestedPage;
+            const pageInfo = paginationEnabled
+                ? Domus.UI.paginateArray(sortedRows, currentPage, pageSize)
+                : null;
+            const visibleRows = pageInfo ? pageInfo.items : sortedRows;
 
-            const rows = sortedRows.map(row => {
+            if (paginationEnabled) {
+                const stateOptions = {
+                    ...options,
+                    pagination: true,
+                    paginationKey,
+                    pageSize
+                };
+                delete stateOptions.page;
+                statisticsPaginationState[paginationKey] = {
+                    statistics,
+                    options: stateOptions,
+                    currentPage: pageInfo.page
+                };
+            }
+
+            const rows = visibleRows.map(row => {
                 const cells = columnMeta.map((col, index) => {
                     const value = row[col.key];
                     const formatted = formatStatValue(value, col.format, col.unit);
@@ -541,6 +646,20 @@
 
             const totalsHtml = buildStatisticsTotals(columnMeta, rowsData, options.totals || []);
             const tableHtml = Domus.UI.buildTable(headers, rows, {wrapPanel: false});
+            if (paginationEnabled) {
+                const paginationHtml = Domus.UI.buildPagination(pageInfo, {pageSize});
+                const wrapperId = getStatisticsPaginationWrapperId(paginationKey);
+                const content = '<div class="domus-unit-statistics-table" id="' + Domus.Utils.escapeHtml(wrapperId) + '"' +
+                    ' data-domus-stat-pagination="' + Domus.Utils.escapeHtml(paginationKey) + '">' +
+                    tableHtml +
+                    paginationHtml +
+                    totalsHtml +
+                    '</div>';
+                if (!wrapPanel) {
+                    return content;
+                }
+                return '<div class="domus-panel domus-panel-table">' + content + '</div>';
+            }
             if (!wrapPanel) {
                 return tableHtml + totalsHtml;
             }
@@ -951,6 +1070,9 @@
             addField(unit?.unitNumber);
             addField(unit?.unitType);
             if (includeManagementExcludedFields) {
+                addField(unit?.street);
+                addField(unit?.zip);
+                addField(unit?.city);
                 addField(unit?.landRegister);
             }
             addField(unit?.livingArea);
@@ -994,6 +1116,15 @@
         }
 
         function renderDetail(id, initialTarget) {
+            resetStatisticsPaginationState();
+            const normalizedUnitId = id !== undefined && id !== null ? String(id) : '';
+            const normalizedInitialTarget = initialTarget ? String(initialTarget) : '';
+            Domus.state.selectedUnitId = normalizedUnitId;
+            Domus.state.unitDetailTarget = normalizedInitialTarget;
+            if (normalizedUnitId && Domus.state.currentView === 'unitDetail') {
+                const routeArgs = normalizedInitialTarget ? [normalizedUnitId, normalizedInitialTarget] : [normalizedUnitId];
+                Domus.Router.setCurrentArgs(routeArgs, {replaceHash: true});
+            }
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', {entity: t('domus', 'Unit')}));
             Domus.Api.get('/units/' + id)
                 .then(unit => {
@@ -1053,12 +1184,12 @@
                     const livingAreaLabel = unit.livingArea ? `${Domus.Utils.formatAmount(unit.livingArea)} m²` : '';
                     const kickerParts = [livingAreaLabel, unit.notes].filter(Boolean);
                     const kicker = kickerParts.length ? kickerParts.join(' | ') : '';
-                    const street = unit.street || unit.propertyStreet;
-                    const zip = unit.zip || unit.propertyZip;
-                    const city = unit.city || unit.propertyCity;
-                    const country = unit.country || unit.propertyCountry;
+                    const street = !isBuildingManagement ? (unit.street || unit.propertyStreet) : '';
+                    const zip = !isBuildingManagement ? (unit.zip || unit.propertyZip) : '';
+                    const city = !isBuildingManagement ? (unit.city || unit.propertyCity) : '';
+                    const country = !isBuildingManagement ? (unit.country || unit.propertyCountry) : '';
                     const addressParts = [];
-                    if (unit.address) {
+                    if (!isBuildingManagement && unit.address) {
                         addressParts.push(unit.address);
                     }
                     const cityLine = [zip, city].filter(Boolean).join(' ');
@@ -1066,7 +1197,7 @@
                         if (street) addressParts.push(street);
                         if (cityLine) addressParts.push(cityLine);
                         if (country) addressParts.push(country);
-                    } else if (unit.address) {
+                    } else if (!isBuildingManagement && unit.address) {
                         addressParts.push(unit.address);
                     }
                     const addressLine = addressParts.join(', ');
@@ -1208,6 +1339,10 @@
                             return year ? {'stat-year': year} : null;
                         },
                         wrapPanel: false,
+                        pagination: true,
+                        paginationKey: `unit-${id}-result`,
+                        pageSize: statisticsTablePageSize,
+                        onPageRender: () => bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled}),
                         ...bookingEmptyState
                     });
                     const costTable = statistics && statistics.cost
@@ -1217,6 +1352,10 @@
                             return year ? {'stat-year': year} : null;
                         },
                         wrapPanel: false,
+                        pagination: true,
+                        paginationKey: `unit-${id}-cost`,
+                        pageSize: statisticsTablePageSize,
+                        onPageRender: () => bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled}),
                         ...bookingEmptyState
                     })
                         : '';
@@ -1374,6 +1513,7 @@
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
+                    bindStatisticsPagination();
                     Domus.Bookings.bindInlineTables();
                     Domus.UI.bindActionMenus();
                     Domus.UI.bindCollapsibles();
@@ -1397,6 +1537,14 @@
                     if (useKpiLayout) {
                         renderKpiTileCharts(statistics);
                         const costDetailTable = renderStatisticsTable(statistics ? statistics.cost : null, {
+                            buildRowDataset: row => {
+                                const year = getStatisticsRowYear(row, statistics ? statistics.cost : null);
+                                return year ? {'stat-year': year} : null;
+                            },
+                            pagination: true,
+                            paginationKey: `unit-${id}-cost`,
+                            pageSize: statisticsTablePageSize,
+                            onPageRender: () => bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled}),
                             ...bookingEmptyState
                         });
                         const detailMap = {
@@ -1454,10 +1602,12 @@
                             if (target === 'documents') {
                                 Domus.Documents.loadLatestList('unit', id, {pageSize: 10});
                             }
+                            bindStatisticsPagination();
                             bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled});
                             Domus.Bookings.bindInlineTables();
                         }, {
-                            initialTarget: initialTarget
+                            initialTarget: initialTarget,
+                            routeId: normalizedUnitId
                         });
                     } else if (showRentabilityPanels) {
                         renderRentabilityChart(isLandlord ? statistics : null);
@@ -1496,7 +1646,7 @@
                         Domus.Api.deleteUnit(id)
                             .then(() => {
                                 Domus.UI.showNotification(t('domus', '{entity} deleted.', {entity: t('domus', 'Unit')}), 'success');
-                                renderList();
+                                Domus.Router.back('units');
                             })
                             .catch(err => Domus.UI.showNotification(err.message, 'error'));
                     }))
@@ -2071,7 +2221,12 @@
             );
 
             if (includeManagementExcludedFields) {
-                rows.push(inputField('landRegister', t('domus', 'Land register'), unit?.landRegister || ''));
+                rows.push(
+                    inputField('street', t('domus', 'Street'), unit?.street || ''),
+                    inputField('zip', t('domus', 'ZIP'), unit?.zip || ''),
+                    inputField('city', t('domus', 'City'), unit?.city || ''),
+                    inputField('landRegister', t('domus', 'Land register'), unit?.landRegister || '')
+                );
             }
 
             rows.push(

@@ -41,6 +41,9 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
             $table->addColumn('property_id', 'bigint', ['notnull' => false]);
             $table->addColumn('label', 'string', ['notnull' => true, 'length' => 190]);
+            $table->addColumn('street', 'string', ['length' => 190, 'notnull' => false]);
+            $table->addColumn('zip', 'string', ['length' => 32, 'notnull' => false]);
+            $table->addColumn('city', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('unit_number', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('land_register', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('living_area', 'string', ['length' => 32, 'notnull' => false]);

@@ -301,7 +301,7 @@
                             Domus.Api.deleteProperty(id)
                                 .then(() => {
                                     Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Property') }), 'success');
-                                    renderList();
+                                    Domus.Router.back('properties');
                                 })
                                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
                         }))

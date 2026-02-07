@@ -407,7 +407,7 @@
                     Domus.Api.deletePartner(id)
                         .then(() => {
                             Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Partner') }), 'success');
-                            renderList();
+                            Domus.Router.back('partners');
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error'));
                 });

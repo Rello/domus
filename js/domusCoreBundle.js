@@ -11,11 +11,14 @@
         currentRoleView: 'landlord',
         availableRoles: [],
         currentView: null,
+        currentViewArgs: [],
+        navigationHistory: [],
         currentYear: (new Date()).getFullYear(),
         selectedPropertyId: null,
         selectedUnitId: null,
         selectedPartnerId: null,
-        selectedTenancyId: null
+        selectedTenancyId: null,
+        unitDetailTarget: ''
     };
 
     /**
@@ -1547,11 +1550,7 @@
                     const target = this.getAttribute('data-back');
                     const argsRaw = this.getAttribute('data-back-args') || '';
                     const args = argsRaw ? argsRaw.split(',').filter(Boolean) : [];
-                    if (window.history.length > 1) {
-                        window.history.back();
-                        return;
-                    }
-                    Domus.Router.navigate(target, args);
+                    Domus.Router.back(target, args);
                 });
             });
         }
@@ -1601,23 +1600,104 @@
     Domus.Router = (function() {
         const routes = {};
         let skipNextHashChange = false;
+        const maxHistoryEntries = 50;
+
+        function normalizeArgs(args) {
+            return (args || [])
+                .filter(arg => arg !== undefined && arg !== null)
+                .map(arg => String(arg));
+        }
+
+        function areArgsEqual(first = [], second = []) {
+            if (first.length !== second.length) {
+                return false;
+            }
+            for (let i = 0; i < first.length; i += 1) {
+                if (String(first[i]) !== String(second[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function areArgsCompatible(fullArgs = [], partialArgs = []) {
+            if (fullArgs.length < partialArgs.length) {
+                return false;
+            }
+            for (let i = 0; i < partialArgs.length; i += 1) {
+                if (String(fullArgs[i]) !== String(partialArgs[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function getCurrentArgsSnapshot() {
+            const activeView = Domus.state.currentView;
+            if (activeView === 'unitDetail') {
+                const unitId = Domus.state.selectedUnitId || Domus.state.currentViewArgs?.[0];
+                if (!unitId) {
+                    return [];
+                }
+                const args = [String(unitId)];
+                if (Domus.state.unitDetailTarget) {
+                    args.push(String(Domus.state.unitDetailTarget));
+                }
+                return args;
+            }
+            return normalizeArgs(Domus.state.currentViewArgs);
+        }
+
+        function pushHistoryEntry(name, args) {
+            if (!name) {
+                return;
+            }
+            const entry = { name, args: normalizeArgs(args) };
+            const history = Domus.state.navigationHistory || [];
+            const lastEntry = history[history.length - 1];
+            if (lastEntry && lastEntry.name === entry.name && areArgsEqual(lastEntry.args, entry.args)) {
+                return;
+            }
+            history.push(entry);
+            if (history.length > maxHistoryEntries) {
+                history.shift();
+            }
+            Domus.state.navigationHistory = history;
+        }
+
+        function updateCurrentRouteState(name, args) {
+            Domus.state.currentView = name;
+            Domus.state.currentViewArgs = normalizeArgs(args);
+        }
 
         function register(name, handler) {
             routes[name] = handler;
         }
 
-        function navigate(name, args) {
-            Domus.state.currentView = name;
-            if (routes[name]) {
-                routes[name].apply(null, args || []);
+        function navigate(name, args, options = {}) {
+            const normalizedArgs = normalizeArgs(args);
+            const currentView = Domus.state.currentView;
+            const currentArgs = getCurrentArgsSnapshot();
+            const isSameRoute = currentView === name && areArgsEqual(currentArgs, normalizedArgs);
+            if (!options.skipHistory && currentView && !isSameRoute) {
+                pushHistoryEntry(currentView, currentArgs);
             }
-            skipNextHashChange = updateHash(name, args);
+            updateCurrentRouteState(name, normalizedArgs);
+            if (routes[name]) {
+                routes[name].apply(null, normalizedArgs);
+            }
+            skipNextHashChange = updateHash(name, normalizedArgs, options.replaceHash === true);
             Domus.Navigation.render();
         }
 
-        function updateHash(name, args) {
+        function updateHash(name, args, replace = false) {
             const hash = '#/' + name + (args && args.length ? '/' + args.join('/') : '');
             if (window.location.hash !== hash) {
+                if (replace && window.history?.replaceState) {
+                    const baseUrl = window.location.href.split('#')[0];
+                    window.history.replaceState(null, '', baseUrl + hash);
+                    return false;
+                }
                 window.location.hash = hash;
                 return true;
             }
@@ -1638,24 +1718,61 @@
             }
             const parsed = parseHash();
             if (parsed && routes[parsed.name]) {
-                Domus.state.currentView = parsed.name;
-                routes[parsed.name].apply(null, parsed.args);
+                const parsedArgs = normalizeArgs(parsed.args);
+                const history = Domus.state.navigationHistory || [];
+                const previousEntry = history[history.length - 1];
+                let effectiveArgs = parsedArgs;
+                if (previousEntry?.name === parsed.name && areArgsCompatible(previousEntry.args, parsedArgs)) {
+                    history.pop();
+                    Domus.state.navigationHistory = history;
+                    effectiveArgs = previousEntry.args;
+                }
+                updateCurrentRouteState(parsed.name, effectiveArgs);
+                routes[parsed.name].apply(null, effectiveArgs);
                 Domus.Navigation.render();
             }
         });
 
+        function back(fallbackName, fallbackArgs = []) {
+            const history = Domus.state.navigationHistory || [];
+            const previousEntry = history.pop();
+            Domus.state.navigationHistory = history;
+            if (previousEntry?.name && routes[previousEntry.name]) {
+                navigate(previousEntry.name, previousEntry.args, { skipHistory: true, replaceHash: true });
+                return true;
+            }
+            if (fallbackName && routes[fallbackName]) {
+                navigate(fallbackName, fallbackArgs, { skipHistory: true, replaceHash: true });
+                return true;
+            }
+            return false;
+        }
+
+        function setCurrentArgs(args, options = {}) {
+            if (!Domus.state.currentView) {
+                return;
+            }
+            const normalizedArgs = normalizeArgs(args);
+            Domus.state.currentViewArgs = normalizedArgs;
+            const shouldSkipHashChange = updateHash(Domus.state.currentView, normalizedArgs, options.replaceHash === true);
+            if (shouldSkipHashChange) {
+                skipNextHashChange = true;
+            }
+        }
+
         function navigateFromHash() {
             const parsed = parseHash();
             if (parsed && routes[parsed.name]) {
-                Domus.state.currentView = parsed.name;
-                routes[parsed.name].apply(null, parsed.args);
+                const parsedArgs = normalizeArgs(parsed.args);
+                updateCurrentRouteState(parsed.name, parsedArgs);
+                routes[parsed.name].apply(null, parsedArgs);
                 Domus.Navigation.render();
                 return true;
             }
             return false;
         }
 
-        return { register, navigate, navigateFromHash };
+        return { register, navigate, navigateFromHash, back, setCurrentArgs };
     })();
 
     /**

@@ -70,6 +70,9 @@ class UnitService {
         $unit->setUserId($userId);
         $unit->setPropertyId($propertyId !== null ? (int)$propertyId : null);
         $unit->setLabel($data['label'] ?? '');
+        $unit->setStreet($data['street'] ?? null);
+        $unit->setZip($data['zip'] ?? null);
+        $unit->setCity($data['city'] ?? null);
         $unit->setUnitNumber($data['unitNumber'] ?? null);
         $unit->setLandRegister($data['landRegister'] ?? null);
         $unit->setLivingArea($data['livingArea'] ?? null);
@@ -99,7 +102,7 @@ class UnitService {
             }
             $unit->setDocumentPath($documentPath);
         }
-        $fields = ['label', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes'];
+        $fields = ['label', 'street', 'zip', 'city', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
                 $setter = 'set' . ucfirst($field);

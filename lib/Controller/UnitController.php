@@ -50,6 +50,9 @@ class UnitController extends Controller {
 	#[NoAdminRequired]
         public function create(?int    $propertyId,
                                                    string  $label,
+                                                   ?string $street = null,
+                                                   ?string $zip = null,
+                                                   ?string $city = null,
                                                    ?string $unitNumber = null,
                                                    ?string $landRegister = null,
                                                    ?string $livingArea = null,
@@ -61,7 +64,7 @@ class UnitController extends Controller {
                                                    ?string $bic = null,
                                                    ?string $notes = null
         ): DataResponse {
-                $data = compact('propertyId', 'label', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes');
+                $data = compact('propertyId', 'label', 'street', 'zip', 'city', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes');
                 try {
                         $unit = $this->unitService->createUnit($data, $this->getUserId(), $this->getRole());
                         return new DataResponse($unit, Http::STATUS_CREATED);
@@ -76,6 +79,9 @@ class UnitController extends Controller {
 	public function update(int     $id,
 						   ?int    $propertyId = null,
 						   ?string $label = null,
+						   ?string $street = null,
+						   ?string $zip = null,
+						   ?string $city = null,
 						   ?string $unitNumber = null,
 						   ?string $landRegister = null,
 						   ?string $livingArea = null,
@@ -91,6 +97,9 @@ class UnitController extends Controller {
                 $data = array_filter([
                         'propertyId' => $propertyId,
                         'label' => $label,
+                        'street' => $street,
+                        'zip' => $zip,
+                        'city' => $city,
                         'unitNumber' => $unitNumber,
                         'landRegister' => $landRegister,
                         'livingArea' => $livingArea,
