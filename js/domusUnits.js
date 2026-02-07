@@ -2035,8 +2035,8 @@
                 const content = '<form id="domus-unit-import-form">' +
                     propertySelect +
                     '<div class="domus-form-row">' +
-                    '<label for="domus-unit-import-data">' + Domus.Utils.escapeHtml(t('domus', 'Paste export data')) + '</label>' +
-                    '<textarea id="domus-unit-import-data" rows="14" required></textarea>' +
+                    '<label for="domus-unit-import-file">' + Domus.Utils.escapeHtml(t('domus', 'Select file')) + '</label>' +
+                    '<input id="domus-unit-import-file" type="file" accept=".json,application/json" required />' +
                     '</div>' +
                     '<div class="domus-form-actions">' +
                     '<button type="button" id="domus-unit-import-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
@@ -2051,15 +2051,26 @@
                 const form = modalContext.modalEl.querySelector('#domus-unit-import-form');
                 const cancelBtn = modalContext.modalEl.querySelector('#domus-unit-import-cancel');
                 const submitBtn = modalContext.modalEl.querySelector('#domus-unit-import-submit');
-                const textArea = modalContext.modalEl.querySelector('#domus-unit-import-data');
+                const fileInput = modalContext.modalEl.querySelector('#domus-unit-import-file');
                 const propertySelectEl = modalContext.modalEl.querySelector('#domus-unit-import-property');
                 cancelBtn?.addEventListener('click', () => modalContext.close());
-                form?.addEventListener('submit', (event) => {
+                form?.addEventListener('submit', async (event) => {
                     event.preventDefault();
                     if (submitBtn) submitBtn.disabled = true;
+
+                    const selectedFile = fileInput?.files && fileInput.files.length > 0
+                        ? fileInput.files[0]
+                        : null;
+                    if (!selectedFile) {
+                        if (submitBtn) submitBtn.disabled = false;
+                        Domus.UI.showNotification(t('domus', 'No file selected'), 'error');
+                        return;
+                    }
+
                     let data;
                     try {
-                        data = JSON.parse(textArea ? textArea.value : '{}');
+                        const fileContent = await selectedFile.text();
+                        data = JSON.parse(fileContent);
                     } catch (error) {
                         if (submitBtn) submitBtn.disabled = false;
                         Domus.UI.showNotification(t('domus', 'Import data must be valid JSON.'), 'error');
