@@ -98,10 +98,15 @@ class UnitTransferService {
             $workflowRunsPayload[] = $runData;
         }
 
+        $unitPayload = $unit->jsonSerialize();
+        $unitPayload['street'] = $this->normalizeOptionalText($unitPayload['street'] ?? null);
+        $unitPayload['zip'] = $this->normalizeOptionalText($unitPayload['zip'] ?? null);
+        $unitPayload['city'] = $this->normalizeOptionalText($unitPayload['city'] ?? null);
+
         return [
             'version' => 1,
             'exportedAt' => time(),
-            'unit' => $unit->jsonSerialize(),
+            'unit' => $unitPayload,
             'tenancies' => array_map(fn(Tenancy $tenancy) => $tenancy->jsonSerialize(), $tenancies),
             'partners' => array_map(fn(Partner $partner) => $partner->jsonSerialize(), $partners),
             'partnerRelations' => array_map(fn(PartnerRel $relation) => $relation->jsonSerialize(), $partnerRelations),
@@ -142,9 +147,9 @@ class UnitTransferService {
             $unit->setUserId($userId);
             $unit->setPropertyId($propertyId);
             $unit->setLabel($label);
-            $unit->setStreet($unitData['street'] ?? null);
-            $unit->setZip($unitData['zip'] ?? null);
-            $unit->setCity($unitData['city'] ?? null);
+            $unit->setStreet($this->normalizeOptionalText($unitData['street'] ?? null));
+            $unit->setZip($this->normalizeOptionalText($unitData['zip'] ?? null));
+            $unit->setCity($this->normalizeOptionalText($unitData['city'] ?? null));
             $unit->setUnitNumber($unitData['unitNumber'] ?? null);
             $unit->setLandRegister($unitData['landRegister'] ?? null);
             $unit->setLivingArea($unitData['livingArea'] ?? null);
@@ -511,5 +516,13 @@ class UnitTransferService {
         if (!in_array($message, $warnings, true)) {
             $warnings[] = $message;
         }
+    }
+
+    private function normalizeOptionalText(mixed $value): ?string {
+        if ($value === null) {
+            return null;
+        }
+        $text = trim((string)$value);
+        return $text === '' ? null : $text;
     }
 }
