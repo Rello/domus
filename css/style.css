@@ -1585,6 +1585,38 @@ body {
     margin-top: auto;
     margin-bottom: 0;
     align-self: center;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.domus-kpi-value .domus-partner-list {
+    display: block;
+    width: 100%;
+    min-width: 0;
+}
+
+.domus-kpi-value .domus-partner-contact {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    width: 100%;
+}
+
+.domus-kpi-value .domus-partner-name {
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    word-break: normal;
+    font-size: 25px;
+    line-height: 1;
+}
+
+.domus-kpi-value .domus-partner-actions {
+    display: inline-flex;
+    align-items: center;
 }
 
 .domus-kpi-documents {
@@ -1697,7 +1729,7 @@ body {
 }
 
 .domus-kpi-chart-inner {
-    height: 70px;
+    height: 50px;
     width: 100%;
     display: flex;
     align-items: center;
@@ -1909,15 +1941,27 @@ body {
 }
 
 .domus-partner-contact {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    min-width: 0;
+    width: 100%;
 }
 
 .domus-partner-actions {
     display: inline-flex;
     align-items: center;
+    flex: 0 0 auto;
+}
+
+.domus-partner-name {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .domus-partner-phone {

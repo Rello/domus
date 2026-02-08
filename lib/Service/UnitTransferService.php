@@ -45,6 +45,7 @@ class UnitTransferService {
         private TaskTemplateStepMapper $taskTemplateStepMapper,
         private AccountMapper $accountMapper,
         private PermissionService $permissionService,
+        private DocumentPathService $documentPathService,
         private IDBConnection $connection,
         private IL10N $l10n,
     ) {
@@ -124,8 +125,13 @@ class UnitTransferService {
         }
 
         $propertyId = $propertyId ?: null;
-        if ($propertyId !== null && !$this->propertyMapper->findForUser($propertyId, $userId)) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+        $propertyName = null;
+        if ($propertyId !== null) {
+            $property = $this->propertyMapper->findForUser($propertyId, $userId);
+            if (!$property) {
+                throw new \RuntimeException($this->l10n->t('Property not found.'));
+            }
+            $propertyName = $property->getName();
         }
         $this->permissionService->assertPropertyRequirement($role, $propertyId);
 
@@ -160,6 +166,7 @@ class UnitTransferService {
             $unit->setIban($unitData['iban'] ?? null);
             $unit->setBic($unitData['bic'] ?? null);
             $unit->setNotes($unitData['notes'] ?? null);
+            $unit->setDocumentPath($this->documentPathService->buildUnitPath($unit->getLabel(), $unit->getUnitNumber(), $propertyName));
             $unit->setCreatedAt($this->normalizeTimestamp($unitData['createdAt'] ?? null, $now));
             $unit->setUpdatedAt($this->normalizeTimestamp($unitData['updatedAt'] ?? null, $now));
             $unit = $this->unitMapper->insert($unit);

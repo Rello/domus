@@ -7,10 +7,7 @@
         function formatAccount(booking) {
             const nr = booking.account || '';
             const label = Domus.Accounts.label(nr);
-            if (!nr) {
-                return '';
-            }
-            return label ? `${nr} – ${label}` : nr;
+            return label || '';
         }
 
         function buildDocumentIndicator(booking) {

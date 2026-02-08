@@ -6,6 +6,8 @@
     Domus.Units = (function () {
         let rentabilityChartInstance = null;
         let kpiChartInstances = [];
+        let kpiPartnerNameFitRafId = null;
+        let kpiPartnerNameResizeBound = false;
         const statisticsPaginationState = {};
         const statisticsTablePageSize = 10;
 
@@ -409,6 +411,54 @@
             renderKpiLineChart('domus-kpi-rentability-chart', series.labels, series.rentability);
             renderKpiLineChart('domus-kpi-cold-rent-chart', series.labels, series.coldRent, {
                 color: getComputedStyle(document.documentElement).getPropertyValue('--color-warning').trim() || '#f6b02e'
+            });
+        }
+
+        function fitKpiPartnerNames() {
+            const defaultFontSize = 25;
+            const minFontSize = 14;
+            const names = document.querySelectorAll('.domus-kpi-value .domus-partner-name');
+            names.forEach(nameEl => {
+                nameEl.style.fontSize = `${defaultFontSize}px`;
+                nameEl.style.whiteSpace = 'nowrap';
+                nameEl.style.wordBreak = 'normal';
+                nameEl.style.overflowWrap = 'normal';
+                const availableWidth = nameEl.clientWidth;
+                if (!availableWidth) {
+                    return;
+                }
+                let fontSize = defaultFontSize;
+                while (fontSize > minFontSize && nameEl.scrollWidth > availableWidth) {
+                    fontSize -= 1;
+                    nameEl.style.fontSize = `${fontSize}px`;
+                }
+                if (nameEl.scrollWidth > availableWidth) {
+                    nameEl.style.whiteSpace = 'normal';
+                    nameEl.style.wordBreak = 'break-word';
+                    nameEl.style.overflowWrap = 'anywhere';
+                }
+            });
+        }
+
+        function scheduleKpiPartnerNameFit() {
+            if (kpiPartnerNameFitRafId !== null) {
+                cancelAnimationFrame(kpiPartnerNameFitRafId);
+            }
+            kpiPartnerNameFitRafId = requestAnimationFrame(() => {
+                kpiPartnerNameFitRafId = null;
+                fitKpiPartnerNames();
+            });
+        }
+
+        function bindKpiPartnerNameFitResize() {
+            if (kpiPartnerNameResizeBound) {
+                return;
+            }
+            kpiPartnerNameResizeBound = true;
+            window.addEventListener('resize', () => {
+                if (Domus.state.currentView === 'unitDetail') {
+                    scheduleKpiPartnerNameFit();
+                }
             });
         }
 
@@ -1535,6 +1585,8 @@
                         });
                     }
                     if (useKpiLayout) {
+                        bindKpiPartnerNameFitResize();
+                        scheduleKpiPartnerNameFit();
                         renderKpiTileCharts(statistics);
                         const costDetailTable = renderStatisticsTable(statistics ? statistics.cost : null, {
                             buildRowDataset: row => {
