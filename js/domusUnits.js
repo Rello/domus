@@ -1841,45 +1841,27 @@
             Domus.Api.exportUnitDataset(unitId)
                 .then(payload => {
                     const json = JSON.stringify(payload, null, 2);
-                    const content = '<div class="domus-form-row">' +
-                        '<label for="domus-unit-export-data">' + Domus.Utils.escapeHtml(t('domus', 'Export data')) + '</label>' +
-                        '<textarea id="domus-unit-export-data" rows="14" readonly></textarea>' +
-                        '<p class="muted">' + Domus.Utils.escapeHtml(t('domus', 'Documents are not included.')) + '</p>' +
-                        '</div>' +
-                        '<div class="domus-form-actions">' +
-                        '<button type="button" class="secondary" id="domus-unit-export-copy">' + Domus.Utils.escapeHtml(t('domus', 'Copy')) + '</button>' +
-                        '<button type="button" id="domus-unit-export-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button>' +
-                        '</div>';
-                    const modalContext = Domus.UI.openModal({
-                        title: t('domus', 'Export unit data'),
-                        content,
-                        size: 'large'
-                    });
-                    const textarea = modalContext.modalEl.querySelector('#domus-unit-export-data');
-                    const copyBtn = modalContext.modalEl.querySelector('#domus-unit-export-copy');
-                    const closeBtn = modalContext.modalEl.querySelector('#domus-unit-export-close');
-                    if (textarea) {
-                        textarea.value = json;
-                    }
-                    if (copyBtn) {
-                        copyBtn.addEventListener('click', () => {
-                            const text = textarea ? textarea.value : json;
-                            if (navigator.clipboard && navigator.clipboard.writeText) {
-                                navigator.clipboard.writeText(text).then(() => {
-                                    Domus.UI.showNotification(t('domus', 'Export data copied to clipboard.'), 'success');
-                                });
-                                return;
-                            }
-                            if (textarea) {
-                                textarea.select();
-                                document.execCommand('copy');
-                                Domus.UI.showNotification(t('domus', 'Export data copied to clipboard.'), 'success');
-                            }
-                        });
-                    }
-                    if (closeBtn) {
-                        closeBtn.addEventListener('click', () => modalContext.close());
-                    }
+                    const exportDate = payload?.exportedAt
+                        ? new Date(payload.exportedAt * 1000)
+                        : new Date();
+                    const dateLabel = Number.isNaN(exportDate.getTime())
+                        ? new Date().toISOString().slice(0, 10)
+                        : exportDate.toISOString().slice(0, 10);
+                    const unitLabel = (payload?.unit?.label || '').toString().toLowerCase()
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/(^-+|-+$)/g, '');
+                    const filename = 'domus-unit-' + (unitLabel || String(unitId)) + '-' + dateLabel + '.json';
+
+                    const blob = new Blob([json], {type: 'application/json;charset=utf-8;'});
+                    const downloadUrl = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(downloadUrl);
+                    Domus.UI.showNotification(t('domus', 'Documents are not included.'), 'info');
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
