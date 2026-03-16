@@ -119,10 +119,12 @@ class ServiceChargeSettlementService {
         );
 
         $links = $creation['links'];
+        $reportPath = $this->toViewerPath($userId, (string)($creation['filePath'] ?? ''));
 
         return [
             'entry' => $entry,
             'documents' => $links,
+            'reportPath' => $reportPath,
         ];
     }
 
@@ -218,6 +220,18 @@ class ServiceChargeSettlementService {
 		$lines[] = sprintf('| **%s** | **%.2f €** |', $title, abs($saldo));
 
         return implode("\n", $lines) . "\n";
+    }
+
+    private function toViewerPath(string $userId, string $filePath): string {
+        if ($filePath === '') {
+            return '';
+        }
+        $userPrefix = '/' . trim($userId, '/') . '/files';
+        if (str_starts_with($filePath, $userPrefix)) {
+            $relative = substr($filePath, strlen($userPrefix));
+            return $relative !== '' ? $relative : '/';
+        }
+        return $filePath;
     }
 
 }

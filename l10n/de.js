@@ -158,6 +158,7 @@ OC.L10N.register(
         "Document removed.": "Dokument entfernt.",
         "Document uploaded.": "Dokument hochgeladen.",
         "Documents": "Dokumente",
+        "Domus": "Domus",
         "Documents are not included.": "Dokumente sind nicht enthalten.",
         "Latest documents": "Neueste Dokumente",
         "Download": "Herunterladen",

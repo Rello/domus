@@ -2097,9 +2097,6 @@
         };
     })();
 
-    /**
-     * Distribution helper
-     */
     Domus.App = (function() {
         function init() {
             // In real-world scenario, fetch role info from backend. Here we seed demo roles.

@@ -1,0 +1,43 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none"
+     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="House drawing animation">
+    <defs>
+        <style>
+            .stroke {
+            stroke: #4B5E53;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+
+            stroke-dasharray: var(--len, 367);
+            stroke-dashoffset: var(--len, 367);
+            animation: draw 2s ease-out forwards; /* runs once */
+            }
+            @keyframes draw { to { stroke-dashoffset: 0; } }
+        </style>
+    </defs>
+
+    <!-- One continuous stroke: roof peak -> left roof -> left wall -> base -> right wall -> right roof -> peak -->
+    <path id="p" class="stroke"
+          d="M20 54
+          L108 54
+          L64 18
+          L20 54
+          L20 108
+          L108 108
+          L108 85" />
+    <script><![CDATA[
+    (function () {
+      const p = document.getElementById('p');
+      if (!p) return;
+
+      const len = Math.ceil(p.getTotalLength());
+      p.style.setProperty('--len', len);
+      p.style.strokeDasharray = len;
+      p.style.strokeDashoffset = len;
+
+      // kick reflow to ensure first frame is hidden
+      p.getBoundingClientRect();
+    })();
+  ]]></script>
+</svg>

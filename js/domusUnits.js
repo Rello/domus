@@ -2340,6 +2340,7 @@
             let availableYears = [];
             let isLoadingYears = false;
             let createdReportDocument = null;
+            let createdReportPath = '';
             const steps = [
                 { label: t('domus', 'Select year') },
                 { label: t('domus', 'Preview') },
@@ -2547,6 +2548,9 @@
             function renderResultStep() {
                 const reportUrl = createdReportDocument?.fileUrl || '';
                 const reportLabel = createdReportDocument?.fileName || t('domus', 'Open link');
+                const previewMarkup = createdReportPath
+                    ? '<button type="button" id="domus-settlement-preview">' + Domus.Utils.escapeHtml(t('domus', 'Preview')) + '</button>'
+                    : '';
                 const linkMarkup = reportUrl
                     ? '<a class="domus-link" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(reportUrl) + '">' +
                     Domus.Utils.escapeHtml(t('domus', 'Open link')) + '</a>'
@@ -2556,7 +2560,7 @@
                 ]);
 
                 return '<div class="domus-form">' + info +
-                    '<div class="domus-form-actions">' + linkMarkup + '</div>' +
+                    '<div class="domus-form-actions">' + previewMarkup + linkMarkup + '</div>' +
                     '</div>' +
                     '<div class="domus-modal-footer">' +
                     '<button id="domus-settlement-close" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button>' +
@@ -2610,6 +2614,17 @@
                 }
 
                 if (currentStep === 3) {
+                    container.querySelector('#domus-settlement-preview')?.addEventListener('click', () => {
+                        if (!createdReportPath || !window?.OCA?.Viewer || typeof window.OCA.Viewer.open !== 'function') {
+                            Domus.UI.showNotification(t('domus', 'An error occurred'), 'error');
+                            return;
+                        }
+                        try {
+                            window.OCA.Viewer.open({ path: createdReportPath });
+                        } catch (error) {
+                            Domus.UI.showNotification(t('domus', 'An error occurred'), 'error');
+                        }
+                    });
                     container.querySelector('#domus-settlement-close')?.addEventListener('click', modal.close);
                     return;
                 }
@@ -2630,7 +2645,8 @@
                         Domus.Api.createUnitSettlementReport(unitId, {year: selectedYear, partnerId: selected.partnerId})
                             .then(result => {
                                 const createdDocuments = Array.isArray(result?.documents) ? result.documents : [];
-                                createdReportDocument = createdDocuments.find(document => !!document?.fileUrl) || null;
+                                createdReportDocument = createdDocuments.find(document => document?.fileId || document?.fileUrl) || null;
+                                createdReportPath = result?.reportPath || '';
                                 Domus.UI.showNotification(t('domus', '{entity} created.', {entity: t('domus', 'Report')}), 'success');
                                 onComplete?.();
                                 currentStep = 3;
