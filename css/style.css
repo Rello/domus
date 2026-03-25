@@ -4,7 +4,9 @@
     --domus-kpi-tile-background: #ffffff;
     --domus-kpi-detail-background: #ffffff;
     --domus-nextcloud-body-background: #0f6b2f;
-    --domus-table-heaer-background: #f2f6f4;
+    --domus-table-header-color: #7b8794;
+    --domus-table-separator-color: #e5e7eb;
+    --domus-table-row-hover-background: #f2f6f4;
     --domus-border-width: 0px;
     --domus-border-style: solid;
     --domus-border-color: var(--color-border);
@@ -322,20 +324,23 @@ body {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 12px;
+    font-size: 0.94rem;
 }
 
 .domus-table th,
 .domus-table td {
-    padding: 10px;
-    border-bottom: var(--domus-border);
+    padding: 14px 10px;
+    border-bottom: 1px solid var(--domus-table-separator-color);
     text-align: left;
     word-break: break-word;
     overflow-wrap: anywhere;
+    background: transparent;
 }
 
 .domus-table th {
-    /*font-weight: 600;*/
-    background-color: var(--domus-table-heaer-background);
+    color: var(--domus-table-header-color);
+    font-weight: 500;
+    letter-spacing: 0.01em;
 }
 
 .domus-table th.domus-cell-number,
@@ -358,20 +363,16 @@ body {
     /*background-color: var(--color-background-dark);*/
 }
 
-.domus-table tr[data-navigate]:hover {
-    background-color: #f8f8f8;
+.domus-table tbody tr:hover {
+    background: var(--domus-table-row-hover-background);
 }
 
 .domus-table tr[data-stat-year] {
     cursor: pointer;
 }
 
-.domus-table tr[data-stat-year]:hover {
-    background-color: #f8f8f8;
-}
-
 .domus-table tr.domus-stat-year-selected {
-    background: var(--color-background-hover);
+    background: transparent;
 }
 
 .domus-pagination {
