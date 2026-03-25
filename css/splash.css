@@ -1,0 +1,120 @@
+#app-content.has-splash {
+    position: relative;
+}
+
+.app-splash-screen {
+    --splash-draw-ms: 2000ms;
+    --splash-reveal-ms: 2000ms;
+    --splash-hold-ms: 2000ms;
+    --splash-fade-ms: 320ms;
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 20% 20%, #f4f8f6 0%, #e2e8f0 65%, #d8e0db 100%);
+    opacity: 1;
+}
+
+.app-splash-screen.is-running {
+    animation: splashHide var(--splash-fade-ms) ease calc(var(--splash-draw-ms) + var(--splash-reveal-ms) + var(--splash-hold-ms)) forwards;
+}
+
+.app-splash-content {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+}
+
+.app-splash-screen.is-running .app-splash-content {
+    animation: splashGroupExpand var(--splash-reveal-ms) ease var(--splash-draw-ms) forwards;
+}
+
+.app-splash-logo {
+    width: 128px;
+    height: 128px;
+    display: block;
+    background-image: url('../img/logo.svg');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+.app-splash-name {
+    color: #4B5E53;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(8px);
+}
+
+.app-splash-screen.is-running .app-splash-name {
+    animation: splashNameReveal var(--splash-reveal-ms) ease var(--splash-draw-ms) forwards;
+}
+
+@keyframes splashNameReveal {
+    to {
+        max-width: 520px;
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes splashGroupExpand {
+    to {
+        gap: 20px;
+    }
+}
+
+@keyframes splashHide {
+    to {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .app-splash-logo {
+        width: 108px;
+        height: 108px;
+    }
+
+    .app-splash-name {
+        font-size: 24px;
+        letter-spacing: 0.06em;
+    }
+
+    @keyframes splashNameReveal {
+        to {
+            max-width: 340px;
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-splash-screen {
+        --splash-draw-ms: 100ms;
+        --splash-reveal-ms: 1ms;
+        --splash-hold-ms: 600ms;
+        --splash-fade-ms: 1ms;
+    }
+
+    .app-splash-content {
+        gap: 20px;
+    }
+
+    .app-splash-name {
+        max-width: 520px;
+        transform: none;
+    }
+}
