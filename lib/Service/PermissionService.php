@@ -29,6 +29,10 @@ class PermissionService {
         return $role === self::ROLE_BUILDING_MGMT;
     }
 
+    public function isLandlord(string $role): bool {
+        return $role === self::ROLE_LANDLORD;
+    }
+
     public function assertPropertyRequirement(string $role, ?int $propertyId): void {
         if ($this->isBuildingManagement($role) && ($propertyId === null || $propertyId === 0)) {
             throw new \InvalidArgumentException($this->l10n->t('Property is required for building management.'));

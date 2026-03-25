@@ -24,6 +24,7 @@ class DashboardService {
 
     public function getSummary(string $userId, int $year, string $role = 'landlord'): array {
         $isBuildingManagement = $this->permissionService->isBuildingManagement($role);
+        $isLandlord = $this->permissionService->isLandlord($role);
         $properties = $this->propertyMapper->findByUser($userId);
         $propertyIds = array_map(fn($property) => $property->getId(), $properties);
 
@@ -46,6 +47,12 @@ class DashboardService {
             $endDate = $tenancy->getEndDate();
             return $endDate === null || $endDate >= date('Y-m-d');
         });
+        $occupiedUnitIds = [];
+        foreach ($tenancies as $tenancy) {
+            if ($tenancy->getStatus() === 'active') {
+                $occupiedUnitIds[(int)$tenancy->getUnitId()] = true;
+            }
+        }
 
         $bookings = $this->bookingMapper->findByUser($userId, ['year' => $year]);
         if ($isBuildingManagement) {
@@ -108,6 +115,10 @@ class DashboardService {
             'monthlyBaseRentSum' => number_format($rentSum, 2, '.', ''),
             'annualResult' => number_format($income - $expense, 2, '.', ''),
             'openTasks' => $openTasks,
+            'occupancy' => $isLandlord ? [
+                'occupied' => count($occupiedUnitIds),
+                'vacant' => max(0, count($units) - count($occupiedUnitIds)),
+            ] : null,
         ];
     }
 

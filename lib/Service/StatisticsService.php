@@ -103,7 +103,15 @@ class StatisticsService {
         }
 
         public function unitOverview(int $year, string $userId, ?int $propertyId = null, string $role = 'landlord'): array {
-                $definitions = $this->normalizeColumns(StatisticCalculations::unitOverview());
+                $definitions = StatisticCalculations::unitOverview();
+                if ($this->permissionService->isLandlord($role)) {
+                        array_splice($definitions, 2, 0, [[
+                                'key' => 'occupancyStatus',
+                                'label' => 'Occupancy',
+                                'format' => 'occupancy',
+                        ]]);
+                }
+                $definitions = $this->normalizeColumns($definitions);
                 $topAccountMap = $this->accountService->getTopAccountNumberMap();
                 $isBuildingManagement = $this->permissionService->isBuildingManagement($role);
                 $propertyFilter = $isBuildingManagement ? $propertyId : null;
@@ -131,6 +139,10 @@ class StatisticsService {
                         } else {
                                 $row = $this->buildEmptyStatisticsRowForUnit($unit, $definitions);
                                 $row['isProvisional'] = true;
+                        }
+
+                        if ($this->permissionService->isLandlord($role)) {
+                                $row['occupancyStatus'] = $this->hasCurrentTenancyForUnit($unitId, $userId) ? 'occupied' : 'vacant';
                         }
 
                         $rows[] = $row;
@@ -546,6 +558,16 @@ class StatisticsService {
                         return null;
                 }
                 return max(array_map('intval', $years));
+        }
+
+        private function hasCurrentTenancyForUnit(int $unitId, string $userId): bool {
+                foreach ($this->tenancyService->getTenanciesForUnit($unitId, $userId) as $tenancy) {
+                        if ($tenancy->getStatus() === 'active') {
+                                return true;
+                        }
+                }
+
+                return false;
         }
 
         private function visibleColumns(array $definitions): array {

@@ -4,6 +4,15 @@
     window.Domus = window.Domus || {};
 
     Domus.Dashboard = (function() {
+        let occupancyChartInstance = null;
+
+        function destroyOccupancyChart() {
+            if (occupancyChartInstance) {
+                occupancyChartInstance.destroy();
+                occupancyChartInstance = null;
+            }
+        }
+
         function render() {
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Dashboard') }));
 
@@ -13,8 +22,16 @@
                 .then((data) => {
                     const html = buildContent(data || {});
                     Domus.UI.renderContent(html);
+                    bindDashboard(data || {});
                 })
                 .catch(err => Domus.UI.showError(err.message));
+        }
+
+        function bindDashboard(data) {
+            destroyOccupancyChart();
+            if (!Domus.Role.isBuildingMgmtView() && !Domus.Role.isTenantView()) {
+                renderOccupancyChart(data?.occupancy || null);
+            }
         }
 
         function buildContent(data) {
@@ -73,8 +90,81 @@
                 }
             }, 0);
 
-            return '<div class="domus-stat-grid">' + cardHtml + '</div>' +
+            const occupancy = data.occupancy || {};
+            const occupiedUnits = Number(occupancy.occupied) || 0;
+            const vacantUnits = Number(occupancy.vacant) || 0;
+            const totalUnits = occupiedUnits + vacantUnits;
+            const occupancyTile = hasUnits
+                ? '<div class="domus-kpi-tiles">' +
+                    '<div class="domus-kpi-tile domus-dashboard-occupancy-tile">' +
+                    '<div class="domus-kpi-content">' +
+                    '<div class="domus-kpi-headline">' + Domus.Utils.escapeHtml(t('domus', 'Occupancy')) + '</div>' +
+                    '<div class="domus-kpi-value">' + Domus.Utils.escapeHtml(`${occupiedUnits} ${t('domus', 'of')} ${totalUnits}`) + '</div>' +
+                    '<a href="#/units" class="domus-kpi-more">' + Domus.Utils.escapeHtml(t('domus', 'Units')) + '</a>' +
+                    '</div>' +
+                    '<div class="domus-kpi-chart domus-dashboard-occupancy-chart">' +
+                    '<div class="domus-kpi-chart-inner">' +
+                    '<canvas id="domus-dashboard-occupancy-chart" class="domus-kpi-chart-canvas" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Occupied vs vacant units')) + '" role="img"></canvas>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>'
+                : '';
+
+            return occupancyTile +
+                '<div class="domus-stat-grid">' + cardHtml + '</div>' +
                 (hasUnits ? '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' + openTasksTable : '');
+        }
+
+        function renderOccupancyChart(occupancy) {
+            const canvas = document.getElementById('domus-dashboard-occupancy-chart');
+            if (!canvas || !window.Chart || !occupancy) {
+                return;
+            }
+
+            const occupiedUnits = Number(occupancy.occupied) || 0;
+            const vacantUnits = Number(occupancy.vacant) || 0;
+            const totalUnits = occupiedUnits + vacantUnits;
+            if (!totalUnits) {
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return;
+            }
+
+            const rootStyles = getComputedStyle(document.documentElement);
+            const occupiedColor = rootStyles.getPropertyValue('--color-success').trim() || '#0f6b2f';
+            const vacantColor = rootStyles.getPropertyValue('--color-background-hover').trim() || '#d8dde6';
+
+            occupancyChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [t('domus', 'Occupied'), t('domus', 'Vacant')],
+                    datasets: [{
+                        data: [occupiedUnits, vacantUnits],
+                        backgroundColor: [occupiedColor, vacantColor],
+                        borderWidth: 0,
+                        hoverOffset: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.label}: ${context.parsed}`
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function buildBuildingMgmtDashboard(data) {

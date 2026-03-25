@@ -11,6 +11,17 @@
         const statisticsPaginationState = {};
         const statisticsTablePageSize = 10;
 
+        function buildOccupancyBadge(value) {
+            const normalized = String(value || '').toLowerCase();
+            if (normalized === 'occupied') {
+                return '<span class="domus-badge domus-badge-occupied">' + Domus.Utils.escapeHtml(t('domus', 'Occupied')) + '</span>';
+            }
+            if (normalized === 'vacant') {
+                return '<span class="domus-badge domus-badge-vacant">' + Domus.Utils.escapeHtml(t('domus', 'Vacant')) + '</span>';
+            }
+            return '';
+        }
+
         function resetStatisticsPaginationState() {
             Object.keys(statisticsPaginationState).forEach(key => {
                 delete statisticsPaginationState[key];
@@ -661,6 +672,13 @@
             const rows = visibleRows.map(row => {
                 const cells = columnMeta.map((col, index) => {
                     const value = row[col.key];
+                    if (col.format === 'occupancy') {
+                        return {
+                            content: buildOccupancyBadge(value),
+                            alignRight: false,
+                            isHtml: true
+                        };
+                    }
                     const formatted = formatStatValue(value, col.format, col.unit);
                     if (formatted && formatted.alignRight && headers[index]) {
                         headers[index].alignRight = true;
@@ -679,7 +697,7 @@
                         };
                     }
                     return {
-                        content: Domus.Utils.escapeHtml(formatted.content),
+                        content: formatted.isHtml ? formatted.content : Domus.Utils.escapeHtml(formatted.content),
                         alignRight: isYearColumn ? false : formatted.alignRight
                     };
                 });

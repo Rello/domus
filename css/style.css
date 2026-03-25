@@ -1150,6 +1150,16 @@ body {
     background: var(--color-background-hover);
 }
 
+.domus-badge-occupied {
+    background: rgba(15, 107, 47, 0.12);
+    color: var(--color-success-text, var(--color-success));
+}
+
+.domus-badge-vacant {
+    background: var(--color-background-hover);
+    color: var(--color-text-maxcontrast);
+}
+
 .domus-badge-provisional {
     margin-left: 6px;
 }
@@ -1739,6 +1749,18 @@ body {
 .domus-kpi-chart-canvas {
     width: 100%;
     height: 100%;
+}
+
+.domus-dashboard-occupancy-tile {
+    max-width: 420px;
+}
+
+.domus-dashboard-occupancy-chart {
+    max-width: 132px;
+}
+
+.domus-dashboard-occupancy-chart .domus-kpi-chart-inner {
+    height: 108px;
 }
 
 .domus-panel.domus-kpi-detail {
