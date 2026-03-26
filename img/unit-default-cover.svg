@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" role="img" aria-labelledby="title desc">
+<title id="title">Unit default cover</title>
+<desc id="desc">Default illustration for a unit without its own picture.</desc>
+<defs>
+<linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#eef4f0"/>
+<stop offset="55%" stop-color="#b5c5bb"/>
+<stop offset="100%" stop-color="#6e8478"/>
+</linearGradient>
+<linearGradient id="frame" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="#fbfdfb"/>
+<stop offset="100%" stop-color="#e2ebe5"/>
+</linearGradient>
+<linearGradient id="wall" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#e1ebe4"/>
+<stop offset="100%" stop-color="#c1d0c6"/>
+</linearGradient>
+</defs>
+<rect width="400" height="260" rx="28" fill="url(#bg)"/>
+<rect width="400" height="260" rx="28" fill="#4B5E53" opacity="0.08"/>
+<path d="M0 212c54-15 117-24 182-21 72 4 139 23 218 55v14H0z" fill="#566a5f" opacity="0.14"/>
+<rect x="60" y="72" width="280" height="130" rx="16" fill="url(#frame)"/>
+<rect x="86" y="96" width="228" height="82" rx="10" fill="url(#wall)"/>
+<rect x="104" y="114" width="62" height="48" rx="8" fill="#ffffff"/>
+<rect x="178" y="114" width="62" height="48" rx="8" fill="#ffffff"/>
+<rect x="252" y="114" width="44" height="88" rx="8" fill="#9aaca1"/>
+<path d="M92 194h216" stroke="#4B5E53" stroke-width="10" stroke-linecap="round"/>
+<circle cx="224" cy="160" r="5" fill="#4B5E53"/>
+<path d="M86 96h228v18H86z" fill="#ffffff" opacity="0.3"/>
+</svg>

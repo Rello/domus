@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" role="img" aria-labelledby="title desc">
+<title id="title">Property default cover</title>
+<desc id="desc">Default illustration for a property without its own picture.</desc>
+<defs>
+<linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#edf4ef"/>
+<stop offset="55%" stop-color="#b1c2b8"/>
+<stop offset="100%" stop-color="#6c8276"/>
+</linearGradient>
+<linearGradient id="base" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="#7f9589"/>
+<stop offset="100%" stop-color="#55695f"/>
+</linearGradient>
+<linearGradient id="facade" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="#fbfdfb"/>
+<stop offset="100%" stop-color="#e1eae4"/>
+</linearGradient>
+<linearGradient id="window" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="#e7efe9"/>
+<stop offset="100%" stop-color="#c7d5cc"/>
+</linearGradient>
+</defs>
+<rect width="400" height="260" rx="28" fill="url(#bg)"/>
+<rect width="400" height="260" rx="28" fill="#4B5E53" opacity="0.08"/>
+<path d="M0 206c62-18 123-26 189-20 60 5 130 20 211 52v22H0z" fill="#54685d" opacity="0.13"/>
+<rect x="36" y="170" width="328" height="56" rx="16" fill="url(#base)"/>
+<rect x="82" y="94" width="236" height="94" rx="10" fill="url(#facade)"/>
+<path d="M68 114l132-72 132 72" fill="none" stroke="#4B5E53" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="122" y="118" width="48" height="70" rx="8" fill="#9eb0a5"/>
+<rect x="190" y="118" width="44" height="36" rx="6" fill="url(#window)"/>
+<rect x="246" y="118" width="44" height="36" rx="6" fill="url(#window)"/>
+<rect x="190" y="162" width="44" height="26" rx="6" fill="url(#window)"/>
+<rect x="246" y="162" width="44" height="26" rx="6" fill="url(#window)"/>
+<path d="M82 94h236v24H82z" fill="#ffffff" opacity="0.34"/>
+</svg>

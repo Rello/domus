@@ -18,6 +18,7 @@ class DashboardService {
         private TaskService $taskService,
         private WorkflowRunService $workflowRunService,
         private PermissionService $permissionService,
+        private EntityImageService $entityImageService,
         private IL10N $l10n,
     ) {
     }
@@ -76,12 +77,14 @@ class DashboardService {
         }
 
         $propertyOverview = array_map(function ($property) use ($userId) {
+            $this->entityImageService->enrichProperty($property);
             $unitCount = $this->unitMapper->countByProperty($property->getId(), $userId);
             return [
                 'id' => $property->getId(),
                 'name' => $property->getName(),
                 'city' => $property->getCity(),
                 'unitCount' => $unitCount,
+                'resolvedImageUrl' => $property->getResolvedImageUrl(),
             ];
         }, $properties);
 
@@ -89,16 +92,22 @@ class DashboardService {
         if ($role !== 'tenant') {
             $unitMap = [];
             foreach ($units as $unit) {
-                $unitMap[$unit->getId()] = $unit->getLabel();
+                $this->entityImageService->enrichUnit($unit);
+                $unitMap[$unit->getId()] = [
+                    'name' => $unit->getLabel(),
+                    'imageUrl' => $unit->getResolvedImageUrl(),
+                ];
             }
             $openTasks = array_merge(
                 $this->workflowRunService->listOpenStepsForUser($userId, $role),
                 array_map(function ($task) use ($unitMap) {
+                    $unitMeta = $unitMap[$task->getUnitId()] ?? ['name' => '', 'imageUrl' => null];
                     return [
                         'type' => 'task',
                         'taskId' => $task->getId(),
                         'unitId' => $task->getUnitId(),
-                        'unitName' => $unitMap[$task->getUnitId()] ?? '',
+                        'unitName' => $unitMeta['name'] ?? '',
+                        'unitImageUrl' => $unitMeta['imageUrl'] ?? null,
                         'title' => $task->getTitle(),
                         'dueDate' => $task->getDueDate(),
                     ];

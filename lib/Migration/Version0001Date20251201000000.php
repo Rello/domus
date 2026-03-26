@@ -29,6 +29,8 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('type', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('description', 'text', ['notnull' => false]);
             $table->addColumn('document_path', 'string', ['notnull' => false, 'length' => 512]);
+            $table->addColumn('image_file_id', 'bigint', ['notnull' => false]);
+            $table->addColumn('image_file_name', 'string', ['notnull' => false, 'length' => 512]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id'], 'domus_dk_pk');
@@ -44,6 +46,7 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('street', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('zip', 'string', ['length' => 32, 'notnull' => false]);
             $table->addColumn('city', 'string', ['length' => 190, 'notnull' => false]);
+            $table->addColumn('country', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('unit_number', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('land_register', 'string', ['length' => 190, 'notnull' => false]);
             $table->addColumn('living_area', 'string', ['length' => 32, 'notnull' => false]);
@@ -55,6 +58,8 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('iban', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('bic', 'string', ['length' => 64, 'notnull' => false]);
             $table->addColumn('document_path', 'string', ['notnull' => false, 'length' => 512]);
+            $table->addColumn('image_file_id', 'bigint', ['notnull' => false]);
+            $table->addColumn('image_file_name', 'string', ['notnull' => false, 'length' => 512]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id'], 'domus_dku_pk');

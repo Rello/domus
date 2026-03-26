@@ -12,6 +12,7 @@ class Unit extends Entity implements JsonSerializable {
     protected $street;
     protected $zip;
     protected $city;
+    protected $country;
     protected $unitNumber;
     protected $landRegister;
     protected $livingArea;
@@ -23,16 +24,22 @@ class Unit extends Entity implements JsonSerializable {
     protected $bic;
     protected $notes;
     protected $documentPath;
+    protected $imageFileId;
+    protected $imageFileName;
     protected $createdAt;
     protected $updatedAt;
 
     private array $activeTenancies = [];
     private array $historicTenancies = [];
     private ?string $rentPerSquareMeter = null;
+    private ?string $propertyName = null;
+    private ?string $imageUrl = null;
+    private ?string $resolvedImageUrl = null;
 
     public function __construct() {
         $this->addType('id', 'int');
         $this->addType('propertyId', 'int');
+        $this->addType('imageFileId', 'int');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
     }
@@ -46,6 +53,7 @@ class Unit extends Entity implements JsonSerializable {
             'street' => $this->street,
             'zip' => $this->zip,
             'city' => $this->city,
+            'country' => $this->country,
             'unitNumber' => $this->unitNumber,
             'landRegister' => $this->landRegister,
             'livingArea' => $this->livingArea,
@@ -57,11 +65,16 @@ class Unit extends Entity implements JsonSerializable {
             'bic' => $this->bic,
             'notes' => $this->notes,
             'documentPath' => $this->documentPath,
+            'imageFileId' => $this->imageFileId,
+            'imageFileName' => $this->imageFileName,
+            'imageUrl' => $this->imageUrl,
+            'resolvedImageUrl' => $this->resolvedImageUrl,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
             'activeTenancies' => $this->activeTenancies,
             'historicTenancies' => $this->historicTenancies,
             'rentPerSquareMeter' => $this->rentPerSquareMeter,
+            'propertyName' => $this->propertyName,
         ];
     }
 
@@ -75,5 +88,25 @@ class Unit extends Entity implements JsonSerializable {
 
     public function setRentPerSquareMeter(?string $rentPerSquareMeter): void {
         $this->rentPerSquareMeter = $rentPerSquareMeter;
+    }
+
+    public function setPropertyName(?string $propertyName): void {
+        $this->propertyName = $propertyName;
+    }
+
+    public function setImageUrl(?string $imageUrl): void {
+        $this->imageUrl = $imageUrl;
+    }
+
+    public function getImageUrl(): ?string {
+        return $this->imageUrl;
+    }
+
+    public function setResolvedImageUrl(?string $resolvedImageUrl): void {
+        $this->resolvedImageUrl = $resolvedImageUrl;
+    }
+
+    public function getResolvedImageUrl(): ?string {
+        return $this->resolvedImageUrl;
     }
 }

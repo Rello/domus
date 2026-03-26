@@ -18,7 +18,8 @@
         selectedUnitId: null,
         selectedPartnerId: null,
         selectedTenancyId: null,
-        unitDetailTarget: ''
+        unitDetailTarget: '',
+        primaryNavSearch: null
     };
 
     /**
@@ -464,6 +465,34 @@
                 };
                 return fetch(baseUrl + `/documents/${entityType}/${entityId}/upload`, opts).then(handleResponse);
             },
+            uploadPropertyImage: (id, file) => {
+                const formData = new FormData();
+                formData.append('image', file);
+                return fetch(baseUrl + `/properties/${id}/image`, {
+                    method: 'POST',
+                    headers: {
+                        'OCS-APIREQUEST': 'true',
+                        requesttoken: OC.requestToken,
+                        'X-Domus-Role': Domus.Role?.getCurrentRole?.() || Domus.state.role
+                    },
+                    body: formData
+                }).then(handleResponse);
+            },
+            removePropertyImage: id => request('DELETE', `/properties/${id}/image`),
+            uploadUnitImage: (id, file) => {
+                const formData = new FormData();
+                formData.append('image', file);
+                return fetch(baseUrl + `/units/${id}/image`, {
+                    method: 'POST',
+                    headers: {
+                        'OCS-APIREQUEST': 'true',
+                        requesttoken: OC.requestToken,
+                        'X-Domus-Role': Domus.Role?.getCurrentRole?.() || Domus.state.role
+                    },
+                    body: formData
+                }).then(handleResponse);
+            },
+            removeUnitImage: id => request('DELETE', `/units/${id}/image`),
             unlinkDocument: id => request('DELETE', `/documents/${id}`)
         };
     })();
@@ -975,6 +1004,106 @@
             return btn;
         }
 
+        function getEntityImageUrl(entityType, entity = {}) {
+            const defaultFile = entityType === 'property' ? 'property-default-cover.svg' : 'unit-default-cover.svg';
+            return entity.resolvedImageUrl
+                || entity.imageUrl
+                || (typeof OC !== 'undefined' && typeof OC.imagePath === 'function' ? OC.imagePath('domus', defaultFile) : '');
+        }
+
+        function buildEntityImage(entityType, entity = {}, options = {}) {
+            const variant = options.variant || 'table';
+            const alt = options.alt !== undefined
+                ? options.alt
+                : (entity.name || entity.label || entity.unitName || t('domus', 'Image'));
+            const classes = ['domus-entity-image', `domus-entity-image-${variant}`];
+            if (options.rounded) {
+                classes.push('is-rounded');
+            }
+            if (options.className) {
+                classes.push(options.className);
+            }
+
+            return '<span class="' + Domus.Utils.escapeHtml(classes.join(' ')) + '">' +
+                '<img src="' + Domus.Utils.escapeHtml(options.url || getEntityImageUrl(entityType, entity)) + '" alt="' + Domus.Utils.escapeHtml(alt) + '">' +
+                '</span>';
+        }
+
+        function buildOverviewList(items, options = {}) {
+            const wrapPanel = options.wrapPanel === true;
+            const safeItems = items || [];
+            let html = '<div class="domus-overview-list">';
+
+            if (!safeItems.length) {
+                const emptyMessage = options.emptyMessage || t('domus', 'No entries found.');
+                html += '<div class="domus-overview-empty">' + Domus.Utils.escapeHtml(emptyMessage) + '</div>';
+            } else {
+                safeItems.forEach(item => {
+                    const classes = ['domus-overview-card'];
+                    if (item.className) {
+                        classes.push(item.className);
+                    }
+
+                    let dataAttrs = '';
+                    if (item.dataset) {
+                        Object.keys(item.dataset).forEach(key => {
+                            const value = item.dataset[key];
+                            if (value === undefined || value === null) {
+                                return;
+                            }
+                            dataAttrs += ' data-' + Domus.Utils.escapeHtml(key) + '="' + Domus.Utils.escapeHtml(String(value)) + '"';
+                        });
+                    }
+
+                    const isInteractive = Boolean(item.dataset?.navigate || item.dataset?.bookingId);
+                    const interactiveAttrs = isInteractive ? ' tabindex="0" role="button"' : '';
+                    const imageHtml = item.imageHtml
+                        ? '<div class="domus-overview-media">' + item.imageHtml + '</div>'
+                        : '';
+                    const kickerHtml = item.kicker ? '<div class="domus-overview-kicker">' + item.kicker + '</div>' : '';
+                    const titleHtml = '<h3 class="domus-overview-title">' + (item.title || '') + '</h3>';
+                    const subtitleHtml = item.subtitle ? '<div class="domus-overview-subtitle">' + item.subtitle + '</div>' : '';
+                    const identityHtml = '<div class="domus-overview-identity">' +
+                        kickerHtml +
+                        titleHtml +
+                        subtitleHtml +
+                        (item.footerHtml ? '<div class="domus-overview-footer">' + item.footerHtml + '</div>' : '') +
+                        '</div>';
+                    const separatorHtml = '<div class="domus-overview-separator" aria-hidden="true"></div>';
+                    const metaTitleHtml = item.metaTitle ? '<div class="domus-overview-meta-label">' + Domus.Utils.escapeHtml(item.metaTitle) + '</div>' : '';
+                    const metaBodyHtml = item.metaHtml ? '<div class="domus-overview-meta-value">' + item.metaHtml + '</div>' : '';
+                    const metaHtml = (metaTitleHtml || metaBodyHtml || item.statusHtml || item.badgesHtml)
+                        ? '<div class="domus-overview-meta">' +
+                            metaTitleHtml +
+                            metaBodyHtml +
+                            (item.statusHtml ? '<div class="domus-overview-status">' + item.statusHtml + '</div>' : '') +
+                            (item.badgesHtml ? '<div class="domus-overview-badges">' + item.badgesHtml + '</div>' : '') +
+                            '</div>'
+                        : '';
+                    const statsHtml = (item.stats || []).map(stat =>
+                        '<div class="domus-overview-column domus-overview-column-stat">' +
+                        '<div class="domus-overview-stat-label">' + Domus.Utils.escapeHtml(stat.label || '') + '</div>' +
+                        '<div class="domus-overview-stat-value">' + (stat.value || '') + '</div>' +
+                        '</div>'
+                    ).join('');
+
+                    html += '<article class="' + Domus.Utils.escapeHtml(classes.join(' ')) + '"' + dataAttrs + interactiveAttrs + '>' +
+                        imageHtml +
+                        identityHtml +
+                        separatorHtml +
+                        metaHtml +
+                        statsHtml +
+                        '</article>';
+                });
+            }
+
+            html += '</div>';
+            if (!wrapPanel) {
+                return html;
+            }
+            return '<div class="domus-panel domus-panel-overview">' + html + '</div>';
+        }
+
         function normalizeCell(cell) {
             if (cell && typeof cell === 'object' && !Array.isArray(cell)) {
                 const content = cell.content !== undefined ? cell.content : (cell.value !== undefined ? cell.value : '');
@@ -1130,13 +1259,20 @@
         }
 
         function bindRowNavigation() {
-            document.querySelectorAll('table.domus-table tr[data-navigate], table.domus-table tr[data-booking-id]').forEach(row => {
-                const bookingId = row.getAttribute('data-booking-id');
-                const target = row.getAttribute('data-navigate');
-                const argsRaw = row.getAttribute('data-args') || '';
-                if (!bookingId && !target) return;
-                row.addEventListener('click', function(e) {
-                    if (e.target.closest('a') || e.target.closest('button')) {
+            document.querySelectorAll('table.domus-table tr[data-navigate], table.domus-table tr[data-booking-id], .domus-overview-card[data-navigate], .domus-overview-card[data-booking-id]').forEach(row => {
+                if (row.dataset.domusNavigationBound) {
+                    return;
+                }
+                row.dataset.domusNavigationBound = 'true';
+
+                const handleActivate = (e) => {
+                    const bookingId = row.getAttribute('data-booking-id');
+                    const target = row.getAttribute('data-navigate');
+                    const argsRaw = row.getAttribute('data-args') || '';
+                    if (!bookingId && !target) {
+                        return;
+                    }
+                    if (e && (e.target.closest('a') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('textarea'))) {
                         return;
                     }
                     if (bookingId) {
@@ -1148,6 +1284,15 @@
                     }
                     const args = argsRaw ? argsRaw.split(',').filter(Boolean) : [];
                     Domus.Router.navigate(target, args);
+                };
+
+                row.addEventListener('click', handleActivate);
+                row.addEventListener('keydown', function(e) {
+                    if (e.key !== 'Enter' && e.key !== ' ') {
+                        return;
+                    }
+                    e.preventDefault();
+                    handleActivate(e);
                 });
             });
         }
@@ -1562,6 +1707,7 @@
             showError,
             showNotification,
             buildTable,
+            buildOverviewList,
             paginateArray,
             buildPagination,
             bindPagination,
@@ -1590,7 +1736,9 @@
             buildScopeAddButton,
             createIconButton,
             buildModalAction,
-            createFileDropZone
+            createFileDropZone,
+            getEntityImageUrl,
+            buildEntityImage
         };
     })();
 
@@ -1779,6 +1927,19 @@
      * Navigation builder
      */
     Domus.Navigation = (function() {
+        function setPrimarySearch(config) {
+            Domus.state.primaryNavSearch = config || null;
+            render();
+        }
+
+        function clearPrimarySearch() {
+            if (!Domus.state.primaryNavSearch) {
+                return;
+            }
+            Domus.state.primaryNavSearch = null;
+            render();
+        }
+
         function render() {
             const container = document.getElementById('app-navigation');
             const topNavContainer = document.getElementById('domus-top-nav-primary');
@@ -1794,6 +1955,10 @@
                 const topNavList = buildNavList(getMenuItems(), activeView);
                 topNavList.classList.add('domus-nav-top');
                 topNavContainer.appendChild(topNavList);
+                const primarySearch = buildPrimarySearch(activeView);
+                if (primarySearch) {
+                    topNavContainer.appendChild(primarySearch);
+                }
             } else if (container) {
                 container.innerHTML = '';
                 container.appendChild(buildNavList(getMenuItems(), activeView));
@@ -1876,6 +2041,42 @@
             return ul;
         }
 
+        function buildPrimarySearch(activeView) {
+            const config = Domus.state.primaryNavSearch;
+            if (!config) {
+                return null;
+            }
+            if (Array.isArray(config.views) && config.views.length && !config.views.includes(activeView)) {
+                return null;
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'domus-nav-search';
+
+            const icon = document.createElement('span');
+            icon.className = 'domus-icon domus-nav-search-icon domus-icon-search';
+            icon.setAttribute('aria-hidden', 'true');
+            wrapper.appendChild(icon);
+
+            const input = document.createElement('input');
+            input.type = 'search';
+            input.className = 'domus-nav-search-input';
+            input.id = 'domus-primary-nav-search';
+            input.placeholder = config.placeholder || '';
+            input.value = config.value || '';
+            input.setAttribute('aria-label', config.label || config.placeholder || t('domus', 'Search'));
+            input.autocomplete = 'off';
+            input.spellcheck = false;
+            input.addEventListener('input', function() {
+                if (typeof config.onInput === 'function') {
+                    config.onInput(this.value);
+                }
+            });
+            wrapper.appendChild(input);
+
+            return wrapper;
+        }
+
         function getMenuItems() {
             return Domus.Role.getNavigationItems();
         }
@@ -1897,7 +2098,11 @@
             return viewMap[Domus.state.currentView] || Domus.state.currentView;
         }
 
-        return { render };
+        return {
+            render,
+            setPrimarySearch,
+            clearPrimarySearch
+        };
     })();
 
     /**

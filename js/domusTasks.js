@@ -76,6 +76,18 @@
             return '<span class="domus-badge domus-badge-muted">' + Domus.Utils.escapeHtml(label) + '</span>';
         }
 
+        function buildDueDateBadge(dueDate) {
+            const dueStatus = getDueStatus(dueDate);
+            const dueDateLabel = Domus.Utils.formatDate(dueDate) || '—';
+            let dueClass = 'domus-task-date-badge';
+            if (dueStatus === 'overdue') {
+                dueClass += ' domus-task-date-badge-overdue';
+            } else if (dueStatus === 'warning') {
+                dueClass += ' domus-task-date-badge-warning';
+            }
+            return '<span class="' + dueClass + '">' + Domus.Utils.escapeHtml(dueDateLabel) + '</span>';
+        }
+
         function getStatusLabel(status) {
             if (!status) return '';
             const normalized = String(status).toLowerCase();
@@ -86,6 +98,18 @@
                 cancelled: t('domus', 'Cancelled')
             };
             return map[normalized] || status;
+        }
+
+        function buildStatusBadge(status) {
+            const label = getStatusLabel(status);
+            if (!label) {
+                return '';
+            }
+            const normalized = String(status || '').toLowerCase();
+            const badgeClass = normalized === 'closed'
+                ? 'domus-badge domus-badge-success'
+                : 'domus-badge domus-task-detail-badge-outline';
+            return '<span class="' + badgeClass + '">' + Domus.Utils.escapeHtml(label) + '</span>';
         }
 
         function getActionMeta(actionType) {
@@ -99,51 +123,326 @@
             return map[actionType] || null;
         }
 
+        function formatDateLabel(value) {
+            return Domus.Utils.formatDate(value) || '—';
+        }
+
+        function getFileNameFromUrl(url) {
+            if (!url) {
+                return '';
+            }
+            try {
+                const parsed = new URL(url, window.location.origin);
+                const path = parsed.pathname || '';
+                const name = path.split('/').filter(Boolean).pop() || '';
+                return decodeURIComponent(name);
+            } catch (error) {
+                const fallback = String(url).split('?')[0].split('#')[0];
+                const name = fallback.split('/').filter(Boolean).pop() || '';
+                return name;
+            }
+        }
+
+        function buildDetailBadge(label, modifier = '') {
+            const classes = ['domus-badge'];
+            if (modifier) {
+                classes.push(modifier);
+            } else {
+                classes.push('domus-badge-muted');
+            }
+            return '<span class="' + Domus.Utils.escapeHtml(classes.join(' ')) + '">' + Domus.Utils.escapeHtml(label) + '</span>';
+        }
+
+        function buildTaskDetailDataset(task = {}) {
+            return {
+                'task-detail': 'true',
+                'task-title': task.title || '',
+                'task-description': task.description || '',
+                'task-action-type': task.actionType || '',
+                'task-action-url': task.actionUrl || '',
+                'task-action-year': task.year || '',
+                'task-unit-id': task.unitId || '',
+                'task-id': task.taskId || '',
+                'task-step-id': task.stepId || '',
+                'task-run-id': task.runId || task.workflowRunId || '',
+                'task-unit-name': task.unitName || '',
+                'task-unit-image-url': task.unitImageUrl || '',
+                'task-workflow-name': task.workflowName || '',
+                'task-due-date': task.dueDate || '',
+                'task-type': task.type || 'task',
+                'task-status': task.status || 'open',
+                'task-completion-completed': task.completion?.completed || '',
+                'task-completion-total': task.completion?.total || ''
+            };
+        }
+
+        function getTaskDetailFromElement(element) {
+            return {
+                title: element.getAttribute('data-task-title') || '',
+                description: element.getAttribute('data-task-description') || '',
+                actionType: element.getAttribute('data-task-action-type') || '',
+                actionUrl: element.getAttribute('data-task-action-url') || '',
+                actionYear: element.getAttribute('data-task-action-year') || '',
+                unitId: element.getAttribute('data-task-unit-id') || '',
+                taskId: element.getAttribute('data-task-id') || '',
+                stepId: element.getAttribute('data-task-step-id') || '',
+                runId: element.getAttribute('data-task-run-id') || '',
+                unitName: element.getAttribute('data-task-unit-name') || '',
+                unitImageUrl: element.getAttribute('data-task-unit-image-url') || '',
+                workflowName: element.getAttribute('data-task-workflow-name') || '',
+                dueDate: element.getAttribute('data-task-due-date') || '',
+                type: element.getAttribute('data-task-type') || 'task',
+                status: element.getAttribute('data-task-status') || 'open',
+                completion: {
+                    completed: element.getAttribute('data-task-completion-completed') || '',
+                    total: element.getAttribute('data-task-completion-total') || ''
+                }
+            };
+        }
+
+        function wrapProcessSequenceTrigger(runId, contentHtml, title) {
+            if (!runId || !contentHtml) {
+                return contentHtml || '';
+            }
+            return '<span class="domus-task-process-trigger" data-process-sequence="' + Domus.Utils.escapeHtml(String(runId)) + '" role="button" tabindex="0" aria-label="' + Domus.Utils.escapeHtml(title || t('domus', 'Open process steps')) + '">' +
+                contentHtml +
+                '</span>';
+        }
+
+        function buildProcessSequenceTrigger(runId, labelHtml, completion = null) {
+            if (!runId) {
+                return labelHtml || '';
+            }
+            const title = completion
+                ? t('domus', 'Open process steps ({completed}/{total})', {
+                    completed: completion.completed,
+                    total: completion.total
+                })
+                : t('domus', 'Open process steps');
+            const labelButton = wrapProcessSequenceTrigger(runId, labelHtml, title);
+            if (!completion) {
+                return labelButton;
+            }
+            const safeTotal = Math.max(0, Number(completion.total) || 0);
+            const safeCompleted = Math.max(0, Math.min(Number(completion.completed) || 0, safeTotal || Number(completion.completed) || 0));
+            const progress = safeTotal > 0 ? Math.round((safeCompleted / safeTotal) * 100) : 0;
+            const circleButton = '<span class="domus-task-process-trigger domus-task-process-trigger-circle" data-process-sequence="' + Domus.Utils.escapeHtml(String(runId)) + '" role="button" tabindex="0" aria-label="' + Domus.Utils.escapeHtml(title) + '">' +
+                '<span class="domus-completion-circle" style="--domus-completion-progress: ' + Domus.Utils.escapeHtml(String(progress)) + '%">' +
+                '<span class="domus-visually-hidden">' + Domus.Utils.escapeHtml(title) + '</span>' +
+                '</span>' +
+                '</span>';
+            return '<div class="domus-task-type">' + labelButton + circleButton + '</div>';
+        }
+
+        function buildTaskDetailContent(task = {}) {
+            const typeLabel = task.type === 'process' ? t('domus', 'Process') : t('domus', 'Task');
+            const statusLabel = getStatusLabel(task.status) || (task.type === 'process' ? t('domus', 'Open') : '');
+            const actionMeta = getActionMeta(task.actionType);
+            const dueHtml = buildDueDateBadge(task.dueDate);
+            const completion = task.completion || {};
+            const hasCompletion = task.type === 'process' && completion.total !== '' && completion.total !== null && completion.total !== undefined;
+            const badges = [
+                buildDetailBadge(typeLabel),
+                task.workflowName ? buildDetailBadge(task.workflowName, 'domus-task-detail-badge-accent') : '',
+                statusLabel ? buildDetailBadge(statusLabel, String(task.status).toLowerCase() === 'closed' ? 'domus-badge-success' : 'domus-task-detail-badge-outline') : ''
+            ].filter(Boolean).join('');
+            const imageHtml = task.unitName
+                ? Domus.UI.buildEntityImage('unit', {
+                    resolvedImageUrl: task.unitImageUrl,
+                    unitName: task.unitName
+                }, {
+                    variant: 'table',
+                    rounded: true,
+                    className: 'domus-task-detail-avatar',
+                    alt: task.unitName || t('domus', 'Unit')
+                })
+                : '';
+            const actionItems = [];
+            if (actionMeta) {
+                actionItems.push({
+                    icon: actionMeta.icon,
+                    label: actionMeta.label,
+                    type: 'run',
+                    dataset: {
+                        actionType: task.actionType || '',
+                        actionUrl: task.actionUrl || '',
+                        actionYear: task.actionYear || '',
+                        unitId: task.unitId || ''
+                    }
+                });
+            }
+            if (String(task.status).toLowerCase() === 'open') {
+                actionItems.push({
+                    icon: 'domus-icon-task',
+                    label: t('domus', 'Mark done'),
+                    type: 'close',
+                    dataset: {
+                        entityType: task.type || 'task',
+                        id: task.stepId || task.taskId || ''
+                    }
+                });
+            }
+            const actionListHtml = actionItems.length
+                ? '<div class="domus-task-detail-actions">' + actionItems.map(item => (
+                    '<div class="domus-task-detail-action-row">' +
+                    Domus.UI.buildIconButton(item.icon, item.label, {
+                        className: 'domus-task-detail-action-button',
+                        dataset: Object.assign({ modalAction: item.type }, item.dataset)
+                    }) +
+                    '<span class="domus-task-detail-action-copy">' + Domus.Utils.escapeHtml(item.label) + '</span>' +
+                    '</div>'
+                )).join('') + '</div>'
+                : '<span class="muted">—</span>';
+            const completionHtml = hasCompletion
+                ? '<div class="domus-task-detail-section">' +
+                    '<div class="domus-task-detail-section-title">' + Domus.Utils.escapeHtml(t('domus', 'Completion')) + '</div>' +
+                    wrapProcessSequenceTrigger(task.runId, Domus.UI.buildCompletionIndicator(t('domus', 'Completion'), completion.completed, completion.total, {
+                        showLabel: false,
+                        showCount: true
+                    }), t('domus', 'Open process steps ({completed}/{total})', {
+                        completed: completion.completed,
+                        total: completion.total
+                    })) +
+                    '</div>'
+                : '';
+            const descriptionHtml = task.description
+                ? '<div class="domus-task-detail-section">' +
+                    '<div class="domus-task-detail-section-title">' + Domus.Utils.escapeHtml(t('domus', 'Description')) + '</div>' +
+                    '<div class="domus-task-detail-description">' + Domus.Utils.escapeHtml(task.description).replace(/\n/g, '<br>') + '</div>' +
+                    '</div>'
+                : '';
+            const attachmentHtml = task.actionType === 'url' && task.actionUrl
+                ? '<div class="domus-task-detail-section">' +
+                    '<div class="domus-task-detail-section-title">' + Domus.Utils.escapeHtml(t('domus', 'Attachments')) + '</div>' +
+                    '<a class="domus-task-detail-attachment" href="' + Domus.Utils.escapeHtml(task.actionUrl) + '" target="_blank" rel="noopener">' +
+                    '<span class="domus-icon domus-icon-document" aria-hidden="true"></span>' +
+                    '<span>' + Domus.Utils.escapeHtml(getFileNameFromUrl(task.actionUrl) || t('domus', 'Open link')) + '</span>' +
+                    '</a>' +
+                    '</div>'
+                : '';
+
+            return '<div class="domus-task-detail-card">' +
+                '<div class="domus-task-detail-header">' +
+                (imageHtml ? '<div class="domus-task-detail-media">' + imageHtml + '</div>' : '') +
+                '<div class="domus-task-detail-main">' +
+                '<div class="domus-task-detail-title">' + Domus.Utils.escapeHtml(task.title || t('domus', 'Task details')) + '</div>' +
+                (task.unitName ? '<div class="domus-task-detail-subtitle">' + Domus.Utils.escapeHtml(task.unitName) + '</div>' : '') +
+                (badges ? '<div class="domus-task-detail-badges">' + badges + '</div>' : '') +
+                '</div>' +
+                '</div>' +
+                completionHtml +
+                '<div class="domus-task-detail-meta">' +
+                '<div class="domus-task-detail-meta-card">' +
+                '<div class="domus-task-detail-meta-label">' + Domus.Utils.escapeHtml(t('domus', 'Due date')) + '</div>' +
+                '<div class="domus-task-detail-meta-value">' + dueHtml + '</div>' +
+                '</div>' +
+                '<div class="domus-task-detail-meta-card">' +
+                '<div class="domus-task-detail-meta-label">' + Domus.Utils.escapeHtml(t('domus', 'Actions')) + '</div>' +
+                '<div class="domus-task-detail-meta-value">' + actionListHtml + '</div>' +
+                '</div>' +
+                '</div>' +
+                descriptionHtml +
+                attachmentHtml +
+                '</div>';
+        }
+
+        function openTaskDetailModal(task) {
+            const openModalWithTask = resolvedTask => {
+                const modal = Domus.UI.openModal({
+                    title: t('domus', 'Task Details'),
+                    size: 'task-detail',
+                    content: buildTaskDetailContent(resolvedTask || {})
+                });
+                bindProcessSequenceTriggers(modal.modalEl);
+                modal.modalEl.querySelectorAll('.domus-task-detail-action-button').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        const action = button.getAttribute('data-modal-action');
+                        if (action === 'run') {
+                            runTaskAction(
+                                button.getAttribute('data-action-type'),
+                                button.getAttribute('data-action-url'),
+                                button.getAttribute('data-action-year'),
+                                button.getAttribute('data-unit-id')
+                            );
+                            return;
+                        }
+                        if (action === 'close') {
+                            const entityType = button.getAttribute('data-entity-type');
+                            const id = button.getAttribute('data-id');
+                            if (!id) {
+                                return;
+                            }
+                            const request = entityType === 'process' ? Domus.Api.closeTaskStep(id) : Domus.Api.closeTask(id);
+                            request.then(() => {
+                                modal.close();
+                                Domus.Router.navigate(Domus.state.currentView, Domus.state.currentViewArgs || []);
+                            }).catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        }
+                    });
+                });
+            };
+
+            if (task?.type === 'process' && task?.runId && (!task.completion || task.completion.total === '' || task.completion.total === null || task.completion.total === undefined)) {
+                Domus.Api.getWorkflowRun(task.runId)
+                    .then(run => {
+                        const steps = run?.steps || [];
+                        openModalWithTask(Object.assign({}, task, {
+                            completion: {
+                                completed: steps.filter(step => step.status === 'closed').length,
+                                total: steps.length
+                            }
+                        }));
+                    })
+                    .catch(() => openModalWithTask(task));
+                return;
+            }
+
+            openModalWithTask(task);
+        }
+
         function buildOpenTasksTable(items, options = {}) {
             const sorted = sortOpenItems(items || []);
             const showUnit = options.showUnit !== false;
-            const showDescription = options.showDescription !== false;
+            const showTitle = options.showTitle !== false;
             const showType = options.showType !== false;
             const showAction = options.showAction !== false;
             const wrapPanel = options.wrapPanel !== false;
-            const detailTarget = options.detailTarget;
+            const titleBelowUnit = options.titleBelowUnit === true;
             const headers = [
                 showUnit ? t('domus', 'Unit') : null,
-                t('domus', 'Title'),
-                showDescription ? t('domus', 'Description') : null,
+                showTitle ? t('domus', 'Title') : null,
                 t('domus', 'Due date'),
                 showType ? t('domus', 'Type') : null,
                 showAction ? { label: t('domus', 'Action'), alignRight: true } : null
             ].filter(item => item !== null);
             const rows = sorted.map(item => {
+                const titleMarkup = Domus.Utils.escapeHtml(item.title || '');
+                const unitText = titleBelowUnit
+                    ? '<span class="domus-task-unit-copy">' +
+                        '<span>' + Domus.Utils.escapeHtml(item.unitName || '') + '</span>' +
+                        (item.title ? '<span class="domus-task-unit-subtitle">' + titleMarkup + '</span>' : '') +
+                        '</span>'
+                    : '<span>' + Domus.Utils.escapeHtml(item.unitName || '') + '</span>';
                 const unitCell = showUnit
-                    ? '<span class="domus-link" data-navigate="unitDetail" data-args="' + Domus.Utils.escapeHtml(String(item.unitId || '')) + '">' +
-                        Domus.Utils.escapeHtml(item.unitName || '') +
+                    ? '<span class="domus-link domus-task-unit-link" data-navigate="unitDetail" data-args="' + Domus.Utils.escapeHtml(String(item.unitId || '')) + '">' +
+                        Domus.UI.buildEntityImage('unit', {
+                            resolvedImageUrl: item.unitImageUrl,
+                            unitName: item.unitName
+                        }, {
+                            variant: 'task',
+                            rounded: true,
+                            alt: item.unitName || t('domus', 'Unit')
+                        }) +
+                        unitText +
                         '</span>'
                     : '';
                 const titleParts = [];
-                titleParts.push(Domus.Utils.escapeHtml(item.title || ''));
+                titleParts.push(titleMarkup);
                 if (item.workflowName) {
                     titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
                 }
-                const dueStatus = getDueStatus(item.dueDate);
-                const dueDateLabel = Domus.Utils.formatDate(item.dueDate);
-                const dueClass = dueStatus === 'overdue'
-                    ? 'domus-task-date-overdue'
-                    : (dueStatus === 'warning' ? 'domus-task-date-warning' : '');
-                const dueText = Domus.Utils.escapeHtml(dueDateLabel || '—');
-                const dueHtml = dueClass ? '<span class="' + dueClass + '">' + dueText + '</span>' : dueText;
-                const descriptionBtn = showDescription && (item.description || item.actionType)
-                    ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
-                        className: 'domus-task-description',
-                        dataset: {
-                            title: item.title || '',
-                            description: item.description || '',
-                            actionType: item.actionType || '',
-                            actionUrl: item.actionUrl || ''
-                        }
-                    })
-                    : '';
+                const dueHtml = buildDueDateBadge(item.dueDate);
                 const actionMeta = getActionMeta(item.actionType);
                 const runActionBtn = showAction && actionMeta
                     ? Domus.UI.buildIconButton(actionMeta.icon, actionMeta.label, {
@@ -171,35 +470,20 @@
                     : '';
                 let typeCell = showType ? buildTypeBadge(item.type) : null;
                 if (showType && item.type === 'process' && item.completion) {
-                    const completionLabel = t('domus', 'Completion');
-                    const completionIndicator = Domus.UI.buildCompletionIndicator(completionLabel, item.completion.completed, item.completion.total, {
-                        className: 'domus-completion-indicator-compact',
-                        showLabel: false,
-                        showCount: false,
-                        title: t('domus', '{label} ({completed}/{total})', {
-                            label: completionLabel,
-                            completed: item.completion.completed,
-                            total: item.completion.total
-                        })
-                    });
-                    typeCell = '<div class="domus-task-type">' + typeCell + completionIndicator + '</div>';
+                    typeCell = buildProcessSequenceTrigger(item.runId || item.workflowRunId, typeCell, item.completion);
                 }
                 const cells = [
                     showUnit ? unitCell : null,
-                    titleParts.join(''),
-                    showDescription ? descriptionBtn : null,
+                    showTitle ? titleParts.join('') : null,
                     dueHtml,
                     typeCell,
                     showAction ? actionBtn : null
                 ].filter(itemCell => itemCell !== null);
-                const detailValue = typeof detailTarget === 'function' ? detailTarget(item) : detailTarget;
-                const argsValue = (showUnit && item.unitId && detailValue)
-                    ? [item.unitId, detailValue].join(',')
-                    : item.unitId;
-                const dataset = showUnit
-                    ? { navigate: 'unitDetail', args: argsValue }
-                    : (item.type === 'process' ? { 'process-run-id': item.runId } : null);
-                return { cells, dataset, className: (!showUnit && item.type === 'process') ? 'domus-task-process-row' : '' };
+                return {
+                    cells,
+                    dataset: buildTaskDetailDataset(item),
+                    className: 'domus-task-row' + ((!showUnit && item.type === 'process') ? ' domus-task-process-row' : '')
+                };
             });
 
             if (!rows.length && options.emptyMessage) {
@@ -212,6 +496,9 @@
         }
 
         function bindOpenTaskActions(options = {}) {
+            bindTaskDetailRows();
+            bindProcessSequenceTriggers();
+            bindTaskUnitLinks();
             document.querySelectorAll('.domus-task-run-action').forEach(btn => {
                 btn.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -448,8 +735,8 @@
 
         function buildWorkflowStepsTable(run, options = {}) {
             const rows = (run.steps || []).map(step => {
-                const dueLabel = Domus.Utils.formatDate(step.dueDate) || '—';
-                const statusLabel = getStatusLabel(step.status);
+                const dueHtml = buildDueDateBadge(step.dueDate);
+                const statusBadge = buildStatusBadge(step.status);
                 const actionBtn = step.status === 'open'
                     ? Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
                         className: 'domus-task-close',
@@ -463,8 +750,8 @@
                         : '');
                 return [
                     Domus.Utils.escapeHtml(step.title || ''),
-                    Domus.Utils.escapeHtml(dueLabel),
-                    Domus.Utils.escapeHtml(statusLabel),
+                    dueHtml,
+                    statusBadge,
                     actionBtn
                 ];
             });
@@ -496,7 +783,7 @@
         function openProcessTasksModal(run) {
             const rows = (run.steps || []).map(step => {
                 const completedLabel = Domus.Utils.formatDate(step.closedAt ? step.closedAt * 1000 : step.closedAt) || '—';
-                const statusLabel = getStatusLabel(step.status);
+                const statusBadge = buildStatusBadge(step.status);
                 const actionBtn = step.description
                     ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
                         className: 'domus-step-description',
@@ -508,7 +795,7 @@
                     : '';
                 return [
                     Domus.Utils.escapeHtml(step.title || ''),
-                    Domus.Utils.escapeHtml(statusLabel),
+                    statusBadge,
                     Domus.Utils.escapeHtml(completedLabel),
                     actionBtn
                 ];
@@ -526,6 +813,70 @@
             });
         }
 
+        function openProcessTasksModalById(runId) {
+            if (!runId) {
+                return;
+            }
+            Domus.Api.getWorkflowRun(runId)
+                .then(run => openProcessTasksModal(run))
+                .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        function bindTaskDetailRows(root = document) {
+            root.querySelectorAll('table.domus-table tr[data-task-detail]').forEach(row => {
+                if (row.dataset.domusTaskDetailBound) {
+                    return;
+                }
+                row.dataset.domusTaskDetailBound = 'true';
+                row.addEventListener('click', (event) => {
+                    if (event.target.closest('a') || event.target.closest('button') || event.target.closest('input') || event.target.closest('select') || event.target.closest('textarea')) {
+                        return;
+                    }
+                    openTaskDetailModal(getTaskDetailFromElement(row));
+                });
+            });
+        }
+
+        function bindProcessSequenceTriggers(root = document) {
+            root.querySelectorAll('[data-process-sequence]').forEach(trigger => {
+                if (trigger.dataset.domusProcessSequenceBound) {
+                    return;
+                }
+                trigger.dataset.domusProcessSequenceBound = 'true';
+                const openSequence = (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openProcessTasksModalById(trigger.getAttribute('data-process-sequence'));
+                };
+                trigger.addEventListener('click', openSequence);
+                trigger.addEventListener('keydown', (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                        return;
+                    }
+                    openSequence(event);
+                });
+            });
+        }
+
+        function bindTaskUnitLinks(root = document) {
+            root.querySelectorAll('.domus-task-unit-link[data-navigate]').forEach(link => {
+                if (link.dataset.domusTaskUnitBound) {
+                    return;
+                }
+                link.dataset.domusTaskUnitBound = 'true';
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const target = link.getAttribute('data-navigate');
+                    const argsRaw = link.getAttribute('data-args') || '';
+                    const args = argsRaw ? argsRaw.split(',').filter(Boolean) : [];
+                    if (target) {
+                        Domus.Router.navigate(target, args);
+                    }
+                });
+            });
+        }
+
         function buildUnitOpenItems(unitId, data) {
             const openItems = [];
             (data.runs || []).forEach(run => {
@@ -539,12 +890,15 @@
                         runId: run.id,
                         unitId,
                         unitName: data.unitName || '',
+                        unitImageUrl: data.unitImageUrl || '',
                         title: openStep.title,
                         description: openStep.description,
                         actionType: openStep.actionType,
                         actionUrl: openStep.actionUrl,
+                        year: run.year,
                         dueDate: openStep.dueDate,
                         workflowName: run.name,
+                        status: openStep.status,
                         completion: {
                             completed: completedSteps,
                             total: steps.length
@@ -558,9 +912,11 @@
                     taskId: task.id,
                     unitId,
                     unitName: data.unitName || '',
+                    unitImageUrl: data.unitImageUrl || '',
                     title: task.title,
                     description: task.description,
-                    dueDate: task.dueDate
+                    dueDate: task.dueDate,
+                    status: task.status
                 });
             });
             return openItems;
@@ -608,17 +964,10 @@
                     if (item.workflowName) {
                         titleParts.push('<div class="muted">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
                     }
-                    const descriptionBtn = item.description
-                        ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
-                            className: 'domus-task-description',
-                            dataset: {
-                                title: item.title || '',
-                                description: item.description || ''
-                            }
-                        })
-                        : '';
                     const closedLabel = Domus.Utils.formatDate(item.closedAt ? item.closedAt * 1000 : item.closedAt) || '—';
-                    const typeBadge = buildTypeBadge(item.type === 'task' ? 'task' : 'process');
+                    const typeBadge = item.type === 'processRun'
+                        ? buildProcessSequenceTrigger(item.runId, buildTypeBadge('process'))
+                        : buildTypeBadge('task');
                     const actionParts = [];
                     if (item.type === 'task') {
                         actionParts.push(Domus.UI.buildIconButton('domus-icon-back', t('domus', 'Reopen'), {
@@ -635,15 +984,26 @@
                             dataset: { type: 'process', id: item.runId }
                         }));
                     }
-                    return [
-                        titleParts.join(''),
-                        descriptionBtn,
-                        Domus.Utils.escapeHtml(closedLabel),
-                        typeBadge,
-                        actionParts.join('')
-                    ];
+                    return {
+                        cells: [
+                            titleParts.join(''),
+                            Domus.Utils.escapeHtml(closedLabel),
+                            typeBadge,
+                            actionParts.join('')
+                        ],
+                        dataset: buildTaskDetailDataset({
+                            title: item.title,
+                            description: item.description,
+                            unitName: data.unitName || '',
+                            unitImageUrl: data.unitImageUrl || '',
+                            type: item.type === 'processRun' ? 'process' : 'task',
+                            status: 'closed',
+                            workflowName: item.workflowName || ''
+                        }),
+                        className: 'domus-task-row'
+                    };
                 });
-            const closedTable = Domus.UI.buildTable([t('domus', 'Title'), t('domus', 'Description'), t('domus', 'Closed'), t('domus', 'Type'), ''], closedRows, {
+            const closedTable = Domus.UI.buildTable([t('domus', 'Title'), t('domus', 'Closed'), t('domus', 'Type'), ''], closedRows, {
                 wrapPanel: false
             });
             const closedBodyId = 'domus-closed-tasks-' + Math.random().toString(36).slice(2);
@@ -658,29 +1018,6 @@
         function bindUnitTaskActions(unitId, runs, options = {}) {
             bindOpenTaskActions({ onRefresh: options.onRefresh });
             bindClosedTaskToggles();
-            document.querySelectorAll('table.domus-table tr[data-process-run-id]').forEach(row => {
-                row.addEventListener('click', (event) => {
-                    if (event.target.closest('a') || event.target.closest('button')) {
-                        return;
-                    }
-                    const runId = row.getAttribute('data-process-run-id');
-                    if (!runId) return;
-                    const run = (runs || []).find(item => String(item.id) === String(runId));
-                    if (!run) return;
-                    openProcessTasksModal(run);
-                });
-            });
-            document.querySelectorAll('.domus-task-description').forEach(btn => {
-                btn.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const title = btn.getAttribute('data-title');
-                    const description = btn.getAttribute('data-description');
-                    const actionType = btn.getAttribute('data-action-type');
-                    const actionUrl = btn.getAttribute('data-action-url');
-                    openDescriptionModal(title || t('domus', 'Description'), description || '', actionType || '', actionUrl || '');
-                });
-            });
             document.querySelectorAll('.domus-task-delete').forEach(btn => {
                 btn.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -771,7 +1108,12 @@
                 Domus.Api.get('/units/' + unitId).catch(() => null)
             ])
                 .then(([runs, tasks, unit]) => {
-                    const unitData = { runs, tasks, unitName: unit?.label || '' };
+                    const unitData = {
+                        runs,
+                        tasks,
+                        unitName: unit?.label || '',
+                        unitImageUrl: unit?.resolvedImageUrl || ''
+                    };
                     const openItems = buildUnitOpenItems(unitId, unitData);
                     const openCount = openItems.length;
                     const highestStatus = getHighestDueStatus(openItems);

@@ -55,21 +55,24 @@
             const cardHtml = cards.map(card => {
                 const renderedValue = card.formatter ? card.formatter(card.value) : card.value;
                 const safeValue = renderedValue === undefined || renderedValue === null ? '' : renderedValue.toString();
-                const content = '<div class="domus-stat-label">' + Domus.Utils.escapeHtml(card.label) + '</div>' +
-                    '<div class="domus-stat-value">' + Domus.Utils.escapeHtml(safeValue) + '</div>';
-                const wrappedContent = card.link
-                    ? '<a class="domus-stat-card-link" href="' + Domus.Utils.escapeHtml(card.link) + '">' + content + '</a>'
-                    : content;
-                return '<div class="domus-stat-card">' + wrappedContent + '</div>';
+                return '<div class="domus-kpi-tile domus-dashboard-summary-tile">' +
+                    '<div class="domus-kpi-content">' +
+                    '<div class="domus-kpi-headline">' + Domus.Utils.escapeHtml(card.label) + '</div>' +
+                    '<div class="domus-kpi-value">' + Domus.Utils.escapeHtml(safeValue) + '</div>' +
+                    (card.link
+                        ? '<a href="' + Domus.Utils.escapeHtml(card.link) + '" class="domus-kpi-more">' + Domus.Utils.escapeHtml(card.label) + '</a>'
+                        : '') +
+                    '</div>' +
+                    '</div>';
             }).join('');
 
             const hasUnits = (data.unitCount || 0) > 0;
             const openTasksTable = hasUnits
                 ? Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
-                    showDescription: false,
-                    showType: false,
+                    showTitle: false,
+                    titleBelowUnit: true,
+                    showType: true,
                     showAction: false,
-                    detailTarget: 'tasks',
                     emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                         entity: t('domus', 'Tasks')
                     }),
@@ -95,7 +98,7 @@
             const vacantUnits = Number(occupancy.vacant) || 0;
             const totalUnits = occupiedUnits + vacantUnits;
             const occupancyTile = hasUnits
-                ? '<div class="domus-kpi-tiles">' +
+                ? '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' +
                     '<div class="domus-kpi-tile domus-dashboard-occupancy-tile">' +
                     '<div class="domus-kpi-content">' +
                     '<div class="domus-kpi-headline">' + Domus.Utils.escapeHtml(t('domus', 'Occupancy')) + '</div>' +
@@ -107,12 +110,12 @@
                     '<canvas id="domus-dashboard-occupancy-chart" class="domus-kpi-chart-canvas" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Occupied vs vacant units')) + '" role="img"></canvas>' +
                     '</div>' +
                     '</div>' +
-                    '</div>' +
+                    '</div>' + cardHtml +
                     '</div>'
                 : '';
 
             return occupancyTile +
-                '<div class="domus-stat-grid">' + cardHtml + '</div>' +
+                (!hasUnits ? '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' : '') +
                 (hasUnits ? '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' + openTasksTable : '');
         }
 
@@ -187,10 +190,10 @@
             const hasProperties = (data.propertyCount || 0) > 0;
             const openTasksTable = hasProperties
                 ? Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
-                    showDescription: false,
-                    showType: false,
+                    showTitle: false,
+                    titleBelowUnit: true,
+                    showType: true,
                     showAction: false,
-                    detailTarget: 'tasks',
                     emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                         entity: t('domus', 'Tasks')
                     }),

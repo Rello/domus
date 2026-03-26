@@ -28,6 +28,7 @@ class WorkflowRunService {
         private TaskTemplateMapper $templateMapper,
         private TaskTemplateStepMapper $templateStepMapper,
         private UnitMapper $unitMapper,
+        private EntityImageService $entityImageService,
         private IDBConnection $connection,
         private IL10N $l10n,
     ) {
@@ -295,7 +296,11 @@ class WorkflowRunService {
 
         $unitMap = [];
         foreach ($units as $unit) {
-            $unitMap[$unit->getId()] = $unit->getLabel();
+            $this->entityImageService->enrichUnit($unit);
+            $unitMap[$unit->getId()] = [
+                'name' => $unit->getLabel(),
+                'imageUrl' => $unit->getResolvedImageUrl(),
+            ];
         }
         $unitIds = array_keys($unitMap);
         if (empty($unitIds)) {
@@ -313,12 +318,14 @@ class WorkflowRunService {
 
         return array_map(function (TaskStep $step) use ($unitMap, $runs) {
             $run = $runs[$step->getWorkflowRunId()] ?? null;
+            $unitMeta = $unitMap[$step->getUnitId()] ?? ['name' => '', 'imageUrl' => null];
             return [
                 'type' => 'process',
                 'stepId' => $step->getId(),
                 'workflowRunId' => $step->getWorkflowRunId(),
                 'unitId' => $step->getUnitId(),
-                'unitName' => $unitMap[$step->getUnitId()] ?? '',
+                'unitName' => $unitMeta['name'] ?? '',
+                'unitImageUrl' => $unitMeta['imageUrl'] ?? null,
                 'title' => $step->getTitle(),
                 'description' => $step->getDescription(),
                 'actionType' => $step->getActionType(),

@@ -17,6 +17,7 @@ class StatisticsService {
                 private TenancyService $tenancyService,
                 private UnitMapper $unitMapper,
                 private PermissionService $permissionService,
+                private EntityImageService $entityImageService,
                 private AccountService $accountService,
                 private IConfig $config,
                 private IL10N $l10n,
@@ -123,6 +124,7 @@ class StatisticsService {
                 $rows = [];
 
                 foreach ($units as $unit) {
+                        $this->entityImageService->enrichUnit($unit);
                         $unitId = $unit->getId();
                         $unitPropertyId = $unit->getPropertyId();
                         $latestClosedYear = $this->getLatestClosedYearForUnit($unitId, $unitPropertyId, $closedUnitYears, $closedPropertyYears);
@@ -144,6 +146,7 @@ class StatisticsService {
                         if ($this->permissionService->isLandlord($role)) {
                                 $row['occupancyStatus'] = $this->hasCurrentTenancyForUnit($unitId, $userId) ? 'occupied' : 'vacant';
                         }
+                        $row['resolvedImageUrl'] = $unit->getResolvedImageUrl();
 
                         $rows[] = $row;
                 }

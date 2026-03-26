@@ -3,6 +3,7 @@
 namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
+use OCA\Domus\Service\EntityImageService;
 use OCA\Domus\Service\ServiceChargeSettlementService;
 use OCA\Domus\Service\UnitService;
 use OCA\Domus\Service\PermissionService;
@@ -23,6 +24,7 @@ class UnitController extends Controller {
                 private ServiceChargeSettlementService $settlementService,
                 private PermissionService              $permissionService,
                 private UnitTransferService            $unitTransferService,
+                private EntityImageService             $entityImageService,
                 private IL10N                          $l10n,
         ) {
                 parent::__construct(Application::APP_ID, $request);
@@ -53,6 +55,7 @@ class UnitController extends Controller {
                                                    ?string $street = null,
                                                    ?string $zip = null,
                                                    ?string $city = null,
+                                                   ?string $country = null,
                                                    ?string $unitNumber = null,
                                                    ?string $landRegister = null,
                                                    ?string $livingArea = null,
@@ -64,7 +67,7 @@ class UnitController extends Controller {
                                                    ?string $bic = null,
                                                    ?string $notes = null
         ): DataResponse {
-                $data = compact('propertyId', 'label', 'street', 'zip', 'city', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes');
+                $data = compact('propertyId', 'label', 'street', 'zip', 'city', 'country', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes');
                 try {
                         $unit = $this->unitService->createUnit($data, $this->getUserId(), $this->getRole());
                         return new DataResponse($unit, Http::STATUS_CREATED);
@@ -82,6 +85,7 @@ class UnitController extends Controller {
 						   ?string $street = null,
 						   ?string $zip = null,
 						   ?string $city = null,
+						   ?string $country = null,
 						   ?string $unitNumber = null,
 						   ?string $landRegister = null,
 						   ?string $livingArea = null,
@@ -100,6 +104,7 @@ class UnitController extends Controller {
                         'street' => $street,
                         'zip' => $zip,
                         'city' => $city,
+                        'country' => $country,
                         'unitNumber' => $unitNumber,
                         'landRegister' => $landRegister,
                         'livingArea' => $livingArea,
@@ -181,6 +186,31 @@ class UnitController extends Controller {
 			return new DataResponse($result, Http::STATUS_CREATED);
 		} catch (\InvalidArgumentException $e) {
 			return $this->validationError($e->getMessage());
+		} catch (\Throwable $e) {
+			return $this->notFound();
+		}
+	}
+
+	#[NoAdminRequired]
+	public function uploadImage(int $id): DataResponse {
+		$file = $this->request->getUploadedFile('image') ?: $this->request->getUploadedFile('file');
+		if (!$file) {
+			return $this->validationError($this->l10n->t('Image file is required.'));
+		}
+
+		try {
+			return new DataResponse($this->entityImageService->uploadUnitImage($id, $file, $this->getUserId()));
+		} catch (\InvalidArgumentException $e) {
+			return $this->validationError($e->getMessage());
+		} catch (\Throwable $e) {
+			return $this->notFound();
+		}
+	}
+
+	#[NoAdminRequired]
+	public function removeImage(int $id): DataResponse {
+		try {
+			return new DataResponse($this->entityImageService->removeUnitImage($id, $this->getUserId()));
 		} catch (\Throwable $e) {
 			return $this->notFound();
 		}

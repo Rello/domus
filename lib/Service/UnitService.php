@@ -31,6 +31,7 @@ class UnitService {
         private TenancyService $tenancyService,
         private PermissionService $permissionService,
         private DocumentPathService $documentPathService,
+        private EntityImageService $entityImageService,
         private IL10N $l10n,
     ) {
     }
@@ -39,8 +40,11 @@ class UnitService {
         $isBuildingManagement = $this->permissionService->isBuildingManagement($role);
         $propertyFilter = $isBuildingManagement ? $propertyId : null;
         $units = $this->unitMapper->findByUser($userId, $propertyFilter, !$isBuildingManagement);
+        $propertyNames = $this->loadPropertyNames($userId);
         foreach ($units as $unit) {
+            $this->entityImageService->enrichUnit($unit);
             $this->enrichWithTenancies($unit, $userId);
+            $unit->setPropertyName($propertyNames[(int)$unit->getPropertyId()] ?? null);
         }
         return $units;
     }
@@ -50,7 +54,10 @@ class UnitService {
         if (!$unit) {
             throw new \RuntimeException($this->l10n->t('Unit not found.'));
         }
+        $this->entityImageService->enrichUnit($unit);
         $this->enrichWithTenancies($unit, $userId);
+        $property = $unit->getPropertyId() !== null ? $this->propertyMapper->findForUser((int)$unit->getPropertyId(), $userId) : null;
+        $unit->setPropertyName($property?->getName());
         return $unit;
     }
 
@@ -73,6 +80,7 @@ class UnitService {
         $unit->setStreet($data['street'] ?? null);
         $unit->setZip($data['zip'] ?? null);
         $unit->setCity($data['city'] ?? null);
+        $unit->setCountry($data['country'] ?? null);
         $unit->setUnitNumber($data['unitNumber'] ?? null);
         $unit->setLandRegister($data['landRegister'] ?? null);
         $unit->setLivingArea($data['livingArea'] ?? null);
@@ -102,7 +110,7 @@ class UnitService {
             }
             $unit->setDocumentPath($documentPath);
         }
-        $fields = ['label', 'street', 'zip', 'city', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes'];
+        $fields = ['label', 'street', 'zip', 'city', 'country', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
                 $setter = 'set' . ucfirst($field);
@@ -179,5 +187,17 @@ class UnitService {
         }
         $unit->setActiveTenancies($active);
         $unit->setHistoricTenancies($historic);
+    }
+
+    private function loadPropertyNames(string $userId): array {
+        $properties = $this->propertyMapper->findByUser($userId);
+        $propertyNames = [];
+        foreach ($properties as $property) {
+            if ($property->getId() === null) {
+                continue;
+            }
+            $propertyNames[(int)$property->getId()] = $property->getName();
+        }
+        return $propertyNames;
     }
 }

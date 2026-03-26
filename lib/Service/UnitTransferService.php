@@ -103,6 +103,7 @@ class UnitTransferService {
         $unitPayload['street'] = $this->normalizeOptionalText($unitPayload['street'] ?? null);
         $unitPayload['zip'] = $this->normalizeOptionalText($unitPayload['zip'] ?? null);
         $unitPayload['city'] = $this->normalizeOptionalText($unitPayload['city'] ?? null);
+        $unitPayload['country'] = $this->normalizeOptionalText($unitPayload['country'] ?? null);
 
         return [
             'version' => 1,
@@ -156,6 +157,7 @@ class UnitTransferService {
             $unit->setStreet($this->normalizeOptionalText($unitData['street'] ?? null));
             $unit->setZip($this->normalizeOptionalText($unitData['zip'] ?? null));
             $unit->setCity($this->normalizeOptionalText($unitData['city'] ?? null));
+            $unit->setCountry($this->normalizeOptionalText($unitData['country'] ?? null));
             $unit->setUnitNumber($unitData['unitNumber'] ?? null);
             $unit->setLandRegister($unitData['landRegister'] ?? null);
             $unit->setLivingArea($unitData['livingArea'] ?? null);

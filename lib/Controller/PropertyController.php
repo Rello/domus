@@ -3,6 +3,7 @@
 namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
+use OCA\Domus\Service\EntityImageService;
 use OCA\Domus\Service\PropertyService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\DataResponse;
@@ -17,6 +18,7 @@ class PropertyController extends Controller {
         IRequest $request,
         private IUserSession $userSession,
         private PropertyService $propertyService,
+        private EntityImageService $entityImageService,
         private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
@@ -90,6 +92,31 @@ class PropertyController extends Controller {
     public function deletionSummary(int $id): DataResponse {
         try {
             return new DataResponse($this->propertyService->getDeletionSummary($id, $this->getUserId()));
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
+    public function uploadImage(int $id): DataResponse {
+        $file = $this->request->getUploadedFile('image') ?: $this->request->getUploadedFile('file');
+        if (!$file) {
+            return $this->validationError($this->l10n->t('Image file is required.'));
+        }
+
+        try {
+            return new DataResponse($this->entityImageService->uploadPropertyImage($id, $file, $this->getUserId()));
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+    }
+
+    #[NoAdminRequired]
+    public function removeImage(int $id): DataResponse {
+        try {
+            return new DataResponse($this->entityImageService->removePropertyImage($id, $this->getUserId()));
         } catch (\Throwable $e) {
             return $this->notFound();
         }

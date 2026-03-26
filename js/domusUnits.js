@@ -10,6 +10,88 @@
         let kpiPartnerNameResizeBound = false;
         const statisticsPaginationState = {};
         const statisticsTablePageSize = 10;
+        const listState = {
+            units: [],
+            query: ''
+        };
+
+        function normalizeSearchValue(value) {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        function getTenancySearchValues(tenancy) {
+            const values = [tenancy?.partnerName];
+            (tenancy?.partners || []).forEach(partner => {
+                values.push(partner?.name);
+                values.push(partner?.email);
+                values.push(partner?.phone);
+            });
+            return values;
+        }
+
+        function getUnitSearchText(unit) {
+            const values = [
+                unit?.label,
+                unit?.propertyName,
+                unit?.street,
+                unit?.zip,
+                unit?.city,
+                unit?.country,
+                unit?.unitNumber,
+                unit?.landRegister,
+                unit?.unitType,
+                unit?.taxId,
+                unit?.notes
+            ];
+            (unit?.activeTenancies || []).forEach(tenancy => values.push(...getTenancySearchValues(tenancy)));
+            (unit?.historicTenancies || []).forEach(tenancy => values.push(...getTenancySearchValues(tenancy)));
+            return normalizeSearchValue(values.filter(Boolean).join(' '));
+        }
+
+        function getSortedUnits(units) {
+            return (units || [])
+                .slice()
+                .sort((a, b) => {
+                    const propertyA = (a?.propertyName || '').toLowerCase();
+                    const propertyB = (b?.propertyName || '').toLowerCase();
+                    if (propertyA < propertyB) {
+                        return -1;
+                    }
+                    if (propertyA > propertyB) {
+                        return 1;
+                    }
+                    const labelA = (a?.label || '').toLowerCase();
+                    const labelB = (b?.label || '').toLowerCase();
+                    if (labelA < labelB) {
+                        return -1;
+                    }
+                    if (labelA > labelB) {
+                        return 1;
+                    }
+                    return 0;
+                });
+        }
+
+        function filterUnits(units, query) {
+            const normalizedQuery = normalizeSearchValue(query);
+            if (!normalizedQuery) {
+                return getSortedUnits(units);
+            }
+            return getSortedUnits(units).filter(unit => getUnitSearchText(unit).includes(normalizedQuery));
+        }
+
+        function updateNavSearch() {
+            Domus.Navigation.setPrimarySearch({
+                views: ['units'],
+                label: t('domus', 'Search units'),
+                placeholder: t('domus', 'Search units, addresses or renters'),
+                value: listState.query,
+                onInput: value => {
+                    listState.query = value || '';
+                    renderListContent();
+                }
+            });
+        }
 
         function buildOccupancyBadge(value) {
             const normalized = String(value || '').toLowerCase();
@@ -17,9 +99,90 @@
                 return '<span class="domus-badge domus-badge-occupied">' + Domus.Utils.escapeHtml(t('domus', 'Occupied')) + '</span>';
             }
             if (normalized === 'vacant') {
-                return '<span class="domus-badge domus-badge-vacant">' + Domus.Utils.escapeHtml(t('domus', 'Vacant')) + '</span>';
+                return '<span class="domus-badge domus-badge-alert domus-badge-vacant">' + Domus.Utils.escapeHtml(t('domus', 'Vacant')) + '</span>';
             }
             return '';
+        }
+
+        function buildUnitAddress(unit) {
+            const cityLine = [unit?.zip, unit?.city].filter(Boolean).join(' ');
+            return [unit?.street, cityLine, unit?.country].filter(Boolean).join('<br>');
+        }
+
+        function getUnitOccupancyStatus(unit) {
+            return (unit?.activeTenancies || []).length > 0 ? 'occupied' : 'vacant';
+        }
+
+        function getUnitMonthlyBaseRent(unit) {
+            return (unit?.activeTenancies || []).reduce((sum, tenancy) => {
+                return sum + (Number(tenancy?.baseRent) || 0);
+            }, 0);
+        }
+
+        function getUnitRentability(unit) {
+            const annualBaseRent = getUnitMonthlyBaseRent(unit) * 12;
+            const totalCosts = Number(unit?.totalCosts);
+            if (!annualBaseRent || !totalCosts || Number.isNaN(totalCosts) || totalCosts <= 0) {
+                return '';
+            }
+            return Domus.Utils.formatPercentage(annualBaseRent / totalCosts);
+        }
+
+        function buildUnitCard(unit) {
+            const occupancyStatus = getUnitOccupancyStatus(unit);
+            const address = buildUnitAddress(unit);
+            const isLandlord = Domus.Role.getCurrentRole() === 'landlord';
+            const stats = isLandlord
+                ? [
+                    {
+                        label: t('domus', 'Living area'),
+                        value: Domus.Utils.escapeHtml(unit?.livingArea ? `${Domus.Utils.formatNumber(unit.livingArea, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} m²` : '—')
+                    },
+                    {
+                        label: t('domus', 'Monthly base rent'),
+                        value: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(getUnitMonthlyBaseRent(unit)) || '€ 0.00')
+                    },
+                    {
+                        label: t('domus', 'Rentability'),
+                        value: Domus.Utils.escapeHtml(getUnitRentability(unit) || '—')
+                    }
+                ]
+                : [
+                    {
+                        label: t('domus', 'Property'),
+                        value: Domus.Utils.escapeHtml(unit?.propertyName || '—')
+                    },
+                    {
+                        label: t('domus', 'Number'),
+                        value: Domus.Utils.escapeHtml(unit?.unitNumber || '—')
+                    },
+                    {
+                        label: t('domus', 'Monthly base rent'),
+                        value: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(getUnitMonthlyBaseRent(unit)) || '€ 0.00')
+                    }
+                ];
+
+            return {
+                imageHtml: Domus.UI.buildEntityImage('unit', unit, {
+                    variant: 'overview',
+                    alt: unit.label || t('domus', 'Unit')
+                }),
+                title: Domus.Utils.escapeHtml(unit.label || ''),
+                subtitle: address
+                    ? address.split('<br>').map(line => Domus.Utils.escapeHtml(line)).join('<br>')
+                    : Domus.Utils.escapeHtml(unit?.propertyName || t('domus', 'No property assigned')),
+                metaTitle: t('domus', 'Type'),
+                metaHtml: unit?.unitType
+                    ? '<span class="domus-badge domus-badge-outline">' + Domus.Utils.escapeHtml(unit.unitType) + '</span>'
+                    : '<span class="domus-overview-meta-empty">—</span>',
+                statusHtml: buildOccupancyBadge(occupancyStatus),
+                badgesHtml: !isLandlord && unit?.propertyName
+                    ? '<span class="domus-badge domus-badge-muted">' + Domus.Utils.escapeHtml(unit.propertyName) + '</span>'
+                    : '',
+                stats,
+                footerHtml: '',
+                dataset: unit.id ? { navigate: 'unitDetail', args: unit.id } : null
+            };
         }
 
         function resetStatisticsPaginationState() {
@@ -538,46 +701,53 @@
         function renderList() {
             Domus.state.selectedUnitId = null;
             Domus.state.unitDetailTarget = '';
+            updateNavSearch();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', {entity: t('domus', 'Units')}));
-            Domus.Api.getUnitsStatisticsOverview()
-                .then(statistics => {
-                    const canImport = !Domus.Role.isTenantView();
-                    const importButton = canImport
-                        ? Domus.UI.createIconButton('domus-icon-add', t('domus', 'Import'), {
-                            id: 'domus-unit-import',
-                            className: 'domus-scope-add-button secondary'
-                        }).outerHTML
-                        : '';
-                    const header = '<div class="domus-toolbar">' +
-                        Domus.UI.buildScopeAddButton('domus-icon-unit', t('domus', 'Add {entity}', {entity: t('domus', 'Unit')}), {
-                            id: 'domus-unit-create',
-                            className: 'primary'
-                        }) +
-                        importButton +
-                        '</div>';
-
-                    const hasRows = (statistics?.rows || []).length > 0;
-                    const table = renderStatisticsTable(statistics, {
-                        buildRowDataset: (row) => row.unitId ? {navigate: 'unitDetail', args: row.unitId} : null,
-                        sortByYear: false,
-                        totals: [
-                            {key: 'gwb', label: t('domus', 'Total {label}', {label: t('domus', 'Gross profit')})}
-                        ]
-                    });
-                    const emptyState = Domus.UI.buildEmptyStateAction(
-                        t('domus', 'There is no {entity} yet. Create the first one', {
-                            entity: t('domus', 'Units')
-                        }),
-                        {
-                            iconClass: 'domus-icon-unit',
-                            actionId: 'domus-units-empty-create'
-                        }
-                    );
-
-                    Domus.UI.renderContent(header + (hasRows ? table : emptyState));
-                    bindList();
+            Domus.Api.getUnits()
+                .then(units => {
+                    listState.units = units || [];
+                    renderListContent();
                 })
                 .catch(err => Domus.UI.showError(err.message));
+        }
+
+        function renderListContent() {
+            const canImport = !Domus.Role.isTenantView();
+            const importButton = canImport
+                ? Domus.UI.createIconButton('domus-icon-add', t('domus', 'Import'), {
+                    id: 'domus-unit-import',
+                    className: 'domus-scope-add-button secondary'
+                }).outerHTML
+                : '';
+            const header = '<div class="domus-toolbar">' +
+                Domus.UI.buildScopeAddButton('domus-icon-unit', t('domus', 'Add {entity}', {entity: t('domus', 'Unit')}), {
+                    id: 'domus-unit-create',
+                    className: 'primary'
+                }) +
+                importButton +
+                '</div>';
+            const filteredUnits = filterUnits(listState.units, listState.query);
+            const cards = filteredUnits.map(buildUnitCard);
+            const hasSearch = normalizeSearchValue(listState.query) !== '';
+            const emptyState = Domus.UI.buildEmptyStateAction(
+                t('domus', 'There is no {entity} yet. Create the first one', {
+                    entity: t('domus', 'Units')
+                }),
+                {
+                    iconClass: 'domus-icon-unit',
+                    actionId: 'domus-units-empty-create'
+                }
+            );
+            const content = cards.length
+                ? Domus.UI.buildOverviewList(cards)
+                : hasSearch
+                    ? Domus.UI.buildOverviewList([], {
+                        emptyMessage: t('domus', 'No matching {entity} found.', {entity: t('domus', 'Units')})
+                    })
+                    : emptyState;
+
+            Domus.UI.renderContent(header + content);
+            bindList();
         }
 
         function bindList() {
@@ -592,7 +762,13 @@
         function renderListInline(units) {
             const rows = (units || []).map(u => ({
                 cells: [
-                    Domus.Utils.escapeHtml(u.label || ''),
+                    '<div class="domus-table-entity">' +
+                    Domus.UI.buildEntityImage('unit', u, {
+                        variant: 'table',
+                        alt: u.label || t('domus', 'Unit')
+                    }) +
+                    '<div class="domus-table-entity-label">' + Domus.Utils.escapeHtml(u.label || '') + '</div>' +
+                    '</div>',
                     Domus.Utils.escapeHtml(u.unitNumber || ''),
                     Domus.Utils.escapeHtml(u.unitType || '')
                 ],
@@ -672,6 +848,18 @@
             const rows = visibleRows.map(row => {
                 const cells = columnMeta.map((col, index) => {
                     const value = row[col.key];
+                    if (col.key === 'label') {
+                        return {
+                            content: '<div class="domus-table-entity">' +
+                                Domus.UI.buildEntityImage('unit', row, {
+                                    variant: 'table',
+                                    alt: value || t('domus', 'Unit')
+                                }) +
+                                '<div class="domus-table-entity-label">' + Domus.Utils.escapeHtml(value || '') + '</div>' +
+                                '</div>',
+                            alignRight: false
+                        };
+                    }
                     if (col.format === 'occupancy') {
                         return {
                             content: buildOccupancyBadge(value),
@@ -1141,6 +1329,7 @@
                 addField(unit?.street);
                 addField(unit?.zip);
                 addField(unit?.city);
+                addField(unit?.country);
                 addField(unit?.landRegister);
             }
             addField(unit?.livingArea);
@@ -1184,6 +1373,7 @@
         }
 
         function renderDetail(id, initialTarget) {
+            Domus.Navigation.clearPrimarySearch();
             resetStatisticsPaginationState();
             const normalizedUnitId = id !== undefined && id !== null ? String(id) : '';
             const normalizedInitialTarget = initialTarget ? String(initialTarget) : '';
@@ -1360,7 +1550,15 @@
 
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-content">' +
-                        '<div class="domus-hero-indicator"><span class="domus-icon domus-icon-unit" aria-hidden="true"></span></div>' +
+                        '<div class="domus-hero-indicator domus-hero-image-card">' +
+                        Domus.UI.buildEntityImage('unit', unit, {
+                            variant: 'hero',
+                            alt: unit.label || t('domus', 'Unit')
+                        }) +
+                        '<button type="button" class="domus-hero-image-edit" id="domus-unit-image-edit" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Edit picture')) + '">' +
+                        '<span class="domus-icon domus-icon-edit" aria-hidden="true"></span>' +
+                        '</button>' +
+                        '</div>' +
                         '<div class="domus-hero-main">' +
                         (kicker ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(kicker) + '</div>' : '') +
                         '<h2>' + Domus.Utils.escapeHtml(unit.label || '') + '</h2>' +
@@ -1706,6 +1904,9 @@
             detailsBtn?.addEventListener('click', (event) => {
                 event.preventDefault();
                 openUnitModal(id, 'view');
+            });
+            document.getElementById('domus-unit-image-edit')?.addEventListener('click', () => {
+                openUnitImageModal(unit);
             });
             document.getElementById('domus-unit-document-location')?.addEventListener('click', () => {
                 openDocumentLocationModal(unit);
@@ -2288,6 +2489,7 @@
                     inputField('street', t('domus', 'Street'), unit?.street || ''),
                     inputField('zip', t('domus', 'ZIP'), unit?.zip || ''),
                     inputField('city', t('domus', 'City'), unit?.city || ''),
+                    inputField('country', t('domus', 'Country'), unit?.country || ''),
                     inputField('landRegister', t('domus', 'Land register'), unit?.landRegister || '')
                 );
             }
@@ -2337,6 +2539,102 @@
                 actions +
                 '</form>' +
                 '</div>';
+        }
+
+        function bindUnitImageField(root) {
+            const fileInput = root.querySelector('input[name="imageFile"]');
+            const actionInput = root.querySelector('input[name="imageAction"]');
+            const removeButton = root.querySelector('[data-image-remove]');
+            const imageElement = root.querySelector('.domus-image-field-preview img');
+            if (!fileInput || !actionInput || !imageElement) {
+                return null;
+            }
+
+            const currentUrl = imageElement.getAttribute('src') || '';
+            const fallbackUrl = Domus.UI.getEntityImageUrl('unit', {});
+            const setPreview = (url) => imageElement.setAttribute('src', url || fallbackUrl);
+
+            fileInput.addEventListener('change', () => {
+                const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+                if (!file) {
+                    actionInput.value = 'keep';
+                    setPreview(currentUrl);
+                    return;
+                }
+                actionInput.value = 'upload';
+                const reader = new FileReader();
+                reader.onload = event => setPreview(event.target?.result || currentUrl);
+                reader.readAsDataURL(file);
+            });
+
+            removeButton?.addEventListener('click', () => {
+                fileInput.value = '';
+                actionInput.value = 'remove';
+                setPreview(fallbackUrl);
+            });
+
+            return {
+                getValue: () => ({
+                    action: actionInput.value || 'keep',
+                    file: fileInput.files && fileInput.files[0] ? fileInput.files[0] : null
+                })
+            };
+        }
+
+        function applyUnitImageChange(id, imageChange) {
+            if (!imageChange || imageChange.action === 'keep') {
+                return Promise.resolve();
+            }
+            if (imageChange.action === 'remove') {
+                return Domus.Api.removeUnitImage(id).then(() => undefined);
+            }
+            if (imageChange.action === 'upload' && imageChange.file) {
+                return Domus.Api.uploadUnitImage(id, imageChange.file).then(() => undefined);
+            }
+            return Promise.resolve();
+        }
+
+        function openUnitImageModal(unit) {
+            const modal = Domus.UI.openModal({
+                title: t('domus', 'Edit picture'),
+                content: '<div class="domus-form">' +
+                    '<form id="domus-unit-image-form">' +
+                    Domus.UI.buildFormTable([
+                        Domus.UI.buildFormRow({
+                            label: t('domus', 'Preview'),
+                            content: '<div class="domus-image-field">' +
+                                '<div class="domus-image-field-preview">' +
+                                Domus.UI.buildEntityImage('unit', unit, {
+                                    variant: 'form',
+                                    alt: unit.label || t('domus', 'Unit')
+                                }) +
+                                '</div>' +
+                                '<div class="domus-image-field-actions">' +
+                                    '<input type="hidden" name="imageAction" value="keep">' +
+                                    '<input type="file" name="imageFile" accept="image/*">' +
+                                    '<button type="button" class="domus-ghost" data-image-remove>' + Domus.Utils.escapeHtml(t('domus', 'Use fallback image')) + '</button>' +
+                                '</div>' +
+                            '</div>'
+                        })
+                    ]) +
+                    '<div class="domus-form-actions">' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                        '<button type="button" id="domus-unit-image-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                    '</div>' +
+                    '</form>' +
+                    '</div>'
+            });
+            const imageState = bindUnitImageField(modal.modalEl);
+            modal.modalEl.querySelector('#domus-unit-image-cancel')?.addEventListener('click', modal.close);
+            modal.modalEl.querySelector('#domus-unit-image-form')?.addEventListener('submit', event => {
+                event.preventDefault();
+                applyUnitImageChange(unit.id, imageState?.getValue())
+                    .then(() => {
+                        modal.close();
+                        renderDetail(unit.id);
+                    })
+                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+            });
         }
 
         return {
