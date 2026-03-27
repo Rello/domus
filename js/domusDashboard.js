@@ -44,6 +44,13 @@
             return buildLandlordDashboard(data);
         }
 
+        function buildUpcomingPanel(content) {
+            return '<div class="domus-panel">' +
+                Domus.UI.buildSectionHeader(t('domus', 'Upcoming')) +
+                '<div class="domus-panel-body">' + content + '</div>' +
+                '</div>';
+        }
+
         function buildLandlordDashboard(data) {
             const tenancyLabels = Domus.Role.getTenancyLabels();
             const cards = [
@@ -55,13 +62,14 @@
             const cardHtml = cards.map(card => {
                 const renderedValue = card.formatter ? card.formatter(card.value) : card.value;
                 const safeValue = renderedValue === undefined || renderedValue === null ? '' : renderedValue.toString();
+                const linkHtml = card.link
+                    ? '<a href="' + Domus.Utils.escapeHtml(card.link) + '" class="domus-kpi-more">' + Domus.Utils.escapeHtml(card.label) + '</a>'
+                    : '<span class="domus-kpi-more domus-kpi-more-placeholder" aria-hidden="true">&nbsp;</span>';
                 return '<div class="domus-kpi-tile domus-dashboard-summary-tile">' +
                     '<div class="domus-kpi-content">' +
                     '<div class="domus-kpi-headline">' + Domus.Utils.escapeHtml(card.label) + '</div>' +
                     '<div class="domus-kpi-value">' + Domus.Utils.escapeHtml(safeValue) + '</div>' +
-                    (card.link
-                        ? '<a href="' + Domus.Utils.escapeHtml(card.link) + '" class="domus-kpi-more">' + Domus.Utils.escapeHtml(card.label) + '</a>'
-                        : '') +
+                    linkHtml +
                     '</div>' +
                     '</div>';
             }).join('');
@@ -70,9 +78,11 @@
             const openTasksTable = hasUnits
                 ? Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
                     showTitle: false,
+                    showHeader: false,
                     titleBelowUnit: true,
                     showType: true,
                     showAction: false,
+                    wrapPanel: false,
                     emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                         entity: t('domus', 'Tasks')
                     }),
@@ -116,7 +126,7 @@
 
             return occupancyTile +
                 (!hasUnits ? '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' : '') +
-                (hasUnits ? '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' + openTasksTable : '');
+                (hasUnits ? buildUpcomingPanel(openTasksTable) : '');
         }
 
         function renderOccupancyChart(occupancy) {
@@ -191,9 +201,11 @@
             const openTasksTable = hasProperties
                 ? Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
                     showTitle: false,
+                    showHeader: false,
                     titleBelowUnit: true,
                     showType: true,
                     showAction: false,
+                    wrapPanel: false,
                     emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                         entity: t('domus', 'Tasks')
                     }),
@@ -215,7 +227,7 @@
             }, 0);
 
             return '<div class="domus-stat-grid">' + cardHtml + '</div>' +
-                (hasProperties ? '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Open tasks')) + '</h2>' + openTasksTable : '');
+                (hasProperties ? buildUpcomingPanel(openTasksTable) : '');
         }
 
         function buildTenantDashboard(data) {

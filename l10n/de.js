@@ -379,6 +379,7 @@ OC.L10N.register(
         "New task": "Neue Aufgabe",
         "Open": "Offen",
         "Open tasks": "Offene Aufgaben",
+        "Upcoming": "Bevorstehend",
         "Open all documents": "Alle Dokumente öffnen",
         "Only closed steps can be reopened.": "Nur abgeschlossene Schritte können wieder geöffnet werden.",
         "Only closed tasks can be reopened.": "Nur abgeschlossene Aufgaben können wieder geöffnet werden.",

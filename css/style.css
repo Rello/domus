@@ -367,11 +367,14 @@ body {
 .domus-table th,
 .domus-table td {
     padding: 14px 10px;
-    border-bottom: 1px solid var(--domus-table-separator-color);
     text-align: left;
     word-break: break-word;
     overflow-wrap: anywhere;
     background: transparent;
+}
+
+.domus-table tbody tr:not(:last-child) td {
+    border-bottom: 1px solid var(--domus-table-separator-color);
 }
 
 .domus-table th {
@@ -441,14 +444,17 @@ body {
 
 .domus-overview-card {
     display: grid;
-    grid-template-columns: minmax(180px, 220px) minmax(220px, 1.4fr) 1px repeat(auto-fit, minmax(120px, 0.8fr));
+    grid-template-columns: minmax(160px, 190px) minmax(220px, 1.4fr) repeat(auto-fit, minmax(110px, 0.8fr));
     gap: 0;
     align-items: stretch;
+    min-height: 140px;
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: var(--domus-border-radius);
     box-shadow: none;
     overflow: hidden;
+    position: relative;
+    padding-right: 18px;
 }
 
 .domus-overview-card[data-navigate] {
@@ -458,6 +464,7 @@ body {
 .domus-overview-card[data-navigate]:hover,
 .domus-overview-card[data-navigate]:focus-visible {
     border-color: #d1d5db;
+    cursor: pointer;
 }
 
 .domus-overview-card[data-navigate]:focus-visible {
@@ -476,31 +483,25 @@ body {
     flex-direction: column;
     gap: 6px;
     justify-content: center;
-    padding: 18px 20px;
-}
-
-.domus-overview-separator {
-    align-self: stretch;
-    margin: 14px 0;
-    background: #e5e7eb;
+    padding: 14px 18px;
 }
 
 .domus-overview-meta {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
-    padding: 18px 16px;
+    padding: 14px 14px;
 }
 
 .domus-overview-column {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
-    padding: 18px 16px;
+    padding: 14px 14px;
 }
 
 .domus-overview-meta-label {
@@ -539,9 +540,16 @@ body {
 }
 
 .domus-overview-subtitle {
-    margin-top: 6px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     color: var(--color-text-maxcontrast);
-    font-size: 0.92rem;
+    font-size: 0.84rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .domus-overview-status {
@@ -565,15 +573,45 @@ body {
 }
 
 .domus-overview-stat-value {
-    font-size: 1.06rem;
+    font-size: 1rem;
     font-weight: 600;
     word-break: break-word;
 }
 
 .domus-overview-footer {
-    padding-top: 6px;
+    padding-top: 4px;
     color: var(--color-text-maxcontrast);
     font-size: 0.82rem;
+}
+
+.domus-overview-nav {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.domus-overview-nav-icon {
+    width: 15px;
+    height: 15px;
+    opacity: 0.7;
+}
+
+.domus-overview-subtitle-icon {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+    opacity: 0.7;
+}
+
+.domus-overview-subtitle-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .domus-overview-footer-text {
@@ -1540,7 +1578,7 @@ body {
     width: 100%;
     max-width: none;
     height: 100%;
-    min-height: 164px;
+    min-height: 140px;
     border-radius: 0;
 }
 
@@ -2116,7 +2154,6 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: stretch;
-    text-align: center;
     gap: 4px;
     flex: 1 1 auto;
     min-width: 0;
@@ -2142,11 +2179,12 @@ body {
     line-height: 1;
     white-space: nowrap;
     margin-top: auto;
-    margin-bottom: 0;
+    margin-bottom: auto;
     align-self: center;
     width: 100%;
     min-width: 0;
     overflow: hidden;
+    text-align: center;
 }
 
 .domus-kpi-value .domus-partner-list {
@@ -2277,6 +2315,11 @@ body {
     color: var(--color-primary);
 }
 
+.domus-kpi-more-placeholder {
+    visibility: hidden;
+    pointer-events: none;
+}
+
 .domus-kpi-chart {
     flex: 0 1 38%;
     min-width: 0;
@@ -2306,19 +2349,6 @@ body {
 .domus-dashboard-summary-tile {
     min-width: 0;
     justify-content: center;
-}
-
-.domus-dashboard-summary-tile .domus-kpi-content {
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-.domus-dashboard-summary-tile .domus-kpi-headline,
-.domus-dashboard-summary-tile .domus-kpi-value,
-.domus-dashboard-summary-tile .domus-kpi-more {
-    align-self: center;
-    text-align: center;
 }
 
 .domus-dashboard-occupancy-chart {
@@ -2433,10 +2463,6 @@ body {
 
     .domus-overview-identity {
         padding-right: 20px;
-    }
-
-    .domus-overview-separator {
-        display: none;
     }
 }
 
@@ -2793,6 +2819,14 @@ body {
 
 .domus-icon-back {
     background-image: url(../img/back.svg);
+}
+
+.domus-icon-location {
+    background-image: url(../img/location.svg);
+}
+
+.domus-icon-arrow-right {
+    background-image: url(../img/arrowRight.svg);
 }
 
 .domus-icon-booking {

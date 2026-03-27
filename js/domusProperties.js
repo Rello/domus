@@ -75,9 +75,14 @@
         }
 
         function buildPropertyAddress(property) {
-            const cityLine = [property?.zip, property?.city].filter(Boolean).join(' ');
-            const lines = [property?.street, cityLine, property?.country].filter(Boolean);
-            return lines.join('<br>');
+            const parts = [property?.street, property?.city]
+                .filter(Boolean)
+                .map(part => Domus.Utils.escapeHtml(part));
+            if (!parts.length) {
+                return Domus.Utils.escapeHtml(t('domus', 'No address available'));
+            }
+            return '<span class="domus-icon domus-icon-location domus-overview-subtitle-icon" aria-hidden="true"></span>' +
+                '<span class="domus-overview-subtitle-text">' + parts.join(', ') + '</span>';
         }
 
         function buildPropertyStatusBadge(property) {
@@ -135,10 +140,8 @@
                     alt: property.name || t('domus', 'Property')
                 }),
                 title: Domus.Utils.escapeHtml(property.name || ''),
-                subtitle: address
-                    ? address.split('<br>').map(line => Domus.Utils.escapeHtml(line)).join('<br>')
-                    : Domus.Utils.escapeHtml(t('domus', 'No address available')),
-                metaTitle: t('domus', 'Type'),
+                subtitle: address,
+                metaTitle: '',
                 metaHtml: property?.type
                     ? '<span class="domus-badge domus-badge-outline">' + Domus.Utils.escapeHtml(property.type) + '</span>'
                     : '<span class="domus-overview-meta-empty">—</span>',

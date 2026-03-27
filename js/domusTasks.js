@@ -407,6 +407,7 @@
             const showTitle = options.showTitle !== false;
             const showType = options.showType !== false;
             const showAction = options.showAction !== false;
+            const showHeader = options.showHeader !== false;
             const wrapPanel = options.wrapPanel !== false;
             const titleBelowUnit = options.titleBelowUnit === true;
             const headers = [
@@ -492,7 +493,7 @@
                     actionId: options.emptyActionId
                 });
             }
-            return Domus.UI.buildTable(headers, rows, { wrapPanel });
+            return Domus.UI.buildTable(headers, rows, { wrapPanel, showHeader });
         }
 
         function bindOpenTaskActions(options = {}) {
@@ -927,6 +928,10 @@
 
             const openTable = buildOpenTasksTable(openItems, {
                 showUnit: false,
+                showTitle: true,
+                showType: true,
+                showAction: true,
+                showHeader: false,
                 wrapPanel: false,
                 emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
                     entity: t('domus', 'Tasks')
@@ -1135,12 +1140,11 @@
         }
 
         function buildUnitTasksPanel(options = {}) {
-            const panelContent = '<div class="domus-section-header">' +
-                '<h3>' + Domus.Utils.escapeHtml(t('domus', 'Tasks')) + '</h3>' +
-                '<div class="domus-section-actions">' +
-                '<button id="domus-unit-new-task">' + Domus.Utils.escapeHtml(t('domus', 'New task')) + '</button>' +
-                '</div>' +
-                '</div>' +
+            const panelContent = Domus.UI.buildSectionHeader(t('domus', 'Upcoming'), {
+                id: 'domus-unit-new-task',
+                title: t('domus', 'New task'),
+                iconClass: 'domus-icon-add'
+            }) +
                 '<div class="domus-panel-body" id="domus-unit-tasks-body">' +
                 Domus.Utils.escapeHtml(t('domus', 'Loading tasks…')) +
                 '</div>';
@@ -1148,7 +1152,7 @@
                 return panelContent;
             }
             const panelId = options.panelId || 'domus-unit-tasks-panel';
-            return '<div class="domus-panel-body" id="' + Domus.Utils.escapeHtml(panelId) + '">' +
+            return '<div class="domus-panel" id="' + Domus.Utils.escapeHtml(panelId) + '">' +
                 panelContent +
                 '</div>';
         }

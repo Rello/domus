@@ -105,8 +105,14 @@
         }
 
         function buildUnitAddress(unit) {
-            const cityLine = [unit?.zip, unit?.city].filter(Boolean).join(' ');
-            return [unit?.street, cityLine, unit?.country].filter(Boolean).join('<br>');
+            const parts = [unit?.street, unit?.city]
+                .filter(Boolean)
+                .map(part => Domus.Utils.escapeHtml(part));
+            if (!parts.length) {
+                return Domus.Utils.escapeHtml(unit?.propertyName || t('domus', 'No property assigned'));
+            }
+            return '<span class="domus-icon domus-icon-location domus-overview-subtitle-icon" aria-hidden="true"></span>' +
+                '<span class="domus-overview-subtitle-text">' + parts.join(', ') + '</span>';
         }
 
         function getUnitOccupancyStatus(unit) {
@@ -168,10 +174,8 @@
                     alt: unit.label || t('domus', 'Unit')
                 }),
                 title: Domus.Utils.escapeHtml(unit.label || ''),
-                subtitle: address
-                    ? address.split('<br>').map(line => Domus.Utils.escapeHtml(line)).join('<br>')
-                    : Domus.Utils.escapeHtml(unit?.propertyName || t('domus', 'No property assigned')),
-                metaTitle: t('domus', 'Type'),
+                subtitle: address,
+                metaTitle: '',
                 metaHtml: unit?.unitType
                     ? '<span class="domus-badge domus-badge-outline">' + Domus.Utils.escapeHtml(unit.unitType) + '</span>'
                     : '<span class="domus-overview-meta-empty">—</span>',
@@ -1816,7 +1820,7 @@
                             ...bookingEmptyState
                         });
                         const detailMap = {
-                            tasks: tasksPanel,
+                            tasks: tasksPanelContent,
                             revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable, yearStatusAction) + bookingsPanelInline,
                             cost: buildKpiDetailPanel(t('domus', 'Costs'), costDetailTable) + bookingsPanelInline,
                             tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies, {

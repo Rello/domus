@@ -1069,7 +1069,6 @@
                         subtitleHtml +
                         (item.footerHtml ? '<div class="domus-overview-footer">' + item.footerHtml + '</div>' : '') +
                         '</div>';
-                    const separatorHtml = '<div class="domus-overview-separator" aria-hidden="true"></div>';
                     const metaTitleHtml = item.metaTitle ? '<div class="domus-overview-meta-label">' + Domus.Utils.escapeHtml(item.metaTitle) + '</div>' : '';
                     const metaBodyHtml = item.metaHtml ? '<div class="domus-overview-meta-value">' + item.metaHtml + '</div>' : '';
                     const metaHtml = (metaTitleHtml || metaBodyHtml || item.statusHtml || item.badgesHtml)
@@ -1080,19 +1079,24 @@
                             (item.badgesHtml ? '<div class="domus-overview-badges">' + item.badgesHtml + '</div>' : '') +
                             '</div>'
                         : '';
-                    const statsHtml = (item.stats || []).map(stat =>
-                        '<div class="domus-overview-column domus-overview-column-stat">' +
-                        '<div class="domus-overview-stat-label">' + Domus.Utils.escapeHtml(stat.label || '') + '</div>' +
-                        '<div class="domus-overview-stat-value">' + (stat.value || '') + '</div>' +
-                        '</div>'
-                    ).join('');
+                    const statsHtml = (item.stats || []).length
+                        ? '<div class="domus-overview-stats">' + (item.stats || []).map(stat =>
+                            '<div class="domus-overview-column domus-overview-column-stat">' +
+                            '<div class="domus-overview-stat-label">' + Domus.Utils.escapeHtml(stat.label || '') + '</div>' +
+                            '<div class="domus-overview-stat-value">' + (stat.value || '') + '</div>' +
+                            '</div>'
+                        ).join('') + '</div>'
+                        : '';
+                    const navHtml = isInteractive
+                        ? '<div class="domus-overview-nav" aria-hidden="true"><span class="domus-icon domus-icon-arrow-right domus-overview-nav-icon"></span></div>'
+                        : '';
 
                     html += '<article class="' + Domus.Utils.escapeHtml(classes.join(' ')) + '"' + dataAttrs + interactiveAttrs + '>' +
                         imageHtml +
                         identityHtml +
-                        separatorHtml +
                         metaHtml +
                         statsHtml +
+                        navHtml +
                         '</article>';
                 });
             }
