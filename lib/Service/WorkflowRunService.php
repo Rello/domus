@@ -6,6 +6,7 @@ use OCA\Domus\Db\TaskStep;
 use OCA\Domus\Db\TaskStepMapper;
 use OCA\Domus\Db\TaskTemplateMapper;
 use OCA\Domus\Db\TaskTemplateStepMapper;
+use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCA\Domus\Db\WorkflowRun;
 use OCA\Domus\Db\WorkflowRunMapper;
@@ -27,6 +28,7 @@ class WorkflowRunService {
         private TaskStepMapper $taskStepMapper,
         private TaskTemplateMapper $templateMapper,
         private TaskTemplateStepMapper $templateStepMapper,
+        private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
         private EntityImageService $entityImageService,
         private IDBConnection $connection,
@@ -37,15 +39,15 @@ class WorkflowRunService {
     /**
      * @throws DbException
      */
-    public function startWorkflowRun(int $unitId, int $templateId, ?int $year, ?string $name, string $userId): WorkflowRun {
-        $unit = $this->unitMapper->findForUser($unitId, $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
+    public function startWorkflowRun(string $entityType, int $entityId, int $templateId, ?int $year, ?string $name, string $userId): WorkflowRun {
+        $this->assertEntityExists($entityType, $entityId, $userId);
 
         $template = $this->templateMapper->findById($templateId);
         if (!$template || (int)$template->getIsActive() !== 1) {
             throw new \RuntimeException($this->l10n->t('Task template is not active.'));
+        }
+        if ($template->getAppliesTo() !== $entityType) {
+            throw new \InvalidArgumentException($this->l10n->t('Template does not match the selected entity type.'));
         }
 
         $steps = $this->templateStepMapper->findByTemplate($templateId);
@@ -57,7 +59,8 @@ class WorkflowRunService {
         $displayName = $name !== null && trim($name) !== '' ? trim($name) : $template->getName();
 
         $run = new WorkflowRun();
-        $run->setUnitId($unitId);
+        $run->setEntityType($entityType);
+        $run->setEntityId($entityId);
         $run->setTemplateId($templateId);
         $run->setName($displayName);
         $run->setYear($year);
@@ -75,7 +78,8 @@ class WorkflowRunService {
             foreach ($steps as $stepTemplate) {
                 $taskStep = new TaskStep();
                 $taskStep->setWorkflowRunId($run->getId());
-                $taskStep->setUnitId($unitId);
+                $taskStep->setEntityType($entityType);
+                $taskStep->setEntityId($entityId);
                 $taskStep->setSortOrder($order);
                 $taskStep->setTitle($stepTemplate->getTitle());
                 $taskStep->setDescription($stepTemplate->getDescription());
@@ -104,13 +108,9 @@ class WorkflowRunService {
     /**
      * @throws DbException
      */
-    public function getWorkflowRunsByUnit(int $unitId, string $userId): array {
-        $unit = $this->unitMapper->findForUser($unitId, $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
-
-        $runs = $this->workflowRunMapper->findByUnit($unitId);
+    public function getWorkflowRunsByEntity(string $entityType, int $entityId, string $userId): array {
+        $this->assertEntityExists($entityType, $entityId, $userId);
+        $runs = $this->workflowRunMapper->findByEntity($entityType, $entityId);
         foreach ($runs as $run) {
             $steps = $this->taskStepMapper->findByRun($run->getId());
             $run->setSteps($steps);
@@ -127,10 +127,7 @@ class WorkflowRunService {
         if (!$run) {
             throw new \RuntimeException($this->l10n->t('Workflow run not found.'));
         }
-        $unit = $this->unitMapper->findForUser($run->getUnitId(), $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
+        $this->assertEntityExists((string)$run->getEntityType(), (int)$run->getEntityId(), $userId);
         $steps = $this->taskStepMapper->findByRun($run->getId());
         $run->setSteps($steps);
 
@@ -146,10 +143,7 @@ class WorkflowRunService {
             throw new \RuntimeException($this->l10n->t('Task step not found.'));
         }
 
-        $unit = $this->unitMapper->findForUser($step->getUnitId(), $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
+        $this->assertEntityExists((string)$step->getEntityType(), (int)$step->getEntityId(), $userId);
 
         if ($step->getStatus() !== self::STEP_STATUS_OPEN) {
             throw new \InvalidArgumentException($this->l10n->t('Only open steps can be closed.'));
@@ -205,10 +199,7 @@ class WorkflowRunService {
             throw new \RuntimeException($this->l10n->t('Task step not found.'));
         }
 
-        $unit = $this->unitMapper->findForUser($step->getUnitId(), $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
+        $this->assertEntityExists((string)$step->getEntityType(), (int)$step->getEntityId(), $userId);
 
         if ($step->getStatus() !== self::STEP_STATUS_CLOSED) {
             throw new \InvalidArgumentException($this->l10n->t('Only closed steps can be reopened.'));
@@ -264,10 +255,7 @@ class WorkflowRunService {
             throw new \RuntimeException($this->l10n->t('Workflow run not found.'));
         }
 
-        $unit = $this->unitMapper->findForUser($run->getUnitId(), $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
+        $this->assertEntityExists((string)$run->getEntityType(), (int)$run->getEntityId(), $userId);
 
         $this->connection->beginTransaction();
         try {
@@ -294,20 +282,39 @@ class WorkflowRunService {
             $units = array_filter($units, fn($unit) => $unit->getPropertyId() === null);
         }
 
-        $unitMap = [];
+        $entityMap = [];
+        $properties = $this->propertyMapper->findByUser($userId);
+        foreach ($properties as $property) {
+            $propertyId = $property->getId();
+            if ($propertyId === null) {
+                continue;
+            }
+            $this->entityImageService->enrichProperty($property);
+            $entityMap['property:' . $propertyId] = [
+                'entityType' => 'property',
+                'entityId' => (int)$propertyId,
+                'name' => $property->getName(),
+                'imageUrl' => $property->getResolvedImageUrl(),
+            ];
+        }
         foreach ($units as $unit) {
-            $this->entityImageService->enrichUnit($unit);
-            $unitMap[$unit->getId()] = [
+            $this->entityImageService->enrichUnit($unit, null, false);
+            $unitId = $unit->getId();
+            if ($unitId === null) {
+                continue;
+            }
+            $entityMap['unit:' . $unitId] = [
+                'entityType' => 'unit',
+                'entityId' => (int)$unitId,
                 'name' => $unit->getLabel(),
                 'imageUrl' => $unit->getResolvedImageUrl(),
             ];
         }
-        $unitIds = array_keys($unitMap);
-        if (empty($unitIds)) {
+        if ($entityMap === []) {
             return [];
         }
 
-        $steps = $this->taskStepMapper->findOpenStepsByUnits($unitIds);
+        $steps = $this->taskStepMapper->findOpenStepsByEntities(array_values($entityMap));
         $runs = [];
         foreach ($steps as $step) {
             $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
@@ -316,16 +323,19 @@ class WorkflowRunService {
             }
         }
 
-        return array_map(function (TaskStep $step) use ($unitMap, $runs) {
+        return array_map(function (TaskStep $step) use ($entityMap, $runs) {
             $run = $runs[$step->getWorkflowRunId()] ?? null;
-            $unitMeta = $unitMap[$step->getUnitId()] ?? ['name' => '', 'imageUrl' => null];
+            $entityType = (string)$step->getEntityType();
+            $entityId = (int)$step->getEntityId();
+            $entityMeta = $entityMap[$entityType . ':' . $entityId] ?? ['name' => '', 'imageUrl' => null];
             return [
                 'type' => 'process',
                 'stepId' => $step->getId(),
                 'workflowRunId' => $step->getWorkflowRunId(),
-                'unitId' => $step->getUnitId(),
-                'unitName' => $unitMeta['name'] ?? '',
-                'unitImageUrl' => $unitMeta['imageUrl'] ?? null,
+                'entityType' => $entityType,
+                'entityId' => $entityId,
+                'entityName' => $entityMeta['name'] ?? '',
+                'entityImageUrl' => $entityMeta['imageUrl'] ?? null,
                 'title' => $step->getTitle(),
                 'description' => $step->getDescription(),
                 'actionType' => $step->getActionType(),
@@ -335,6 +345,25 @@ class WorkflowRunService {
                 'year' => $run?->getYear(),
             ];
         }, $steps);
+    }
+
+    private function assertEntityExists(string $entityType, int $entityId, string $userId): void {
+        if ($entityId <= 0) {
+            throw new \RuntimeException($this->l10n->t('Invalid entity.'));
+        }
+        if ($entityType === 'unit') {
+            if (!$this->unitMapper->findForUser($entityId, $userId)) {
+                throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            }
+            return;
+        }
+        if ($entityType === 'property') {
+            if (!$this->propertyMapper->findForUser($entityId, $userId)) {
+                throw new \RuntimeException($this->l10n->t('Property not found.'));
+            }
+            return;
+        }
+        throw new \RuntimeException($this->l10n->t('Unsupported entity type.'));
     }
 
     private function buildDueDate(int $offset, int $timestamp): string {

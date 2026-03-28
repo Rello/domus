@@ -10,6 +10,7 @@ use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\TaskMapper;
 use OCA\Domus\Db\TaskStepMapper;
+use OCA\Domus\Db\WorkflowRunMapper;
 use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
@@ -23,6 +24,7 @@ class UnitService {
         private TenancyMapper $tenancyMapper,
         private TaskMapper $taskMapper,
         private TaskStepMapper $taskStepMapper,
+        private WorkflowRunMapper $workflowRunMapper,
         private BookingMapper $bookingMapper,
         private BookingYearMapper $bookingYearMapper,
         private DistributionKeyUnitMapper $distributionKeyUnitMapper,
@@ -145,7 +147,14 @@ class UnitService {
         foreach ($tenancies as $tenancy) {
             $this->tenancyService->deleteTenancy($tenancy->getId(), $userId);
         }
-        $this->taskMapper->deleteByUnit($unit->getId());
+        $workflowRuns = $this->workflowRunMapper->findByEntity('unit', $unit->getId());
+        foreach ($workflowRuns as $run) {
+            foreach ($this->taskStepMapper->findByRun($run->getId()) as $step) {
+                $this->taskStepMapper->delete($step);
+            }
+            $this->workflowRunMapper->delete($run);
+        }
+        $this->taskMapper->deleteByEntity('unit', $unit->getId());
         $this->bookingYearMapper->deleteByUnit($unit->getId());
         $this->partnerRelMapper->deleteForRelation('unit', $unit->getId(), $userId);
         $this->unitMapper->delete($unit);
@@ -162,8 +171,9 @@ class UnitService {
             + $this->documentLinkMapper->countForEntities($userId, 'booking', $bookingIds);
 
         return [
-            'tasks' => $this->taskMapper->countByUnit($unit->getId()),
-            'taskSteps' => $this->taskStepMapper->countByUnit($unit->getId()),
+            'tasks' => $this->taskMapper->countByEntity('unit', $unit->getId()),
+            'taskSteps' => $this->taskStepMapper->countByEntity('unit', $unit->getId()),
+            'workflowRuns' => count($this->workflowRunMapper->findByEntity('unit', $unit->getId())),
             'tenancies' => count($tenancies),
             'bookings' => count($bookings),
             'distributions' => $this->distributionKeyUnitMapper->countByUnit($userId, $unit->getId()),

@@ -4,6 +4,7 @@ namespace OCA\Domus\Service;
 
 use OCA\Domus\Db\Task;
 use OCA\Domus\Db\TaskMapper;
+use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCP\DB\Exception as DbException;
 use OCP\IL10N;
@@ -15,6 +16,7 @@ class TaskService {
 
     public function __construct(
         private TaskMapper $taskMapper,
+        private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
         private IL10N $l10n,
     ) {
@@ -23,18 +25,16 @@ class TaskService {
     /**
      * @throws DbException
      */
-    public function createTask(int $unitId, string $title, ?string $description, ?string $dueDate, string $userId): Task {
-        $unit = $this->unitMapper->findForUser($unitId, $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
+    public function createTask(string $entityType, int $entityId, string $title, ?string $description, ?string $dueDate, string $userId): Task {
+        $this->assertEntityExists($entityType, $entityId, $userId);
         $title = trim($title);
         if ($title === '') {
             throw new \InvalidArgumentException($this->l10n->t('Task title is required.'));
         }
         $now = time();
         $task = new Task();
-        $task->setUnitId($unitId);
+        $task->setEntityType($entityType);
+        $task->setEntityId($entityId);
         $task->setTitle($title);
         $task->setDescription($description ?: null);
         $task->setStatus(self::STATUS_OPEN);
@@ -51,36 +51,41 @@ class TaskService {
     /**
      * @throws DbException
      */
-    public function listTasksByUnit(int $unitId, string $userId, ?string $status = null): array {
-        $unit = $this->unitMapper->findForUser($unitId, $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
-
-        return $this->taskMapper->findByUnit($unitId, $status);
+    public function listTasksByEntity(string $entityType, int $entityId, string $userId, ?string $status = null): array {
+        $this->assertEntityExists($entityType, $entityId, $userId);
+        return $this->taskMapper->findByEntity($entityType, $entityId, $status);
     }
 
     /**
      * @throws DbException
      */
-    public function listOpenTasks(string $userId, string $role, ?int $unitId = null): array {
-        if ($unitId !== null) {
-            $unit = $this->unitMapper->findForUser($unitId, $userId);
-            if (!$unit) {
-                throw new \RuntimeException($this->l10n->t('Unit not found.'));
-            }
-            return $this->taskMapper->findByUnit($unitId, self::STATUS_OPEN);
+    public function listOpenTasks(string $userId, string $role, ?string $entityType = null, ?int $entityId = null): array {
+        if ($entityType !== null && $entityId !== null) {
+            $this->assertEntityExists($entityType, $entityId, $userId);
+            return $this->taskMapper->findByEntity($entityType, $entityId, self::STATUS_OPEN);
         }
 
+        $entities = [];
+        $properties = $this->propertyMapper->findByUser($userId);
+        foreach ($properties as $property) {
+            $propertyId = $property->getId();
+            if ($propertyId !== null) {
+                $entities[] = ['entityType' => 'property', 'entityId' => (int)$propertyId];
+            }
+        }
         $units = $this->unitMapper->findByUser($userId, null, false);
         if ($role === 'buildingMgmt') {
             $units = array_filter($units, fn($unit) => $unit->getPropertyId() !== null);
         } elseif ($role === 'landlord') {
             $units = array_filter($units, fn($unit) => $unit->getPropertyId() === null);
         }
-
-        $unitIds = array_map(fn($unit) => $unit->getId(), $units);
-        return $this->taskMapper->findOpenTasks($unitIds);
+        foreach ($units as $unit) {
+            $unitId = $unit->getId();
+            if ($unitId !== null) {
+                $entities[] = ['entityType' => 'unit', 'entityId' => (int)$unitId];
+            }
+        }
+        return $this->taskMapper->findOpenTasks($entities);
     }
 
     /**
@@ -91,10 +96,7 @@ class TaskService {
         if (!$task) {
             throw new \RuntimeException($this->l10n->t('Task not found.'));
         }
-        $unit = $this->unitMapper->findForUser($task->getUnitId(), $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
+        $this->assertEntityExists((string)$task->getEntityType(), (int)$task->getEntityId(), $userId);
         if (!in_array($task->getStatus(), [self::STATUS_OPEN, self::STATUS_NEW], true)) {
             throw new \InvalidArgumentException($this->l10n->t('Only open tasks can be closed.'));
         }
@@ -115,10 +117,7 @@ class TaskService {
         if (!$task) {
             throw new \RuntimeException($this->l10n->t('Task not found.'));
         }
-        $unit = $this->unitMapper->findForUser($task->getUnitId(), $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
+        $this->assertEntityExists((string)$task->getEntityType(), (int)$task->getEntityId(), $userId);
         if ($task->getStatus() !== self::STATUS_CLOSED) {
             throw new \InvalidArgumentException($this->l10n->t('Only closed tasks can be reopened.'));
         }
@@ -139,11 +138,27 @@ class TaskService {
         if (!$task) {
             throw new \RuntimeException($this->l10n->t('Task not found.'));
         }
-        $unit = $this->unitMapper->findForUser($task->getUnitId(), $userId);
-        if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
-        }
+        $this->assertEntityExists((string)$task->getEntityType(), (int)$task->getEntityId(), $userId);
 
         $this->taskMapper->delete($task);
+    }
+
+    private function assertEntityExists(string $entityType, int $entityId, string $userId): void {
+        if ($entityId <= 0) {
+            throw new \RuntimeException($this->l10n->t('Invalid entity.'));
+        }
+        if ($entityType === 'unit') {
+            if (!$this->unitMapper->findForUser($entityId, $userId)) {
+                throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            }
+            return;
+        }
+        if ($entityType === 'property') {
+            if (!$this->propertyMapper->findForUser($entityId, $userId)) {
+                throw new \RuntimeException($this->l10n->t('Property not found.'));
+            }
+            return;
+        }
+        throw new \RuntimeException($this->l10n->t('Unsupported entity type.'));
     }
 }

@@ -71,17 +71,33 @@ class TaskStepMapper extends QBMapper {
     /**
      * @throws Exception
      */
-    public function findOpenStepsByUnits(array $unitIds): array {
-        if (empty($unitIds)) {
+    public function findOpenStepsByEntities(array $entities): array {
+        if ($entities === []) {
             return [];
         }
 
+        $conditions = [];
         $qb = $this->db->getQueryBuilder();
+        foreach ($entities as $entity) {
+            $type = (string)($entity['entityType'] ?? '');
+            $id = isset($entity['entityId']) ? (int)$entity['entityId'] : 0;
+            if ($type === '' || $id <= 0) {
+                continue;
+            }
+            $conditions[] = $qb->expr()->andX(
+                $qb->expr()->eq('step.entity_type', $qb->createNamedParameter($type)),
+                $qb->expr()->eq('step.entity_id', $qb->createNamedParameter($id, $qb::PARAM_INT))
+            );
+        }
+        if ($conditions === []) {
+            return [];
+        }
+
         $qb->select('step.*', 'run.name AS run_name', 'run.status AS run_status', 'run.template_id', 'tpl.key AS template_key')
             ->from($this->getTableName(), 'step')
             ->innerJoin('step', 'domus_workflow_runs', 'run', $qb->expr()->eq('step.workflow_run_id', 'run.id'))
             ->innerJoin('step', 'domus_task_templates', 'tpl', $qb->expr()->eq('run.template_id', 'tpl.id'))
-            ->where($qb->expr()->in('step.unit_id', $qb->createNamedParameter($unitIds, $qb::PARAM_INT_ARRAY)))
+            ->where(call_user_func_array([$qb->expr(), 'orX'], $conditions))
             ->andWhere($qb->expr()->eq('step.status', $qb->createNamedParameter('open')))
             ->orderBy('step.due_date', 'ASC');
 
@@ -91,11 +107,12 @@ class TaskStepMapper extends QBMapper {
     /**
      * @throws Exception
      */
-    public function countByUnit(int $unitId): int {
+    public function countByEntity(string $entityType, int $entityId): int {
         $qb = $this->db->getQueryBuilder();
         $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
+            ->where($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
 
         return (int)$qb->executeQuery()->fetchOne();
     }

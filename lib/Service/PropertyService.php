@@ -9,9 +9,12 @@ use OCA\Domus\Db\DocumentLinkMapper;
 use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Db\Property;
 use OCA\Domus\Db\PropertyMapper;
+use OCA\Domus\Db\TaskMapper;
+use OCA\Domus\Db\TaskStepMapper;
 use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
+use OCA\Domus\Db\WorkflowRunMapper;
 use OCP\IL10N;
 use Psr\Log\LoggerInterface;
 
@@ -24,7 +27,10 @@ class PropertyService {
         private DistributionKeyMapper $distributionKeyMapper,
         private DistributionKeyUnitMapper $distributionKeyUnitMapper,
         private PartnerRelMapper $partnerRelMapper,
+        private TaskMapper $taskMapper,
+        private TaskStepMapper $taskStepMapper,
         private TenancyMapper $tenancyMapper,
+        private WorkflowRunMapper $workflowRunMapper,
         private TenancyService $tenancyService,
         private DocumentPathService $documentPathService,
         private UnitService $unitService,
@@ -125,6 +131,14 @@ class PropertyService {
 
         $this->partnerRelMapper->deleteForRelation('property', $property->getId(), $userId);
         $this->documentLinkMapper->deleteForEntity($userId, 'property', $property->getId());
+        $workflowRuns = $this->workflowRunMapper->findByEntity('property', $property->getId());
+        foreach ($workflowRuns as $run) {
+            foreach ($this->taskStepMapper->findByRun($run->getId()) as $step) {
+                $this->taskStepMapper->delete($step);
+            }
+            $this->workflowRunMapper->delete($run);
+        }
+        $this->taskMapper->deleteByEntity('property', $property->getId());
         $this->propertyMapper->delete($property);
     }
 
@@ -138,6 +152,9 @@ class PropertyService {
 
         return [
             'units' => $this->unitMapper->countByProperty($property->getId(), $userId),
+            'tasks' => $this->taskMapper->countByEntity('property', $property->getId()),
+            'taskSteps' => $this->taskStepMapper->countByEntity('property', $property->getId()),
+            'workflowRuns' => count($this->workflowRunMapper->findByEntity('property', $property->getId())),
             'distributionKeys' => count($distributionKeys),
             'distributionValues' => $distributionValues,
             'partnerRelations' => count($this->partnerRelMapper->findForProperty($property->getId(), $userId)),

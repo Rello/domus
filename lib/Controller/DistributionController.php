@@ -51,8 +51,8 @@ class DistributionController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function updateForProperty(int $propertyId, int $distributionId, string $name, string $validFrom, ?string $validTo = null, ?string $configJson = null): DataResponse {
-        $payload = compact('name', 'validFrom', 'validTo', 'configJson');
+    public function updateForProperty(int $propertyId, int $distributionId, string $name, string $validFrom, ?string $validTo = null, ?string $configJson = null, ?string $editMode = null): DataResponse {
+        $payload = compact('name', 'validFrom', 'validTo', 'configJson', 'editMode');
         $updated = $this->distributionKeyService->updateDistributionKey($propertyId, $distributionId, $payload, $this->getUserId(), $this->getRole());
         return new DataResponse($updated);
     }

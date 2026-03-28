@@ -27,7 +27,7 @@ class TaskTemplateMapper extends QBMapper {
     /**
      * @throws Exception
      */
-    public function findAll(?bool $activeOnly = null): array {
+    public function findAll(?bool $activeOnly = null, ?string $appliesTo = null): array {
         $qb = $this->db->getQueryBuilder();
         $qb->select(...$this->selectColumns())
             ->from($this->getTableName())
@@ -35,6 +35,9 @@ class TaskTemplateMapper extends QBMapper {
 
         if ($activeOnly !== null) {
             $qb->andWhere($qb->expr()->eq('is_active', $qb->createNamedParameter($activeOnly ? 1 : 0, $qb::PARAM_INT)));
+        }
+        if ($appliesTo !== null && $appliesTo !== '') {
+            $qb->andWhere($qb->expr()->eq('applies_to', $qb->createNamedParameter($appliesTo)));
         }
 
         return $this->findEntities($qb);

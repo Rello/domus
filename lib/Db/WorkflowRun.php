@@ -6,7 +6,8 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class WorkflowRun extends Entity implements JsonSerializable {
-    protected $unitId;
+    protected $entityType;
+    protected $entityId;
     protected $templateId;
     protected $name;
     protected $year;
@@ -21,7 +22,7 @@ class WorkflowRun extends Entity implements JsonSerializable {
 
     public function __construct() {
         $this->addType('id', 'int');
-        $this->addType('unitId', 'int');
+        $this->addType('entityId', 'int');
         $this->addType('templateId', 'int');
         $this->addType('year', 'int');
         $this->addType('startedAt', 'int');
@@ -33,7 +34,8 @@ class WorkflowRun extends Entity implements JsonSerializable {
     public function jsonSerialize(): array {
         return [
             'id' => $this->id,
-            'unitId' => $this->unitId,
+            'entityType' => $this->entityType,
+            'entityId' => $this->entityId,
             'templateId' => $this->templateId,
             'name' => $this->name,
             'year' => $this->year,

@@ -6,7 +6,8 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Task extends Entity implements JsonSerializable {
-    protected $unitId;
+    protected $entityType;
+    protected $entityId;
     protected $title;
     protected $description;
     protected $status;
@@ -19,7 +20,7 @@ class Task extends Entity implements JsonSerializable {
 
     public function __construct() {
         $this->addType('id', 'int');
-        $this->addType('unitId', 'int');
+        $this->addType('entityId', 'int');
         $this->addType('closedAt', 'int');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
@@ -28,7 +29,8 @@ class Task extends Entity implements JsonSerializable {
     public function jsonSerialize(): array {
         return [
             'id' => $this->id,
-            'unitId' => $this->unitId,
+            'entityType' => $this->entityType,
+            'entityId' => $this->entityId,
             'title' => $this->title,
             'description' => $this->description,
             'status' => $this->status,

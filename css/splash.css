@@ -13,7 +13,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(circle at 20% 20%, #f4f8f6 0%, #e2e8f0 65%, #d8e0db 100%);
+    background: radial-gradient(circle at 20% 20%, #f4f8f6 0%, #F8FAFC 65%, #d8e0db 100%);
     opacity: 1;
 }
 

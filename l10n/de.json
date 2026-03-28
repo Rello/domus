@@ -473,7 +473,16 @@
         "Tax advisor fees": "Steuerberaterhonorar",
         "Due date": "Fälligkeitsdatum",
         "IBAN is invalid.": "IBAN ist ungültig.",
-        "Invalid IBAN.": "Ungültige IBAN."
+        "Invalid IBAN.": "Ungültige IBAN.",
+        "Base value changed": "Basiswert geändert",
+        "Change existing": "Bestehenden Eintrag ändern",
+        "Create new version": "Neue Version erstellen",
+        "The new distribution must start after the current entry.": "Die neue Umlage muss nach dem aktuellen Eintrag beginnen.",
+        "The new distribution must start within the current validity period.": "Die neue Umlage muss innerhalb des aktuellen Gültigkeitszeitraums beginnen.",
+        "The new distribution start date is too early.": "Das Startdatum der neuen Umlage ist zu früh.",
+        "The base value changed. Do you want to update the current distribution or create a new distribution version?": "Der Basiswert wurde geändert. Möchten Sie den aktuellen Umlageschlüssel ändern oder eine neue Version anlegen?",
+        "Unit and area distributions cannot overlap.": "Umlagen vom Typ Einheit und Fläche dürfen sich nicht überschneiden.",
+        "Invalid distribution edit mode.": "Ungültiger Bearbeitungsmodus für Umlagen."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

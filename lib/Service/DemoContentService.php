@@ -176,6 +176,7 @@ class DemoContentService {
     private function createDemoTask(int $unitId, string $userId): void {
         $dueDate = (new \DateTimeImmutable('+14 days'))->format('Y-m-d');
         $this->taskService->createTask(
+            'unit',
             $unitId,
             $this->l10n->t('Check smoke detectors'),
             $this->l10n->t('Schedule the annual safety inspection for the unit.'),

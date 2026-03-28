@@ -37,4 +37,23 @@ class DistributionKeyMapper extends QBMapper {
 
         return $this->findEntities($qb);
     }
+
+    /**
+     * @throws Exception
+     */
+    public function findByPropertyAndType(int $propertyId, string $type, string $userId, ?int $excludeId = null): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('type', $qb->createNamedParameter($type)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->orderBy('valid_from', 'ASC');
+
+        if ($excludeId !== null) {
+            $qb->andWhere($qb->expr()->neq('id', $qb->createNamedParameter($excludeId, $qb::PARAM_INT)));
+        }
+
+        return $this->findEntities($qb);
+    }
 }

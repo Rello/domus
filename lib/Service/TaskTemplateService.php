@@ -22,8 +22,11 @@ class TaskTemplateService {
     /**
      * @throws DbException
      */
-    public function listTemplates(bool $activeOnly = true): array {
-        $templates = $this->templateMapper->findAll($activeOnly ? true : null);
+    public function listTemplates(bool $activeOnly = true, ?string $appliesTo = null): array {
+        if ($appliesTo !== null && !in_array($appliesTo, ['unit', 'property'], true)) {
+            throw new \InvalidArgumentException($this->l10n->t('Invalid template entity type.'));
+        }
+        $templates = $this->templateMapper->findAll($activeOnly ? true : null, $appliesTo);
         $templateIds = array_map(fn(TaskTemplate $template) => $template->getId(), $templates);
         $counts = $this->stepMapper->countByTemplateIds($templateIds);
         foreach ($templates as $template) {
@@ -63,12 +66,16 @@ class TaskTemplateService {
         if ($name === '') {
             throw new \InvalidArgumentException($this->l10n->t('Template name is required.'));
         }
+        $appliesTo = (string)($payload['appliesTo'] ?? 'unit');
+        if (!in_array($appliesTo, ['unit', 'property'], true)) {
+            throw new \InvalidArgumentException($this->l10n->t('Invalid template entity type.'));
+        }
 
         $template = new TaskTemplate();
         $template->setKey($key);
         $template->setName($name);
         $template->setDescription($payload['description'] ?? null);
-        $template->setAppliesTo($payload['appliesTo'] ?? 'unit');
+        $template->setAppliesTo($appliesTo);
         $template->setIsActive(!empty($payload['isActive']) ? 1 : 0);
         $now = time();
         $template->setCreatedAt($now);
@@ -108,6 +115,13 @@ class TaskTemplateService {
 
         if (array_key_exists('description', $payload)) {
             $template->setDescription($payload['description'] ?? null);
+        }
+        if (array_key_exists('appliesTo', $payload)) {
+            $appliesTo = (string)$payload['appliesTo'];
+            if (!in_array($appliesTo, ['unit', 'property'], true)) {
+                throw new \InvalidArgumentException($this->l10n->t('Invalid template entity type.'));
+            }
+            $template->setAppliesTo($appliesTo);
         }
 
         if (array_key_exists('isActive', $payload)) {

@@ -23,7 +23,7 @@ class WorkflowRunController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function createForUnit(int $unitId): DataResponse {
+    public function createForEntity(string $entityType, int $entityId): DataResponse {
         $payload = $this->request->getParams();
         $templateId = isset($payload['templateId']) ? (int)$payload['templateId'] : 0;
         $year = isset($payload['year']) ? (int)$payload['year'] : null;
@@ -32,25 +32,25 @@ class WorkflowRunController extends Controller {
             return $this->validationError($this->l10n->t('Template is required.'));
         }
         try {
-            $run = $this->workflowRunService->startWorkflowRun($unitId, $templateId, $year, $name, $this->getUserId());
+            $run = $this->workflowRunService->startWorkflowRun($entityType, $entityId, $templateId, $year, $name, $this->getUserId());
             return new DataResponse($run, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
         } catch (\RuntimeException $e) {
-            return new DataResponse([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'code' => 'CONFLICT',
-            ], Http::STATUS_CONFLICT);
+            return $this->errorResponse($e->getMessage(), Http::STATUS_CONFLICT, 'CONFLICT');
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR');
         }
     }
 
     #[NoAdminRequired]
-    public function listByUnit(int $unitId): DataResponse {
+    public function listByEntity(string $entityType, int $entityId): DataResponse {
         try {
-            return new DataResponse($this->workflowRunService->getWorkflowRunsByUnit($unitId, $this->getUserId()));
+            return new DataResponse($this->workflowRunService->getWorkflowRunsByEntity($entityType, $entityId, $this->getUserId()));
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_BAD_REQUEST, 'RUNTIME_ERROR');
         } catch (\Throwable $e) {
-            return $this->notFound();
+            return $this->errorResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR');
         }
     }
 
@@ -58,8 +58,10 @@ class WorkflowRunController extends Controller {
     public function show(int $runId): DataResponse {
         try {
             return new DataResponse($this->workflowRunService->getWorkflowRun($runId, $this->getUserId()));
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_BAD_REQUEST, 'RUNTIME_ERROR');
         } catch (\Throwable $e) {
-            return $this->notFound();
+            return $this->errorResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR');
         }
     }
 
@@ -69,8 +71,10 @@ class WorkflowRunController extends Controller {
             return new DataResponse($this->workflowRunService->closeStep($stepId, $this->getUserId()));
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_BAD_REQUEST, 'RUNTIME_ERROR');
         } catch (\Throwable $e) {
-            return $this->notFound();
+            return $this->errorResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR');
         }
     }
 
@@ -80,8 +84,10 @@ class WorkflowRunController extends Controller {
             return new DataResponse($this->workflowRunService->reopenStep($stepId, $this->getUserId()));
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_BAD_REQUEST, 'RUNTIME_ERROR');
         } catch (\Throwable $e) {
-            return $this->notFound();
+            return $this->errorResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR');
         }
     }
 
@@ -90,8 +96,10 @@ class WorkflowRunController extends Controller {
         try {
             $this->workflowRunService->deleteRun($runId, $this->getUserId());
             return new DataResponse(['status' => 'success']);
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_BAD_REQUEST, 'RUNTIME_ERROR');
         } catch (\Throwable $e) {
-            return $this->notFound();
+            return $this->errorResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR');
         }
     }
 
@@ -99,12 +107,12 @@ class WorkflowRunController extends Controller {
         return $this->userSession->getUser()?->getUID() ?? '';
     }
 
-    private function notFound(): DataResponse {
+    private function errorResponse(string $message, int $status, string $code): DataResponse {
         return new DataResponse([
             'status' => 'error',
-            'message' => $this->l10n->t('Resource not found.'),
-            'code' => 'NOT_FOUND',
-        ], Http::STATUS_NOT_FOUND);
+            'message' => $message,
+            'code' => $code,
+        ], $status);
     }
 
     private function validationError(string $message): DataResponse {

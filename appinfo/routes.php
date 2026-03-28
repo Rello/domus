@@ -106,16 +106,16 @@ return [
         ['name' => 'TaskTemplate#deleteStep', 'url' => '/api/task-template-steps/{stepId}', 'verb' => 'DELETE'],
 
         // Workflow runs
-        ['name' => 'WorkflowRun#createForUnit', 'url' => '/api/units/{unitId}/workflow-runs', 'verb' => 'POST'],
-        ['name' => 'WorkflowRun#listByUnit', 'url' => '/api/units/{unitId}/workflow-runs', 'verb' => 'GET'],
+        ['name' => 'WorkflowRun#createForEntity', 'url' => '/api/workflow-runs/{entityType}/{entityId}', 'verb' => 'POST'],
+        ['name' => 'WorkflowRun#listByEntity', 'url' => '/api/workflow-runs/{entityType}/{entityId}', 'verb' => 'GET'],
         ['name' => 'WorkflowRun#show', 'url' => '/api/workflow-runs/{runId}', 'verb' => 'GET'],
         ['name' => 'WorkflowRun#delete', 'url' => '/api/workflow-runs/{runId}', 'verb' => 'DELETE'],
         ['name' => 'WorkflowRun#closeStep', 'url' => '/api/task-steps/{stepId}/close', 'verb' => 'POST'],
         ['name' => 'WorkflowRun#reopenStep', 'url' => '/api/task-steps/{stepId}/reopen', 'verb' => 'POST'],
 
         // Tasks
-        ['name' => 'Task#createForUnit', 'url' => '/api/units/{unitId}/tasks', 'verb' => 'POST'],
-        ['name' => 'Task#listByUnit', 'url' => '/api/units/{unitId}/tasks', 'verb' => 'GET'],
+        ['name' => 'Task#createForEntity', 'url' => '/api/tasks/{entityType}/{entityId}', 'verb' => 'POST'],
+        ['name' => 'Task#listByEntity', 'url' => '/api/tasks/{entityType}/{entityId}', 'verb' => 'GET'],
         ['name' => 'Task#listOpen', 'url' => '/api/tasks', 'verb' => 'GET'],
         ['name' => 'Task#close', 'url' => '/api/tasks/{taskId}/close', 'verb' => 'POST'],
         ['name' => 'Task#reopen', 'url' => '/api/tasks/{taskId}/reopen', 'verb' => 'POST'],

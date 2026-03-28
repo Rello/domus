@@ -21,8 +21,12 @@ class TaskTemplateController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function index(?int $activeOnly = 1): DataResponse {
-        return new DataResponse($this->taskTemplateService->listTemplates((bool)$activeOnly));
+    public function index(?int $activeOnly = 1, ?string $appliesTo = null): DataResponse {
+        try {
+            return new DataResponse($this->taskTemplateService->listTemplates((bool)$activeOnly, $appliesTo));
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        }
     }
 
     #[NoAdminRequired]

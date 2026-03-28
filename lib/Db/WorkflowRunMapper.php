@@ -14,11 +14,12 @@ class WorkflowRunMapper extends QBMapper {
     /**
      * @throws Exception
      */
-    public function findByUnit(int $unitId): array {
+    public function findByEntity(string $entityType, int $entityId): array {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)))
+            ->where($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)))
             ->orderBy('started_at', 'DESC');
 
         return $this->findEntities($qb);
@@ -40,11 +41,12 @@ class WorkflowRunMapper extends QBMapper {
     /**
      * @throws Exception
      */
-    public function findOpenRunForYear(int $unitId, int $templateId, int $year): ?WorkflowRun {
+    public function findOpenRunForYear(string $entityType, int $entityId, int $templateId, int $year): ?WorkflowRun {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)))
+            ->where($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('template_id', $qb->createNamedParameter($templateId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('open')))

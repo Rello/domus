@@ -60,7 +60,7 @@ class UnitTransferService {
         $tenancies = $this->tenancyMapper->findByUser($userId, $unitId);
         $bookings = $this->bookingMapper->findByUser($userId, ['unitId' => $unitId]);
         $bookingYears = $this->bookingYearMapper->findByUnit($unitId);
-        $tasks = $this->taskMapper->findByUnit($unitId);
+        $tasks = $this->taskMapper->findByEntity('unit', $unitId);
 
         $partnerRelations = $this->partnerRelMapper->findForUnit($unitId, $userId);
         foreach ($tenancies as $tenancy) {
@@ -75,7 +75,7 @@ class UnitTransferService {
         $templateMap = [];
         $taskTemplates = [];
         $workflowRunsPayload = [];
-        $workflowRuns = $this->workflowRunMapper->findByUnit($unitId);
+        $workflowRuns = $this->workflowRunMapper->findByEntity('unit', $unitId);
         foreach ($workflowRuns as $run) {
             $steps = $this->taskStepMapper->findByRun($run->getId());
             $runData = $run->jsonSerialize();
@@ -384,7 +384,8 @@ class UnitTransferService {
     private function importTasks(array $tasks, int $unitId, string $userId, int $now): void {
         foreach ($tasks as $taskData) {
             $task = new Task();
-            $task->setUnitId($unitId);
+            $task->setEntityType('unit');
+            $task->setEntityId($unitId);
             $task->setTitle($taskData['title'] ?? '');
             $task->setDescription($taskData['description'] ?? null);
             $task->setStatus($taskData['status'] ?? 'open');
@@ -460,7 +461,8 @@ class UnitTransferService {
             }
 
             $run = new WorkflowRun();
-            $run->setUnitId($unitId);
+            $run->setEntityType('unit');
+            $run->setEntityId($unitId);
             $run->setTemplateId($mappedTemplateId);
             $run->setName($runData['name'] ?? '');
             $run->setYear(isset($runData['year']) ? (int)$runData['year'] : null);
@@ -476,7 +478,8 @@ class UnitTransferService {
             foreach ($steps as $stepData) {
                 $step = new TaskStep();
                 $step->setWorkflowRunId($run->getId());
-                $step->setUnitId($unitId);
+                $step->setEntityType('unit');
+                $step->setEntityId($unitId);
                 $step->setSortOrder((int)($stepData['sortOrder'] ?? 0));
                 $step->setTitle($stepData['title'] ?? '');
                 $step->setDescription($stepData['description'] ?? null);

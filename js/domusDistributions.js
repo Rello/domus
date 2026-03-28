@@ -64,6 +64,14 @@
             return JSON.stringify({ base: parsed });
         }
 
+        function normalizeBaseValue(baseValue) {
+            if (baseValue === undefined || baseValue === null || baseValue === '') {
+                return null;
+            }
+            const parsed = parseFloat(baseValue);
+            return Number.isNaN(parsed) ? null : parsed;
+        }
+
         function toggleConfigFields(form, type) {
             const normalized = (type || '').toString().toLowerCase();
             const needsBase = isBaseType(normalized);
@@ -105,23 +113,36 @@
             const filtered = filterList(distributions, options);
             const showUnitValue = options.showUnitValue === true;
             const hideConfig = options.hideConfig === true;
-            const headers = [
-                t('domus', 'Name'),
-                t('domus', 'Type'),
-            ];
+            const propertyDetailVariant = options.variant === 'propertyDetail';
+            const headers = propertyDetailVariant
+                ? [
+                    t('domus', 'Name'),
+                    t('domus', 'Type'),
+                    t('domus', 'Validity')
+                ]
+                : [
+                    t('domus', 'Name'),
+                    t('domus', 'Type'),
+                ];
             if (showUnitValue) {
                 headers.push(t('domus', 'Unit value'));
             }
-            headers.push(t('domus', 'Valid from'), t('domus', 'Valid to'));
-            if (!hideConfig) {
+            if (!propertyDetailVariant) {
+                headers.push(t('domus', 'Valid from'), t('domus', 'Valid to'));
+            }
+            if (!hideConfig && !propertyDetailVariant) {
                 headers.push(t('domus', 'Base'));
             }
 
             const rows = filtered.map(item => {
                 const unitValue = item.unitValue || null;
                 const cells = [
-                    Domus.Utils.escapeHtml(item.name || ''),
-                    Domus.Utils.escapeHtml(getTypeLabel(item.type))
+                    propertyDetailVariant
+                        ? '<div class="domus-distribution-name-cell">' + Domus.Utils.escapeHtml(item.name || '') + '</div>'
+                        : Domus.Utils.escapeHtml(item.name || ''),
+                    propertyDetailVariant
+                        ? buildTypeBadge(item.type)
+                        : Domus.Utils.escapeHtml(getTypeLabel(item.type))
                 ];
                 if (showUnitValue) {
                     const valueContent = unitValue && unitValue.value !== undefined && unitValue.value !== null
@@ -129,11 +150,15 @@
                         : '—';
                     cells.push({ content: Domus.Utils.escapeHtml(valueContent), alignRight: true });
                 }
-                cells.push(
-                    Domus.Utils.escapeHtml(formatDate(item.validFrom)),
-                    Domus.Utils.escapeHtml(formatDate(item.validTo))
-                );
-                if (!hideConfig) {
+                if (propertyDetailVariant) {
+                    cells.push('<div class="domus-distribution-validity-cell">' + Domus.Utils.escapeHtml(formatValidity(item.validFrom, item.validTo)) + '</div>');
+                } else {
+                    cells.push(
+                        Domus.Utils.escapeHtml(formatDate(item.validFrom)),
+                        Domus.Utils.escapeHtml(formatDate(item.validTo))
+                    );
+                }
+                if (!hideConfig && !propertyDetailVariant) {
                     const baseValue = parseBaseConfig(item.configJson);
                     const baseContent = baseValue === '' || baseValue === null || baseValue === undefined ? '—' : baseValue;
                     cells.push(Domus.Utils.escapeHtml(baseContent));
@@ -141,7 +166,13 @@
                 return { cells, className: 'domus-distribution-row', dataset: { distid: item.id, disttype: item.type } };
             });
 
-            return Domus.UI.buildTable(headers, rows, { wrapPanel: options.wrapPanel !== false });
+            const tableHtml = Domus.UI.buildTable(headers, rows, {
+                wrapPanel: options.wrapPanel !== false,
+                showHeader: !propertyDetailVariant
+            });
+            return propertyDetailVariant
+                ? '<div class="domus-property-distribution-table">' + tableHtml + '</div>'
+                : tableHtml;
         }
 
         function filterList(distributions, options = {}) {
@@ -160,12 +191,83 @@
             return Domus.Utils.formatDate(value);
         }
 
+        function formatValidity(validFrom, validTo) {
+            const fromLabel = validFrom ? Domus.Utils.formatDate(validFrom) : '';
+            const toLabel = validTo ? Domus.Utils.formatDate(validTo) : '';
+            if (fromLabel && toLabel) {
+                return t('domus', '{from} to {to}', { from: fromLabel, to: toLabel });
+            }
+            if (fromLabel) {
+                return t('domus', 'since {date}', { date: fromLabel });
+            }
+            if (toLabel) {
+                return t('domus', 'Until {date}', { date: toLabel });
+            }
+            return '—';
+        }
+
+        function buildTypeBadge(type) {
+            return '<span class="domus-badge domus-badge-muted">' + Domus.Utils.escapeHtml(getTypeLabel(type)) + '</span>';
+        }
+
         function buildTypeSelect(defaultValue = '', { excludeSystemDefaults = false } = {}) {
             const options = excludeSystemDefaults ? typeOptions.filter(opt => !opt.systemDefault) : typeOptions;
             return '<select name="type" required>' + options.map(opt => {
                 const selected = String(opt.value) === String(defaultValue) ? ' selected' : '';
                 return '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + selected + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>';
             }).join('') + '</select>';
+        }
+
+        function promptDistributionBaseChangeMode() {
+            return new Promise(resolve => {
+                const content = document.createElement('div');
+                const message = document.createElement('p');
+                message.className = 'domus-modal-message';
+                message.textContent = t('domus', 'The base value changed. Do you want to update the current distribution or create a new distribution version?');
+                content.appendChild(message);
+
+                const footer = document.createElement('div');
+                footer.className = 'domus-modal-footer';
+
+                const cancelButton = document.createElement('button');
+                cancelButton.type = 'button';
+                cancelButton.textContent = t('domus', 'Cancel');
+
+                const updateButton = document.createElement('button');
+                updateButton.type = 'button';
+                updateButton.textContent = t('domus', 'Change existing');
+
+                const versionButton = document.createElement('button');
+                versionButton.type = 'button';
+                versionButton.className = 'primary';
+                versionButton.textContent = t('domus', 'Create new version');
+
+                footer.appendChild(cancelButton);
+                footer.appendChild(updateButton);
+                footer.appendChild(versionButton);
+                content.appendChild(footer);
+
+                let resolved = false;
+                let modal;
+                const finish = result => {
+                    if (resolved) {
+                        return;
+                    }
+                    resolved = true;
+                    modal?.close();
+                    resolve(result);
+                };
+
+                modal = Domus.UI.openModal({
+                    title: t('domus', 'Base value changed'),
+                    content,
+                    onClose: () => finish(null)
+                });
+
+                cancelButton.addEventListener('click', () => finish(null));
+                updateButton.addEventListener('click', () => finish('update'));
+                versionButton.addEventListener('click', () => finish('createVersion'));
+            });
         }
 
         function openCreateKeyModal(propertyId, onCreated, options = {}) {
@@ -185,7 +287,7 @@
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Type'),
                     required: true,
-                    content: buildTypeSelect('', { excludeSystemDefaults: true })
+                    content: buildTypeSelect('')
                 }),
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Valid from'),
@@ -424,13 +526,24 @@
 
             modal.modalEl.querySelector('#domus-edit-distribution-cancel')?.addEventListener('click', modal.close);
             toggleConfigFields(modal.modalEl, distribution.type);
-            modal.modalEl.querySelector('#domus-edit-distribution')?.addEventListener('submit', function(e) {
+            modal.modalEl.querySelector('#domus-edit-distribution')?.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const payload = {};
                 Array.prototype.forEach.call(this.elements, el => {
                     if (el.name && el.name !== 'baseValue') payload[el.name] = el.value;
                 });
                 payload.configJson = resolveConfigPayload(distribution.type, this);
+                if (isBaseType(distribution.type)) {
+                    const oldBaseValue = normalizeBaseValue(parseBaseConfig(distribution.configJson));
+                    const newBaseValue = normalizeBaseValue(this.querySelector('input[name="baseValue"]')?.value);
+                    if (oldBaseValue !== newBaseValue) {
+                        const editMode = await promptDistributionBaseChangeMode();
+                        if (!editMode) {
+                            return;
+                        }
+                        payload.editMode = editMode;
+                    }
+                }
                 Domus.Api.updateDistribution(propertyId, distribution.id, payload)
                     .then(() => {
                         Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Distribution') }), 'success');

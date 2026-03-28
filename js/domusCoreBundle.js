@@ -275,7 +275,18 @@
         function handleResponse(response) {
             if (!response.ok) {
                 return response.text().then(msg => {
-                    throw new Error(msg || response.statusText);
+                    let errorMessage = msg || response.statusText;
+                    if (msg) {
+                        try {
+                            const parsed = JSON.parse(msg);
+                            if (parsed && typeof parsed.message === 'string' && parsed.message.trim() !== '') {
+                                errorMessage = parsed.message;
+                            }
+                        } catch (error) {
+                            // Keep the raw response body when the server did not return JSON.
+                        }
+                    }
+                    throw new Error(errorMessage);
                 });
             }
             const contentType = response.headers.get('Content-Type') || '';
@@ -304,7 +315,10 @@
             deleteProperty: id => request('DELETE', `/properties/${id}`),
             getPropertyDeletionSummary: id => request('GET', `/properties/${id}/deletion-summary`),
             getProperty: id => request('GET', `/properties/${id}`),
-            getTaskTemplates: (activeOnly = true) => request('GET', buildUrl('/api/task-templates', appendFilters(new URLSearchParams(), { activeOnly: activeOnly ? 1 : 0 }))),
+            getTaskTemplates: (activeOnly = true, appliesTo) => request('GET', buildUrl('/api/task-templates', appendFilters(new URLSearchParams(), {
+                activeOnly: activeOnly ? 1 : 0,
+                appliesTo
+            }))),
             getTaskTemplate: id => request('GET', `/api/task-templates/${id}`),
             createTaskTemplate: data => request('POST', '/api/task-templates', data),
             updateTaskTemplate: (id, data) => request('PUT', `/api/task-templates/${id}`, data),
@@ -313,15 +327,15 @@
             addTaskTemplateStep: (id, data) => request('POST', `/api/task-templates/${id}/steps`, data),
             updateTaskTemplateStep: (stepId, data) => request('PUT', `/api/task-template-steps/${stepId}`, data),
             deleteTaskTemplateStep: stepId => request('DELETE', `/api/task-template-steps/${stepId}`),
-            startWorkflowRun: (unitId, data) => request('POST', `/api/units/${unitId}/workflow-runs`, data),
-            getWorkflowRunsByUnit: unitId => request('GET', `/api/units/${unitId}/workflow-runs`),
+            startWorkflowRun: (entityType, entityId, data) => request('POST', `/api/workflow-runs/${entityType}/${entityId}`, data),
+            getWorkflowRunsByEntity: (entityType, entityId) => request('GET', `/api/workflow-runs/${entityType}/${entityId}`),
             getWorkflowRun: runId => request('GET', `/api/workflow-runs/${runId}`),
             deleteWorkflowRun: runId => request('DELETE', `/api/workflow-runs/${runId}`),
             closeTaskStep: stepId => request('POST', `/api/task-steps/${stepId}/close`),
             reopenTaskStep: stepId => request('POST', `/api/task-steps/${stepId}/reopen`),
-            createTask: (unitId, data) => request('POST', `/api/units/${unitId}/tasks`, data),
-            getTasksByUnit: (unitId, status) => request('GET', buildUrl(`/api/units/${unitId}/tasks`, appendFilters(new URLSearchParams(), { status }))),
-            getOpenTasks: status => request('GET', buildUrl('/api/tasks', appendFilters(new URLSearchParams(), { status }))),
+            createTask: (entityType, entityId, data) => request('POST', `/api/tasks/${entityType}/${entityId}`, data),
+            getTasksByEntity: (entityType, entityId, status) => request('GET', buildUrl(`/api/tasks/${entityType}/${entityId}`, appendFilters(new URLSearchParams(), { status }))),
+            getOpenTasks: (status, entityType, entityId) => request('GET', buildUrl('/api/tasks', appendFilters(new URLSearchParams(), { status, entityType, entityId }))),
             closeTask: taskId => request('POST', `/api/tasks/${taskId}/close`),
             reopenTask: taskId => request('POST', `/api/tasks/${taskId}/reopen`),
             deleteTask: taskId => request('DELETE', `/api/tasks/${taskId}`),

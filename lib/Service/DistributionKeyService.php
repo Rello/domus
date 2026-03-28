@@ -8,10 +8,12 @@ use OCA\Domus\Db\DistributionKeyUnitMapper;
 use OCA\Domus\Db\DistributionKeyUnit;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\UnitMapper;
+use OCP\IDBConnection;
 use OCP\IL10N;
 
 class DistributionKeyService {
     private const ALLOWED_TYPES = ['area', 'mea', 'unit', 'persons', 'consumption', 'mixed', 'manual'];
+    private const SPECIAL_SINGLE_ENTRY_TYPES = ['area', 'unit'];
 
     public function __construct(
         private DistributionKeyMapper $distributionKeyMapper,
@@ -19,6 +21,7 @@ class DistributionKeyService {
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
         private PermissionService $permissionService,
+        private IDBConnection $connection,
         private IL10N $l10n,
     ) {
     }
@@ -92,6 +95,23 @@ class DistributionKeyService {
         $key->setValidTo($validTo ?: null);
         $key->setCreatedAt($now);
         $key->setUpdatedAt($now);
+
+        if ($this->isSpecialSingleEntryType($type)) {
+            $keysToClose = $this->getSpecialKeysToClose($propertyId, $type, $validFrom, $userId);
+            $this->assertNoSpecialTypeOverlap($propertyId, $type, $validFrom, $validTo ?: null, $userId);
+            $this->connection->beginTransaction();
+            try {
+                foreach ($keysToClose as $keyToClose) {
+                    $this->distributionKeyMapper->update($keyToClose);
+                }
+                $created = $this->distributionKeyMapper->insert($key);
+                $this->connection->commit();
+                return $created;
+            } catch (\Throwable $e) {
+                $this->connection->rollBack();
+                throw $e;
+            }
+        }
 
         return $this->distributionKeyMapper->insert($key);
     }
@@ -175,6 +195,25 @@ class DistributionKeyService {
         $this->assertDateRange($validFrom, $validTo);
 
         $configJson = $this->normalizeConfigJson($data['configJson'] ?? $distributionKey->getConfigJson());
+        $editMode = strtolower(trim((string)($data['editMode'] ?? 'update')));
+        if (!in_array($editMode, ['update', 'createversion'], true)) {
+            throw new \InvalidArgumentException($this->l10n->t('Invalid distribution edit mode.'));
+        }
+
+        if ($editMode === 'createversion') {
+            return $this->createDistributionKeyVersion($distributionKey, $name, $validFrom, $validTo ?: null, $configJson, $userId);
+        }
+
+        if ($this->isSpecialSingleEntryType((string)$distributionKey->getType())) {
+            $this->assertNoSpecialTypeOverlap(
+                $propertyId,
+                (string)$distributionKey->getType(),
+                $validFrom,
+                $validTo ?: null,
+                $userId,
+                (int)$distributionKey->getId()
+            );
+        }
 
         $distributionKey->setName($name);
         $distributionKey->setValidFrom($validFrom);
@@ -270,5 +309,140 @@ class DistributionKeyService {
             $key->setUpdatedAt($now);
             $this->distributionKeyMapper->insert($key);
         }
+    }
+
+    private function createDistributionKeyVersion(
+        DistributionKey $distributionKey,
+        string $name,
+        string $validFrom,
+        ?string $validTo,
+        ?string $configJson,
+        string $userId
+    ): DistributionKey {
+        $currentValidFrom = (string)$distributionKey->getValidFrom();
+        $currentValidTo = $distributionKey->getValidTo();
+
+        if ($validFrom <= $currentValidFrom) {
+            throw new \InvalidArgumentException($this->l10n->t('The new distribution must start after the current entry.'));
+        }
+        if ($currentValidTo !== null && $currentValidTo !== '' && $validFrom > $currentValidTo) {
+            throw new \InvalidArgumentException($this->l10n->t('The new distribution must start within the current validity period.'));
+        }
+
+        $newValidTo = $validTo ?: ($currentValidTo ?: null);
+        $this->assertDateRange($validFrom, $newValidTo);
+
+        $previousValidTo = $this->getPreviousDate($validFrom);
+        if ($previousValidTo < $currentValidFrom) {
+            throw new \InvalidArgumentException($this->l10n->t('The new distribution start date is too early.'));
+        }
+
+        $type = strtolower((string)$distributionKey->getType());
+        if ($this->isSpecialSingleEntryType($type)) {
+            $this->assertNoSpecialTypeOverlap(
+                (int)$distributionKey->getPropertyId(),
+                $type,
+                $validFrom,
+                $newValidTo,
+                $userId,
+                (int)$distributionKey->getId()
+            );
+        }
+
+        $now = time();
+        $newKey = new DistributionKey();
+        $newKey->setUserId($userId);
+        $newKey->setPropertyId((int)$distributionKey->getPropertyId());
+        $newKey->setType((string)$distributionKey->getType());
+        $newKey->setName($name);
+        $newKey->setConfigJson($configJson);
+        $newKey->setValidFrom($validFrom);
+        $newKey->setValidTo($newValidTo);
+        $newKey->setCreatedAt($now);
+        $newKey->setUpdatedAt($now);
+
+        $this->connection->beginTransaction();
+        try {
+            $distributionKey->setValidTo($previousValidTo);
+            $distributionKey->setUpdatedAt($now);
+            $this->distributionKeyMapper->update($distributionKey);
+            $created = $this->distributionKeyMapper->insert($newKey);
+            $this->connection->commit();
+            return $created;
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+            throw $e;
+        }
+    }
+
+    private function isSpecialSingleEntryType(string $type): bool {
+        return in_array(strtolower($type), self::SPECIAL_SINGLE_ENTRY_TYPES, true);
+    }
+
+    private function getSpecialKeysToClose(int $propertyId, string $type, string $validFrom, string $userId): array {
+        $keys = $this->distributionKeyMapper->findByPropertyAndType($propertyId, $type, $userId);
+        $previousValidTo = $this->getPreviousDate($validFrom);
+        $now = time();
+        $keysToClose = [];
+
+        foreach ($keys as $key) {
+            $existingValidFrom = (string)$key->getValidFrom();
+            $existingValidTo = $key->getValidTo();
+            if ($existingValidTo !== null || $existingValidFrom >= $validFrom) {
+                continue;
+            }
+            if ($previousValidTo < $existingValidFrom) {
+                continue;
+            }
+
+            $key->setValidTo($previousValidTo);
+            $key->setUpdatedAt($now);
+            $keysToClose[] = $key;
+        }
+
+        return $keysToClose;
+    }
+
+    private function assertNoSpecialTypeOverlap(
+        int $propertyId,
+        string $type,
+        string $validFrom,
+        ?string $validTo,
+        string $userId,
+        ?int $excludeId = null
+    ): void {
+        $keys = $this->distributionKeyMapper->findByPropertyAndType($propertyId, $type, $userId, $excludeId);
+
+        foreach ($keys as $key) {
+            $existingValidFrom = (string)$key->getValidFrom();
+            $existingValidTo = $key->getValidTo();
+            if (!$this->dateRangesOverlap($validFrom, $validTo, $existingValidFrom, $existingValidTo)) {
+                continue;
+            }
+            if ($this->isClosableSpecialPredecessor($existingValidFrom, $existingValidTo, $validFrom)) {
+                continue;
+            }
+            throw new \InvalidArgumentException($this->l10n->t('Unit and area distributions cannot overlap.'));
+        }
+    }
+
+    private function dateRangesOverlap(string $startA, ?string $endA, string $startB, ?string $endB): bool {
+        $normalizedEndA = $endA ?: '9999-12-31';
+        $normalizedEndB = $endB ?: '9999-12-31';
+        return $startA <= $normalizedEndB && $startB <= $normalizedEndA;
+    }
+
+    private function getPreviousDate(string $date): string {
+        return (new \DateTimeImmutable($date))
+            ->modify('-1 day')
+            ->format('Y-m-d');
+    }
+
+    private function isClosableSpecialPredecessor(string $existingValidFrom, ?string $existingValidTo, string $newValidFrom): bool {
+        if ($existingValidTo !== null || $existingValidFrom >= $newValidFrom) {
+            return false;
+        }
+
+        return $this->getPreviousDate($newValidFrom) >= $existingValidFrom;
     }
 }

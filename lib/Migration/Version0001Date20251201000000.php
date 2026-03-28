@@ -243,7 +243,8 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
         if (!$schema->hasTable('domus_workflow_runs')) {
             $table = $schema->createTable('domus_workflow_runs');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
-            $table->addColumn('unit_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('entity_type', 'string', ['length' => 32, 'notnull' => true, 'default' => 'unit']);
+            $table->addColumn('entity_id', 'bigint', ['notnull' => true]);
             $table->addColumn('template_id', 'bigint', ['notnull' => true]);
             $table->addColumn('name', 'string', ['length' => 190, 'notnull' => true]);
             $table->addColumn('year', 'integer', ['notnull' => false]);
@@ -254,7 +255,7 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id']);
-            $table->addIndex(['unit_id'], 'domus_wrk_run_unit');
+            $table->addIndex(['entity_type', 'entity_id'], 'domus_wrk_run_ent');
             $table->addIndex(['template_id'], 'domus_wrk_run_tpl');
         }
 
@@ -262,7 +263,8 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table = $schema->createTable('domus_task_steps');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('workflow_run_id', 'bigint', ['notnull' => true]);
-            $table->addColumn('unit_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('entity_type', 'string', ['length' => 32, 'notnull' => true, 'default' => 'unit']);
+            $table->addColumn('entity_id', 'bigint', ['notnull' => true]);
             $table->addColumn('sort_order', 'integer', ['notnull' => true, 'default' => 0]);
             $table->addColumn('title', 'string', ['length' => 190, 'notnull' => true]);
             $table->addColumn('description', 'text', ['notnull' => false]);
@@ -277,14 +279,15 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id']);
             $table->addIndex(['workflow_run_id'], 'domus_task_step_run');
-            $table->addIndex(['unit_id'], 'domus_task_step_unit');
+            $table->addIndex(['entity_type', 'entity_id'], 'domus_task_step_ent');
             $table->addIndex(['status'], 'domus_task_step_stat');
         }
 
         if (!$schema->hasTable('domus_tasks')) {
             $table = $schema->createTable('domus_tasks');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
-            $table->addColumn('unit_id', 'bigint', ['notnull' => true]);
+            $table->addColumn('entity_type', 'string', ['length' => 32, 'notnull' => true, 'default' => 'unit']);
+            $table->addColumn('entity_id', 'bigint', ['notnull' => true]);
             $table->addColumn('title', 'string', ['length' => 190, 'notnull' => true]);
             $table->addColumn('description', 'text', ['notnull' => false]);
             $table->addColumn('status', 'string', ['length' => 32, 'notnull' => true, 'default' => 'open']);
@@ -295,7 +298,7 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->addColumn('updated_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id']);
-            $table->addIndex(['unit_id'], 'domus_task_unit');
+            $table->addIndex(['entity_type', 'entity_id'], 'domus_task_ent');
             $table->addIndex(['status'], 'domus_task_stat');
         }
 

@@ -45,7 +45,7 @@
         }
 
         function buildUpcomingPanel(content) {
-            return '<div class="domus-panel">' +
+            return '<div class="domus-panel domus-panel-half">' +
                 Domus.UI.buildSectionHeader(t('domus', 'Upcoming')) +
                 '<div class="domus-panel-body">' + content + '</div>' +
                 '</div>';
@@ -80,7 +80,7 @@
                     showTitle: false,
                     showHeader: false,
                     titleBelowUnit: true,
-                    showType: true,
+                    showType: false,
                     showAction: false,
                     wrapPanel: false,
                     emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
@@ -203,7 +203,7 @@
                     showTitle: false,
                     showHeader: false,
                     titleBelowUnit: true,
-                    showType: true,
+                    showType: false,
                     showAction: false,
                     wrapPanel: false,
                     emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {

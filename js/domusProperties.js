@@ -99,6 +99,14 @@
             return '<span class="domus-badge domus-badge-alert domus-badge-vacant">' + Domus.Utils.escapeHtml(t('domus', 'Vacant')) + '</span>';
         }
 
+        function buildHeroMetaLine(iconClass, value) {
+            const normalizedValue = value === undefined || value === null || value === '' ? '—' : String(value);
+            return '<div class="domus-hero-meta-line">' +
+                '<span class="domus-icon ' + Domus.Utils.escapeHtml(iconClass) + '" aria-hidden="true"></span>' +
+                '<span>' + Domus.Utils.escapeHtml(normalizedValue) + '</span>' +
+                '</div>';
+        }
+
         function buildPropertyCard(property) {
             const isBuildingManagement = Domus.Role.isBuildingMgmtView();
             const address = buildPropertyAddress(property);
@@ -317,21 +325,62 @@
             return { completed, total };
         }
 
+        function buildPropertyUpcomingPanel(property, options = {}) {
+            const propertyId = Number(property?.id) || 0;
+            const unitIds = new Set((property?.units || []).map(unit => Number(unit?.id)).filter(id => id > 0));
+            const filteredOpenTasks = (options.openTasks || []).filter(item => {
+                const entityType = item?.entityType || 'unit';
+                const entityId = Number(item?.entityId || 0);
+                if (entityType === 'property') {
+                    return entityId === propertyId;
+                }
+                return unitIds.has(entityId);
+            });
+            const upcomingTable = Domus.Tasks.buildOpenTasksTable(filteredOpenTasks, {
+                showTitle: false,
+                showHeader: false,
+                titleBelowUnit: true,
+                showType: false,
+                showAction: false,
+                wrapPanel: false,
+                emptyMessage: t('domus', 'There is no {entity} yet. Create the first one', {
+                    entity: t('domus', 'Tasks')
+                }),
+                emptyActionId: 'domus-property-task-create',
+                emptyIconClass: 'domus-icon-task'
+            });
+
+            return '<div class="domus-panel domus-panel-half">' +
+                Domus.UI.buildSectionHeader(t('domus', 'Upcoming'), {
+                    id: 'domus-property-task-create-header',
+                    title: t('domus', 'Add {entity}', { entity: t('domus', 'Task') }),
+                    iconClass: 'domus-icon-add'
+                }) +
+                '<div class="domus-panel-body">' + upcomingTable + '</div>' +
+                '</div>';
+        }
+
         function renderDetail(id) {
             Domus.Navigation.clearPrimarySearch();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Property') }));
-            Domus.Api.getProperty(id)
-                .then(property => Promise.all([
+            Promise.all([
+                Domus.Api.getProperty(id),
+                Domus.Api.getDashboardSummary().catch(() => ({ openTasks: [] }))
+            ])
+                .then(([property, dashboardSummary]) => Promise.all([
                     Promise.resolve(property),
+                    Promise.resolve(dashboardSummary || { openTasks: [] }),
                     Domus.Distributions.loadForProperty(id).catch(() => []),
                     Domus.Api.getPropertyPartners(id).catch(() => [])
                 ]))
-                .then(([property, distributions, partners]) => {
+                .then(([property, dashboardSummary, distributions, partners]) => {
 
                     const visibleDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: false });
                     const cityLine = [property.zip, property.city].filter(Boolean).join(' ');
+                    const shortCityLine = [property.city].filter(Boolean).join(' ');
                     const addressParts = [property.street, cityLine, property.country].filter(Boolean);
                     const address = addressParts.length ? addressParts.join(', ') : (property.address || '');
+                    const detailAddress = [property.street, shortCityLine].filter(Boolean).join(', ') || address;
                     const showBookingFeatures = Domus.Role.hasCapability('manageBookings');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
@@ -341,6 +390,18 @@
                         id: 'domus-property-masterdata'
                     });
                     const menuActions = [
+                        !isBuildingManagement ? Domus.UI.buildIconLabelButton('domus-icon-unit', t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }), {
+                            id: 'domus-add-unit',
+                            className: 'domus-action-menu-item'
+                        }) : '',
+                        showBookingFeatures && !isBuildingManagement ? Domus.UI.buildIconLabelButton('domus-icon-booking', t('domus', 'Add {entity}', { entity: t('domus', 'Booking') }), {
+                            id: 'domus-add-booking',
+                            className: 'domus-action-menu-item'
+                        }) : '',
+                        canManageDistributions ? Domus.UI.buildIconLabelButton('domus-icon-document', isBuildingManagement ? t('domus', 'Distribution Report') : t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') }), {
+                            id: isBuildingManagement ? 'domus-property-distribution-report' : 'domus-add-distribution',
+                            className: 'domus-action-menu-item'
+                        }) : '',
                         Domus.UI.buildIconLabelButton('domus-icon-settings', t('domus', 'Document location'), {
                             id: 'domus-property-document-location',
                             className: 'domus-action-menu-item'
@@ -349,33 +410,17 @@
                             id: 'domus-property-delete',
                             className: 'domus-action-menu-item'
                         })
-                    ];
+                    ].filter(Boolean);
                     const actionMenu = Domus.UI.buildActionMenu(menuActions, {
-                        label: t('domus', 'Settings'),
-                        ariaLabel: t('domus', 'Settings')
+                        label: t('domus', 'Quick actions'),
+                        ariaLabel: t('domus', 'Quick actions')
                     });
-                    const contextActions = isBuildingManagement
-                        ? [
-                            canManageDistributions ? '<button id="domus-property-distribution-report">' + Domus.Utils.escapeHtml(t('domus', 'Distribution Report')) + '</button>' : ''
-                        ].filter(Boolean)
-                        : [
-                            '<button id="domus-add-unit">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Unit') })) + '</button>',
-                            showBookingFeatures ? '<button id="domus-add-booking">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Booking') })) + '</button>' : '',
-                            canManageDistributions ? '<button id="domus-add-distribution">' + Domus.Utils.escapeHtml(t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') })) + '</button>' : ''
-                        ].filter(Boolean);
-                    const actionRowActions = contextActions.slice();
-                    if (actionMenu) {
-                        actionRowActions.push(actionMenu);
-                    }
-                    const actionRowLabel = '<span class="domus-detail-action-label">' + Domus.Utils.escapeHtml(t('domus', 'Actions:')) + '</span>';
-                    const actionRow = actionRowActions.length
-                        ? '<div class="domus-detail-action-row">' + actionRowLabel + actionRowActions.join('') + '</div>'
-                        : '';
-                    const stats = Domus.UI.buildStatCards([
-                        { label: t('domus', 'Units'), value: (property.units || []).length, hint: t('domus', 'Total units in this property'), formatValue: false },
-                        { label: t('domus', 'Bookings'), value: (property.bookings || []).length, hint: t('domus', 'Entries for the selected year'), formatValue: false },
-                        { label: t('domus', 'Year'), value: Domus.state.currentYear, hint: t('domus', 'Reporting context'), formatValue: false }
-                    ]);
+                    const unitCount = Number(property?.unitCount) || (property.units || []).length;
+                    const propertyInlineMeta = '<div class="domus-hero-meta-line domus-hero-meta-line-inline">' +
+                        '<span class="domus-icon domus-icon-unit" aria-hidden="true"></span>' +
+                        '<span>' + Domus.Utils.escapeHtml(`${t('domus', 'Units')}: ${unitCount}`) + '</span>' +
+                        '</div>';
+                    const stats = '';
 
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-content">' +
@@ -390,13 +435,24 @@
                         '</div>' +
                         '<div class="domus-hero-main">' +
                         (property.description ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(property.description) + '</div>' : '') +
+                        '<div class="domus-hero-main-top">' +
+                        '<div class="domus-hero-heading-group">' +
+                        '<div class="domus-hero-heading-row">' +
                         '<h2>' + Domus.Utils.escapeHtml(property.name || '') + '</h2>' +
-                        '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(address) + '</p>' +
-                        (property.type ? '<div class="domus-hero-tags"><span class="domus-badge">' + Domus.Utils.escapeHtml(property.type) + '</span></div>' : '') +
+                        buildPropertyStatusBadge(property) +
+                        (property.type ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(property.type) + '</span>' : '') +
+                        '</div>' +
+                        '<div class="domus-hero-meta-stack">' +
+                        buildHeroMetaLine('domus-icon-location', detailAddress) +
+                        propertyInlineMeta +
                         '</div>' +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
-                        '<div class="domus-hero-actions-row domus-hero-actions-indicator">' + masterdataIndicator + '</div>' +
+                        actionMenu +
+                        '<div class="domus-hero-actions-status">' + masterdataIndicator + '</div>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>' +
                         '</div>' +
                         '</div>';
 
@@ -424,16 +480,21 @@
                     } : null);
 
                     const partnersPanel = Domus.PartnerRelations.renderSection(partners || [], { entityType: 'property', entityId: id });
+                    const upcomingPanel = isBuildingManagement
+                        ? buildPropertyUpcomingPanel(property, { openTasks: dashboardSummary?.openTasks || [] })
+                        : '';
+                    const sideBySidePanels = [upcomingPanel, canManageDistributions ? '<div class="domus-panel domus-panel-half">' + distributionsHeader + '<div class="domus-panel-body" id="domus-property-distributions">' +
+                        Domus.Distributions.renderTable(visibleDistributions, { excludeSystemDefaults: false, wrapPanel: false, variant: 'propertyDetail' }) + '</div></div>' : '']
+                        .filter(Boolean)
+                        .join('');
 
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('properties') +
                         hero +
-                        actionRow +
                         stats +
                         '<div class="domus-dashboard-grid domus-dashboard-grid-single">' +
                         '<div class="domus-dashboard-main">' +
-                        (canManageDistributions ? '<div class="domus-panel">' + distributionsHeader + '<div class="domus-panel-body" id="domus-property-distributions">' +
-                        Domus.Distributions.renderTable(visibleDistributions, { excludeSystemDefaults: false, wrapPanel: false }) + '</div></div>' : '') +
+                        (sideBySidePanels ? '<div class="domus-panel-row">' + sideBySidePanels + '</div>' : '') +
                         '<div class="domus-panel">' + unitsHeader + '<div class="domus-panel-body">' +
                         Domus.Units.renderListInline(property.units || []) + '</div></div>' +
                         partnersPanel +
@@ -449,6 +510,14 @@
                     Domus.UI.bindRowNavigation();
                     Domus.Bookings.bindInlineTables();
                     Domus.UI.bindActionMenus();
+                    if (isBuildingManagement) {
+                        Domus.Tasks.bindOpenTaskActions({ onRefresh: () => renderDetail(id) });
+                        const openPropertyTaskCreate = () => {
+                            Domus.Tasks.openCreateTaskModal('property', id, () => renderDetail(id));
+                        };
+                        document.getElementById('domus-property-task-create')?.addEventListener('click', openPropertyTaskCreate);
+                        document.getElementById('domus-property-task-create-header')?.addEventListener('click', openPropertyTaskCreate);
+                    }
                     Domus.Distributions.bindTable('domus-property-distributions', visibleDistributions, {
                         mode: 'property',
                         propertyId: id,

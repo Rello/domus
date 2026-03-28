@@ -90,24 +90,46 @@ class DashboardService {
 
         $openTasks = [];
         if ($role !== 'tenant') {
-            $unitMap = [];
+            $entityMap = [];
+            foreach ($properties as $property) {
+                $propertyId = $property->getId();
+                if ($propertyId === null) {
+                    continue;
+                }
+                $this->entityImageService->enrichProperty($property);
+                $entityMap['property:' . $propertyId] = [
+                    'entityType' => 'property',
+                    'entityId' => (int)$propertyId,
+                    'name' => $property->getName(),
+                    'imageUrl' => $property->getResolvedImageUrl(),
+                ];
+            }
             foreach ($units as $unit) {
-                $this->entityImageService->enrichUnit($unit);
-                $unitMap[$unit->getId()] = [
+                $this->entityImageService->enrichUnit($unit, null, false);
+                $unitId = $unit->getId();
+                if ($unitId === null) {
+                    continue;
+                }
+                $entityMap['unit:' . $unitId] = [
+                    'entityType' => 'unit',
+                    'entityId' => (int)$unitId,
                     'name' => $unit->getLabel(),
                     'imageUrl' => $unit->getResolvedImageUrl(),
                 ];
             }
             $openTasks = array_merge(
                 $this->workflowRunService->listOpenStepsForUser($userId, $role),
-                array_map(function ($task) use ($unitMap) {
-                    $unitMeta = $unitMap[$task->getUnitId()] ?? ['name' => '', 'imageUrl' => null];
+                array_map(function ($task) use ($entityMap) {
+                    $entityType = (string)$task->getEntityType();
+                    $entityId = (int)$task->getEntityId();
+                    $entityMeta = $entityMap[$entityType . ':' . $entityId] ?? ['name' => '', 'imageUrl' => null];
                     return [
                         'type' => 'task',
                         'taskId' => $task->getId(),
-                        'unitId' => $task->getUnitId(),
-                        'unitName' => $unitMeta['name'] ?? '',
-                        'unitImageUrl' => $unitMeta['imageUrl'] ?? null,
+                        'entityType' => $entityType,
+                        'entityId' => $entityId,
+                        'entityName' => $entityMeta['name'] ?? '',
+                        'entityImageUrl' => $entityMeta['imageUrl'] ?? null,
                         'title' => $task->getTitle(),
                         'dueDate' => $task->getDueDate(),
                     ];

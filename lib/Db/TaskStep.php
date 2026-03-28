@@ -7,7 +7,8 @@ use OCP\AppFramework\Db\Entity;
 
 class TaskStep extends Entity implements JsonSerializable {
     protected $workflowRunId;
-    protected $unitId;
+    protected $entityType;
+    protected $entityId;
     protected $sortOrder;
     protected $title;
     protected $description;
@@ -28,7 +29,7 @@ class TaskStep extends Entity implements JsonSerializable {
     public function __construct() {
         $this->addType('id', 'int');
         $this->addType('workflowRunId', 'int');
-        $this->addType('unitId', 'int');
+        $this->addType('entityId', 'int');
         $this->addType('sortOrder', 'int');
         $this->addType('openedAt', 'int');
         $this->addType('closedAt', 'int');
@@ -40,7 +41,8 @@ class TaskStep extends Entity implements JsonSerializable {
         return [
             'id' => $this->id,
             'workflowRunId' => $this->workflowRunId,
-            'unitId' => $this->unitId,
+            'entityType' => $this->entityType,
+            'entityId' => $this->entityId,
             'sortOrder' => $this->sortOrder,
             'title' => $this->title,
             'description' => $this->description,
