@@ -381,6 +381,8 @@
                     const addressParts = [property.street, cityLine, property.country].filter(Boolean);
                     const address = addressParts.length ? addressParts.join(', ') : (property.address || '');
                     const detailAddress = [property.street, shortCityLine].filter(Boolean).join(', ') || address;
+                    const propertyDocumentPath = property.documentPath || '';
+                    const propertyDocumentUrl = propertyDocumentPath ? Domus.Utils.buildFilesFolderUrl(propertyDocumentPath) : '';
                     const showBookingFeatures = Domus.Role.hasCapability('manageBookings');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
@@ -412,8 +414,8 @@
                         })
                     ].filter(Boolean);
                     const actionMenu = Domus.UI.buildActionMenu(menuActions, {
-                        label: t('domus', 'Quick actions'),
-                        ariaLabel: t('domus', 'Quick actions')
+                        label: t('domus', 'Quick Actions'),
+                        ariaLabel: t('domus', 'Quick Actions')
                     });
                     const unitCount = Number(property?.unitCount) || (property.units || []).length;
                     const propertyInlineMeta = '<div class="domus-hero-meta-line domus-hero-meta-line-inline">' +
@@ -471,13 +473,26 @@
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Booking') }),
                         iconClass: 'domus-icon-add'
                     }) : '';
-                    const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
-                        id: 'domus-property-link-doc',
-                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
-                        label: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
-                        iconClass: 'domus-icon-add',
-                        dataset: { entityType: 'property', entityId: id }
-                    } : null);
+                    const documentsHeaderActions = [];
+                    if (propertyDocumentUrl) {
+                        documentsHeaderActions.push({
+                            href: propertyDocumentUrl,
+                            target: '_blank',
+                            rel: 'noopener',
+                            label: t('domus', 'View all'),
+                            title: t('domus', 'Open all documents')
+                        });
+                    }
+                    if (documentActionsEnabled) {
+                        documentsHeaderActions.push({
+                            id: 'domus-property-link-doc',
+                            title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
+                            label: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
+                            iconClass: 'domus-icon-add',
+                            dataset: { entityType: 'property', entityId: id }
+                        });
+                    }
+                    const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Document Management'), documentsHeaderActions);
 
                     const partnersPanel = Domus.PartnerRelations.renderSection(partners || [], { entityType: 'property', entityId: id });
                     const upcomingPanel = isBuildingManagement

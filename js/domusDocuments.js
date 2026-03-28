@@ -46,15 +46,15 @@
         }
 
         function renderLatestList(entityType, entityId, options = {}) {
-            const containerId = `domus-documents-latest-${entityType}-${entityId}`;
+            const containerId = options.containerId || `domus-documents-latest-${entityType}-${entityId}`;
             if (!options.defer) {
-                loadLatestList(entityType, entityId, options);
+                loadLatestList(entityType, entityId, {...options, containerId});
             }
             return '<div id="' + containerId + '">' + t('domus', 'Loading {entity}…', { entity: t('domus', 'Documents') }) + '</div>';
         }
 
         function loadLatestList(entityType, entityId, options = {}) {
-            const containerId = `domus-documents-latest-${entityType}-${entityId}`;
+            const containerId = options.containerId || `domus-documents-latest-${entityType}-${entityId}`;
             const pageSize = Math.max(1, Number(options.pageSize) || 10);
             let visibleCount = pageSize;
 

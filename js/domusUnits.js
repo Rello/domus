@@ -340,47 +340,6 @@
             return Math.max(...years);
         }
 
-        function getOpenTasksTone(status) {
-            if (status === 'overdue') {
-                return {className: 'domus-kpi-number-alert', iconClass: 'domus-icon-alert'};
-            }
-            if (status === 'warning') {
-                return {className: 'domus-kpi-number-warning', iconClass: 'domus-icon-warning'};
-            }
-            return {className: 'domus-kpi-number-ok', iconClass: 'domus-icon-checkmark'};
-        }
-
-        function buildOpenTasksValue(count, status = 'ok') {
-            const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-            const tone = getOpenTasksTone(status);
-            const icon = '<span class="domus-icon ' + Domus.Utils.escapeHtml(tone.iconClass) + ' domus-kpi-icon" aria-hidden="true"></span>';
-            return '<span id="domus-kpi-open-tasks" class="domus-kpi-number ' + Domus.Utils.escapeHtml(tone.className) + '">' +
-                icon +
-                Domus.Utils.escapeHtml(String(safeCount)) +
-                '</span>';
-        }
-
-        function updateOpenTasksValue(count, status = 'ok') {
-            const value = document.getElementById('domus-kpi-open-tasks');
-            if (!value) {
-                return;
-            }
-            const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-            const tone = getOpenTasksTone(status);
-            value.classList.remove('domus-kpi-number-warning', 'domus-kpi-number-ok', 'domus-kpi-number-alert');
-            value.classList.add(tone.className);
-            value.innerHTML = '<span class="domus-icon ' + Domus.Utils.escapeHtml(tone.iconClass) + ' domus-kpi-icon" aria-hidden="true"></span>' +
-                Domus.Utils.escapeHtml(String(safeCount));
-        }
-
-        function buildFilesFolderUrl(path) {
-            if (!path || typeof OC === 'undefined' || typeof OC.generateUrl !== 'function') {
-                return '';
-            }
-            const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-            return OC.generateUrl('/apps/files/?dir=' + encodeURIComponent(normalizedPath));
-        }
-
         function buildRentabilityChartPanel(statistics) {
             const chartSeries = getRentabilityChartSeries(statistics);
             const header = Domus.UI.buildSectionHeader(t('domus', 'Rentability & cold rent'));
@@ -661,48 +620,127 @@
             return header + '<div class="domus-panel-body">' + body + '</div>';
         }
 
+        function buildKpiDetailShell(content) {
+            return '<div class="domus-kpi-detail-shell">' +
+                '<button type="button" class="domus-kpi-detail-close domus-icon-only-button" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Exit fullscreen')) + '" title="' + Domus.Utils.escapeHtml(t('domus', 'Exit fullscreen')) + '">' +
+                '<span class="domus-icon domus-icon-fullscreen-exit" aria-hidden="true"></span>' +
+                '</button>' +
+                '<div class="domus-kpi-detail-content">' + content + '</div>' +
+                '</div>';
+        }
+
         function bindKpiDetailArea(detailMap, onRender, options = {}) {
             const detailArea = document.getElementById('domus-unit-kpi-detail');
             if (!detailArea) {
                 return;
             }
+            const defaultArea = document.getElementById('domus-unit-landlord-default');
+            const detailView = detailArea.closest('.domus-unit-detail-landlord');
             const routeId = options.routeId ? String(options.routeId) : '';
 
-            const openTarget = (target, forceOpen = false) => {
+            const clearTransitionState = () => {
+                detailArea.classList.remove('domus-kpi-detail-opening', 'domus-kpi-detail-opening-active');
+                detailArea.style.removeProperty('--domus-kpi-detail-from-x');
+                detailArea.style.removeProperty('--domus-kpi-detail-from-y');
+                detailArea.style.removeProperty('--domus-kpi-detail-from-scale-x');
+                detailArea.style.removeProperty('--domus-kpi-detail-from-scale-y');
+            };
+
+            const setDetailMode = (active) => {
+                detailView?.classList.toggle('domus-unit-detail-table-mode', active);
+                if (!defaultArea) {
+                    return;
+                }
+                if (active) {
+                    defaultArea.setAttribute('hidden', '');
+                    return;
+                }
+                defaultArea.removeAttribute('hidden');
+            };
+
+            const closeTarget = () => {
+                clearTransitionState();
+                detailArea.setAttribute('hidden', '');
+                detailArea.dataset.kpiTarget = '';
+                detailArea.innerHTML = '';
+                setDetailMode(false);
+                Domus.state.unitDetailTarget = '';
+                if (routeId && Domus.state.currentView === 'unitDetail') {
+                    Domus.Router.setCurrentArgs([routeId], {replaceHash: true});
+                }
+            };
+
+            const getTransitionSource = (triggerEl) => {
+                const tile = triggerEl?.closest('.domus-kpi-tile');
+                if (!tile) {
+                    return null;
+                }
+                const rect = tile.getBoundingClientRect();
+                if (!rect.width || !rect.height) {
+                    return null;
+                }
+                return {
+                    left: rect.left,
+                    top: rect.top,
+                    width: rect.width,
+                    height: rect.height
+                };
+            };
+
+            const animateOpenFromTile = (sourceRect) => {
+                if (!sourceRect || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    clearTransitionState();
+                    return;
+                }
+                const detailRect = detailArea.getBoundingClientRect();
+                if (!detailRect.width || !detailRect.height) {
+                    clearTransitionState();
+                    return;
+                }
+                clearTransitionState();
+                detailArea.style.setProperty('--domus-kpi-detail-from-x', `${sourceRect.left - detailRect.left}px`);
+                detailArea.style.setProperty('--domus-kpi-detail-from-y', `${sourceRect.top - detailRect.top}px`);
+                detailArea.style.setProperty('--domus-kpi-detail-from-scale-x', `${sourceRect.width / detailRect.width}`);
+                detailArea.style.setProperty('--domus-kpi-detail-from-scale-y', `${sourceRect.height / detailRect.height}`);
+                detailArea.classList.add('domus-kpi-detail-opening');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        detailArea.classList.add('domus-kpi-detail-opening-active');
+                    });
+                });
+                detailArea.addEventListener('transitionend', clearTransitionState, {once: true});
+            };
+
+            const openTarget = (target, forceOpen = false, triggerEl = null) => {
                 const content = target ? detailMap[target] : null;
                 if (!content) {
+                    if (forceOpen) {
+                        closeTarget();
+                    }
                     return;
                 }
                 const currentTarget = detailArea.dataset.kpiTarget || '';
                 const isVisible = !detailArea.hasAttribute('hidden');
                 if (!forceOpen && isVisible && currentTarget === target) {
-                    detailArea.setAttribute('hidden', '');
-                    detailArea.dataset.kpiTarget = '';
-                    detailArea.classList.remove('domus-panel-half');
-                    detailArea.innerHTML = '';
-                    Domus.state.unitDetailTarget = '';
-                    if (routeId && Domus.state.currentView === 'unitDetail') {
-                        Domus.Router.setCurrentArgs([routeId], {replaceHash: true});
-                    }
                     return;
                 }
-                detailArea.innerHTML = content;
+                const sourceRect = getTransitionSource(triggerEl);
+                setDetailMode(true);
+                detailArea.innerHTML = buildKpiDetailShell(content);
                 resetStatisticsPaginationForContainer(detailArea);
                 detailArea.removeAttribute('hidden');
                 detailArea.dataset.kpiTarget = target;
-                detailArea.classList.toggle('domus-panel-half', target === 'tasks');
                 Domus.state.unitDetailTarget = target || '';
                 if (routeId && Domus.state.currentView === 'unitDetail') {
                     const routeArgs = target ? [routeId, target] : [routeId];
                     Domus.Router.setCurrentArgs(routeArgs, {replaceHash: true});
                 }
+                detailArea.querySelector('.domus-kpi-detail-close')?.addEventListener('click', closeTarget);
                 Domus.UI.bindRowNavigation();
                 if (typeof onRender === 'function') {
                     onRender(target);
                 }
-                if (target === 'tasks') {
-                    detailArea.scrollIntoView({behavior: 'smooth', block: 'start'});
-                }
+                animateOpenFromTile(sourceRect);
             };
 
             document.querySelectorAll('.domus-kpi-more[data-kpi-target]').forEach(btn => {
@@ -711,7 +749,7 @@
                         event.preventDefault();
                     }
                     const target = btn.getAttribute('data-kpi-target');
-                    openTarget(target);
+                    openTarget(target, false, btn);
                 });
             });
 
@@ -1558,8 +1596,8 @@
                         })
                     ]).filter(Boolean);
                     const actionMenu = Domus.UI.buildActionMenu(menuActions, {
-                        label: t('domus', 'Quick actions'),
-                        ariaLabel: t('domus', 'Quick actions')
+                        label: t('domus', 'Quick Actions'),
+                        ariaLabel: t('domus', 'Quick Actions')
                     });
                     const currentTenantSummary = currentTenancy
                         ? formatPartnerNames(currentTenancy.partners) || currentTenancy.partnerName
@@ -1682,7 +1720,16 @@
                         : '';
                     const currentTenantLabel = currentTenantPartners || '—';
                     const unitDocumentPath = unit.documentPath || '';
-                    const unitDocumentUrl = unitDocumentPath ? buildFilesFolderUrl(unitDocumentPath) : '';
+                    const unitDocumentUrl = unitDocumentPath ? Domus.Utils.buildFilesFolderUrl(unitDocumentPath) : '';
+                    const defaultDocumentsContainerId = `domus-unit-default-documents-${id}`;
+                    const detailDocumentsContainerId = `domus-unit-detail-documents-${id}`;
+                    const documentsHeaderAction = unitDocumentUrl ? {
+                        href: unitDocumentUrl,
+                        target: '_blank',
+                        rel: 'noopener',
+                        label: t('domus', 'View all'),
+                        title: t('domus', 'Open all documents')
+                    } : null;
                     const documentsOpenLink = unitDocumentUrl
                         ? '<a class="domus-kpi-documents-open" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(unitDocumentUrl) + '"' +
                         ' title="' + Domus.Utils.escapeHtml(t('domus', 'Open all documents')) + '">' +
@@ -1698,28 +1745,18 @@
                         documentsOpenLink +
                         '</div>' +
                         '</div>';
-                    const openTaskCount = Domus.Role.isTenantView()
-                        ? 0
-                        : (unit.activeOpenTasks || 0);
-                    const openTaskLabel = buildOpenTasksValue(openTaskCount);
                     const tasksPanel = Domus.Role.isTenantView() ? '' : Domus.Tasks.buildUnitTasksPanel();
                     const tasksPanelContent = Domus.Role.isTenantView() ? '' : Domus.Tasks.buildUnitTasksPanel({wrapPanel: false});
                     const kpiTiles = useKpiLayout
-                        ? '<div class="domus-kpi-tiles">' +
-                        Domus.UI.buildKpiTile({
-                            headline: t('domus', 'Open issues'),
-                            valueHtml: openTaskLabel,
-                            showChart: false,
-                            linkLabel: t('domus', 'More'),
-                            detailTarget: 'tasks'
-                        }) +
+                        ? '<div class="domus-kpi-tiles domus-kpi-tiles-unit-detail">' +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Rentability'),
                             value: rentabilityValueLabel,
                             subline: rentabilityYearLabel,
                             chartId: 'domus-kpi-rentability-chart',
                             showChart: hasRentabilityTrend,
-                            linkLabel: t('domus', 'More'),
+                            linkLabel: t('domus', 'Open fullscreen'),
+                            linkIconClass: 'domus-icon-fullscreen',
                             detailTarget: 'revenue'
                         }) +
                         Domus.UI.buildKpiTile({
@@ -1728,23 +1765,43 @@
                             subline: coldRentYearLabel,
                             chartId: 'domus-kpi-cold-rent-chart',
                             showChart: hasColdRentTrend,
-                            linkLabel: t('domus', 'More'),
+                            linkLabel: t('domus', 'Open fullscreen'),
+                            linkIconClass: 'domus-icon-fullscreen',
                             detailTarget: 'cost'
                         }) +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Current rental'),
                             valueHtml: currentTenantLabel,
                             showChart: false,
-                            linkLabel: t('domus', 'More'),
+                            linkLabel: t('domus', 'Open fullscreen'),
+                            linkIconClass: 'domus-icon-fullscreen',
                             detailTarget: 'tenancies'
                         }) +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Documents'),
                             valueHtml: documentsTileValue,
                             showChart: false,
-                            linkLabel: t('domus', 'Latest documents'),
+                            linkLabel: t('domus', 'Open fullscreen'),
+                            linkIconClass: 'domus-icon-fullscreen',
                             detailTarget: 'documents'
                         }) +
+                        '</div>'
+                        : '';
+                    const upcomingPanel = (!Domus.Role.isTenantView() && useKpiLayout)
+                        ? '<div class="domus-panel domus-unit-default-panel domus-unit-upcoming-panel" id="domus-unit-tasks-panel">' +
+                        tasksPanelContent +
+                        '</div>'
+                        : '';
+                    const documentsPanelDefault = useKpiLayout
+                        ? '<div class="domus-panel domus-unit-default-panel domus-unit-documents-panel">' +
+                        Domus.UI.buildSectionHeader(t('domus', 'Document Management'), documentsHeaderAction) +
+                        '<div class="domus-panel-body">' +
+                        Domus.Documents.renderLatestList('unit', id, {
+                            defer: true,
+                            pageSize: 8,
+                            containerId: defaultDocumentsContainerId
+                        }) +
+                        '</div>' +
                         '</div>'
                         : '';
 
@@ -1791,9 +1848,15 @@
                         ? '<div class="domus-detail domus-dashboard domus-unit-detail-landlord">' +
                         Domus.UI.buildBackButton('units') +
                         hero +
+                        '<div class="domus-unit-landlord-default" id="domus-unit-landlord-default">' +
                         kpiTiles +
-                        kpiDetailArea +
+                        '<div class="domus-panel-row domus-unit-landlord-panels">' +
+                        upcomingPanel +
+                        documentsPanelDefault +
+                        '</div>' +
                         partnersPanelWrapper +
+                        '</div>' +
+                        kpiDetailArea +
                         '</div>'
                         : '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('units') +
@@ -1860,6 +1923,7 @@
                                 const year = getStatisticsRowYear(row, statistics ? statistics.cost : null);
                                 return year ? {'stat-year': year} : null;
                             },
+                            wrapPanel: false,
                             pagination: true,
                             paginationKey: `unit-${id}-cost`,
                             pageSize: statisticsTablePageSize,
@@ -1867,7 +1931,6 @@
                             ...bookingEmptyState
                         });
                         const detailMap = {
-                            tasks: tasksPanelContent,
                             revenue: buildKpiDetailPanel(t('domus', 'Revenue'), revenueTable, yearStatusAction) + bookingsPanelInline,
                             cost: buildKpiDetailPanel(t('domus', 'Costs'), costDetailTable) + bookingsPanelInline,
                             tenancies: buildKpiDetailPanel(tenancyLabels.plural, Domus.Tenancies.renderInline(allTenancies, {
@@ -1883,10 +1946,11 @@
                                 title: tenancyLabels.action,
                                 iconClass: 'domus-icon-add'
                             } : null),
-                            documents: buildKpiDetailPanel(t('domus', 'Latest documents'), Domus.Documents.renderLatestList('unit', id, {
+                            documents: buildKpiDetailPanel(t('domus', 'Document Management'), Domus.Documents.renderLatestList('unit', id, {
                                 defer: true,
-                                pageSize: 10
-                            }))
+                                pageSize: 10,
+                                containerId: detailDocumentsContainerId
+                            }), documentsHeaderAction)
                         };
                         bindKpiDetailArea(detailMap, (target) => {
                             document.getElementById('domus-add-tenancy-inline')?.addEventListener('click', () => {
@@ -1906,20 +1970,14 @@
                                     });
                                 });
                             }
-                            if (target === 'tasks') {
-                                Domus.Tasks.loadUnitTasks(id, {
-                                    onOpenCount: (count, status) => {
-                                        unit.activeOpenTasks = count;
-                                        updateOpenTasksValue(count, status);
-                                    }
-                                });
-                                Domus.Tasks.bindUnitTaskButtons(id, () => Domus.Tasks.loadUnitTasks(id));
-                            }
                             if (target === 'revenue') {
                                 bindYearStatusAction(id, statistics);
                             }
                             if (target === 'documents') {
-                                Domus.Documents.loadLatestList('unit', id, {pageSize: 10});
+                                Domus.Documents.loadLatestList('unit', id, {
+                                    pageSize: 10,
+                                    containerId: detailDocumentsContainerId
+                                });
                             }
                             bindStatisticsPagination();
                             bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled});
@@ -1933,13 +1991,14 @@
                     }
                     bindDetailActions(id, unit);
                     if (!Domus.Role.isTenantView()) {
-                        Domus.Tasks.loadUnitTasks(id, {
-                            onOpenCount: (count, status) => {
-                                unit.activeOpenTasks = count;
-                                updateOpenTasksValue(count, status);
-                            }
-                        });
+                        Domus.Tasks.loadUnitTasks(id);
                         Domus.Tasks.bindUnitTaskButtons(id, () => Domus.Tasks.loadUnitTasks(id));
+                        if (useKpiLayout) {
+                            Domus.Documents.loadLatestList('unit', id, {
+                                pageSize: 8,
+                                containerId: defaultDocumentsContainerId
+                            });
+                        }
                     }
                 })
                 .catch(err => Domus.UI.showError(err.message));

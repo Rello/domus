@@ -79,6 +79,14 @@
             return date.toLocaleDateString();
         }
 
+        function buildFilesFolderUrl(path) {
+            if (!path || typeof OC === 'undefined' || typeof OC.generateUrl !== 'function') {
+                return '';
+            }
+            const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+            return OC.generateUrl('/apps/files/?dir=' + encodeURIComponent(normalizedPath));
+        }
+
         function formatAmount(amount, options = {}) {
             if (amount === undefined || amount === null) return '';
             const numeric = Number(amount);
@@ -202,6 +210,7 @@
             formatPercentage,
             formatYear,
             formatDate,
+            buildFilesFolderUrl,
             normalizeIban,
             isValidIban
         };
@@ -615,7 +624,7 @@
             });
             const closeBtn = document.createElement('button');
             closeBtn.type = 'button';
-            closeBtn.className = 'domus-modal-close';
+            closeBtn.className = 'domus-modal-close domus-icon-only-button';
             closeBtn.setAttribute('aria-label', t('domus', 'Close modal'));
             closeBtn.innerHTML = '&times;';
             header.appendChild(heading);
@@ -864,8 +873,8 @@
             if (!actions || actions.length === 0) {
                 return '';
             }
-            const label = options.label || t('domus', 'Settings');
-            const ariaLabel = options.ariaLabel || t('domus', 'Settings');
+            const label = options.label || t('domus', 'Quick Actions');
+            const ariaLabel = options.ariaLabel || t('domus', 'Quick Actions');
             const buttonLabel = options.buttonLabel || `${label}`;
             const menuId = options.id || ('domus-action-menu-' + Math.random().toString(36).slice(2));
             return '<div class="domus-action-menu" id="' + Domus.Utils.escapeHtml(menuId) + '">' +
@@ -1540,38 +1549,67 @@
         }
 
         function buildSectionHeader(title, action) {
-            let actionHtml = '';
-            if (action) {
-                if (action.iconClass) {
-                    const label = action.label || action.title || t('domus', 'Add');
-                    const button = createIconButton(action.iconClass, label, {
-                        id: action.id,
-                        dataset: action.dataset,
-                        className: 'domus-section-action',
-                        title: action.title || label
-                    });
-                    actionHtml = button.outerHTML;
-                } else {
-                    let attrs = '';
-                    if (action.id) {
-                        attrs += ' id="' + Domus.Utils.escapeHtml(action.id) + '"';
+            const actions = (Array.isArray(action) ? action : [action]).filter(Boolean);
+            const actionHtml = actions.map(item => {
+                if (item.href) {
+                    let attrs = ' href="' + Domus.Utils.escapeHtml(item.href) + '"';
+                    if (item.id) {
+                        attrs += ' id="' + Domus.Utils.escapeHtml(item.id) + '"';
                     }
-                    if (action.dataset) {
-                        Object.keys(action.dataset).forEach(key => {
-                            const value = action.dataset[key];
+                    if (item.target) {
+                        attrs += ' target="' + Domus.Utils.escapeHtml(item.target) + '"';
+                    }
+                    if (item.rel) {
+                        attrs += ' rel="' + Domus.Utils.escapeHtml(item.rel) + '"';
+                    }
+                    if (item.dataset) {
+                        Object.keys(item.dataset).forEach(key => {
+                            const value = item.dataset[key];
                             if (value === undefined || value === null || value === '') {
                                 return;
                             }
                             attrs += ' data-' + Domus.Utils.escapeHtml(key) + '="' + Domus.Utils.escapeHtml(String(value)) + '"';
                         });
                     }
-                    const label = action.label || '+';
-                    const titleAttr = action.title || t('domus', 'Add');
-                    actionHtml = '<button class="domus-section-action"' + attrs + ' title="' + Domus.Utils.escapeHtml(titleAttr) + '">' + Domus.Utils.escapeHtml(label) + '</button>';
+                    const className = item.className || 'domus-link domus-section-action-link';
+                    const label = item.label || item.title || '';
+                    const titleAttr = item.title || label;
+                    return '<a class="' + Domus.Utils.escapeHtml(className) + '"' + attrs + ' title="' + Domus.Utils.escapeHtml(titleAttr) + '">' + Domus.Utils.escapeHtml(label) + '</a>';
                 }
-            }
 
-            return '<div class="domus-section-header"><h3>' + Domus.Utils.escapeHtml(title) + '</h3>' + actionHtml + '</div>';
+                if (item.iconClass) {
+                    const label = item.label || item.title || t('domus', 'Add');
+                    const button = createIconButton(item.iconClass, label, {
+                        id: item.id,
+                        dataset: item.dataset,
+                        className: 'domus-section-action',
+                        title: item.title || label
+                    });
+                    return button.outerHTML;
+                }
+
+                let attrs = '';
+                if (item.id) {
+                    attrs += ' id="' + Domus.Utils.escapeHtml(item.id) + '"';
+                }
+                if (item.dataset) {
+                    Object.keys(item.dataset).forEach(key => {
+                        const value = item.dataset[key];
+                        if (value === undefined || value === null || value === '') {
+                            return;
+                        }
+                        attrs += ' data-' + Domus.Utils.escapeHtml(key) + '="' + Domus.Utils.escapeHtml(String(value)) + '"';
+                    });
+                }
+                const label = item.label || '+';
+                const titleAttr = item.title || t('domus', 'Add');
+                return '<button class="domus-section-action"' + attrs + ' title="' + Domus.Utils.escapeHtml(titleAttr) + '">' + Domus.Utils.escapeHtml(label) + '</button>';
+            }).join('');
+            const actionWrapHtml = actionHtml
+                ? '<div class="domus-section-header-actions">' + actionHtml + '</div>'
+                : '';
+
+            return '<div class="domus-section-header"><h3>' + Domus.Utils.escapeHtml(title) + '</h3>' + actionWrapHtml + '</div>';
         }
 
         function buildStatCards(cards) {
@@ -1607,24 +1645,46 @@
                 : (options.value === undefined || options.value === null || options.value === '' ? '—' : Domus.Utils.escapeHtml(String(options.value)));
             const subline = options.subline ? '<div class="domus-kpi-subline">' + Domus.Utils.escapeHtml(String(options.subline)) + '</div>' : '';
             const linkLabel = Domus.Utils.escapeHtml(options.linkLabel || t('domus', 'More'));
+            const linkHref = options.linkHref ? Domus.Utils.escapeHtml(options.linkHref) : '#';
             const detailTarget = options.detailTarget ? ' data-kpi-target="' + Domus.Utils.escapeHtml(options.detailTarget) + '"' : '';
+            const linkIconClass = options.linkIconClass ? Domus.Utils.escapeHtml(options.linkIconClass) : '';
             const chartId = options.chartId ? Domus.Utils.escapeHtml(options.chartId) : '';
+            const tileClassName = options.tileClassName ? ' ' + Domus.Utils.escapeHtml(options.tileClassName) : '';
+            const chartClassName = options.chartClassName ? ' ' + Domus.Utils.escapeHtml(options.chartClassName) : '';
+            const chartAriaLabel = options.chartAriaLabel ? ' aria-label="' + Domus.Utils.escapeHtml(options.chartAriaLabel) + '"' : '';
+            const chartRole = options.chartRole ? ' role="' + Domus.Utils.escapeHtml(options.chartRole) + '"' : '';
+            const hasAction = Boolean(options.detailTarget || options.linkHref);
             const chart = options.showChart && chartId
-                ? '<div class="domus-kpi-chart"><div class="domus-kpi-chart-inner"><canvas id="' + chartId + '" class="domus-kpi-chart-canvas"></canvas></div></div>'
+                ? '<div class="domus-kpi-chart' + chartClassName + '"><div class="domus-kpi-chart-inner"><canvas id="' + chartId + '" class="domus-kpi-chart-canvas"' + chartAriaLabel + chartRole + '></canvas></div></div>'
                 : '';
+            const linkClassName = linkIconClass ? 'domus-kpi-more domus-kpi-more-icon domus-icon-only-link' : 'domus-kpi-more';
+            const linkContent = linkIconClass
+                ? '<span class="domus-icon ' + linkIconClass + '" aria-hidden="true"></span>' +
+                '<span class="domus-visually-hidden">' + linkLabel + '</span>'
+                : linkLabel;
+            const linkHtml = hasAction
+                ? '<a href="' + linkHref + '" class="' + linkClassName + '"' + detailTarget + ' aria-label="' + linkLabel + '" title="' + linkLabel + '">' + linkContent + '</a>'
+                : '';
+            const bodyClassName = chart ? 'domus-kpi-body domus-kpi-body-split' : 'domus-kpi-body';
 
-            return '<div class="domus-kpi-tile">' +
-                '<div class="domus-kpi-content">' +
+            return '<div class="domus-kpi-tile' + tileClassName + '">' +
+                '<div class="domus-kpi-header-row">' +
                 '<div class="domus-kpi-headline">' + headline + '</div>' +
+                linkHtml +
+                '</div>' +
+                '<div class="' + bodyClassName + '">' +
+                '<div class="domus-kpi-main">' +
+                '<div class="domus-kpi-value-block">' +
                 '<div class="domus-kpi-value">' + value + '</div>' +
                 subline +
-                '<a href="#" class="domus-kpi-more"' + detailTarget + '>' + linkLabel + '</a>' +
+                '</div>' +
                 '</div>' +
                 chart +
+                '</div>' +
                 '</div>';
         }
 
-        function buildInfoList(items) {
+        function buildInfoList(items, options = {}) {
             if (!items || !items.length) {
                 return '';
             }
@@ -1638,8 +1698,9 @@
                         '<dd>' + Domus.Utils.escapeHtml(String(value)) + '</dd>' +
                         '</div>';
                 }).join('');
+            const className = ['domus-info-list', options.className || ''].filter(Boolean).join(' ');
 
-            return '<dl class="domus-info-list">' + rows + '</dl>';
+            return '<dl class="' + Domus.Utils.escapeHtml(className) + '">' + rows + '</dl>';
         }
 
         function buildFormSection(title) {

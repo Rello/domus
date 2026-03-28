@@ -287,6 +287,8 @@ OC.L10N.register(
         "Saldo": "Saldo",
         "Save": "Speichern",
         "Save and add another": "Speichern und weiteren hinzufügen",
+        "Quick actions": "Schnellaktionen",
+        "Quick Actions": "Schnellaktionen",
         "Settings": "Einstellungen",
         "General Settings": "Allgemeine Einstellungen",
         "Settings saved.": "Einstellungen gespeichert.",

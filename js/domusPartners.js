@@ -19,6 +19,12 @@
             return match?.label || type || t('domus', 'Partner');
         }
 
+        function renderPartnerTypeBadge(type) {
+            return '<span class="domus-badge domus-badge-muted">' +
+                Domus.Utils.escapeHtml(getPartnerTypeLabel(type)) +
+                '</span>';
+        }
+
         function isValueFilled(value) {
             return value !== undefined && value !== null && value !== '';
         }
@@ -109,6 +115,37 @@
             return '<span class="domus-partner-list">' +
                 normalized.map(partner => renderPartnerContact(partner)).join('') +
                 '</span>';
+        }
+
+        function normalizePhoneHref(phone) {
+            const rawValue = String(phone || '').trim();
+            const sanitizedValue = rawValue.replace(/[^\d+]/g, '');
+            return sanitizedValue || rawValue;
+        }
+
+        function buildHeroContactAction(iconClass, label, href, value) {
+            if (!value) {
+                return '';
+            }
+            return '<a class="domus-hero-meta-action" href="' + Domus.Utils.escapeHtml(href) + '"' +
+                ' aria-label="' + Domus.Utils.escapeHtml(label) + '"' +
+                ' title="' + Domus.Utils.escapeHtml(label) + '">' +
+                '<span class="domus-icon ' + Domus.Utils.escapeHtml(iconClass) + '" aria-hidden="true"></span>' +
+                '<span>' + Domus.Utils.escapeHtml(value) + '</span>' +
+                '</a>';
+        }
+
+        function buildPartnerHeroMeta(partner) {
+            const contactActions = [
+                partner?.phone ? buildHeroContactAction('domus-icon-call', t('domus', 'Phone'), 'tel:' + normalizePhoneHref(partner.phone), partner.phone) : '',
+                partner?.email ? buildHeroContactAction('domus-icon-mail', t('domus', 'Email'), 'mailto:' + encodeURIComponent(partner.email), partner.email) : ''
+            ].filter(Boolean);
+
+            if (!contactActions.length) {
+                return '';
+            }
+
+            return '<p class="domus-hero-meta domus-partner-hero-meta">' + contactActions.join('') + '</p>';
         }
 
         function bindContactActions(container = document) {
@@ -297,8 +334,8 @@
                 .then(partner => {
                     const tenancies = partner.tenancies || [];
                     const tenancyLabels = Domus.Role.getTenancyLabels();
-                    const canManageTenancies = Domus.Role.hasCapability('manageTenancies');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
+                    const supportsTenancyRelations = ['owner', 'tenant'].includes(String(partner.partnerType || '').toLowerCase());
                     const masterdataStatus = getPartnerMasterdataStatus(partner);
                     const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata'), masterdataStatus.completed, masterdataStatus.total, {
                         id: 'domus-partner-masterdata'
@@ -311,41 +348,36 @@
                         })
                     ];
                     const actionMenu = Domus.UI.buildActionMenu(menuActions, {
-                        label: t('domus', 'Settings'),
-                        ariaLabel: t('domus', 'Settings')
+                        label: t('domus', 'Quick Actions'),
+                        ariaLabel: t('domus', 'Quick Actions')
                     });
-                    const contextActions = [
-                        (canManageTenancies && tenancyLabels.action ? '<button id="domus-add-partner-tenancy" data-partner-id="' + id + '">' + Domus.Utils.escapeHtml(tenancyLabels.action) + '</button>' : '')
-                    ].filter(Boolean);
-                    const actionRowActions = contextActions.slice();
-                    if (actionMenu) {
-                        actionRowActions.push(actionMenu);
-                    }
-                    const actionRowLabel = '<span class="domus-detail-action-label">' + Domus.Utils.escapeHtml(t('domus', 'Actions:')) + '</span>';
-                    const actionRow = actionRowActions.length
-                        ? '<div class="domus-detail-action-row">' + actionRowLabel + actionRowActions.join('') + '</div>'
-                        : '';
-
-                    const contactMeta = [partner.phone, partner.email].filter(Boolean).join(' • ');
+                    const contactMeta = buildPartnerHeroMeta(partner);
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-content">' +
-                        '<div class="domus-hero-indicator"><span class="domus-icon domus-icon-partner" aria-hidden="true"></span></div>' +
-                        '<div class="domus-hero-main">' +
-                        '<h2>' + Domus.Utils.escapeHtml(partner.name || '') + '</h2>' +
-                        (contactMeta ? '<p class="domus-hero-meta">' + Domus.Utils.escapeHtml(contactMeta) + '</p>' : '') +
-                        (partnerTypeLabel ? '<div class="domus-hero-tags"><span class="domus-badge">' + Domus.Utils.escapeHtml(partnerTypeLabel) + '</span></div>' : '') +
+                        '<div class="domus-hero-indicator domus-partner-hero-indicator">' +
+                        '<span class="domus-icon domus-icon-partner" aria-hidden="true"></span>' +
                         '</div>' +
+                        '<div class="domus-hero-main">' +
+                        '<div class="domus-hero-main-top">' +
+                        '<div class="domus-hero-heading-group">' +
+                        '<div class="domus-hero-heading-row">' +
+                        '<h2>' + Domus.Utils.escapeHtml(partner.name || '') + '</h2>' +
+                        (partnerTypeLabel ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(partnerTypeLabel) + '</span>' : '') +
+                        '</div>' +
+                        contactMeta +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
-                        '<div class="domus-hero-actions-row domus-hero-actions-indicator">' + masterdataIndicator + '</div>' +
+                        '<div class="domus-hero-actions-row domus-hero-actions-standard">' +
+                        actionMenu +
+                        '</div>' +
+                        '<div class="domus-hero-actions-status">' + masterdataIndicator + '</div>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>' +
                         '</div>' +
                         '</div>';
 
-                    const tenanciesHeader = Domus.UI.buildSectionHeader(tenancyLabels.plural, (canManageTenancies && tenancyLabels.action) ? {
-                        id: 'domus-add-partner-tenancy-inline',
-                        title: tenancyLabels.action,
-                        iconClass: 'domus-icon-add'
-                    } : null);
+                    const tenanciesHeader = Domus.UI.buildSectionHeader(tenancyLabels.plural);
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
                         id: 'domus-partner-link-doc',
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
@@ -354,31 +386,33 @@
                         dataset: { entityType: 'partner', entityId: id }
                     } : null);
                     const infoList = Domus.UI.buildInfoList([
-                        { label: t('domus', 'Type'), value: getPartnerTypeLabel(partner.partnerType) },
                         { label: t('domus', 'Street'), value: partner.street },
                         { label: t('domus', 'ZIP'), value: partner.zip },
                         { label: t('domus', 'City'), value: partner.city },
                         { label: t('domus', 'Country'), value: partner.country },
                         { label: t('domus', 'Email'), value: partner.email },
                         { label: t('domus', 'Phone'), value: partner.phone }
-                    ]);
+                    ], {
+                        className: 'domus-info-list-compact'
+                    });
+                    const tenancyPanel = supportsTenancyRelations
+                        ? '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
+                            Domus.Tenancies.renderInline(tenancies, {
+                                hidePartnersColumn: true,
+                                statusAsBadge: true
+                            }) + '</div></div>'
+                        : '';
 
                     const content = '<div class="domus-detail domus-dashboard">' +
                         Domus.UI.buildBackButton('partners') +
                         hero +
-                        actionRow +
-                        '<div class="domus-dashboard-grid domus-dashboard-grid-single">' +
-                        '<div class="domus-dashboard-main">' +
-                        '<div class="domus-panel">' + tenanciesHeader + '<div class="domus-panel-body">' +
-                        Domus.Tenancies.renderInline(tenancies) + '</div></div>' +
-                        '</div>' +
-                        '<div class="domus-dashboard-side">' +
-                        '<div class="domus-panel">' + '<div class="domus-panel-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Partner details')) + '</h3></div>' +
+                        '<div class="domus-panel-row">' +
+                        '<div class="domus-panel domus-panel-half">' + '<div class="domus-panel-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Partner details')) + '</h3></div>' +
                         '<div class="domus-panel-body">' + infoList + '</div></div>' +
-                        '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
+                        '<div class="domus-panel domus-panel-half">' + documentsHeader + '<div class="domus-panel-body">' +
                         Domus.Documents.renderList('partner', id, { showLinkAction: documentActionsEnabled }) + '</div></div>' +
                         '</div>' +
-                        '</div>' +
+                        tenancyPanel +
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
@@ -413,12 +447,6 @@
                 });
             });
 
-            document.getElementById('domus-add-partner-tenancy')?.addEventListener('click', () => {
-                Domus.Tenancies.openCreateModal({ partnerId: id }, () => renderDetail(id));
-            });
-            document.getElementById('domus-add-partner-tenancy-inline')?.addEventListener('click', () => {
-                Domus.Tenancies.openCreateModal({ partnerId: id }, () => renderDetail(id));
-            });
             document.getElementById('domus-partner-link-doc')?.addEventListener('click', () => {
                 Domus.Documents.openLinkModal('partner', id, () => renderDetail(id));
             });
@@ -598,6 +626,7 @@
             renderInline,
             renderPartnerContact,
             renderPartnerContactList,
+            renderPartnerTypeBadge,
             bindContactActions,
             getPartnerTypeOptions,
             getPartnerTypeLabel,
@@ -625,7 +654,7 @@
                 return {
                     cells: [
                         Domus.Partners.renderPartnerContact(partner),
-                        Domus.Utils.escapeHtml(Domus.Partners.getPartnerTypeLabel(partner.partnerType)),
+                        Domus.Partners.renderPartnerTypeBadge(partner.partnerType),
                         Domus.Utils.escapeHtml(contact || '—')
                     ],
                     dataset: { navigate: 'partnerDetail', args: partner.id }
