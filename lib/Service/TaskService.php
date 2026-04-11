@@ -66,11 +66,13 @@ class TaskService {
         }
 
         $entities = [];
-        $properties = $this->propertyMapper->findByUser($userId);
-        foreach ($properties as $property) {
-            $propertyId = $property->getId();
-            if ($propertyId !== null) {
-                $entities[] = ['entityType' => 'property', 'entityId' => (int)$propertyId];
+        if ($role === 'buildingMgmt') {
+            $properties = $this->propertyMapper->findByUser($userId);
+            foreach ($properties as $property) {
+                $propertyId = $property->getId();
+                if ($propertyId !== null) {
+                    $entities[] = ['entityType' => 'property', 'entityId' => (int)$propertyId];
+                }
             }
         }
         $units = $this->unitMapper->findByUser($userId, null, false);
@@ -86,6 +88,28 @@ class TaskService {
             }
         }
         return $this->taskMapper->findOpenTasks($entities);
+    }
+
+    /**
+     * @throws DbException
+     */
+    public function updateTask(int $taskId, string $title, ?string $description, ?string $dueDate, string $userId): Task {
+        $task = $this->taskMapper->findById($taskId);
+        if (!$task) {
+            throw new \RuntimeException($this->l10n->t('Task not found.'));
+        }
+        $this->assertEntityExists((string)$task->getEntityType(), (int)$task->getEntityId(), $userId);
+        $title = trim($title);
+        if ($title === '') {
+            throw new \InvalidArgumentException($this->l10n->t('Task title is required.'));
+        }
+
+        $task->setTitle($title);
+        $task->setDescription($description ?: null);
+        $task->setDueDate($dueDate ?: null);
+        $task->setUpdatedAt(time());
+
+        return $this->taskMapper->update($task);
     }
 
     /**

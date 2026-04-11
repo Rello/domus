@@ -1,4 +1,5 @@
 :root {
+    --domus-theme: #12426E;
     --domus-content-background: #F8FAFC;
     --domus-hero-background: #ffffff;
     --domus-kpi-tile-background: #ffffff;
@@ -27,16 +28,19 @@
     --domus-button-secondary-background: var(--color-background-dark);
     --domus-button-secondary-text: var(--color-main-text);
     --domus-button-secondary-border: var(--domus-border);
+    --domus-layout-section-spacing: 40px;
+    --domus-layout-content-spacing: 12px;
 }
 
 #app-content {
     background-color: initial !important;
 }
 
-body {
+/*body {
     background-image: initial !important;
     background-color: var(--domus-nextcloud-body-background) !important;
-}
+}*/
+
 .app-domus {
     background: var(--domus-content-background);
 }
@@ -99,21 +103,59 @@ body {
 #app-content .domus-top-navigation .domus-nav li,
 #app-content .domus-bottom-navigation .domus-nav li {
     margin-bottom: 0;
+    position: relative;
+}
+
+#app-content .domus-top-navigation .domus-nav a,
+#app-content .domus-bottom-navigation .domus-nav a {
+    position: relative;
+    padding-bottom: 12px;
+    color: var(--color-text-maxcontrast);
+    transition: color 160ms ease, background-color 160ms ease;
+}
+
+#app-content .domus-top-navigation .domus-nav a::after,
+#app-content .domus-bottom-navigation .domus-nav a::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 90%;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(
+        90deg,
+        rgba(18, 66, 110, 0) 0%,
+        var(--domus-theme) 22%,
+        var(--domus-theme) 78%,
+        rgba(18, 66, 110, 0) 100%
+    );
+    transform: translateX(-50%) scaleX(0.35);
+    transform-origin: center;
+    opacity: 0;
+    transition: transform 180ms ease, opacity 180ms ease;
+    pointer-events: none;
 }
 
 #app-content .domus-top-navigation .domus-nav li.active a,
-#app-content .domus-top-navigation .domus-nav a:hover,
 #app-content .domus-bottom-navigation .domus-nav li.active a,
+#app-content .domus-top-navigation .domus-nav a:hover,
 #app-content .domus-bottom-navigation .domus-nav a:hover {
-    background: #4B5E53;
-    color: #ffffff;
+    background: transparent;
+    color: var(--domus-theme);
+}
+
+#app-content .domus-top-navigation .domus-nav li.active a::after,
+#app-content .domus-bottom-navigation .domus-nav li.active a::after {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1);
 }
 
 #app-content .domus-top-navigation .domus-nav li.active .domus-icon,
 #app-content .domus-top-navigation .domus-nav a:hover .domus-icon,
 #app-content .domus-bottom-navigation .domus-nav li.active .domus-icon,
 #app-content .domus-bottom-navigation .domus-nav a:hover .domus-icon {
-    filter: brightness(0) invert(1);
+    filter: brightness(0) saturate(100%) invert(19%) sepia(32%) saturate(1666%) hue-rotate(174deg) brightness(93%) contrast(88%);
 }
 
 #app-content .domus-top-nav-secondary .domus-toolbar {
@@ -171,6 +213,16 @@ body {
 
 .domus-detail {
     width: 100%;
+}
+
+.domus-detail.domus-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--domus-layout-section-spacing);
+}
+
+.domus-detail.domus-dashboard .domus-panel {
+    margin-bottom: 0;
 }
 
 #app-navigation, #app-content {
@@ -477,7 +529,7 @@ body {
 
 .domus-overview-list {
     display: grid;
-    gap: 14px;
+    gap: var(--domus-layout-content-spacing);
 }
 
 .domus-overview-empty {
@@ -500,14 +552,17 @@ body {
     padding-right: 18px;
 }
 
+.domus-overview-card[data-navigate]:hover,
+.domus-overview-card[data-navigate]:focus-visible {
+    border-color: #d1d5db;
+}
+
 .domus-overview-card[data-navigate] {
     cursor: pointer;
 }
 
-.domus-overview-card[data-navigate]:hover,
-.domus-overview-card[data-navigate]:focus-visible {
-    border-color: #d1d5db;
-    cursor: pointer;
+.domus-overview-card[data-navigate] * {
+    cursor: inherit;
 }
 
 .domus-overview-card[data-navigate]:focus-visible {
@@ -827,6 +882,18 @@ body {
     width: 100%;
 }
 
+.domus-form-row.domus-task-template-active-row > .domus-form-value {
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.domus-form-row.domus-task-template-active-row > .domus-form-value input[type='checkbox'] {
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
 .domus-form-value-text {
     padding: 5px 10px;
     border: var(--domus-border);
@@ -839,6 +906,11 @@ body {
 .domus-form-value-text:empty::after {
     content: '—';
     color: var(--color-text-maxcontrast);
+}
+
+.domus-action-log-value {
+    display: block;
+    line-height: 1.5;
 }
 
 .domus-form-section {
@@ -1028,7 +1100,7 @@ body {
 }
 
 .domus-section {
-    margin-top: 20px;
+    margin-top: var(--domus-layout-section-spacing);
 }
 
 .domus-section h3 {
@@ -1044,6 +1116,7 @@ body {
 
 .domus-section-header h3 {
     margin: 0;
+    color: var(--domus-theme);
 }
 
 .domus-section-header-actions {
@@ -1207,6 +1280,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
     padding: 12px 14px;
     border-bottom: 1px solid var(--color-border-dark, #d8d8d8);
     gap: 10px;
@@ -1214,17 +1288,32 @@ body {
 
 .domus-modal-header h3 {
     margin: 0;
+    color: var(--domus-theme);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    max-width: calc(100% - 140px);
+    pointer-events: none;
 }
 
 .domus-modal-close {
     font-size: 20px;
     line-height: 1;
-    color: var(--color-main-text);
+    color: var(--domus-theme);
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none;
 }
 
 .domus-modal-close:hover,
+.domus-modal-close:focus,
 .domus-modal-close:focus-visible {
     color: var(--color-primary);
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none;
 }
 
 .domus-modal-header-actions {
@@ -1254,6 +1343,7 @@ body {
 .domus-task-detail-card {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 18px;
     padding: 8px 10px 12px;
 }
@@ -1263,6 +1353,7 @@ body {
     align-items: flex-start;
     justify-content: center;
     gap: 14px;
+    max-width: 100%;
 }
 
 .domus-task-detail-media {
@@ -1279,8 +1370,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    align-items: center;
-    text-align: center;
+    align-items: flex-start;
+    text-align: left;
 }
 
 .domus-task-detail-title {
@@ -1298,7 +1389,9 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 4px;
+    margin-top: -2px;
+    justify-content: center;
+    max-width: 100%;
 }
 
 .domus-task-detail-badge-accent {
@@ -1318,9 +1411,11 @@ body {
 }
 
 .domus-task-detail-meta {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    display: inline-grid;
+    grid-template-columns: auto auto;
+    column-gap: 32px;
+    row-gap: 12px;
+    max-width: 100%;
 }
 
 .domus-task-detail-meta-card {
@@ -1330,8 +1425,8 @@ body {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
+    align-items: flex-start;
+    text-align: left;
 }
 
 .domus-task-detail-meta-label,
@@ -1343,15 +1438,24 @@ body {
     margin-bottom: 6px;
 }
 
+.domus-task-detail-meta-label {
+    width: 100%;
+    text-align: center;
+}
+
 .domus-task-detail-meta-value {
     font-size: 15px;
     font-weight: 600;
     line-height: 1.4;
-    word-break: break-word;
+    word-break: normal;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 10px;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.domus-task-detail-meta-card:first-child .domus-task-detail-meta-value {
+    padding-top: 8px;
 }
 
 .domus-task-detail-section {
@@ -1360,6 +1464,7 @@ body {
     gap: 6px;
     align-items: center;
     text-align: center;
+    max-width: 100%;
 }
 
 .domus-task-detail-description {
@@ -1383,29 +1488,57 @@ body {
 .domus-task-detail-actions {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    width: 100%;
+    gap: 6px;
+    width: auto;
 }
 
 .domus-task-detail-action-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    display: flex;
     gap: 10px;
     align-items: center;
 }
 
 .domus-task-detail-action-copy {
+    display: block;
+    line-height: 1.25;
+    white-space: nowrap;
     text-align: left;
     font-weight: 500;
 }
 
 .domus-task-detail-action-button {
-    margin-top: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-height: 22px;
+    padding: 0;
+    margin-top: 0;
+    align-self: center;
+    line-height: 0;
+    font-size: 0;
+}
+
+.domus-task-detail-action-button .domus-icon {
+    display: block;
+    flex: 0 0 auto;
+    margin: 0;
 }
 
 @media (max-width: 720px) {
     .domus-task-detail-meta {
         grid-template-columns: 1fr;
+        width: 100%;
+        row-gap: 18px;
+    }
+
+    .domus-task-detail-meta-card:first-child .domus-task-detail-meta-value {
+        padding-top: 0;
+    }
+
+    .domus-task-detail-action-copy {
+        white-space: normal;
     }
 }
 
@@ -1539,7 +1672,7 @@ body {
     justify-content: space-between;
     gap: 16px;
     padding: 8px 0 12px;
-    margin-bottom: 16px;
+    margin-bottom: 0;
 }
 
 .domus-hero-content {
@@ -1721,6 +1854,63 @@ body {
     margin-top: 2px;
 }
 
+.domus-task-overview-card {
+    cursor: pointer;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1.3fr) auto auto auto;
+    min-height: auto;
+    padding: 0 18px 0 0;
+}
+
+.domus-task-overview-cell {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+}
+
+.domus-task-overview-cell-object {
+    padding-left: 16px;
+}
+
+.domus-task-overview-cell-title {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.domus-task-overview-cell-due {
+    justify-content: flex-end;
+    white-space: nowrap;
+}
+
+.domus-upcoming-card-shell .domus-task-overview-cell-due {
+    padding-right: calc(16px + var(--domus-layout-content-spacing));
+}
+
+.domus-upcoming-card-shell-compact .domus-task-overview-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-right: 0;
+}
+
+.domus-upcoming-card-shell-compact .domus-task-overview-cell-due {
+    padding-right: 16px;
+}
+
+.domus-task-overview-cell-type,
+.domus-task-overview-cell-action {
+    justify-content: flex-end;
+}
+
+.domus-task-overview-card .domus-task-unit-link {
+    color: inherit;
+    min-width: 0;
+}
+
+.domus-task-overview-card .domus-task-unit-link:hover,
+.domus-task-overview-card .domus-task-unit-link:focus {
+    text-decoration: underline;
+}
+
 .domus-image-field {
     display: flex;
     align-items: flex-start;
@@ -1876,6 +2066,129 @@ body {
 
 .domus-badge-muted {
     background: var(--color-background-hover);
+}
+
+.domus-action-log-col-icon {
+    width: 44px;
+}
+
+.domus-action-log-col-date {
+    width: 1%;
+    text-align: right;
+}
+
+.domus-action-log-cell-icon {
+    width: 44px;
+    text-align: center;
+}
+
+.domus-action-log-cell-date {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.domus-action-log-icon-wrap {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--color-background-hover);
+    border: 1px solid rgba(31, 41, 55, 0.08);
+}
+
+.domus-action-log-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.domus-action-log-title-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.domus-action-log-title-text {
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.domus-action-log-date {
+    display: inline-block;
+    width: 100%;
+    color: var(--color-text-maxcontrast);
+    font-size: 13px;
+    text-align: right;
+}
+
+.domus-action-log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.domus-action-log-scroll-viewport {
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+}
+
+.domus-action-log-type-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.domus-action-log-type-option {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 72px;
+    min-width: 72px;
+    max-width: 72px;
+    height: 56px;
+    min-height: 56px;
+    max-height: 56px;
+    padding: 4px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    cursor: pointer;
+    transition: color 140ms ease, opacity 140ms ease;
+}
+
+.domus-action-log-type-option:hover,
+.domus-action-log-type-option:focus-visible {
+    border: none;
+    background: transparent;
+    color: var(--color-primary);
+}
+
+.domus-action-log-type-option.is-selected {
+    border: none;
+    background: transparent;
+    color: var(--color-primary);
+}
+
+.domus-action-log-type-option-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.domus-action-log-type-option-label {
+    font-size: 12px;
+    line-height: 1.25;
+    text-align: center;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .domus-badge-success {
@@ -2210,6 +2523,26 @@ body {
     margin: 12px 0 6px;
 }
 
+.domus-task-steps-header {
+    margin-top: 18px;
+}
+
+.domus-task-steps-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.domus-task-steps-title strong {
+    line-height: 1.2;
+}
+
+.domus-task-step-add-button {
+    width: 24px;
+    height: 24px;
+    padding: 2px;
+}
+
 .domus-task-step-list {
     list-style: none;
     padding: 0;
@@ -2262,6 +2595,7 @@ body {
 .domus-task-date-cell {
     text-align: right;
     white-space: nowrap;
+    padding-right: var(--domus-layout-content-spacing);
 }
 
 .domus-task-date-badge-warning {
@@ -2290,6 +2624,31 @@ body {
     display: flex;
     gap: 6px;
     flex-shrink: 0;
+}
+
+.domus-task-template-actions .domus-icon-only-button,
+.domus-task-step-actions .domus-icon-only-button,
+.domus-task-step-add-button {
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 2px;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 0 0 24px;
+}
+
+.domus-task-template-actions .domus-icon-only-button .domus-icon,
+.domus-task-step-actions .domus-icon-only-button .domus-icon,
+.domus-task-step-add-button .domus-icon {
+    width: 16px;
+    height: 16px;
 }
 
 .domus-stat-grid {
@@ -2354,8 +2713,8 @@ body {
 .domus-kpi-tiles {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px;
-    margin: 16px 0;
+    gap: var(--domus-layout-content-spacing);
+    margin: 0;
 }
 
 .domus-kpi-tile {
@@ -2363,7 +2722,7 @@ body {
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
-    gap: 12px;
+    gap: var(--domus-layout-content-spacing);
     padding: 10px 14px;
     border-radius: var(--domus-border-radius);
     border: var(--domus-border);
@@ -2389,7 +2748,7 @@ body {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--domus-layout-content-spacing);
     width: 100%;
 }
 
@@ -2585,6 +2944,8 @@ body {
     width: 100%;
     display: flex;
     align-items: center;
+    justify-content: center;
+    position: relative;
 }
 
 .domus-kpi-chart-canvas {
@@ -2592,12 +2953,77 @@ body {
     height: 100%;
 }
 
+.domus-kpi-chart-center-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    font-size: 25px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--color-main-text);
+    text-align: center;
+    pointer-events: none;
+}
+
 .domus-dashboard-occupancy-tile {
     max-width: 420px;
 }
 
+.domus-dashboard-occupancy-tile .domus-kpi-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.domus-dashboard-occupancy-tile .domus-kpi-main {
+    display: none;
+}
+
+.domus-dashboard-occupancy-tile .domus-kpi-chart {
+    width: 100%;
+}
+
 .domus-dashboard-summary-tile {
     min-width: 0;
+}
+
+.domus-dashboard-summary-tile .domus-kpi-main {
+    justify-content: center;
+}
+
+.domus-dashboard-summary-tile .domus-kpi-value-block {
+    align-items: center;
+}
+
+.domus-dashboard-summary-tile .domus-kpi-value {
+    font-size: 30px;
+    text-align: center;
+}
+
+.domus-dashboard-kpi-tile .domus-kpi-header-row {
+    position: relative;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 20px;
+}
+
+.domus-dashboard-kpi-tile .domus-kpi-headline {
+    flex: 1 1 100%;
+    width: 100%;
+    padding: 0 28px;
+    text-align: center;
+    color: var(--domus-theme);
+}
+
+.domus-dashboard-kpi-tile .domus-kpi-more-icon {
+    position: absolute;
+    top: 0;
+    right: 0;
 }
 
 .domus-dashboard-occupancy-chart {
@@ -2605,32 +3031,55 @@ body {
 }
 
 .domus-dashboard-occupancy-chart .domus-kpi-chart-inner {
-    height: 108px;
+    width: 132px;
+    height: 132px;
+}
+
+.domus-dashboard-occupancy-chart .domus-kpi-chart-center-label {
+    padding: 8px;
+    font-size: 17px;
+    line-height: 1.05;
 }
 
 .domus-dashboard-kpi-row {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.domus-unit-landlord-default[hidden] {
-    display: none;
-}
-
 .domus-kpi-tiles-unit-detail {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-    margin: 18px 0 20px;
+    gap: var(--domus-layout-content-spacing);
+    margin: 0;
 }
 
 .domus-kpi-tiles-tenancy-detail {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin: 18px 0 20px;
+    gap: var(--domus-layout-content-spacing);
+    margin: 0;
 }
 
 .domus-kpi-tiles-unit-detail .domus-kpi-tile {
     padding: 14px 16px;
     min-height: 164px;
+}
+
+.domus-kpi-tiles-unit-detail .domus-unit-kpi-tile .domus-kpi-header-row {
+    position: static;
+    justify-content: space-between;
+    align-items: flex-start;
+    min-height: 0;
+}
+
+.domus-kpi-tiles-unit-detail .domus-unit-kpi-tile .domus-kpi-headline {
+    flex: 1 1 auto;
+    width: auto;
+    padding: 0;
+    text-align: left;
+}
+
+.domus-kpi-tiles-unit-detail .domus-unit-kpi-tile .domus-kpi-more-icon {
+    position: static;
+    margin-left: var(--domus-layout-content-spacing);
+    flex-shrink: 0;
 }
 
 .domus-kpi-tiles-tenancy-detail .domus-kpi-tile {
@@ -2639,7 +3088,7 @@ body {
 }
 
 .domus-tenancy-conditions-panel {
-    margin-bottom: 18px;
+    margin-bottom: var(--domus-layout-section-spacing);
 }
 
 .domus-tenancy-conditions-copy {
@@ -2654,6 +3103,10 @@ body {
 
 .domus-unit-landlord-panels .domus-panel {
     margin-bottom: 0;
+}
+
+.domus-unit-detail-landlord.domus-unit-detail-table-mode .domus-unit-landlord-default-block {
+    display: none;
 }
 
 .domus-unit-default-panel {
@@ -2780,7 +3233,7 @@ body {
 .domus-dashboard-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: 16px;
+    gap: var(--domus-layout-section-spacing);
 }
 
 .domus-dashboard-grid.domus-dashboard-grid-single {
@@ -2793,7 +3246,7 @@ body {
     padding: var(--domus-panel-padding);
     box-shadow: var(--domus-panel-shadow);
     background: var(--domus-panel-background);
-    margin-bottom: 16px;
+    margin-bottom: var(--domus-layout-section-spacing);
 }
 
 .domus-panel-half {
@@ -2803,8 +3256,12 @@ body {
 .domus-panel-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: var(--domus-layout-section-spacing);
     align-items: start;
+}
+
+.domus-panel-row.domus-panel-row-thirds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .domus-panel-row .domus-panel-half {
@@ -2823,19 +3280,174 @@ body {
 
 .domus-panel-header h3 {
     margin: 0;
+    color: var(--domus-theme);
 }
 
 .domus-panel-body {
-    margin-top: 10px;
+    margin-top: var(--domus-layout-content-spacing);
 }
 
 .domus-panel-chart .domus-panel-body {
-    margin-top: 12px;
+    margin-top: var(--domus-layout-content-spacing);
+}
+
+.domus-upcoming-card-shell {
+    --domus-panel-background: transparent;
+    --domus-panel-border: 0;
+    --domus-panel-shadow: none;
+    --domus-panel-padding: 0;
+}
+
+.domus-upcoming-card-shell .domus-panel-body {
+    margin-top: var(--domus-layout-content-spacing);
+}
+
+.domus-upcoming-card-shell .domus-table {
+    margin-bottom: 0;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--domus-border-radius);
+    background: #fff;
+}
+
+.domus-upcoming-card-shell .domus-empty-state {
+    border: 1px solid #e5e7eb;
+    border-radius: var(--domus-border-radius);
+    background: #fff;
+}
+
+.domus-dashboard-quick-panel {
+    --domus-panel-background: transparent;
+    --domus-panel-border: 0;
+    --domus-panel-shadow: none;
+    --domus-panel-padding: 0;
+}
+
+.domus-dashboard-quick-panel .domus-panel-body {
+    margin-top: var(--domus-layout-content-spacing);
+}
+
+.domus-dashboard-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--domus-layout-content-spacing);
+}
+
+.domus-dashboard-quick-card {
+    width: 100%;
+    min-height: 156px;
+    padding: 14px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: var(--domus-layout-content-spacing);
+    text-align: left;
+    cursor: pointer;
+    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.domus-dashboard-quick-card:hover,
+.domus-dashboard-quick-card:focus-visible,
+.domus-dashboard-quick-card-drop-hover {
+    transform: translateY(-1px);
+    border-color: rgba(18, 66, 110, 0.2);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    outline: 2px solid rgba(18, 66, 110, 0.16);
+    outline-offset: 2px;
+}
+
+.domus-dashboard-quick-card-upload {
+    position: relative;
+}
+
+.domus-dashboard-quick-upload-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.domus-dashboard-quick-card-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--domus-layout-content-spacing);
+}
+
+.domus-dashboard-quick-card-icon-wrap {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: rgba(18, 66, 110, 0.08);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.domus-dashboard-quick-card-icon {
+    width: 18px;
+    height: 18px;
+    filter: brightness(0) saturate(100%) invert(19%) sepia(32%) saturate(1666%) hue-rotate(174deg) brightness(93%) contrast(88%);
+}
+
+.domus-dashboard-quick-card-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.domus-dashboard-quick-card-title {
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--color-main-text);
+}
+
+.domus-dashboard-quick-card-subtitle {
+    color: var(--color-text-maxcontrast);
+    line-height: 1.45;
+}
+
+.domus-dashboard-quick-card-plus {
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: rgba(18, 66, 110, 0.08);
+    color: var(--domus-theme);
+    font-size: 22px;
+    line-height: 1;
 }
 
 @media (max-width: 900px) {
     .domus-overview-card {
         grid-template-columns: 1fr;
+    }
+
+    .domus-task-overview-card {
+        grid-template-columns: 1fr;
+        padding-right: 0;
+    }
+
+    .domus-task-overview-cell {
+        padding: 10px 16px;
+        justify-content: flex-start;
+    }
+
+    .domus-panel-row.domus-panel-row-thirds {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .domus-overview-media {
@@ -2855,6 +3467,19 @@ body {
 }
 
 @media (max-width: 560px) {
+    .domus-panel-row.domus-panel-row-thirds {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .domus-dashboard-quick-upload-card,
+    .domus-dashboard-quick-card {
+        border-radius: 14px;
+    }
+
+    .domus-dashboard-quick-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .domus-overview-meta,
     .domus-overview-column,
     .domus-overview-identity {
@@ -3217,6 +3842,33 @@ body {
     justify-content: flex-end;
 }
 
+.domus-documents-table .domus-table th,
+.domus-documents-table .domus-table td {
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.domus-documents-date-cell {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.domus-documents-table .domus-table tr[data-doc-info] {
+    cursor: pointer;
+}
+
+.domus-documents-table .domus-table tr[data-doc-info]:focus,
+.domus-documents-table .domus-table tr[data-doc-info]:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.domus-documents-file-name {
+    display: block;
+    word-break: break-word;
+}
+
 .domus-documents-more-row {
     margin-top: 8px;
 }
@@ -3346,6 +3998,34 @@ body {
 
 .domus-icon-confirm-year {
     background-image: url(../img/confirmYear.svg);
+}
+
+.domus-icon-action-note {
+    background-image: url(../img/action/note.svg);
+}
+
+.domus-icon-action-call {
+    background-image: url(../img/action/call.svg);
+}
+
+.domus-icon-action-email {
+    background-image: url(../img/action/email.svg);
+}
+
+.domus-icon-action-event {
+    background-image: url(../img/action/event.svg);
+}
+
+.domus-icon-action-document {
+    background-image: url(../img/action/document.svg);
+}
+
+.domus-icon-action-year-status {
+    background-image: url(../img/action/yearStatus.svg);
+}
+
+.domus-icon-action-custom {
+    background-image: url(../img/action/custom.svg);
 }
 
 @media (max-width: 1000px) {

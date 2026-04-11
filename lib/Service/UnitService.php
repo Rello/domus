@@ -2,6 +2,7 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Db\ActionLogMapper;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\BookingYearMapper;
 use OCA\Domus\Db\DistributionKeyUnitMapper;
@@ -30,6 +31,7 @@ class UnitService {
         private DistributionKeyUnitMapper $distributionKeyUnitMapper,
         private DocumentLinkMapper $documentLinkMapper,
         private PartnerRelMapper $partnerRelMapper,
+        private ActionLogMapper $actionLogMapper,
         private TenancyService $tenancyService,
         private PermissionService $permissionService,
         private DocumentPathService $documentPathService,
@@ -157,6 +159,7 @@ class UnitService {
         $this->taskMapper->deleteByEntity('unit', $unit->getId());
         $this->bookingYearMapper->deleteByUnit($unit->getId());
         $this->partnerRelMapper->deleteForRelation('unit', $unit->getId(), $userId);
+        $this->actionLogMapper->deleteForEntity($userId, 'unit', $unit->getId());
         $this->unitMapper->delete($unit);
     }
 

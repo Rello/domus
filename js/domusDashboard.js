@@ -29,6 +29,9 @@
 
         function bindDashboard(data) {
             destroyOccupancyChart();
+            if (!Domus.Role.isTenantView()) {
+                bindQuickActions();
+            }
             if (!Domus.Role.isBuildingMgmtView() && !Domus.Role.isTenantView()) {
                 renderOccupancyChart(data?.occupancy || null);
             }
@@ -45,10 +48,205 @@
         }
 
         function buildUpcomingPanel(content) {
-            return '<div class="domus-panel domus-panel-half">' +
+            return '<div class="domus-panel domus-panel-half domus-upcoming-card-shell">' +
                 Domus.UI.buildSectionHeader(t('domus', 'Upcoming')) +
                 '<div class="domus-panel-body">' + content + '</div>' +
                 '</div>';
+        }
+
+        function buildQuickActionsPanel() {
+            const quickCards = [
+                buildQuickUploadCard(),
+                {
+                    id: 'domus-dashboard-action-log-create',
+                    iconClass: 'domus-icon-action-custom',
+                    title: t('domus', 'Create action log entry'),
+                    copy: t('domus', 'Capture a quick note or event')
+                },
+                {
+                    id: 'domus-dashboard-unit-create',
+                    iconClass: 'domus-icon-unit',
+                    title: t('domus', 'Add unit'),
+                    copy: t('domus', 'Create a new rentable object')
+                },
+                {
+                    id: 'domus-dashboard-partner-create',
+                    iconClass: 'domus-icon-partner',
+                    title: t('domus', 'Add partner'),
+                    copy: t('domus', 'Create a contact or stakeholder')
+                }
+            ].map(item => typeof item === 'string' ? item : buildQuickActionCard(item)).join('');
+
+            return '<div class="domus-panel domus-panel-half domus-dashboard-quick-panel">' +
+                Domus.UI.buildSectionHeader(t('domus', 'Quick Actions')) +
+                '<div class="domus-panel-body">' +
+                '<div class="domus-dashboard-quick-grid">' + quickCards + '</div>' +
+                '</div>' +
+                '</div>';
+        }
+
+        function buildQuickUploadCard() {
+            return '<div class="domus-dashboard-quick-card domus-dashboard-quick-card-upload" id="domus-dashboard-quick-upload" role="button" tabindex="0" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Upload document. Add new file or drop here')) + '">' +
+                '<input type="file" class="domus-dashboard-quick-upload-input" id="domus-dashboard-quick-upload-input" aria-hidden="true" tabindex="-1">' +
+                '<span class="domus-dashboard-quick-card-main">' +
+                '<span class="domus-dashboard-quick-card-icon-wrap">' +
+                '<span class="domus-icon domus-icon-document domus-dashboard-quick-card-icon" aria-hidden="true"></span>' +
+                '</span>' +
+                '<span class="domus-dashboard-quick-card-copy">' +
+                '<span class="domus-dashboard-quick-card-title">' + Domus.Utils.escapeHtml(t('domus', 'Upload document')) + '</span>' +
+                '<span class="domus-dashboard-quick-card-subtitle">' + Domus.Utils.escapeHtml(t('domus', 'Add new file or drop here')) + '</span>' +
+                '</span>' +
+                '</span>' +
+                '<span class="domus-dashboard-quick-card-plus" aria-hidden="true">+</span>' +
+                '</div>';
+        }
+
+        function buildQuickActionCard(action) {
+            return '<div class="domus-dashboard-quick-card" id="' + Domus.Utils.escapeHtml(action.id) + '" role="button" tabindex="0" aria-label="' + Domus.Utils.escapeHtml(action.title) + '">' +
+                '<span class="domus-dashboard-quick-card-main">' +
+                '<span class="domus-dashboard-quick-card-icon-wrap">' +
+                '<span class="domus-icon ' + Domus.Utils.escapeHtml(action.iconClass) + ' domus-dashboard-quick-card-icon" aria-hidden="true"></span>' +
+                '</span>' +
+                '<span class="domus-dashboard-quick-card-copy">' +
+                '<span class="domus-dashboard-quick-card-title">' + Domus.Utils.escapeHtml(action.title) + '</span>' +
+                '<span class="domus-dashboard-quick-card-subtitle">' + Domus.Utils.escapeHtml(action.copy) + '</span>' +
+                '</span>' +
+                '</span>' +
+                '<span class="domus-dashboard-quick-card-plus" aria-hidden="true">+</span>' +
+                '</div>';
+        }
+
+        function bindQuickActionTrigger(id, onTrigger) {
+            const element = document.getElementById(id);
+            if (!element || typeof onTrigger !== 'function') {
+                return;
+            }
+
+            element.addEventListener('click', onTrigger);
+            element.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                event.preventDefault();
+                onTrigger();
+            });
+        }
+
+        function bindQuickActions() {
+            mountQuickUploadDropZone();
+
+            bindQuickActionTrigger('domus-dashboard-action-log-create', () => {
+                Domus.ActionLog.openCreateModal({
+                    onSaved: () => Domus.Router.navigate('dashboard')
+                });
+            });
+
+            bindQuickActionTrigger('domus-dashboard-unit-create', () => {
+                Domus.Units.openCreateModal({}, () => Domus.Router.navigate('dashboard'));
+            });
+
+            bindQuickActionTrigger('domus-dashboard-partner-create', () => {
+                Domus.Partners.openCreateModal({}, () => Domus.Router.navigate('dashboard'));
+            });
+        }
+
+        function mountQuickUploadDropZone() {
+            const target = document.getElementById('domus-dashboard-quick-upload');
+            const input = document.getElementById('domus-dashboard-quick-upload-input');
+            if (!target || !input || target.dataset.domusQuickUploadMounted) {
+                return;
+            }
+
+            target.dataset.domusQuickUploadMounted = 'true';
+            let isChoosing = false;
+
+            const openBookingCreateWithFile = (file) => {
+                if (!file) {
+                    return;
+                }
+
+                Domus.Bookings.openCreateModal({}, () => Domus.Router.navigate('dashboard'), {
+                    initialDocumentSelection: {
+                        type: 'upload',
+                        file,
+                        title: inferDocumentTitle(file.name)
+                    }
+                });
+                input.value = '';
+            };
+
+            const triggerPicker = (event) => {
+                if (event?.type === 'keydown') {
+                    event.preventDefault();
+                }
+                if (isChoosing) {
+                    return;
+                }
+                isChoosing = true;
+                try {
+                    if (typeof input.showPicker === 'function') {
+                        input.showPicker();
+                    } else {
+                        input.click();
+                    }
+                } catch (error) {
+                    console.warn('[Domus] Dashboard upload picker failed', error);
+                }
+                setTimeout(() => {
+                    isChoosing = false;
+                }, 300);
+            };
+
+            target.addEventListener('click', triggerPicker);
+            target.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    triggerPicker(event);
+                }
+            });
+
+            input.addEventListener('click', event => {
+                event.stopPropagation();
+            });
+            input.addEventListener('change', () => {
+                openBookingCreateWithFile(input.files?.[0] || null);
+            });
+
+            const setHover = (active) => {
+                target.classList.toggle('domus-dashboard-quick-card-drop-hover', active);
+            };
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                target.addEventListener(eventName, event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setHover(true);
+                });
+            });
+
+            ['dragleave', 'dragend'].forEach(eventName => {
+                target.addEventListener(eventName, event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setHover(false);
+                });
+            });
+
+            target.addEventListener('drop', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                setHover(false);
+                openBookingCreateWithFile(event.dataTransfer?.files?.[0] || null);
+            });
+        }
+
+        function inferDocumentTitle(fileName) {
+            const normalizedName = String(fileName || '').trim();
+            if (!normalizedName) {
+                return undefined;
+            }
+
+            const extensionIndex = normalizedName.lastIndexOf('.');
+            return extensionIndex > 0 ? normalizedName.substring(0, extensionIndex) : normalizedName;
         }
 
         function buildLandlordDashboard(data) {
@@ -67,13 +265,15 @@
                     value: safeValue,
                     linkHref: card.link || '',
                     linkLabel: t('domus', 'More'),
-                    tileClassName: 'domus-dashboard-summary-tile'
+                    linkIconClass: 'domus-icon-arrow-right',
+                    tileClassName: 'domus-dashboard-summary-tile domus-dashboard-kpi-tile'
                 });
             }).join('');
 
             const hasUnits = (data.unitCount || 0) > 0;
             const openTasksTable = hasUnits
                 ? Domus.Tasks.buildOpenTasksTable(data.openTasks || [], {
+                    layout: 'overviewCards',
                     showTitle: false,
                     showHeader: false,
                     titleBelowUnit: true,
@@ -111,20 +311,27 @@
                         value: `${occupiedUnits} ${t('domus', 'of')} ${totalUnits}`,
                         linkHref: '#/units',
                         linkLabel: t('domus', 'More'),
+                        linkIconClass: 'domus-icon-arrow-right',
                         chartId: 'domus-dashboard-occupancy-chart',
                         showChart: true,
+                        chartCenterLabel: `${occupiedUnits} ${t('domus', 'of')} ${totalUnits}`,
                         chartClassName: 'domus-dashboard-occupancy-chart',
                         chartAriaLabel: t('domus', 'Occupied vs vacant units'),
                         chartRole: 'img',
-                        tileClassName: 'domus-dashboard-occupancy-tile'
+                        tileClassName: 'domus-dashboard-occupancy-tile domus-dashboard-kpi-tile'
                     }) +
                     cardHtml +
                     '</div>'
                 : '';
 
+            const panels = [
+                hasUnits ? buildUpcomingPanel(openTasksTable) : '',
+                buildQuickActionsPanel()
+            ].filter(Boolean).join('');
+
             return occupancyTile +
                 (!hasUnits ? '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' : '') +
-                (hasUnits ? buildUpcomingPanel(openTasksTable) : '');
+                (panels ? '<div class="domus-panel-row">' + panels + '</div>' : '');
         }
 
         function renderOccupancyChart(occupancy) {
@@ -146,7 +353,7 @@
             }
 
             const rootStyles = getComputedStyle(document.documentElement);
-            const occupiedColor = rootStyles.getPropertyValue('--color-success').trim() || '#0f6b2f';
+            const occupiedColor = rootStyles.getPropertyValue('--color-element-success').trim() || '#0f6b2f';
             const vacantColor = rootStyles.getPropertyValue('--color-background-hover').trim() || '#d8dde6';
 
             occupancyChartInstance = new Chart(ctx, {
@@ -157,13 +364,25 @@
                         data: [occupiedUnits, vacantUnits],
                         backgroundColor: [occupiedColor, vacantColor],
                         borderWidth: 0,
-                        hoverOffset: 2
+                        borderRadius: 999,
+                        borderJoinStyle: 'round',
+                        hoverOffset: 0
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '68%',
+                    cutout: '82%',
+                    rotation: -0.5 * Math.PI,
+                    circumference: 360,
+                    layout: {
+                        padding: 2
+                    },
+                    elements: {
+                        arc: {
+                            spacing: 0
+                        }
+                    },
                     plugins: {
                         legend: {
                             display: false
@@ -192,7 +411,8 @@
                     value: card.value.toString(),
                     linkHref: card.link || '',
                     linkLabel: t('domus', 'More'),
-                    tileClassName: 'domus-dashboard-summary-tile'
+                    linkIconClass: 'domus-icon-arrow-right',
+                    tileClassName: 'domus-dashboard-summary-tile domus-dashboard-kpi-tile'
                 });
             }).join('');
 
@@ -225,8 +445,13 @@
                 }
             }, 0);
 
+            const panels = [
+                hasProperties ? buildUpcomingPanel(openTasksTable) : '',
+                buildQuickActionsPanel()
+            ].filter(Boolean).join('');
+
             return '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' +
-                (hasProperties ? buildUpcomingPanel(openTasksTable) : '');
+                (panels ? '<div class="domus-panel-row">' + panels + '</div>' : '');
         }
 
         function buildTenantDashboard(data) {

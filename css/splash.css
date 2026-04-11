@@ -44,7 +44,7 @@
 }
 
 .app-splash-name {
-    color: #4B5E53;
+    color: var(--domus-theme);
     font-size: 28px;
     font-weight: 600;
     letter-spacing: 0.08em;

@@ -78,6 +78,12 @@ return [
         ['name' => 'Document#attach', 'url' => '/documents/attach', 'verb' => 'POST'],
         ['name' => 'Document#destroy', 'url' => '/documents/{id}', 'verb' => 'DELETE'],
 
+        // Action logs
+        ['name' => 'ActionLog#show', 'url' => '/api/action-logs/entry/{id}', 'verb' => 'GET'],
+        ['name' => 'ActionLog#listByEntity', 'url' => '/api/action-logs/{entityType}/{entityId}', 'verb' => 'GET'],
+        ['name' => 'ActionLog#createForEntity', 'url' => '/api/action-logs/{entityType}/{entityId}', 'verb' => 'POST'],
+        ['name' => 'ActionLog#update', 'url' => '/api/action-logs/entry/{id}', 'verb' => 'PUT'],
+
         // Dashboard
         ['name' => 'Dashboard#summary', 'url' => '/dashboard/summary', 'verb' => 'GET'],
 
@@ -117,6 +123,7 @@ return [
         ['name' => 'Task#createForEntity', 'url' => '/api/tasks/{entityType}/{entityId}', 'verb' => 'POST'],
         ['name' => 'Task#listByEntity', 'url' => '/api/tasks/{entityType}/{entityId}', 'verb' => 'GET'],
         ['name' => 'Task#listOpen', 'url' => '/api/tasks', 'verb' => 'GET'],
+        ['name' => 'Task#update', 'url' => '/api/tasks/{taskId}', 'verb' => 'PUT'],
         ['name' => 'Task#close', 'url' => '/api/tasks/{taskId}/close', 'verb' => 'POST'],
         ['name' => 'Task#reopen', 'url' => '/api/tasks/{taskId}/reopen', 'verb' => 'POST'],
         ['name' => 'Task#delete', 'url' => '/api/tasks/{taskId}', 'verb' => 'DELETE'],

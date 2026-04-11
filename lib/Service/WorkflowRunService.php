@@ -283,19 +283,21 @@ class WorkflowRunService {
         }
 
         $entityMap = [];
-        $properties = $this->propertyMapper->findByUser($userId);
-        foreach ($properties as $property) {
-            $propertyId = $property->getId();
-            if ($propertyId === null) {
-                continue;
+        if ($role === 'buildingMgmt') {
+            $properties = $this->propertyMapper->findByUser($userId);
+            foreach ($properties as $property) {
+                $propertyId = $property->getId();
+                if ($propertyId === null) {
+                    continue;
+                }
+                $this->entityImageService->enrichProperty($property);
+                $entityMap['property:' . $propertyId] = [
+                    'entityType' => 'property',
+                    'entityId' => (int)$propertyId,
+                    'name' => $property->getName(),
+                    'imageUrl' => $property->getResolvedImageUrl(),
+                ];
             }
-            $this->entityImageService->enrichProperty($property);
-            $entityMap['property:' . $propertyId] = [
-                'entityType' => 'property',
-                'entityId' => (int)$propertyId,
-                'name' => $property->getName(),
-                'imageUrl' => $property->getResolvedImageUrl(),
-            ];
         }
         foreach ($units as $unit) {
             $this->entityImageService->enrichUnit($unit, null, false);

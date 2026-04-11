@@ -4,6 +4,7 @@ namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\EntityImageService;
+use OCA\Domus\Service\PermissionService;
 use OCA\Domus\Service\PropertyService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\DataResponse;
@@ -18,6 +19,7 @@ class PropertyController extends Controller {
         IRequest $request,
         private IUserSession $userSession,
         private PropertyService $propertyService,
+        private PermissionService $permissionService,
         private EntityImageService $entityImageService,
         private IL10N $l10n,
     ) {
@@ -26,7 +28,10 @@ class PropertyController extends Controller {
 
     #[NoAdminRequired]
     public function index(): DataResponse {
-        return new DataResponse($this->propertyService->listPropertiesForUser($this->getUserId()));
+        return new DataResponse($this->propertyService->listPropertiesForUser(
+            $this->getUserId(),
+            $this->permissionService->getRoleFromRequest($this->request)
+        ));
     }
 
     #[NoAdminRequired]

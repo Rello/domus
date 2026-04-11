@@ -4,8 +4,35 @@
     window.Domus = window.Domus || {};
 
     Domus.Documents = (function() {
+        function buildDocumentRow(doc, options = {}) {
+            const fileName = doc.fileName || doc.fileUrl || doc.fileId || '';
+            const cells = [
+                {
+                    className: 'domus-documents-file-cell',
+                    content: '<span class="domus-documents-file-name">' + Domus.Utils.escapeHtml(fileName) + '</span>'
+                }
+            ];
+
+            if (options.showDate) {
+                const createdAt = doc?.createdAt ? Domus.Utils.formatDate(doc.createdAt * 1000) : '—';
+                cells.push({
+                    className: 'domus-documents-date-cell',
+                    content: Domus.Utils.escapeHtml(createdAt || '—')
+                });
+            }
+
+            return {
+                className: 'domus-documents-row',
+                dataset: { docInfo: doc.id },
+                cells
+            };
+        }
+
         function renderList(entityType, entityId, options = {}) {
             const containerId = `domus-documents-${entityType}-${entityId}`;
+            const canManageDocuments = options.canManageDocuments !== undefined
+                ? options.canManageDocuments
+                : (options.showLinkAction !== undefined ? options.showLinkAction : Domus.Role.hasCapability('manageDocuments'));
             const filterYear = options.year !== undefined && options.year !== null && options.year !== ''
                 ? parseInt(options.year, 10)
                 : null;
@@ -28,15 +55,17 @@
                             return year === filterYear;
                         })
                         : (docs || []);
-                    const rows = filteredDocs.map(doc => [
-                        '<a class="domus-link" href="' + Domus.Utils.escapeHtml(doc.fileUrl || '#') + '">' + Domus.Utils.escapeHtml(doc.fileName || doc.fileUrl || doc.fileId || '') + '</a>',
-                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Show linked objects'), { dataset: { docInfo: doc.id } }),
-                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove'), { dataset: { docId: doc.id } })
-                    ]);
+                    const rows = filteredDocs.map(doc => buildDocumentRow(doc));
                     const html = '<div id="' + containerId + '">' +
-                        Domus.UI.buildTable([t('domus', 'File'), t('domus', 'Info'), ''], rows, { wrapPanel: false }) + '</div>';
+                        '<div class="domus-documents-table">' +
+                        Domus.UI.buildTable([t('domus', 'File')], rows, { wrapPanel: false }) +
+                        '</div>' +
+                        '</div>';
                     updateContainer(html);
-                    bindDocumentActions(entityType, entityId, containerId);
+                    bindDocumentActions(containerId, documentId => openDetailModal(documentId, {
+                        canDelete: canManageDocuments,
+                        onDeleted: () => renderList(entityType, entityId, options)
+                    }));
                 })
                 .catch(() => {
                     const html = '<div id="' + containerId + '">' + t('domus', 'No {entity} found.', { entity: t('domus', 'Documents') }) + '</div>';
@@ -55,6 +84,9 @@
 
         function loadLatestList(entityType, entityId, options = {}) {
             const containerId = options.containerId || `domus-documents-latest-${entityType}-${entityId}`;
+            const canManageDocuments = options.canManageDocuments !== undefined
+                ? options.canManageDocuments
+                : (options.showLinkAction !== undefined ? options.showLinkAction : Domus.Role.hasCapability('manageDocuments'));
             const pageSize = Math.max(1, Number(options.pageSize) || 10);
             let visibleCount = pageSize;
 
@@ -72,17 +104,7 @@
             }
 
             function buildRows(docs) {
-                return docs.slice(0, visibleCount).map(doc => {
-                    const fileName = doc.fileName || doc.fileUrl || doc.fileId || '';
-                    const createdAt = doc?.createdAt ? Domus.Utils.formatDate(doc.createdAt * 1000) : '';
-                    return [
-                        '<a class="domus-link" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(doc.fileUrl || '#') + '">' +
-                        Domus.Utils.escapeHtml(fileName) + '</a>',
-                        Domus.Utils.escapeHtml(createdAt || '—'),
-                        Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Show linked objects'), { dataset: { docInfo: doc.id } }),
-                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove'), { dataset: { docId: doc.id } })
-                    ];
-                });
+                return docs.slice(0, visibleCount).map(doc => buildDocumentRow(doc, { showDate: true }));
             }
 
             function renderView(docs) {
@@ -91,7 +113,12 @@
                     return;
                 }
                 const rows = buildRows(docs);
-                const table = Domus.UI.buildTable([t('domus', 'File'), t('domus', 'Date'), t('domus', 'Info'), ''], rows, { wrapPanel: false });
+                const table = '<div class="domus-documents-table">' +
+                    Domus.UI.buildTable([
+                        { label: t('domus', 'File'), className: 'domus-documents-file-cell' },
+                        { label: t('domus', 'Date'), className: 'domus-documents-date-cell' }
+                    ], rows, { wrapPanel: false }) +
+                    '</div>';
                 const hasMore = docs.length > visibleCount;
                 const moreButton = hasMore
                     ? '<div class="domus-documents-more-row">' +
@@ -99,7 +126,10 @@
                     '</div>'
                     : '';
                 updateContainer('<div id="' + containerId + '">' + table + moreButton + '</div>');
-                bindDocumentActions(entityType, entityId, containerId);
+                bindDocumentActions(containerId, documentId => openDetailModal(documentId, {
+                    canDelete: canManageDocuments,
+                    onDeleted: () => loadLatestList(entityType, entityId, options)
+                }));
                 const moreBtn = document.getElementById(containerId + '-more');
                 if (moreBtn) {
                     moreBtn.addEventListener('click', () => {
@@ -295,29 +325,32 @@
             };
         }
 
-        function bindDocumentActions(entityType, entityId, containerId) {
-            document.querySelectorAll('#' + containerId + ' button[data-doc-id]').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    Domus.UI.confirmAction({
-                        message: t('domus', 'Remove document?'),
-                        confirmLabel: t('domus', 'Delete')
-                    }).then(confirmed => {
-                        if (!confirmed) {
-                            return;
-                        }
-                        Domus.Api.unlinkDocument(this.getAttribute('data-doc-id'))
-                            .then(() => {
-                                Domus.UI.showNotification(t('domus', 'Document removed.'), 'success');
-                                renderList(entityType, entityId);
-                            })
-                            .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                    });
-                });
-            });
+        function bindDocumentActions(containerId, onOpenDocument) {
+            document.querySelectorAll('#' + containerId + ' tr[data-doc-info]').forEach(row => {
+                if (row.dataset.domusDocumentBound) {
+                    return;
+                }
 
-            document.querySelectorAll('#' + containerId + ' button[data-doc-info]').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    openDetailModal(this.getAttribute('data-doc-info'));
+                row.dataset.domusDocumentBound = 'true';
+                row.tabIndex = 0;
+                row.setAttribute('role', 'button');
+
+                const handleOpen = event => {
+                    if (event && (event.target.closest('a') || event.target.closest('button') || event.target.closest('input') || event.target.closest('select') || event.target.closest('textarea'))) {
+                        return;
+                    }
+                    if (typeof onOpenDocument === 'function') {
+                        onOpenDocument(row.getAttribute('data-doc-info'));
+                    }
+                };
+
+                row.addEventListener('click', handleOpen);
+                row.addEventListener('keydown', event => {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                        return;
+                    }
+                    event.preventDefault();
+                    handleOpen(event);
                 });
             });
         }
@@ -396,10 +429,12 @@
             });
         }
 
-        function openDetailModal(documentId) {
+        function openDetailModal(documentId, options = {}) {
             Domus.Api.getDocumentDetail(documentId)
                 .then(detail => {
-                    const fileLink = detail.document?.fileUrl ? '<a class="domus-link" href="' + Domus.Utils.escapeHtml(detail.document.fileUrl) + '">' + Domus.Utils.escapeHtml(detail.document.fileName || detail.document.fileUrl || '') + '</a>' : Domus.Utils.escapeHtml(detail.document?.fileName || '');
+                    const fileLink = detail.document?.fileUrl
+                        ? '<a class="domus-link" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(detail.document.fileUrl) + '">' + Domus.Utils.escapeHtml(detail.document.fileName || detail.document.fileUrl || '') + '</a>'
+                        : Domus.Utils.escapeHtml(detail.document?.fileName || '');
                     const linked = detail.linkedEntities || [];
                     const typeLabels = {
                         property: t('domus', 'Property'),
@@ -429,12 +464,37 @@
                         return '<li><strong>' + Domus.Utils.escapeHtml(type) + ':</strong> ' + Domus.Utils.escapeHtml(name) + '</li>';
                     }).join('') : '<li>' + Domus.Utils.escapeHtml(t('domus', 'No {entity} found.', { entity: t('domus', 'Linked objects') })) + '</li>';
 
-                    Domus.UI.openModal({
+                    let modal;
+                    const headerActions = [];
+                    if (options.canDelete !== false) {
+                        headerActions.push(Domus.UI.buildModalAction(t('domus', 'Remove'), () => {
+                            Domus.UI.confirmAction({
+                                message: t('domus', 'Remove document?'),
+                                confirmLabel: t('domus', 'Delete')
+                            }).then(confirmed => {
+                                if (!confirmed) {
+                                    return;
+                                }
+                                Domus.Api.unlinkDocument(documentId)
+                                    .then(() => {
+                                        Domus.UI.showNotification(t('domus', 'Document removed.'), 'success');
+                                        modal?.close();
+                                        if (typeof options.onDeleted === 'function') {
+                                            options.onDeleted();
+                                        }
+                                    })
+                                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                            });
+                        }, 'domus-icon-delete'));
+                    }
+
+                    modal = Domus.UI.openModal({
                         title: t('domus', 'Document links'),
                         content: '<div class="domus-doc-detail">' +
                             '<p><strong>' + Domus.Utils.escapeHtml(t('domus', 'File')) + ':</strong> ' + fileLink + '</p>' +
                             '<ul>' + list + '</ul>' +
-                            '</div>'
+                            '</div>',
+                        headerActions
                     });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));

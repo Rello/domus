@@ -337,6 +337,7 @@
                 return unitIds.has(entityId);
             });
             const upcomingTable = Domus.Tasks.buildOpenTasksTable(filteredOpenTasks, {
+                layout: 'overviewCards',
                 showTitle: false,
                 showHeader: false,
                 titleBelowUnit: true,
@@ -350,7 +351,7 @@
                 emptyIconClass: 'domus-icon-task'
             });
 
-            return '<div class="domus-panel domus-panel-half">' +
+            return '<div class="domus-panel domus-panel-half domus-upcoming-card-shell domus-upcoming-card-shell-compact">' +
                 Domus.UI.buildSectionHeader(t('domus', 'Upcoming'), {
                     id: 'domus-property-task-create-header',
                     title: t('domus', 'Add {entity}', { entity: t('domus', 'Task') }),
@@ -493,6 +494,11 @@
                         });
                     }
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Document Management'), documentsHeaderActions);
+                    const actionLogHeader = Domus.UI.buildSectionHeader(t('domus', 'Action log'), {
+                        id: 'domus-property-action-log-create',
+                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Action log entry') }),
+                        iconClass: 'domus-icon-add'
+                    });
 
                     const partnersPanel = Domus.PartnerRelations.renderSection(partners || [], { entityType: 'property', entityId: id });
                     const upcomingPanel = isBuildingManagement
@@ -517,6 +523,13 @@
                         Domus.Bookings.renderInline(property.bookings || [], { refreshView: 'propertyDetail', refreshId: id }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
                         Domus.Documents.renderList('property', id, { showLinkAction: documentActionsEnabled }) + '</div></div>' +
+                        '<div class="domus-panel">' + actionLogHeader + '<div class="domus-panel-body">' +
+                        Domus.ActionLog.renderList('property', id, {
+                            containerId: `domus-property-action-log-${id}`,
+                            emptyActionId: 'domus-property-action-log-empty-create',
+                            entityLabel: property?.name || '',
+                            onSaved: () => renderDetail(id)
+                        }) + '</div></div>' +
                         '</div>' +
                         '</div>' +
                         '</div>';
@@ -588,6 +601,12 @@
             });
             document.getElementById('domus-property-link-doc')?.addEventListener('click', () => {
                 Domus.Documents.openLinkModal('property', id, () => renderDetail(id));
+            });
+            Domus.ActionLog.bindCreateButtons(['domus-property-action-log-create'], {
+                entityType: 'property',
+                entityId: id,
+                entityLabel: property?.name || '',
+                onSaved: () => renderDetail(id)
             });
             document.getElementById('domus-add-distribution')?.addEventListener('click', () => {
                 Domus.Distributions.openCreateKeyModal(id, () => renderDetail(id));

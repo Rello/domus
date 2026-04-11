@@ -5,6 +5,7 @@ Util::addStyle('domus', 'splash');
 Util::addScript('domus', '3rdParty/chart.umd');
 Util::addScript('domus', 'splash');
 Util::addScript('domus', 'domusCoreBundle');
+Util::addScript('domus', 'domusActionLog');
 Util::addScript('domus', 'domusAccounts');
 Util::addScript('domus', 'domusDistributions');
 Util::addScript('domus', 'domusTasks');

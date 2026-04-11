@@ -674,7 +674,30 @@
             });
         }
 
-        function mountBookingDocumentWidget(modalEl) {
+        function applyInitialDocumentSelection(widget, selection) {
+            if (!widget || !selection) {
+                return;
+            }
+
+            if (selection.type === 'upload' && selection.file && widget.dropZone?.setFile) {
+                widget.dropZone.setFile([selection.file]);
+            }
+
+            if (selection.type === 'link' && selection.filePath && typeof widget.setPath === 'function') {
+                widget.setPath(selection.filePath);
+            }
+
+            if (widget.uploadNameInput && selection.title) {
+                widget.uploadNameInput.value = selection.title;
+                widget.uploadNameInput.dataset.autoTitle = '';
+            }
+
+            if (widget.uploadYearInput && selection.year !== undefined && selection.year !== null) {
+                widget.uploadYearInput.value = selection.year;
+            }
+        }
+
+        function mountBookingDocumentWidget(modalEl, options = {}) {
             const placeholder = modalEl.querySelector('#domus-booking-documents .domus-doc-attachment-placeholder');
             if (!placeholder) {
                 return null;
@@ -697,6 +720,7 @@
                 });
             }
 
+            applyInitialDocumentSelection(widget, options.initialSelection);
             return widget;
         }
 
@@ -740,7 +764,9 @@
                         content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, defaults, { multiEntry: true, hidePropertyField: formConfig.hidePropertyField }),
                         size: 'large'
                     });
-                    const docWidget = mountBookingDocumentWidget(modal.modalEl);
+                    const docWidget = mountBookingDocumentWidget(modal.modalEl, {
+                        initialSelection: formConfig.initialDocumentSelection || null
+                    });
                     bindBookingForm(modal, data => {
                         const payloads = data.entries.map(entry => Object.assign({}, data.metadata, entry));
                         const requests = payloads.map(payload => Domus.Api.createBooking(payload));

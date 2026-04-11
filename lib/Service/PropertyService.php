@@ -2,6 +2,7 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Db\ActionLogMapper;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DistributionKeyMapper;
 use OCA\Domus\Db\DistributionKeyUnitMapper;
@@ -27,6 +28,7 @@ class PropertyService {
         private DistributionKeyMapper $distributionKeyMapper,
         private DistributionKeyUnitMapper $distributionKeyUnitMapper,
         private PartnerRelMapper $partnerRelMapper,
+        private ActionLogMapper $actionLogMapper,
         private TaskMapper $taskMapper,
         private TaskStepMapper $taskStepMapper,
         private TenancyMapper $tenancyMapper,
@@ -34,14 +36,20 @@ class PropertyService {
         private TenancyService $tenancyService,
         private DocumentPathService $documentPathService,
         private UnitService $unitService,
+        private PermissionService $permissionService,
         private EntityImageService $entityImageService,
         private IL10N $l10n,
         private LoggerInterface $logger,
     ) {
     }
 
-    public function listPropertiesForUser(string $userId): array {
-        $properties = $this->propertyMapper->findByUser($userId);
+    public function listPropertiesForUser(string $userId, string $role = 'landlord'): array {
+        $usageRoleFilter = $this->resolveUsageRoleFilter($role);
+        if ($usageRoleFilter === false) {
+            return [];
+        }
+
+        $properties = $this->propertyMapper->findByUser($userId, $usageRoleFilter);
         foreach ($properties as $property) {
             $this->enrichProperty($property);
         }
@@ -130,6 +138,7 @@ class PropertyService {
         }
 
         $this->partnerRelMapper->deleteForRelation('property', $property->getId(), $userId);
+        $this->actionLogMapper->deleteForEntity($userId, 'property', $property->getId());
         $this->documentLinkMapper->deleteForEntity($userId, 'property', $property->getId());
         $workflowRuns = $this->workflowRunMapper->findByEntity('property', $property->getId());
         foreach ($workflowRuns as $run) {
@@ -196,6 +205,18 @@ class PropertyService {
         } catch (\Throwable $e) {
             $this->logger->warning('Failed enriching property', ['message' => $e->getMessage()]);
         }
+    }
+
+    private function resolveUsageRoleFilter(string $role): string|bool|null {
+        if ($this->permissionService->isBuildingManagement($role)) {
+            return 'manager';
+        }
+
+        if ($this->permissionService->isLandlord($role)) {
+            return false;
+        }
+
+        return null;
     }
 
     private function calculateRentSum(Property $property): ?string {

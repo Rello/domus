@@ -68,6 +68,24 @@ class TaskController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function update(int $taskId): DataResponse {
+        $payload = $this->request->getParams();
+        $title = trim((string)($payload['title'] ?? ''));
+        $description = $payload['description'] ?? null;
+        $dueDate = $payload['dueDate'] ?? null;
+
+        try {
+            return new DataResponse($this->taskService->updateTask($taskId, $title, $description, $dueDate, $this->getUserId()));
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_BAD_REQUEST, 'RUNTIME_ERROR');
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR');
+        }
+    }
+
+    #[NoAdminRequired]
     public function close(int $taskId): DataResponse {
         try {
             return new DataResponse($this->taskService->closeTask($taskId, $this->getUserId()));

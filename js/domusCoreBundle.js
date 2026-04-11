@@ -345,6 +345,7 @@
             createTask: (entityType, entityId, data) => request('POST', `/api/tasks/${entityType}/${entityId}`, data),
             getTasksByEntity: (entityType, entityId, status) => request('GET', buildUrl(`/api/tasks/${entityType}/${entityId}`, appendFilters(new URLSearchParams(), { status }))),
             getOpenTasks: (status, entityType, entityId) => request('GET', buildUrl('/api/tasks', appendFilters(new URLSearchParams(), { status, entityType, entityId }))),
+            updateTask: (taskId, data) => request('PUT', `/api/tasks/${taskId}`, data),
             closeTask: taskId => request('POST', `/api/tasks/${taskId}/close`),
             reopenTask: taskId => request('POST', `/api/tasks/${taskId}/reopen`),
             deleteTask: taskId => request('DELETE', `/api/tasks/${taskId}`),
@@ -441,6 +442,10 @@
                 }
                 return request('GET', buildUrl('/statistics/accounts', params));
             },
+            getActionLogs: (entityType, entityId) => request('GET', `/api/action-logs/${entityType}/${entityId}`),
+            getActionLogEntry: id => request('GET', `/api/action-logs/entry/${id}`),
+            createActionLog: (entityType, entityId, data) => request('POST', `/api/action-logs/${entityType}/${entityId}`, data),
+            updateActionLog: (id, data) => request('PUT', `/api/action-logs/entry/${id}`, data),
             getDocuments: (entityType, entityId) => request('GET', `/documents/${entityType}/${entityId}`),
             getDocumentDetail: (id) => request('GET', `/documents/${id}`),
             linkDocument: (entityType, entityId, data) => request('POST', `/documents/${entityType}/${entityId}`, data),
@@ -661,7 +666,7 @@
                 }
             }
 
-            function getFocusableElements() {
+            function getFocusableElements(root = modal) {
                 const selector = [
                     'a[href]',
                     'button:not([disabled])',
@@ -670,7 +675,7 @@
                     'select:not([disabled])',
                     '[tabindex]:not([tabindex="-1"])'
                 ].join(',');
-                return Array.from(modal.querySelectorAll(selector)).filter(el =>
+                return Array.from(root.querySelectorAll(selector)).filter(el =>
                     el instanceof HTMLElement &&
                     !el.hasAttribute('disabled') &&
                     el.getAttribute('aria-hidden') !== 'true' &&
@@ -720,10 +725,10 @@
             });
 
             modal.setAttribute('tabindex', '-1');
-            const focusableElements = getFocusableElements();
-            if (focusableElements.length) {
-                const autofocusTarget = focusableElements.find(el => el.hasAttribute('autofocus'));
-                (autofocusTarget || focusableElements[0]).focus();
+            const bodyFocusableElements = getFocusableElements(body);
+            if (bodyFocusableElements.length) {
+                const autofocusTarget = bodyFocusableElements.find(el => el.hasAttribute('autofocus'));
+                (autofocusTarget || bodyFocusableElements[0]).focus();
             } else {
                 modal.focus();
             }
@@ -1286,20 +1291,25 @@
         }
 
         function bindRowNavigation() {
-            document.querySelectorAll('table.domus-table tr[data-navigate], table.domus-table tr[data-booking-id], .domus-overview-card[data-navigate], .domus-overview-card[data-booking-id]').forEach(row => {
+            document.querySelectorAll('table.domus-table tr[data-navigate], table.domus-table tr[data-booking-id], table.domus-table tr[data-action-log-id], table.domus-table tr[data-actionLogId], .domus-overview-card[data-navigate], .domus-overview-card[data-booking-id]').forEach(row => {
                 if (row.dataset.domusNavigationBound) {
                     return;
                 }
                 row.dataset.domusNavigationBound = 'true';
 
                 const handleActivate = (e) => {
+                    const actionLogId = row.dataset.actionLogId || row.getAttribute('data-action-log-id') || row.getAttribute('data-actionLogId');
                     const bookingId = row.getAttribute('data-booking-id');
                     const target = row.getAttribute('data-navigate');
                     const argsRaw = row.getAttribute('data-args') || '';
-                    if (!bookingId && !target) {
+                    if (!actionLogId && !bookingId && !target) {
                         return;
                     }
                     if (e && (e.target.closest('a') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('textarea'))) {
+                        return;
+                    }
+                    if (actionLogId) {
+                        Domus.ActionLog?.openEntryModal?.(actionLogId);
                         return;
                     }
                     if (bookingId) {
@@ -1654,8 +1664,9 @@
             const chartAriaLabel = options.chartAriaLabel ? ' aria-label="' + Domus.Utils.escapeHtml(options.chartAriaLabel) + '"' : '';
             const chartRole = options.chartRole ? ' role="' + Domus.Utils.escapeHtml(options.chartRole) + '"' : '';
             const hasAction = Boolean(options.detailTarget || options.linkHref);
+            const chartCenterLabel = options.chartCenterLabel ? '<div class="domus-kpi-chart-center-label">' + Domus.Utils.escapeHtml(String(options.chartCenterLabel)) + '</div>' : '';
             const chart = options.showChart && chartId
-                ? '<div class="domus-kpi-chart' + chartClassName + '"><div class="domus-kpi-chart-inner"><canvas id="' + chartId + '" class="domus-kpi-chart-canvas"' + chartAriaLabel + chartRole + '></canvas></div></div>'
+                ? '<div class="domus-kpi-chart' + chartClassName + '"><div class="domus-kpi-chart-inner"><canvas id="' + chartId + '" class="domus-kpi-chart-canvas"' + chartAriaLabel + chartRole + '></canvas>' + chartCenterLabel + '</div></div>'
                 : '';
             const linkClassName = linkIconClass ? 'domus-kpi-more domus-kpi-more-icon domus-icon-only-link' : 'domus-kpi-more';
             const linkContent = linkIconClass

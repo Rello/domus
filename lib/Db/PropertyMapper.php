@@ -14,11 +14,15 @@ class PropertyMapper extends QBMapper {
     /**
      * @throws Exception
      */
-    public function findByUser(string $userId): array {
+    public function findByUser(string $userId, ?string $usageRole = null): array {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        if ($usageRole !== null && $usageRole !== '') {
+            $qb->andWhere($qb->expr()->eq('usage_role', $qb->createNamedParameter($usageRole)));
+        }
 
         return $this->findEntities($qb);
     }
