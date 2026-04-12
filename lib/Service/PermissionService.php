@@ -3,26 +3,45 @@
 namespace OCA\Domus\Service;
 
 use OCP\IL10N;
+use OCP\IGroupManager;
 use OCP\IRequest;
+use OCP\IUserSession;
 
 class PermissionService {
     private const ROLE_LANDLORD = 'landlord';
     private const ROLE_BUILDING_MGMT = 'buildingMgmt';
+    private const BUILDING_MGMT_GROUP_ID = 'domus_property_management';
     private const PARTNER_TYPES = ['tenant', 'owner', 'buildingManagement', 'contractor', 'facilities'];
 
     public function __construct(
         private IL10N $l10n,
+        private IGroupManager $groupManager,
+        private IUserSession $userSession,
     ) {
     }
 
     public function getRoleFromRequest(IRequest $request): string {
         $roleHeader = $request->getHeader('X-Domus-Role');
         $roleParam = $request->getParam('role');
-        $role = $roleHeader ?: $roleParam;
+        $requestedRole = $roleHeader ?: $roleParam;
 
-        return in_array($role, [self::ROLE_LANDLORD, self::ROLE_BUILDING_MGMT], true)
-            ? $role
-            : self::ROLE_LANDLORD;
+        if ($requestedRole === self::ROLE_BUILDING_MGMT && $this->canUseBuildingManagement()) {
+            return self::ROLE_BUILDING_MGMT;
+        }
+
+        return self::ROLE_LANDLORD;
+    }
+
+    public function getRoleInfoForCurrentUser(): array {
+        $availableRoles = [self::ROLE_LANDLORD];
+        if ($this->canUseBuildingManagement()) {
+            $availableRoles[] = self::ROLE_BUILDING_MGMT;
+        }
+
+        return [
+            'currentRole' => self::ROLE_LANDLORD,
+            'availableRoles' => $availableRoles,
+        ];
     }
 
     public function isBuildingManagement(string $role): bool {
@@ -88,5 +107,14 @@ class PermissionService {
 
     public function getAllowedPartnerTypes(): array {
         return self::PARTNER_TYPES;
+    }
+
+    private function canUseBuildingManagement(): bool {
+        $user = $this->userSession->getUser();
+        if ($user === null) {
+            return false;
+        }
+
+        return in_array(self::BUILDING_MGMT_GROUP_ID, $this->groupManager->getUserGroupIds($user), true);
     }
 }

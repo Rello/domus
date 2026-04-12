@@ -39,16 +39,6 @@
                 .join(', ');
         }
 
-        function buildHeroMetaLine(iconClass, value) {
-            const normalizedValue = value === undefined || value === null || value === ''
-                ? '—'
-                : String(value);
-            return '<div class="domus-hero-meta-line">' +
-                '<span class="domus-icon ' + Domus.Utils.escapeHtml(iconClass) + '" aria-hidden="true"></span>' +
-                '<span>' + Domus.Utils.escapeHtml(normalizedValue) + '</span>' +
-                '</div>';
-        }
-
         function renderList() {
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().plural }));
             Domus.Api.getTenancies()
@@ -398,8 +388,8 @@
                     const tenancyPeriod = tenancy.period || [Domus.Utils.formatDate(tenancy.startDate), Domus.Utils.formatDate(tenancy.endDate)].filter(Boolean).join(' • ');
                     const partnerSummary = formatPartnerNames(tenancy.partners) || tenancy.partnerName || '';
                     const heroMetaLines = [
-                        tenancyPeriod ? buildHeroMetaLine('domus-icon-booking', tenancyPeriod) : '',
-                        buildHeroMetaLine('domus-icon-partner', partnerSummary || t('domus', 'No tenant assigned'))
+                        tenancyPeriod ? Domus.UI.buildHeroMetaLine('domus-icon-booking', tenancyPeriod) : '',
+                        Domus.UI.buildHeroMetaLine('domus-icon-partner', partnerSummary || t('domus', 'No tenant assigned'))
                     ].filter(Boolean).join('');
                     const hero = '<div class="domus-detail-hero">' +
                         '<div class="domus-hero-content">' +

@@ -166,6 +166,7 @@
                 }
 
                 Domus.Bookings.openCreateModal({}, () => Domus.Router.navigate('dashboard'), {
+                    createContext: 'document',
                     initialDocumentSelection: {
                         type: 'upload',
                         file,
@@ -329,9 +330,11 @@
                 buildQuickActionsPanel()
             ].filter(Boolean).join('');
 
-            return occupancyTile +
+            return '<div class="domus-detail domus-dashboard">' +
+                occupancyTile +
                 (!hasUnits ? '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' : '') +
-                (panels ? '<div class="domus-panel-row">' + panels + '</div>' : '');
+                (panels ? '<div class="domus-panel-row">' + panels + '</div>' : '') +
+                '</div>';
         }
 
         function renderOccupancyChart(occupancy) {
@@ -450,8 +453,10 @@
                 buildQuickActionsPanel()
             ].filter(Boolean).join('');
 
-            return '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' +
-                (panels ? '<div class="domus-panel-row">' + panels + '</div>' : '');
+            return '<div class="domus-detail domus-dashboard">' +
+                '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' +
+                (panels ? '<div class="domus-panel-row">' + panels + '</div>' : '') +
+                '</div>';
         }
 
         function buildTenantDashboard(data) {

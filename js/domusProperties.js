@@ -9,10 +9,6 @@
             query: ''
         };
 
-        function normalizeSearchValue(value) {
-            return String(value || '').trim().toLowerCase();
-        }
-
         function collectTenancySearchValues(tenancy) {
             const values = [tenancy?.partnerName];
             (tenancy?.partners || []).forEach(partner => {
@@ -50,11 +46,11 @@
                 (unit?.historicTenancies || []).forEach(tenancy => values.push(...collectTenancySearchValues(tenancy)));
             });
 
-            return normalizeSearchValue(values.filter(Boolean).join(' '));
+            return Domus.Utils.normalizeSearchValue(values.filter(Boolean).join(' '));
         }
 
         function filterProperties(properties, query) {
-            const normalizedQuery = normalizeSearchValue(query);
+            const normalizedQuery = Domus.Utils.normalizeSearchValue(query);
             if (!normalizedQuery) {
                 return properties || [];
             }
@@ -97,14 +93,6 @@
                 return '<span class="domus-badge domus-badge-muted">' + Domus.Utils.escapeHtml(t('domus', 'Partially tenanted')) + '</span>';
             }
             return '<span class="domus-badge domus-badge-alert domus-badge-vacant">' + Domus.Utils.escapeHtml(t('domus', 'Vacant')) + '</span>';
-        }
-
-        function buildHeroMetaLine(iconClass, value) {
-            const normalizedValue = value === undefined || value === null || value === '' ? '—' : String(value);
-            return '<div class="domus-hero-meta-line">' +
-                '<span class="domus-icon ' + Domus.Utils.escapeHtml(iconClass) + '" aria-hidden="true"></span>' +
-                '<span>' + Domus.Utils.escapeHtml(normalizedValue) + '</span>' +
-                '</div>';
         }
 
         function buildPropertyCard(property) {
@@ -185,7 +173,7 @@
                 '</div>';
             const filteredProperties = filterProperties(listState.properties, listState.query);
             const cards = filteredProperties.map(buildPropertyCard);
-            const hasSearch = normalizeSearchValue(listState.query) !== '';
+            const hasSearch = Domus.Utils.normalizeSearchValue(listState.query) !== '';
             const content = cards.length
                 ? Domus.UI.buildOverviewList(cards)
                 : hasSearch
@@ -298,17 +286,13 @@
             openGuidedCreateWorkflow();
         }
 
-        function isValueFilled(value) {
-            return value !== undefined && value !== null && value !== '';
-        }
-
         function getPropertyMasterdataStatus(property) {
             let total = 0;
             let completed = 0;
 
             const addField = (value) => {
                 total += 1;
-                if (isValueFilled(value)) {
+                if (Domus.Utils.isValueFilled(value)) {
                     completed += 1;
                 }
             };
@@ -446,7 +430,7 @@
                         (property.type ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(property.type) + '</span>' : '') +
                         '</div>' +
                         '<div class="domus-hero-meta-stack">' +
-                        buildHeroMetaLine('domus-icon-location', detailAddress) +
+                        Domus.UI.buildHeroMetaLine('domus-icon-location', detailAddress) +
                         propertyInlineMeta +
                         '</div>' +
                         '</div>' +
@@ -729,70 +713,12 @@
         }
 
         function openDocumentLocationModal(property) {
-            const currentPath = property.documentPath || '';
-            const pickerId = 'domus-property-document-location-picker';
-            const displayId = 'domus-property-document-location-display';
-            const rows = [
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Current location'),
-                    content: '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(currentPath || '—') + '</div>'
-                }),
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Folder path'),
-                    required: true,
-                    content: '<div class="domus-doc-picker-row">' +
-                        '<button type="button" class="domus-ghost" id="' + Domus.Utils.escapeHtml(pickerId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Select folder')) + '</button>' +
-                        '<div class="domus-doc-picker-display muted" id="' + Domus.Utils.escapeHtml(displayId) + '">' + Domus.Utils.escapeHtml(currentPath || t('domus', 'No folder selected')) + '</div>' +
-                        '<input type="hidden" name="documentPath" value="' + Domus.Utils.escapeHtml(currentPath) + '" required>' +
-                        '</div>'
-                })
-            ];
-            const modal = Domus.UI.openModal({
-                title: t('domus', 'Change document location'),
-                content: '<div class="domus-form">' +
-                    '<form id="domus-property-document-location-form">' +
-                    Domus.UI.buildFormTable(rows) +
-                    '<div class="domus-form-actions">' +
-                    '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
-                    '<button type="button" id="domus-property-document-location-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                    '</div>' +
-                    '</form>' +
-                    '</div>'
+            Domus.UI.openDocumentLocationModal({
+                currentPath: property.documentPath || '',
+                formIdPrefix: 'domus-property-document-location',
+                save: value => Domus.Api.updateProperty(property.id, { documentPath: value }),
+                onSaved: () => renderDetail(property.id)
             });
-
-            const form = modal.modalEl.querySelector('#domus-property-document-location-form');
-            const documentPathInput = form?.querySelector('input[name="documentPath"]');
-            const pickerButton = modal.modalEl.querySelector('#' + pickerId);
-            const pickerDisplay = modal.modalEl.querySelector('#' + displayId);
-            if (pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
-                pickerButton.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    OC.dialogs.filepicker(t('domus', 'Select folder'), function(path) {
-                        if (documentPathInput) {
-                            documentPathInput.value = path || '';
-                        }
-                        if (pickerDisplay) {
-                            pickerDisplay.textContent = path || t('domus', 'No folder selected');
-                        }
-                    }, false, 'httpd/unix-directory', true, 1);
-                });
-            }
-            form?.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const value = documentPathInput?.value?.trim() || '';
-                if (!value) {
-                    Domus.UI.showNotification(t('domus', 'Document location is required.'), 'error');
-                    return;
-                }
-                Domus.Api.updateProperty(property.id, { documentPath: value })
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Document location updated.'), 'success');
-                        modal.close();
-                        renderDetail(property.id);
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
-            });
-            modal.modalEl.querySelector('#domus-property-document-location-cancel')?.addEventListener('click', modal.close);
         }
 
         function openPropertyModal(id, mode = 'edit') {

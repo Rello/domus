@@ -3,6 +3,7 @@
 namespace OCA\Domus\Controller;
 
 use OCA\Domus\Service\AccountService;
+use OCA\Domus\Service\PermissionService;
 use OCA\Domus\AppInfo\Application;
 use OCA\Viewer\Event\LoadViewer;
 use OCP\AppFramework\Controller;
@@ -18,6 +19,7 @@ class PageController extends Controller {
     public function __construct(
         IRequest $request,
         private AccountService $accountService,
+        private PermissionService $permissionService,
         private IEventDispatcher $eventDispatcher,
 			private IUserSession $userSession,
 			private IL10N $l10n,
@@ -33,6 +35,7 @@ class PageController extends Controller {
         }
         return new TemplateResponse(Application::APP_ID, 'main', [
             'accounts' => $this->accountService->getHierarchyForUser($this->getUserId(), $this->l10n),
+            'roleInfo' => $this->permissionService->getRoleInfoForCurrentUser(),
         ]);
     }
 

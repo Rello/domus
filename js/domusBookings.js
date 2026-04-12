@@ -698,7 +698,7 @@
         }
 
         function mountBookingDocumentWidget(modalEl, options = {}) {
-            const placeholder = modalEl.querySelector('#domus-booking-documents .domus-doc-attachment-placeholder');
+            const placeholder = modalEl.querySelector('#domus-booking-documents');
             if (!placeholder) {
                 return null;
             }
@@ -707,21 +707,129 @@
                 showActions: false,
                 includeYearInput: false,
                 title: t('domus', 'Document'),
-                subtitle: t('domus', 'Attach one file for all booking entries.')
+                subtitle: t('domus', 'Drop or select a file, or reuse one from Nextcloud.')
             });
-            placeholder.appendChild(widget.root);
+            const card = widget.root.querySelector('.domus-doc-card');
+            const header = card?.querySelector('.domus-doc-header');
+            const titleField = widget.uploadNameInput?.closest('label');
+            const dropZone = widget.dropZone?.element;
+            const dropZoneArea = dropZone?.querySelector('.domus-dropzone-area');
+            const dropZoneText = dropZoneArea?.querySelector('strong');
+            const dropZoneFileName = dropZone?.querySelector('.domus-dropzone-filename');
+            const pickerRow = widget.pickerButton?.closest('.domus-doc-picker-row');
+            const pickerDisplay = pickerRow?.querySelector('.domus-doc-picker-display');
+
+            if (header) {
+                header.remove();
+            }
+            if (titleField) {
+                titleField.classList.add('domus-booking-doc-title');
+                placeholder.prepend(titleField);
+            }
+            if (dropZone) {
+                dropZone.classList.remove('domus-dropzone-large');
+                if (dropZoneText) {
+                    dropZoneText.textContent = t('domus', 'Drag and drop or click to upload');
+                }
+                if (dropZoneArea) {
+                    const icon = document.createElement('span');
+                    icon.className = 'domus-icon domus-icon-upload domus-dropzone-icon';
+
+                    const content = document.createElement('div');
+                    content.className = 'domus-dropzone-content';
+
+                    content.appendChild(icon);
+
+                    if (dropZoneText) {
+                        content.appendChild(dropZoneText);
+                    }
+
+                    if (widget.pickerButton) {
+                        widget.pickerButton.classList.add('domus-dropzone-picker');
+                        content.appendChild(widget.pickerButton);
+                    }
+
+                    if (dropZoneFileName) {
+                        dropZoneFileName.textContent = t('domus', 'No file selected');
+                        dropZoneFileName.classList.add('domus-dropzone-filename');
+                        dropZoneFileName.classList.remove('muted');
+                        content.appendChild(dropZoneFileName);
+                    }
+
+                    dropZoneArea.remove();
+                    dropZone.querySelector('.domus-dropzone-label')?.remove();
+                    dropZone.appendChild(content);
+                }
+                placeholder.appendChild(dropZone);
+            }
+            if (pickerDisplay) {
+                pickerDisplay.remove();
+            }
+            if (pickerRow) {
+                pickerRow.remove();
+            }
 
             if (widget.pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
                 widget.pickerButton.addEventListener('click', function(e) {
                     e.preventDefault();
+                    e.stopPropagation();
                     OC.dialogs.filepicker(t('domus', 'Select file'), function(path) {
                         widget.setPath(path);
+                        if (dropZoneFileName) {
+                            const fileName = String(path || '').split('/').pop();
+                            dropZoneFileName.textContent = fileName || '';
+                        }
                     }, false, '', true, 1);
+                });
+            }
+            if (widget.dropZone?.input && dropZoneFileName) {
+                widget.dropZone.input.addEventListener('change', () => {
+                    const file = widget.dropZone.input.files?.[0] || null;
+                    dropZoneFileName.textContent = file ? file.name : t('domus', 'No file selected');
                 });
             }
 
             applyInitialDocumentSelection(widget, options.initialSelection);
             return widget;
+        }
+
+        function resolveCreateContext(formConfig = {}) {
+            const configuredContext = String(formConfig.createContext || '').toLowerCase();
+            if (configuredContext === 'booking' || configuredContext === 'document') {
+                return configuredContext;
+            }
+            return formConfig.initialDocumentSelection ? 'document' : 'booking';
+        }
+
+        function buildCreateSectionMode(context, hasInitialDocumentSelection = false) {
+            const isDocumentPrimary = context === 'document';
+            return {
+                primary: isDocumentPrimary ? 'document' : 'booking',
+                booking: {
+                    enabled: !isDocumentPrimary,
+                    required: !isDocumentPrimary,
+                    title: isDocumentPrimary
+                        ? t('domus', 'Create a booking for this document')
+                        : t('domus', 'Booking')
+                },
+                document: {
+                    enabled: isDocumentPrimary || hasInitialDocumentSelection,
+                    required: isDocumentPrimary,
+                    title: isDocumentPrimary
+                        ? t('domus', 'Document')
+                        : t('domus', 'Add a document to this booking')
+                }
+            };
+        }
+
+        function resolveCreateSuccessMessage(successMessage, submission) {
+            if (submission.bookingEnabled && submission.documentEnabled) {
+                return t('domus', 'Booking and document created.');
+            }
+            if (!submission.bookingEnabled && submission.documentEnabled) {
+                return t('domus', 'Document added.');
+            }
+            return successMessage;
         }
 
         function openCreateModal(defaults = {}, onCreated, formConfig = {}) {
@@ -732,7 +840,9 @@
                     : (Domus.Role.getCurrentRole() === 'landlord'
                         ? (nr) => String(nr).startsWith('2')
                         : null));
-            const title = formConfig.title || t('domus', 'Add {entity}', { entity: t('domus', 'Booking') });
+            const createContext = resolveCreateContext(formConfig);
+            const sectionMode = buildCreateSectionMode(createContext, Boolean(formConfig.initialDocumentSelection));
+            const title = formConfig.title || t('domus', 'Add Booking or Document');
             const successMessage = formConfig.successMessage || t('domus', '{entity} created.', { entity: t('domus', 'Booking') });
             const today = new Date();
             const pad = (value) => String(value).padStart(2, '0');
@@ -761,22 +871,31 @@
 
                     const modal = Domus.UI.openModal({
                         title,
-                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, defaults, { multiEntry: true, hidePropertyField: formConfig.hidePropertyField }),
-                        size: 'large'
+                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, defaults, {
+                            multiEntry: true,
+                            hidePropertyField: formConfig.hidePropertyField,
+                            sectionMode
+                        })
                     });
                     const docWidget = mountBookingDocumentWidget(modal.modalEl, {
                         initialSelection: formConfig.initialDocumentSelection || null
                     });
                     bindBookingForm(modal, data => {
-                        const payloads = data.entries.map(entry => Object.assign({}, data.metadata, entry));
-                        const requests = payloads.map(payload => Domus.Api.createBooking(payload));
+                        const requests = data.bookingEnabled
+                            ? data.entries
+                                .map(entry => Object.assign({}, data.metadata, entry))
+                                .map(payload => Domus.Api.createBooking(payload))
+                            : [];
                         return Promise.all(requests)
                             .then(created => {
                                 const bookingIds = (created || []).map(item => item && item.id).filter(Boolean);
+                                if (!data.documentEnabled || !data.document) {
+                                    return Promise.resolve();
+                                }
                                 return attachDocumentsToEntities(bookingIds, data.metadata, data.document);
                             })
                             .then(() => {
-                                Domus.UI.showNotification(successMessage, 'success');
+                                Domus.UI.showNotification(resolveCreateSuccessMessage(successMessage, data), 'success');
                                 modal.close();
                                 (onCreated || renderList)();
                             })
@@ -785,7 +904,8 @@
                         multiEntry: true,
                         accountOptions,
                         initialEntries: defaults && (defaults.account || defaults.amount) ? [{ account: defaults.account, amount: defaults.amount }] : [],
-                        docWidget
+                        docWidget,
+                        sectionMode
                     });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
@@ -810,8 +930,7 @@
 
                     const modal = Domus.UI.openModal({
                         title: t('domus', 'Edit {entity}', { entity: t('domus', 'Booking') }),
-                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, booking, { multiEntry: false }),
-                        size: 'large'
+                        content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, booking, { multiEntry: false })
                     });
                     const docWidget = mountBookingDocumentWidget(modal.modalEl);
                     bindBookingForm(modal, data => Domus.Api.updateBooking(id, Object.assign({}, data.metadata, data.entries[0] || {}))
@@ -872,6 +991,18 @@
             const entriesContainer = modalContext.modalEl.querySelector('#domus-booking-entries');
             const multiEntry = options.multiEntry !== false;
             const docWidget = options.docWidget;
+            const bookingSection = form?.querySelector('[data-section="booking"]');
+            const documentSection = form?.querySelector('[data-section="document"]');
+            const bookingToggle = form?.querySelector('[data-role="section-toggle"][data-section="booking"]');
+            const documentToggle = form?.querySelector('[data-role="section-toggle"][data-section="document"]');
+            const sectionState = {
+                bookingEnabled: options.sectionMode
+                    ? options.sectionMode.booking?.enabled !== false
+                    : (bookingToggle ? bookingToggle.checked : true),
+                documentEnabled: options.sectionMode
+                    ? options.sectionMode.document?.enabled !== false
+                    : (documentToggle ? documentToggle.checked : true)
+            };
             const distributionSelect = modalContext.modalEl.querySelector('#domus-booking-distribution');
             const propertySelect = form?.querySelector('select[name="propertyId"]');
             const invoiceDateInput = form?.querySelector('input[name="date"]');
@@ -887,6 +1018,70 @@
 
             initializeBookingEntries(entriesContainer, options.accountOptions || [], options.initialEntries || [{}], multiEntry);
 
+            function isBookingSectionEnabled() {
+                return sectionState.bookingEnabled;
+            }
+
+            function setSectionEnabled(sectionName, enabled) {
+                const section = sectionName === 'booking' ? bookingSection : documentSection;
+                const toggle = sectionName === 'booking' ? bookingToggle : documentToggle;
+                if (!section) {
+                    return;
+                }
+                section.classList.toggle('is-disabled', !enabled);
+                section.dataset.enabled = enabled ? '1' : '0';
+                if (toggle) {
+                    toggle.checked = enabled;
+                }
+
+                section.querySelectorAll('input, select, textarea, button').forEach(control => {
+                    if (control === toggle) {
+                        return;
+                    }
+                    if (control.tagName === 'INPUT' && control.type === 'hidden') {
+                        return;
+                    }
+                    if (control.dataset.domusOriginalDisabled === undefined) {
+                        control.dataset.domusOriginalDisabled = control.disabled ? '1' : '0';
+                    }
+                    if (enabled) {
+                        const originalDisabled = control.dataset.domusOriginalDisabled === '1';
+                        control.disabled = originalDisabled;
+                        if (control.dataset.domusRequired === '1') {
+                            control.required = true;
+                            control.dataset.domusRequired = '';
+                        }
+                        return;
+                    }
+                    if (control.required) {
+                        control.dataset.domusRequired = '1';
+                        control.required = false;
+                    }
+                    control.disabled = true;
+                });
+            }
+
+            function toggleUnitField(isVisible) {
+                if (!unitField) {
+                    return;
+                }
+                if (!isBookingSectionEnabled()) {
+                    unitField.setAttribute('hidden', '');
+                    unitSelect?.removeAttribute('required');
+                    return;
+                }
+                if (isVisible) {
+                    unitField.removeAttribute('hidden');
+                    unitSelect?.setAttribute('required', '');
+                } else {
+                    unitField.setAttribute('hidden', '');
+                    unitSelect?.removeAttribute('required');
+                    if (unitSelect) {
+                        unitSelect.value = '';
+                    }
+                }
+            }
+
             function updateDistributionOptions(propertyId) {
                 if (!distributionSelect) {
                     return;
@@ -898,6 +1093,7 @@
                 if (!propertyId) {
                     distributionSelect.innerHTML = emptyOption + unitAllocationOption;
                     distributionSelect.disabled = true;
+                    toggleUnitField(false);
                     return;
                 }
                 distributionSelect.disabled = true;
@@ -912,37 +1108,51 @@
                         if (isBuildingMgmt) {
                             toggleUnitField(distributionSelect.value === unitAllocationValue);
                         }
-                        distributionSelect.disabled = false;
+                        distributionSelect.disabled = !isBookingSectionEnabled();
                     })
                     .catch(err => {
                         Domus.UI.showNotification(err.message, 'error');
                         distributionSelect.innerHTML = emptyOption;
-                        distributionSelect.disabled = false;
+                        distributionSelect.disabled = !isBookingSectionEnabled();
                     });
             }
 
+            [bookingToggle, documentToggle].forEach(toggle => {
+                toggle?.addEventListener('change', function() {
+                    if (this.dataset.section === 'booking') {
+                        sectionState.bookingEnabled = this.checked;
+                    } else {
+                        sectionState.documentEnabled = this.checked;
+                    }
+                    if (!sectionState.bookingEnabled && !sectionState.documentEnabled) {
+                        this.checked = true;
+                        if (this.dataset.section === 'booking') {
+                            sectionState.bookingEnabled = true;
+                        } else {
+                            sectionState.documentEnabled = true;
+                        }
+                    }
+                    setSectionEnabled('booking', sectionState.bookingEnabled);
+                    setSectionEnabled('document', sectionState.documentEnabled);
+                    if (distributionSelect) {
+                        updateDistributionOptions(propertySelect ? propertySelect.value : null);
+                    } else if (isBuildingMgmt) {
+                        toggleUnitField(false);
+                    }
+                });
+            });
+
+            setSectionEnabled('booking', sectionState.bookingEnabled);
+            setSectionEnabled('document', sectionState.documentEnabled);
             if (distributionSelect) {
                 updateDistributionOptions(propertySelect ? propertySelect.value : null);
+            } else if (isBuildingMgmt) {
+                toggleUnitField(false);
             }
 
-            function clearUnitSelection() {
-                if (unitSelect) {
-                    unitSelect.value = '';
-                }
-            }
-
-            function toggleUnitField(isVisible) {
-                if (!unitField) {
-                    return;
-                }
-                if (isVisible) {
-                    unitField.removeAttribute('hidden');
-                    unitSelect?.setAttribute('required', '');
-                } else {
-                    unitField.setAttribute('hidden', '');
-                    unitSelect?.removeAttribute('required');
-                    clearUnitSelection();
-                }
+            if (isBuildingMgmt && distributionSelect) {
+                const initialDistribution = distributionSelect.dataset.selected || distributionSelect.value || '';
+                toggleUnitField(initialDistribution === unitAllocationValue);
             }
 
             if (multiEntry) {
@@ -988,54 +1198,71 @@
             });
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
+                const bookingEnabled = sectionState.bookingEnabled;
+                const documentEnabled = sectionState.documentEnabled;
                 const formData = {};
                 Array.prototype.forEach.call(form.elements, el => {
-                    if (el.name && !el.closest('.domus-booking-entry') && !el.closest('#domus-booking-documents')) {
+                    if (el.name && !el.disabled && !el.closest('.domus-booking-entry') && !el.closest('#domus-booking-documents')) {
                         formData[el.name] = el.value;
                     }
                 });
                 Object.keys(formData).forEach(key => { if (formData[key] === '') delete formData[key]; });
 
-                const { entries, error } = collectBookingEntries(entriesContainer, multiEntry);
-                if (error) {
-                    Domus.UI.showNotification(error, 'error');
-                    return;
-                }
+                let entries = [];
+                if (bookingEnabled) {
+                    const { entries: collectedEntries, error } = collectBookingEntries(entriesContainer, multiEntry);
+                    if (error) {
+                        Domus.UI.showNotification(error, 'error');
+                        return;
+                    }
+                    entries = collectedEntries;
 
-                if (isBuildingMgmt && distributionSelect) {
-                    const selection = distributionSelect.value;
-                    if (selection === unitAllocationValue) {
-                        if (!formData.unitId) {
-                            Domus.UI.showNotification(t('domus', 'Select unit'), 'error');
-                            return;
+                    if (isBuildingMgmt && distributionSelect) {
+                        const selection = distributionSelect.value;
+                        if (selection === unitAllocationValue) {
+                            if (!formData.unitId) {
+                                Domus.UI.showNotification(t('domus', 'Select unit'), 'error');
+                                return;
+                            }
+                            delete formData.distributionKeyId;
+                        } else if (selection) {
+                            delete formData.unitId;
                         }
-                        delete formData.distributionKeyId;
-                    } else if (selection) {
-                        delete formData.unitId;
+                    }
+
+                    if (!formData.date) {
+                        Domus.UI.showNotification(t('domus', 'Invoice date is required.'), 'error');
+                        return;
+                    }
+                    if (!formData.deliveryDate) {
+                        Domus.UI.showNotification(t('domus', 'Delivery date is required.'), 'error');
+                        return;
+                    }
+                    if (!formData.propertyId && !formData.unitId) {
+                        Domus.UI.showNotification(t('domus', 'Select a related property or unit.'), 'error');
+                        return;
                     }
                 }
 
-                if (!formData.date) {
-                    Domus.UI.showNotification(t('domus', 'Invoice date is required.'), 'error');
+                const documentSelection = documentEnabled && docWidget?.getSelection ? docWidget.getSelection() : null;
+                if (options.sectionMode && documentEnabled && !documentSelection) {
+                    Domus.UI.showNotification(t('domus', 'Choose a file to upload or link.'), 'error');
                     return;
                 }
-                if (!formData.deliveryDate) {
-                    Domus.UI.showNotification(t('domus', 'Delivery date is required.'), 'error');
-                    return;
-                }
-                if (!formData.propertyId && !formData.unitId) {
-                    Domus.UI.showNotification(t('domus', 'Select a related property or unit.'), 'error');
+                if (!bookingEnabled && documentEnabled && !formData.propertyId && !formData.unitId) {
+                    Domus.UI.showNotification(t('domus', 'Select a related property or unit, or enable booking creation.'), 'error');
                     return;
                 }
 
-                const payload = { metadata: formData, entries, document: docWidget?.getSelection ? docWidget.getSelection() : null };
+                const payload = {
+                    metadata: formData,
+                    entries,
+                    document: documentSelection,
+                    bookingEnabled,
+                    documentEnabled
+                };
                 onSubmit(payload);
             });
-
-            if (isBuildingMgmt && distributionSelect) {
-                const initialDistribution = distributionSelect.dataset.selected || distributionSelect.value || '';
-                toggleUnitField(initialDistribution === unitAllocationValue);
-            }
         }
 
         function buildBookingForm(options, booking, formOptions = {}) {
@@ -1062,11 +1289,7 @@
                 Domus.Documents.renderList('booking', booking.id, { showLinkAction: false }) +
                 '</div>'
                 : '';
-            return '<div class="domus-form">' +
-                '<form id="domus-booking-form">' +
-                '<div class="domus-booking-layout">' +
-                '<div class="domus-booking-main">' +
-                '<div class="domus-booking-dates">' +
+            const bookingSectionContent = '<div class="domus-booking-dates">' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Invoice date')) + ' *<input type="date" name="date" required value="' + bookingDate + '"></label>' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Delivery date')) + ' *<input type="date" name="deliveryDate" required value="' + bookingDeliveryDate + '"></label>' +
                 '</div>' +
@@ -1086,13 +1309,50 @@
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId"' + (unitLocked ? ' disabled' : '') + '>' +
                 unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedUnit ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                 '</select></label>' +
+                '</div>';
+            const documentSectionContent = existingDocuments;
+            const sectionMode = formOptions.sectionMode || null;
+            const useSectionMode = Boolean(sectionMode);
+            const renderSection = (sectionKey, title, enabled, required, content) => '<section class="domus-booking-section' + (enabled ? '' : ' is-disabled') + '" data-section="' + Domus.Utils.escapeHtml(sectionKey) + '" data-required="' + (required ? '1' : '0') + '">' +
+                '<div class="domus-booking-section-header">' +
+                '<label class="domus-booking-section-toggle">' +
+                '<input type="checkbox" data-role="section-toggle" data-section="' + Domus.Utils.escapeHtml(sectionKey) + '"' + (enabled ? ' checked' : '') + (required ? ' disabled' : '') + '>' +
+                '<span class="domus-booking-section-slider" aria-hidden="true"></span>' +
+                '<span class="domus-booking-section-name">' + Domus.Utils.escapeHtml(title) + '</span>' +
+                '</label>' +
                 '</div>' +
-                '</div>' +
-                '<div class="domus-booking-documents" id="domus-booking-documents">' +
-                '<div class="domus-doc-attachment-placeholder domus-doc-attachment-shell"></div>' +
-                existingDocuments +
-                '</div>' +
-                '</div>' +
+                '<div class="domus-booking-section-body"' + (sectionKey === 'document' ? ' id="domus-booking-documents"' : '') + '>' + content + '</div>' +
+                '</section>';
+            const bookingArea = useSectionMode
+                ? (() => {
+                    const bookingSection = {
+                        key: 'booking',
+                        title: sectionMode.booking?.title || t('domus', 'Booking'),
+                        enabled: sectionMode.booking?.enabled !== false,
+                        required: sectionMode.booking?.required === true,
+                        content: bookingSectionContent
+                    };
+                    const documentSection = {
+                        key: 'document',
+                        title: sectionMode.document?.title || t('domus', 'Document'),
+                        enabled: sectionMode.document?.enabled !== false,
+                        required: sectionMode.document?.required === true,
+                        content: documentSectionContent
+                    };
+                    const orderedSections = sectionMode.primary === 'document'
+                        ? [documentSection, bookingSection]
+                        : [bookingSection, documentSection];
+                    return '<div class="domus-booking-sections">' +
+                        orderedSections.map(section => renderSection(section.key, section.title, section.enabled, section.required, section.content)).join('') +
+                        '</div>';
+                })()
+                : ('<div class="domus-booking-layout">' +
+                    bookingSectionContent +
+                    documentSectionContent +
+                    '</div>');
+            return '<div class="domus-form">' +
+                '<form id="domus-booking-form">' +
+                bookingArea +
                 '<div class="domus-form-actions">' +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 (booking?.id ? '<button type="button" class="domus-ghost" id="domus-booking-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' : '') +

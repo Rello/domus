@@ -79,6 +79,45 @@
             return date.toLocaleDateString();
         }
 
+        function normalizeSearchValue(value) {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        function isValueFilled(value) {
+            return value !== undefined && value !== null && value !== '';
+        }
+
+        function collectStatisticsYears(statistics) {
+            const years = new Set();
+            ['revenue', 'cost'].forEach(key => {
+                const rows = statistics?.[key]?.rows || [];
+                rows.forEach(row => {
+                    const year = Number(row?.year);
+                    if (!Number.isNaN(year) && year) {
+                        years.add(year);
+                    }
+                });
+            });
+            if (years.size === 0) {
+                years.add(Domus.state.currentYear);
+            }
+            return Array.from(years).sort((a, b) => b - a);
+        }
+
+        function collectProvisionalMap(statistics) {
+            const map = {};
+            ['revenue', 'cost'].forEach(key => {
+                const rows = statistics?.[key]?.rows || [];
+                rows.forEach(row => {
+                    const year = Number(row?.year);
+                    if (!Number.isNaN(year) && year && map[year] === undefined) {
+                        map[year] = !!row?.isProvisional;
+                    }
+                });
+            });
+            return map;
+        }
+
         function buildFilesFolderUrl(path) {
             if (!path || typeof OC === 'undefined' || typeof OC.generateUrl !== 'function') {
                 return '';
@@ -210,6 +249,10 @@
             formatPercentage,
             formatYear,
             formatDate,
+            normalizeSearchValue,
+            isValueFilled,
+            collectStatisticsYears,
+            collectProvisionalMap,
             buildFilesFolderUrl,
             normalizeIban,
             isValidIban
@@ -784,6 +827,14 @@
                 cancelButton.addEventListener('click', () => finish(false));
                 confirmButton.addEventListener('click', () => finish(true));
             });
+        }
+
+        function buildHeroMetaLine(iconClass, value) {
+            const normalizedValue = value === undefined || value === null || value === '' ? '—' : String(value);
+            return '<div class="domus-hero-meta-line">' +
+                '<span class="domus-icon ' + Domus.Utils.escapeHtml(iconClass) + '" aria-hidden="true"></span>' +
+                '<span>' + Domus.Utils.escapeHtml(normalizedValue) + '</span>' +
+                '</div>';
         }
 
         function createIconSpan(iconClass) {
@@ -1753,6 +1804,81 @@
             return '<div class="domus-form-table">' + content + '</div>';
         }
 
+        function openDocumentLocationModal(options = {}) {
+            const currentPath = options.currentPath || '';
+            const formIdPrefix = options.formIdPrefix || 'domus-document-location';
+            const formId = formIdPrefix + '-form';
+            const cancelId = formIdPrefix + '-cancel';
+            const pickerId = formIdPrefix + '-picker';
+            const displayId = formIdPrefix + '-display';
+            const rows = [
+                buildFormRow({
+                    label: t('domus', 'Current location'),
+                    content: '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(currentPath || '—') + '</div>'
+                }),
+                buildFormRow({
+                    label: t('domus', 'Folder path'),
+                    required: true,
+                    content: '<div class="domus-doc-picker-row">' +
+                        '<button type="button" class="domus-ghost" id="' + Domus.Utils.escapeHtml(pickerId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Select folder')) + '</button>' +
+                        '<div class="domus-doc-picker-display muted" id="' + Domus.Utils.escapeHtml(displayId) + '">' + Domus.Utils.escapeHtml(currentPath || t('domus', 'No folder selected')) + '</div>' +
+                        '<input type="hidden" name="documentPath" value="' + Domus.Utils.escapeHtml(currentPath) + '" required>' +
+                        '</div>'
+                })
+            ];
+            const modal = openModal({
+                title: options.title || t('domus', 'Change document location'),
+                content: '<div class="domus-form">' +
+                    '<form id="' + Domus.Utils.escapeHtml(formId) + '">' +
+                    buildFormTable(rows) +
+                    '<div class="domus-form-actions">' +
+                    '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
+                    '<button type="button" id="' + Domus.Utils.escapeHtml(cancelId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                    '</div>' +
+                    '</form>' +
+                    '</div>'
+            });
+
+            const form = modal.modalEl.querySelector('#' + formId);
+            const documentPathInput = form?.querySelector('input[name="documentPath"]');
+            const pickerButton = modal.modalEl.querySelector('#' + pickerId);
+            const pickerDisplay = modal.modalEl.querySelector('#' + displayId);
+            if (pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
+                pickerButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    OC.dialogs.filepicker(t('domus', 'Select folder'), function (path) {
+                        if (documentPathInput) {
+                            documentPathInput.value = path || '';
+                        }
+                        if (pickerDisplay) {
+                            pickerDisplay.textContent = path || t('domus', 'No folder selected');
+                        }
+                    }, false, 'httpd/unix-directory', true, 1);
+                });
+            }
+
+            form?.addEventListener('submit', function (event) {
+                event.preventDefault();
+                const value = documentPathInput?.value?.trim() || '';
+                if (!value) {
+                    showNotification(t('domus', 'Document location is required.'), 'error');
+                    return;
+                }
+                Promise.resolve(typeof options.save === 'function' ? options.save(value) : undefined)
+                    .then(() => {
+                        showNotification(t('domus', 'Document location updated.'), 'success');
+                        modal.close();
+                        if (typeof options.onSaved === 'function') {
+                            options.onSaved(value);
+                        }
+                    })
+                    .catch(err => showNotification(err.message, 'error'));
+            });
+            modal.modalEl.querySelector('#' + cancelId)?.addEventListener('click', modal.close);
+
+            return modal;
+        }
+
         function buildGuidedSteps(steps = [], currentIndex = 0) {
             const items = (steps || []).map((step, index) => {
                 const label = step?.label || '';
@@ -1811,9 +1937,11 @@
             buildStatCards,
             buildKpiTile,
             buildInfoList,
+            buildHeroMetaLine,
             buildFormSection,
             buildFormRow,
             buildFormTable,
+            openDocumentLocationModal,
             buildGuidedSteps,
             buildGuidedWorkflowLayout,
             openModal,
@@ -2393,12 +2521,30 @@
     })();
 
     Domus.App = (function() {
+        function readRoleInfoFromBootstrap() {
+            const appContent = document.getElementById('app-content');
+            const fallback = { currentRole: 'landlord', availableRoles: ['landlord'] };
+            const encoded = appContent?.dataset?.roleInfo;
+            if (!encoded) {
+                return fallback;
+            }
+
+            try {
+                const parsed = JSON.parse(encoded);
+                if (!parsed || typeof parsed !== 'object') {
+                    return fallback;
+                }
+                return {
+                    currentRole: parsed.currentRole || 'landlord',
+                    availableRoles: Array.isArray(parsed.availableRoles) ? parsed.availableRoles : ['landlord']
+                };
+            } catch (error) {
+                return fallback;
+            }
+        }
+
         function init() {
-            // In real-world scenario, fetch role info from backend. Here we seed demo roles.
-            Domus.Role.setRoleInfo({
-                currentRole: 'landlord',
-                availableRoles: ['landlord', 'buildingMgmt']
-            });
+            Domus.Role.setRoleInfo(readRoleInfoFromBootstrap());
 
             registerRoutes();
             if (!Domus.Router.navigateFromHash()) {

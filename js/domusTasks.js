@@ -123,10 +123,6 @@
             return map[actionType] || null;
         }
 
-        function formatDateLabel(value) {
-            return Domus.Utils.formatDate(value) || '—';
-        }
-
         function getFileNameFromUrl(url) {
             if (!url) {
                 return '';
@@ -1013,31 +1009,6 @@
 
         function openCreateTaskModalWithUnitSelect(onSaved, options = {}) {
             openNewTaskModal(Object.assign({}, options, { onSaved, requireEntitySelect: true }));
-        }
-
-        function buildWorkflowStepsTable(run, options = {}) {
-            const rows = (run.steps || []).map(step => {
-                const dueHtml = buildDueDateBadge(step.dueDate);
-                const statusBadge = buildStatusBadge(step.status);
-                const actionBtn = step.status === 'open'
-                    ? Domus.UI.buildIconButton('domus-icon-ok', t('domus', 'Mark done'), {
-                        className: 'domus-task-close',
-                        dataset: { type: 'process', id: step.id }
-                    })
-                    : (options.allowReopen && step.status === 'closed'
-                        ? Domus.UI.buildIconButton('domus-icon-back', t('domus', 'Reopen'), {
-                            className: 'domus-task-reopen-step',
-                            dataset: { id: step.id }
-                        })
-                        : '');
-                return [
-                    Domus.Utils.escapeHtml(step.title || ''),
-                    dueHtml,
-                    statusBadge,
-                    actionBtn
-                ];
-            });
-            return Domus.UI.buildTable([t('domus', 'Step'), t('domus', 'Due date'), t('domus', 'Status'), ''], rows);
         }
 
         function openDescriptionModal(title, description, actionType, actionUrl) {

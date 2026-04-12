@@ -20,7 +20,8 @@ Util::addScript('domus', 'domusSettings');
 Util::addScript('domus', 'domusDocuments');
 ?>
 <?php $accountsJson = htmlspecialchars(json_encode($accounts ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8'); ?>
-<div id="app-content" data-accounts="<?php echo $accountsJson; ?>">
+<?php $roleInfoJson = htmlspecialchars(json_encode($roleInfo ?? ['currentRole' => 'landlord', 'availableRoles' => ['landlord']], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8'); ?>
+<div id="app-content" data-accounts="<?php echo $accountsJson; ?>" data-role-info="<?php echo $roleInfoJson; ?>">
     <?php require __DIR__ . '/partials/splash.php'; ?>
     <div id="domus-top-navigation" class="domus-top-navigation">
         <div class="domus-top-navigation-inner">

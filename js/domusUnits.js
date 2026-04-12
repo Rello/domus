@@ -15,10 +15,6 @@
             query: ''
         };
 
-        function normalizeSearchValue(value) {
-            return String(value || '').trim().toLowerCase();
-        }
-
         function getTenancySearchValues(tenancy) {
             const values = [tenancy?.partnerName];
             (tenancy?.partners || []).forEach(partner => {
@@ -45,7 +41,7 @@
             ];
             (unit?.activeTenancies || []).forEach(tenancy => values.push(...getTenancySearchValues(tenancy)));
             (unit?.historicTenancies || []).forEach(tenancy => values.push(...getTenancySearchValues(tenancy)));
-            return normalizeSearchValue(values.filter(Boolean).join(' '));
+            return Domus.Utils.normalizeSearchValue(values.filter(Boolean).join(' '));
         }
 
         function getSortedUnits(units) {
@@ -73,7 +69,7 @@
         }
 
         function filterUnits(units, query) {
-            const normalizedQuery = normalizeSearchValue(query);
+            const normalizedQuery = Domus.Utils.normalizeSearchValue(query);
             if (!normalizedQuery) {
                 return getSortedUnits(units);
             }
@@ -102,22 +98,6 @@
                 return '<span class="domus-badge domus-badge-alert domus-badge-vacant">' + Domus.Utils.escapeHtml(t('domus', 'Vacant')) + '</span>';
             }
             return '';
-        }
-
-        function buildHeroFact(label, value) {
-            const normalizedValue = value === undefined || value === null || value === '' ? '—' : String(value);
-            return '<div class="domus-hero-fact">' +
-                '<span class="domus-hero-fact-label">' + Domus.Utils.escapeHtml(label) + '</span>' +
-                '<span class="domus-hero-fact-value">' + Domus.Utils.escapeHtml(normalizedValue) + '</span>' +
-                '</div>';
-        }
-
-        function buildHeroMetaLine(iconClass, value) {
-            const normalizedValue = value === undefined || value === null || value === '' ? '—' : String(value);
-            return '<div class="domus-hero-meta-line">' +
-                '<span class="domus-icon ' + Domus.Utils.escapeHtml(iconClass) + '" aria-hidden="true"></span>' +
-                '<span>' + Domus.Utils.escapeHtml(normalizedValue) + '</span>' +
-                '</div>';
         }
 
         function buildUnitAddress(unit) {
@@ -779,7 +759,7 @@
                 '</div>';
             const filteredUnits = filterUnits(listState.units, listState.query);
             const cards = filteredUnits.map(buildUnitCard);
-            const hasSearch = normalizeSearchValue(listState.query) !== '';
+            const hasSearch = Domus.Utils.normalizeSearchValue(listState.query) !== '';
             const emptyState = Domus.UI.buildEmptyStateAction(
                 t('domus', 'There is no {entity} yet. Create the first one', {
                     entity: t('domus', 'Units')
@@ -1051,40 +1031,9 @@
             return {content: withUnit(String(value)), alignRight: false};
         }
 
-        function collectStatisticsYears(statistics) {
-            const years = new Set();
-            ['revenue', 'cost'].forEach(key => {
-                const rows = statistics?.[key]?.rows || [];
-                rows.forEach(row => {
-                    const year = Number(row?.year);
-                    if (!Number.isNaN(year) && year) {
-                        years.add(year);
-                    }
-                });
-            });
-            if (years.size === 0) {
-                years.add(Domus.state.currentYear);
-            }
-            return Array.from(years).sort((a, b) => b - a);
-        }
-
-        function collectProvisionalMap(statistics) {
-            const map = {};
-            ['revenue', 'cost'].forEach(key => {
-                const rows = statistics?.[key]?.rows || [];
-                rows.forEach(row => {
-                    const year = Number(row?.year);
-                    if (!Number.isNaN(year) && year && map[year] === undefined) {
-                        map[year] = !!row?.isProvisional;
-                    }
-                });
-            });
-            return map;
-        }
-
         function openYearStatusModal(unitId, statistics, onComplete, modalOptions = {}) {
-            const years = collectStatisticsYears(statistics);
-            const provisionalMap = collectProvisionalMap(statistics);
+            const years = Domus.Utils.collectStatisticsYears(statistics);
+            const provisionalMap = Domus.Utils.collectProvisionalMap(statistics);
             const yearOptions = years.map(year => '<option value="' + Domus.Utils.escapeHtml(String(year)) + '">' + Domus.Utils.escapeHtml(String(year)) + '</option>').join('');
             const content = '<form id="domus-year-status-form">' +
                 '<label>' + Domus.Utils.escapeHtml(t('domus', 'Year')) +
@@ -1353,10 +1302,6 @@
             });
         }
 
-        function isValueFilled(value) {
-            return value !== undefined && value !== null && value !== '';
-        }
-
         function getUnitMasterdataStatus(unit, options = {}) {
             const includeManagementExcludedFields = options.includeManagementExcludedFields !== false;
             const showPropertySelect = options.showPropertySelect === true;
@@ -1365,7 +1310,7 @@
 
             const addField = (value) => {
                 total += 1;
-                if (isValueFilled(value)) {
+                if (Domus.Utils.isValueFilled(value)) {
                     completed += 1;
                 }
             };
@@ -1601,7 +1546,7 @@
                         '<span>' + Domus.Utils.escapeHtml(currentTenantSummary || t('domus', 'Vacant')) + '</span>' +
                         '</div>';
                     const unitMetaLines = [
-                        addressLine ? buildHeroMetaLine('domus-icon-location', addressLine) : '',
+                        addressLine ? Domus.UI.buildHeroMetaLine('domus-icon-location', addressLine) : '',
                         unitInlineMeta
                     ].filter(Boolean).join('');
                     const occupancyBadge = buildOccupancyBadge(getUnitOccupancyStatus(unit));
@@ -2124,70 +2069,12 @@
         }
 
         function openDocumentLocationModal(unit) {
-            const currentPath = unit.documentPath || '';
-            const pickerId = 'domus-unit-document-location-picker';
-            const displayId = 'domus-unit-document-location-display';
-            const rows = [
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Current location'),
-                    content: '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(currentPath || '—') + '</div>'
-                }),
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Folder path'),
-                    required: true,
-                    content: '<div class="domus-doc-picker-row">' +
-                        '<button type="button" class="domus-ghost" id="' + Domus.Utils.escapeHtml(pickerId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Select folder')) + '</button>' +
-                        '<div class="domus-doc-picker-display muted" id="' + Domus.Utils.escapeHtml(displayId) + '">' + Domus.Utils.escapeHtml(currentPath || t('domus', 'No folder selected')) + '</div>' +
-                        '<input type="hidden" name="documentPath" value="' + Domus.Utils.escapeHtml(currentPath) + '" required>' +
-                        '</div>'
-                })
-            ];
-            const modal = Domus.UI.openModal({
-                title: t('domus', 'Change document location'),
-                content: '<div class="domus-form">' +
-                    '<form id="domus-unit-document-location-form">' +
-                    Domus.UI.buildFormTable(rows) +
-                    '<div class="domus-form-actions">' +
-                    '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
-                    '<button type="button" id="domus-unit-document-location-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                    '</div>' +
-                    '</form>' +
-                    '</div>'
+            Domus.UI.openDocumentLocationModal({
+                currentPath: unit.documentPath || '',
+                formIdPrefix: 'domus-unit-document-location',
+                save: value => Domus.Api.updateUnit(unit.id, { documentPath: value }),
+                onSaved: () => renderDetail(unit.id)
             });
-
-            const form = modal.modalEl.querySelector('#domus-unit-document-location-form');
-            const documentPathInput = form?.querySelector('input[name="documentPath"]');
-            const pickerButton = modal.modalEl.querySelector('#' + pickerId);
-            const pickerDisplay = modal.modalEl.querySelector('#' + displayId);
-            if (pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
-                pickerButton.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    OC.dialogs.filepicker(t('domus', 'Select folder'), function (path) {
-                        if (documentPathInput) {
-                            documentPathInput.value = path || '';
-                        }
-                        if (pickerDisplay) {
-                            pickerDisplay.textContent = path || t('domus', 'No folder selected');
-                        }
-                    }, false, 'httpd/unix-directory', true, 1);
-                });
-            }
-            form?.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const value = documentPathInput?.value?.trim() || '';
-                if (!value) {
-                    Domus.UI.showNotification(t('domus', 'Document location is required.'), 'error');
-                    return;
-                }
-                Domus.Api.updateUnit(unit.id, {documentPath: value})
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Document location updated.'), 'success');
-                        modal.close();
-                        renderDetail(unit.id);
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
-            });
-            modal.modalEl.querySelector('#domus-unit-document-location-cancel')?.addEventListener('click', modal.close);
         }
 
         function openUnitModal(id, mode = 'edit') {
@@ -2774,7 +2661,6 @@
             renderList,
             renderDetail,
             renderListInline,
-            renderStatisticsTable,
             openCreateModal,
             openYearStatusModal
         };
@@ -2798,37 +2684,6 @@
             ];
             let currentStep = 0;
 
-            function collectStatisticsYears(statistics) {
-                const years = new Set();
-                ['revenue', 'cost'].forEach(key => {
-                    const rows = statistics?.[key]?.rows || [];
-                    rows.forEach(row => {
-                        const year = Number(row?.year);
-                        if (!Number.isNaN(year) && year) {
-                            years.add(year);
-                        }
-                    });
-                });
-                if (years.size === 0) {
-                    years.add(Domus.state.currentYear);
-                }
-                return Array.from(years).sort((a, b) => b - a);
-            }
-
-            function collectProvisionalMap(statistics) {
-                const map = {};
-                ['revenue', 'cost'].forEach(key => {
-                    const rows = statistics?.[key]?.rows || [];
-                    rows.forEach(row => {
-                        const year = Number(row?.year);
-                        if (!Number.isNaN(year) && year && map[year] === undefined) {
-                            map[year] = !!row?.isProvisional;
-                        }
-                    });
-                });
-                return map;
-            }
-
             const container = document.createElement('div');
 
             const modal = Domus.UI.openModal({
@@ -2838,7 +2693,7 @@
             });
 
             function buildYearOptions(defaultYear, statistics) {
-                const years = collectStatisticsYears(statistics);
+                const years = Domus.Utils.collectStatisticsYears(statistics);
                 if (!years.includes(defaultYear)) {
                     years.push(defaultYear);
                 }
@@ -2871,7 +2726,7 @@
                 yearSelect.innerHTML = '<option>' + Domus.Utils.escapeHtml(t('domus', 'Loading…')) + '</option>';
                 Domus.Api.getUnitStatistics(unitId)
                     .then(statistics => {
-                        provisionalMap = collectProvisionalMap(statistics);
+                        provisionalMap = Domus.Utils.collectProvisionalMap(statistics);
                         availableYears = buildYearOptions(defaultYear, statistics);
                     })
                     .catch(() => {

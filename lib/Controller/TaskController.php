@@ -3,6 +3,7 @@
 namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
+use OCA\Domus\Service\PermissionService;
 use OCA\Domus\Service\TaskService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -17,6 +18,7 @@ class TaskController extends Controller {
         IRequest $request,
         private IUserSession $userSession,
         private TaskService $taskService,
+        private PermissionService $permissionService,
         private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
@@ -53,7 +55,7 @@ class TaskController extends Controller {
 
     #[NoAdminRequired]
     public function listOpen(?string $status = null, ?string $entityType = null, ?int $entityId = null): DataResponse {
-        $role = $this->request->getHeader('X-Domus-Role') ?: $this->request->getParam('role') ?: 'landlord';
+        $role = $this->permissionService->getRoleFromRequest($this->request);
         $status = $status ?: 'open';
         if ($status !== 'open') {
             return $this->validationError($this->l10n->t('Invalid status.'));

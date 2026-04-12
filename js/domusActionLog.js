@@ -638,10 +638,11 @@
             const label = option?.label || '';
             const typeValue = option?.value || '';
             const iconClass = getTypeIconClass(typeValue);
-            return '<button type="button" class="domus-action-log-type-option' + (isSelected ? ' is-selected' : '') + '" data-domus-action-log-type="' + Domus.Utils.escapeHtml(typeValue) + '" role="radio" aria-checked="' + (isSelected ? 'true' : 'false') + '" title="' + Domus.Utils.escapeHtml(label) + '">' +
+            return '<label class="domus-action-log-type-option' + (isSelected ? ' is-selected' : '') + '" data-domus-action-log-type="' + Domus.Utils.escapeHtml(typeValue) + '" role="radio" aria-checked="' + (isSelected ? 'true' : 'false') + '" title="' + Domus.Utils.escapeHtml(label) + '">' +
+                '<input class="domus-action-log-type-option-input" type="radio" name="domus-action-log-type-radio" value="' + Domus.Utils.escapeHtml(typeValue) + '"' + (isSelected ? ' checked' : '') + '>' +
                 '<span class="domus-icon domus-action-log-type-option-icon ' + Domus.Utils.escapeHtml(iconClass) + '" aria-hidden="true"></span>' +
                 '<span class="domus-action-log-type-option-label">' + Domus.Utils.escapeHtml(label) + '</span>' +
-                '</button>';
+                '</label>';
         }
 
         function bindTypePicker(root, onChange) {
@@ -657,6 +658,10 @@
                     const isSelected = option.getAttribute('data-domus-action-log-type') === value;
                     option.classList.toggle('is-selected', isSelected);
                     option.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+                    const radio = option.querySelector('.domus-action-log-type-option-input');
+                    if (radio) {
+                        radio.checked = isSelected;
+                    }
                 });
                 if (typeof onChange === 'function') {
                     onChange();
@@ -668,8 +673,15 @@
                     return;
                 }
                 option.dataset.domusActionLogTypeBound = 'true';
-                option.addEventListener('click', () => {
-                    applySelection(option.getAttribute('data-domus-action-log-type') || 'note');
+                const radio = option.querySelector('.domus-action-log-type-option-input');
+                if (!radio) {
+                    return;
+                }
+                radio.addEventListener('change', () => {
+                    if (!radio.checked) {
+                        return;
+                    }
+                    applySelection(radio.value || option.getAttribute('data-domus-action-log-type') || 'note');
                 });
             });
 
@@ -678,7 +690,6 @@
 
         return {
             renderList,
-            loadEntityList,
             bindCreateButtons,
             openCreateModal,
             openEntryModal

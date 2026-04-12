@@ -25,17 +25,13 @@
                 '</span>';
         }
 
-        function isValueFilled(value) {
-            return value !== undefined && value !== null && value !== '';
-        }
-
         function getPartnerMasterdataStatus(partner) {
             let total = 0;
             let completed = 0;
 
             const addField = (value) => {
                 total += 1;
-                if (isValueFilled(value)) {
+                if (Domus.Utils.isValueFilled(value)) {
                     completed += 1;
                 }
             };
