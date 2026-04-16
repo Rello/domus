@@ -22,9 +22,8 @@ class DashboardController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function summary(?int $year = null): DataResponse {
-        $year = $year ?? (int)date('Y');
-        return new DataResponse($this->dashboardService->getSummary($this->getUserId(), $year, $this->getRole()));
+    public function summary(): DataResponse {
+        return new DataResponse($this->dashboardService->getSummary($this->getUserId(), (int)date('Y'), $this->getRole()));
     }
 
     private function getUserId(): string {

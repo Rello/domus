@@ -160,6 +160,7 @@ class UnitService {
         $this->bookingYearMapper->deleteByUnit($unit->getId());
         $this->partnerRelMapper->deleteForRelation('unit', $unit->getId(), $userId);
         $this->actionLogMapper->deleteForEntity($userId, 'unit', $unit->getId());
+        $this->actionLogMapper->deleteForLinkedEntity($userId, 'unit', $unit->getId());
         $this->unitMapper->delete($unit);
     }
 
@@ -180,6 +181,8 @@ class UnitService {
             'tenancies' => count($tenancies),
             'bookings' => count($bookings),
             'distributions' => $this->distributionKeyUnitMapper->countByUnit($userId, $unit->getId()),
+            'partnerRelations' => count($this->partnerRelMapper->findForUnit($unit->getId(), $userId)),
+            'actionLogs' => $this->actionLogMapper->countAffectedByEntity($userId, 'unit', $unit->getId()),
             'documentLinks' => $documentLinks,
             'yearStatus' => $this->bookingYearMapper->countByUnit($unit->getId()),
         ];

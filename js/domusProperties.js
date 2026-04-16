@@ -626,9 +626,14 @@
             summaryList.className = 'domus-delete-summary';
             [
                 { label: t('domus', 'Units'), value: summary?.units },
+                { label: t('domus', 'Tasks'), value: summary?.tasks },
+                { label: t('domus', 'Task steps'), value: summary?.taskSteps },
+                { label: t('domus', 'Workflow runs'), value: summary?.workflowRuns },
                 { label: t('domus', 'Distribution keys'), value: summary?.distributionKeys },
                 { label: t('domus', 'Distribution values'), value: summary?.distributionValues },
-                { label: t('domus', 'Partner relations'), value: summary?.partnerRelations }
+                { label: t('domus', 'Partner relations'), value: summary?.partnerRelations },
+                { label: t('domus', 'Action log entries'), value: summary?.actionLogs },
+                { label: t('domus', 'Document links'), value: summary?.documentLinks }
             ].forEach(item => {
                 const listItem = document.createElement('li');
                 const label = document.createElement('span');

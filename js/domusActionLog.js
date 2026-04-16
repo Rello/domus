@@ -14,12 +14,9 @@
         ];
         const linkedEntityTypes = [
             { value: '', label: t('domus', 'None') },
-            { value: 'document', label: t('domus', 'Document') },
             { value: 'property', label: t('domus', 'Property') },
             { value: 'unit', label: t('domus', 'Unit') },
-            { value: 'partner', label: t('domus', 'Partner') },
-            { value: 'tenancy', label: t('domus', 'Tenancy') },
-            { value: 'booking', label: t('domus', 'Booking') }
+            { value: 'partner', label: t('domus', 'Partner') }
         ];
 
         const typeIconMap = {
@@ -40,6 +37,10 @@
 
         function loadEntityList(entityType, entityId, options = {}) {
             const containerId = options.containerId || `domus-action-log-${entityType}-${entityId}`;
+            const refreshList = () => loadEntityList(entityType, entityId, options);
+            const handleSaved = typeof options.onSaved === 'function'
+                ? options.onSaved
+                : refreshList;
             Domus.Api.getActionLogs(entityType, entityId)
                 .then(entries => {
                     updateContainer(containerId, buildListMarkup(entries || [], {
@@ -47,12 +48,14 @@
                         showEntityColumn: false,
                         emptyActionId: options.emptyActionId
                     }));
-                    Domus.UI.bindRowNavigation();
+                    bindEntryRows(containerId, {
+                        onSaved: handleSaved
+                    });
                     bindCreateButtons([options.emptyActionId], {
                         entityType,
                         entityId,
                         entityLabel: options.entityLabel,
-                        onSaved: options.onSaved
+                        onSaved: handleSaved
                     });
                 })
                 .catch(() => {
@@ -65,7 +68,7 @@
                         entityType,
                         entityId,
                         entityLabel: options.entityLabel,
-                        onSaved: options.onSaved
+                        onSaved: handleSaved
                     });
                 });
         }
@@ -186,6 +189,45 @@
             });
         }
 
+        function bindEntryRows(containerId, options = {}) {
+            const container = document.getElementById(containerId);
+            if (!container) {
+                return;
+            }
+
+            const onSaved = typeof options.onSaved === 'function' ? options.onSaved : null;
+            container.querySelectorAll('table.domus-table tr[data-action-log-id], table.domus-table tr[data-actionLogId]').forEach(row => {
+                if (row.dataset.domusActionLogBound) {
+                    return;
+                }
+                row.dataset.domusActionLogBound = 'true';
+
+                const handleActivate = (event) => {
+                    const actionLogId = row.dataset.actionLogId || row.getAttribute('data-action-log-id') || row.getAttribute('data-actionLogId');
+                    if (!actionLogId) {
+                        return;
+                    }
+                    if (event && event.target && (event.target.closest('a') || event.target.closest('button') || event.target.closest('input') || event.target.closest('select') || event.target.closest('textarea'))) {
+                        return;
+                    }
+
+                    event?.preventDefault?.();
+                    event?.stopImmediatePropagation?.();
+                    Domus.ActionLog.openEntryModal(actionLogId, {
+                        onSaved
+                    });
+                };
+
+                row.addEventListener('click', handleActivate, true);
+                row.addEventListener('keydown', event => {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                        return;
+                    }
+                    handleActivate(event);
+                }, true);
+            });
+        }
+
         function openCreateModal(options = {}) {
             resolveTargetContext(options)
                 .then(context => {
@@ -279,7 +321,6 @@
         }
 
         function buildCreateForm(context) {
-            const linkedOptions = linkedEntityTypes.map(option => '<option value="' + Domus.Utils.escapeHtml(option.value) + '">' + Domus.Utils.escapeHtml(option.label) + '</option>').join('');
             const targetContent = context.lockTarget
                 ? '<div class="domus-form-value-text">' + Domus.Utils.escapeHtml(context.targets[0]?.label || '') + '</div><input type="hidden" id="domus-action-log-target" value="' + Domus.Utils.escapeHtml(context.selectedTarget) + '">'
                 : '<select id="domus-action-log-target" name="target">' +
@@ -313,15 +354,11 @@
                 }),
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Linked object type'),
-                    content: '<select id="domus-action-log-linked-type" name="linkedEntityType">' + linkedOptions + '</select>'
+                    content: '<select id="domus-action-log-linked-type" name="linkedEntityType"></select>'
                 }),
                 Domus.UI.buildFormRow({
-                    label: t('domus', 'Linked object ID'),
-                    content: '<input id="domus-action-log-linked-id" name="linkedEntityId" type="number" min="1">'
-                }),
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Linked object label'),
-                    content: '<input id="domus-action-log-linked-label" name="linkedLabel">'
+                    label: t('domus', 'Linked object'),
+                    content: '<select id="domus-action-log-linked-id" name="linkedEntityId" disabled></select>'
                 })
             ];
 
@@ -343,6 +380,14 @@
             const customTypeInput = modal.modalEl.querySelector('#domus-action-log-custom-type');
             const customTypeWrap = modal.modalEl.querySelector('#domus-action-log-custom-type-wrap');
             const customTypeRow = customTypeWrap?.closest('.domus-form-row');
+            const targetSelect = modal.modalEl.querySelector('#domus-action-log-target');
+            const linkedTypeSelect = modal.modalEl.querySelector('#domus-action-log-linked-type');
+            const linkedEntitySelect = modal.modalEl.querySelector('#domus-action-log-linked-id');
+
+            const getOwnerType = () => {
+                const target = (targetSelect?.value || context.selectedTarget || '').trim();
+                return target.split(':')[0] || null;
+            };
 
             function updateTypeState() {
                 const isCustom = typeInput?.value === 'custom';
@@ -359,6 +404,18 @@
             cancelButton?.addEventListener('click', modal.close);
             bindTypePicker(modal.modalEl, updateTypeState);
             updateTypeState();
+            bindLinkedEntityControls({
+                linkedTypeSelect,
+                linkedEntitySelect,
+                ownerType: getOwnerType()
+            });
+            targetSelect?.addEventListener('change', () => {
+                bindLinkedEntityControls({
+                    linkedTypeSelect,
+                    linkedEntitySelect,
+                    ownerType: getOwnerType()
+                });
+            });
 
             form?.addEventListener('submit', event => {
                 event.preventDefault();
@@ -371,9 +428,8 @@
                     : (typeInput?.value || '').trim();
                 const title = (modal.modalEl.querySelector('#domus-action-log-title')?.value || '').trim();
                 const linkedEntityType = (modal.modalEl.querySelector('#domus-action-log-linked-type')?.value || '').trim();
-                const linkedEntityIdRaw = (modal.modalEl.querySelector('#domus-action-log-linked-id')?.value || '').trim();
+                const linkedEntityIdRaw = (linkedEntitySelect?.value || '').trim();
                 const linkedEntityId = linkedEntityIdRaw ? Number(linkedEntityIdRaw) : null;
-                const linkedLabel = (modal.modalEl.querySelector('#domus-action-log-linked-label')?.value || '').trim();
 
                 if (!entityType || !entityId) {
                     Domus.UI.showNotification(t('domus', 'Entity is required.'), 'error');
@@ -388,7 +444,7 @@
                     return;
                 }
                 if (linkedEntityType && !linkedEntityId) {
-                    Domus.UI.showNotification(t('domus', 'Linked object ID is required.'), 'error');
+                    Domus.UI.showNotification(t('domus', 'Linked object is required.'), 'error');
                     return;
                 }
 
@@ -398,7 +454,7 @@
                     data: modal.modalEl.querySelector('#domus-action-log-data')?.value || '',
                     linkedEntityType: linkedEntityType || null,
                     linkedEntityId: linkedEntityType && linkedEntityId ? linkedEntityId : null,
-                    linkedLabel: linkedEntityType ? (linkedLabel || null) : null
+                    linkedLabel: null
                 };
 
                 Domus.Api.createActionLog(entityType, entityId, payload)
@@ -462,7 +518,6 @@
         function buildEditForm(entry) {
             const isCustomType = entry?.type && !presetTypes.some(option => option.value === entry.type);
             const selectedType = isCustomType ? 'custom' : (entry?.type || 'note');
-            const linkedOptions = linkedEntityTypes.map(option => '<option value="' + Domus.Utils.escapeHtml(option.value) + '"' + (option.value === (entry?.linkedEntityType || '') ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(option.label) + '</option>').join('');
             const targetLabel = entry?.entityLabel || '';
             const targetHref = entry?.entityType && entry?.entityId && (entry.entityType === 'property' || entry.entityType === 'unit')
                 ? `#/${entry.entityType === 'property' ? 'propertyDetail' : 'unitDetail'}/${entry.entityId}`
@@ -500,15 +555,11 @@
                 }),
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Linked object type'),
-                    content: '<select id="domus-action-log-linked-type" name="linkedEntityType">' + linkedOptions + '</select>'
+                    content: '<select id="domus-action-log-linked-type" name="linkedEntityType"></select>'
                 }),
                 Domus.UI.buildFormRow({
-                    label: t('domus', 'Linked object ID'),
-                    content: '<input id="domus-action-log-linked-id" name="linkedEntityId" type="number" min="1" value="' + Domus.Utils.escapeHtml(entry?.linkedEntityId ? String(entry.linkedEntityId) : '') + '">'
-                }),
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Linked object label'),
-                    content: '<input id="domus-action-log-linked-label" name="linkedLabel" value="' + Domus.Utils.escapeHtml(entry?.linkedLabel || '') + '">'
+                    label: t('domus', 'Linked object'),
+                    content: '<select id="domus-action-log-linked-id" name="linkedEntityId" disabled></select>'
                 })
             ];
 
@@ -516,6 +567,7 @@
                 '<form id="domus-action-log-edit-form">' +
                 Domus.UI.buildFormTable(rows) +
                 '<div class="domus-form-actions">' +
+                '<button type="button" id="domus-action-log-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
                 '<button type="button" id="domus-action-log-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
                 '<button type="submit" class="primary" id="domus-action-log-submit">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>' +
@@ -525,11 +577,14 @@
 
         function bindEditModal(modal, entry, options = {}) {
             const form = modal.modalEl.querySelector('#domus-action-log-edit-form');
+            const deleteButton = modal.modalEl.querySelector('#domus-action-log-delete');
             const cancelButton = modal.modalEl.querySelector('#domus-action-log-cancel');
             const typeInput = modal.modalEl.querySelector('#domus-action-log-type');
             const customTypeInput = modal.modalEl.querySelector('#domus-action-log-custom-type');
             const customTypeWrap = modal.modalEl.querySelector('#domus-action-log-custom-type-wrap');
             const customTypeRow = customTypeWrap?.closest('.domus-form-row');
+            const linkedTypeSelect = modal.modalEl.querySelector('#domus-action-log-linked-type');
+            const linkedEntitySelect = modal.modalEl.querySelector('#domus-action-log-linked-id');
 
             function updateTypeState() {
                 const currentValue = typeInput?.value || '';
@@ -547,6 +602,34 @@
             cancelButton?.addEventListener('click', modal.close);
             bindTypePicker(modal.modalEl, updateTypeState);
             updateTypeState();
+            bindLinkedEntityControls({
+                linkedTypeSelect,
+                linkedEntitySelect,
+                ownerType: entry?.entityType || null,
+                selectedType: entry?.linkedEntityType || '',
+                selectedId: entry?.linkedEntityId || null
+            });
+            deleteButton?.addEventListener('click', () => {
+                Domus.UI.confirmAction({
+                    title: t('domus', 'Delete {entity}?', { entity: t('domus', 'Action log entry') }),
+                    message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Action log entry') }),
+                    confirmLabel: t('domus', 'Delete')
+                }).then(confirmed => {
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    Domus.Api.deleteActionLog(entry.id)
+                        .then(() => {
+                            Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Action log entry') }), 'success');
+                            modal.close();
+                            if (typeof options.onSaved === 'function') {
+                                options.onSaved();
+                            }
+                        })
+                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                });
+            });
 
             form?.addEventListener('submit', event => {
                 event.preventDefault();
@@ -554,10 +637,9 @@
                 const useCustomType = selectedType === 'custom';
                 const typeValue = (useCustomType ? customTypeInput?.value : selectedType || '').trim();
                 const title = (modal.modalEl.querySelector('#domus-action-log-title')?.value || '').trim();
-                const linkedEntityType = (modal.modalEl.querySelector('#domus-action-log-linked-type')?.value || '').trim();
-                const linkedEntityIdRaw = (modal.modalEl.querySelector('#domus-action-log-linked-id')?.value || '').trim();
+                const linkedEntityType = (linkedTypeSelect?.value || '').trim();
+                const linkedEntityIdRaw = (linkedEntitySelect?.value || '').trim();
                 const linkedEntityId = linkedEntityIdRaw ? Number(linkedEntityIdRaw) : null;
-                const linkedLabel = (modal.modalEl.querySelector('#domus-action-log-linked-label')?.value || '').trim();
 
                 if (!typeValue) {
                     Domus.UI.showNotification(t('domus', 'Type is required.'), 'error');
@@ -568,7 +650,7 @@
                     return;
                 }
                 if (linkedEntityType && !linkedEntityId) {
-                    Domus.UI.showNotification(t('domus', 'Linked object ID is required.'), 'error');
+                    Domus.UI.showNotification(t('domus', 'Linked object is required.'), 'error');
                     return;
                 }
 
@@ -578,7 +660,7 @@
                     data: modal.modalEl.querySelector('#domus-action-log-data')?.value || '',
                     linkedEntityType: linkedEntityType || null,
                     linkedEntityId: linkedEntityType && linkedEntityId ? linkedEntityId : null,
-                    linkedLabel: linkedEntityType ? (linkedLabel || null) : null
+                    linkedLabel: null
                 };
 
                 Domus.Api.updateActionLog(entry.id, payload)
@@ -624,6 +706,88 @@
             }
 
             return Domus.Utils.escapeHtml(linkedEntity.label || '—');
+        }
+
+        function getLinkedTypeOptions(ownerType) {
+            return linkedEntityTypes.filter(option => !option.value || option.value !== ownerType);
+        }
+
+        function buildLinkedTypeOptionsMarkup(ownerType, selectedType) {
+            return getLinkedTypeOptions(ownerType).map(option => (
+                '<option value="' + Domus.Utils.escapeHtml(option.value) + '"' + (option.value === selectedType ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(option.label) + '</option>'
+            )).join('');
+        }
+
+        function listLinkedEntities(type) {
+            if (type === 'property') {
+                return Domus.Api.getProperties().catch(() => []).then(properties => (
+                    (properties || []).map(property => ({
+                        id: property?.id,
+                        label: property?.name || `${t('domus', 'Property')} #${property?.id ?? ''}`
+                    })).filter(item => Number(item.id) > 0)
+                ));
+            }
+
+            if (type === 'unit') {
+                return Domus.Api.getUnits().catch(() => []).then(units => (
+                    (units || []).map(unit => ({
+                        id: unit?.id,
+                        label: unit?.label || `${t('domus', 'Unit')} #${unit?.id ?? ''}`
+                    })).filter(item => Number(item.id) > 0)
+                ));
+            }
+
+            if (type === 'partner') {
+                return Domus.Api.getPartners().catch(() => []).then(partners => (
+                    (partners || []).map(partner => ({
+                        id: partner?.id,
+                        label: partner?.name || `${t('domus', 'Partner')} #${partner?.id ?? ''}`
+                    })).filter(item => Number(item.id) > 0)
+                ));
+            }
+
+            return Promise.resolve([]);
+        }
+
+        function bindLinkedEntityControls({ linkedTypeSelect, linkedEntitySelect, ownerType, selectedType = '', selectedId = null }) {
+            if (!linkedTypeSelect || !linkedEntitySelect) {
+                return;
+            }
+
+            const allowedTypeValues = getLinkedTypeOptions(ownerType).map(option => option.value);
+            const resolvedSelectedType = allowedTypeValues.includes(selectedType) ? selectedType : '';
+            linkedTypeSelect.innerHTML = buildLinkedTypeOptionsMarkup(ownerType, resolvedSelectedType);
+
+            const renderEntityOptions = (type, preferredId = null) => {
+                if (!type) {
+                    linkedEntitySelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'None')) + '</option>';
+                    linkedEntitySelect.disabled = true;
+                    return;
+                }
+
+                linkedEntitySelect.disabled = true;
+                linkedEntitySelect.innerHTML = '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'Loading {entity}…', { entity: t('domus', 'Linked object') })) + '</option>';
+                listLinkedEntities(type).then(items => {
+                    const selectedValue = preferredId !== null && preferredId !== undefined
+                        ? String(preferredId)
+                        : '';
+                    const options = ['<option value=""></option>'].concat(
+                        (items || []).map(item => (
+                            '<option value="' + Domus.Utils.escapeHtml(String(item.id)) + '"' + (String(item.id) === selectedValue ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(item.label) + '</option>'
+                        ))
+                    );
+                    linkedEntitySelect.innerHTML = options.join('');
+                    linkedEntitySelect.disabled = false;
+                }).catch(() => {
+                    linkedEntitySelect.innerHTML = '<option value=""></option>';
+                    linkedEntitySelect.disabled = false;
+                });
+            };
+
+            renderEntityOptions(linkedTypeSelect.value || '', selectedId);
+            linkedTypeSelect.onchange = () => {
+                renderEntityOptions(linkedTypeSelect.value || '', null);
+            };
         }
 
         function buildTypePicker(selectedType) {

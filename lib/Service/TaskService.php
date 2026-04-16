@@ -98,7 +98,7 @@ class TaskService {
         if (!$task) {
             throw new \RuntimeException($this->l10n->t('Task not found.'));
         }
-        $this->assertEntityExists((string)$task->getEntityType(), (int)$task->getEntityId(), $userId);
+        $this->assertTaskAccess($task, $userId);
         $title = trim($title);
         if ($title === '') {
             throw new \InvalidArgumentException($this->l10n->t('Task title is required.'));
@@ -120,7 +120,7 @@ class TaskService {
         if (!$task) {
             throw new \RuntimeException($this->l10n->t('Task not found.'));
         }
-        $this->assertEntityExists((string)$task->getEntityType(), (int)$task->getEntityId(), $userId);
+        $this->assertTaskAccess($task, $userId);
         if (!in_array($task->getStatus(), [self::STATUS_OPEN, self::STATUS_NEW], true)) {
             throw new \InvalidArgumentException($this->l10n->t('Only open tasks can be closed.'));
         }
@@ -141,7 +141,7 @@ class TaskService {
         if (!$task) {
             throw new \RuntimeException($this->l10n->t('Task not found.'));
         }
-        $this->assertEntityExists((string)$task->getEntityType(), (int)$task->getEntityId(), $userId);
+        $this->assertTaskAccess($task, $userId);
         if ($task->getStatus() !== self::STATUS_CLOSED) {
             throw new \InvalidArgumentException($this->l10n->t('Only closed tasks can be reopened.'));
         }
@@ -162,9 +162,22 @@ class TaskService {
         if (!$task) {
             throw new \RuntimeException($this->l10n->t('Task not found.'));
         }
-        $this->assertEntityExists((string)$task->getEntityType(), (int)$task->getEntityId(), $userId);
+        $this->assertTaskAccess($task, $userId);
 
         $this->taskMapper->delete($task);
+    }
+
+    private function assertTaskAccess(Task $task, string $userId): void {
+        try {
+            $this->assertEntityExists((string)$task->getEntityType(), (int)$task->getEntityId(), $userId);
+            return;
+        } catch (\RuntimeException) {
+            // Allow managing legacy/orphaned tasks when they still belong to the current user.
+        }
+
+        if ((string)$task->getCreatedBy() !== $userId) {
+            throw new \RuntimeException($this->l10n->t('Task not found.'));
+        }
     }
 
     private function assertEntityExists(string $entityType, int $entityId, string $userId): void {
@@ -172,13 +185,15 @@ class TaskService {
             throw new \RuntimeException($this->l10n->t('Invalid entity.'));
         }
         if ($entityType === 'unit') {
-            if (!$this->unitMapper->findForUser($entityId, $userId)) {
+            $unit = $this->unitMapper->findForUser($entityId, $userId);
+            if (!$unit) {
                 throw new \RuntimeException($this->l10n->t('Unit not found.'));
             }
             return;
         }
         if ($entityType === 'property') {
-            if (!$this->propertyMapper->findForUser($entityId, $userId)) {
+            $property = $this->propertyMapper->findForUser($entityId, $userId);
+            if (!$property) {
                 throw new \RuntimeException($this->l10n->t('Property not found.'));
             }
             return;

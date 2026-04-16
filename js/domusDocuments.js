@@ -36,6 +36,7 @@
             const filterYear = options.year !== undefined && options.year !== null && options.year !== ''
                 ? parseInt(options.year, 10)
                 : null;
+            const emptyActionId = options.emptyActionId || `${containerId}-empty-create`;
 
             function updateContainer(html) {
                 const placeholder = document.getElementById(containerId);
@@ -66,10 +67,12 @@
                         canDelete: canManageDocuments,
                         onDeleted: () => renderList(entityType, entityId, options)
                     }));
+                    bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
                 })
                 .catch(() => {
-                    const html = '<div id="' + containerId + '">' + t('domus', 'No {entity} found.', { entity: t('domus', 'Documents') }) + '</div>';
+                    const html = '<div id="' + containerId + '">' + Domus.UI.buildEmptyStateAction('', { actionId: canManageDocuments ? emptyActionId : null }) + '</div>';
                     updateContainer(html);
+                    bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
                 });
             return '<div id="' + containerId + '">' + t('domus', 'Loading {entity}…', { entity: t('domus', 'Documents') }) + '</div>';
         }
@@ -88,6 +91,7 @@
                 ? options.canManageDocuments
                 : (options.showLinkAction !== undefined ? options.showLinkAction : Domus.Role.hasCapability('manageDocuments'));
             const pageSize = Math.max(1, Number(options.pageSize) || 10);
+            const emptyActionId = options.emptyActionId || `${containerId}-empty-create`;
             let visibleCount = pageSize;
 
             function updateContainer(html) {
@@ -98,9 +102,7 @@
             }
 
             function buildEmptyState() {
-                return '<div id="' + containerId + '">' +
-                    Domus.Utils.escapeHtml(t('domus', 'No {entity} found.', { entity: t('domus', 'Documents') })) +
-                    '</div>';
+                return '<div id="' + containerId + '">' + Domus.UI.buildEmptyStateAction('', { actionId: canManageDocuments ? emptyActionId : null }) + '</div>';
             }
 
             function buildRows(docs) {
@@ -110,6 +112,7 @@
             function renderView(docs) {
                 if (!docs.length) {
                     updateContainer(buildEmptyState());
+                    bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
                     return;
                 }
                 const rows = buildRows(docs);
@@ -150,7 +153,44 @@
                 })
                 .catch(() => {
                     updateContainer(buildEmptyState());
+                    bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
                 });
+        }
+
+        function bindEmptyActionTrigger(actionId, onTrigger) {
+            if (!actionId || typeof onTrigger !== 'function') {
+                return;
+            }
+            const trigger = document.getElementById(actionId);
+            if (!trigger || trigger.dataset.domusEmptyBound === '1') {
+                return;
+            }
+            trigger.dataset.domusEmptyBound = '1';
+            trigger.addEventListener('click', (event) => {
+                event.preventDefault();
+                onTrigger();
+            });
+            trigger.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                event.preventDefault();
+                onTrigger();
+            });
+        }
+
+        function runEmptyAction(entityType, entityId, options = {}) {
+            if (typeof options.onEmptyAction === 'function') {
+                options.onEmptyAction();
+                return;
+            }
+            openLinkModal(entityType, entityId, () => {
+                if (typeof options.onLinked === 'function') {
+                    options.onLinked();
+                    return;
+                }
+                renderList(entityType, entityId, options);
+            });
         }
 
         function createAttachmentWidget(options = {}) {
@@ -462,7 +502,7 @@
                         }
 
                         return '<li><strong>' + Domus.Utils.escapeHtml(type) + ':</strong> ' + Domus.Utils.escapeHtml(name) + '</li>';
-                    }).join('') : '<li>' + Domus.Utils.escapeHtml(t('domus', 'No {entity} found.', { entity: t('domus', 'Linked objects') })) + '</li>';
+                    }).join('') : '<li>' + Domus.Utils.escapeHtml(t('domus', 'No entries available.')) + '</li>';
 
                     let modal;
                     const headerActions = [];

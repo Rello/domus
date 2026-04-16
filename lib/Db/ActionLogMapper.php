@@ -105,4 +105,41 @@ class ActionLogMapper extends QBMapper {
 
         $qb->executeStatement();
     }
+
+    /**
+     * @throws Exception
+     */
+    public function deleteForLinkedEntity(string $userId, string $entityType, int $entityId): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('linked_entity_type', $qb->createNamedParameter($entityType)))
+            ->andWhere($qb->expr()->eq('linked_entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
+
+        $qb->executeStatement();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function countAffectedByEntity(string $userId, string $entityType, int $entityId): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectAlias($qb->createFunction('COUNT(DISTINCT id)'), 'amount')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere(
+                $qb->expr()->orX(
+                    $qb->expr()->andX(
+                        $qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)),
+                        $qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT))
+                    ),
+                    $qb->expr()->andX(
+                        $qb->expr()->eq('linked_entity_type', $qb->createNamedParameter($entityType)),
+                        $qb->expr()->eq('linked_entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT))
+                    )
+                )
+            );
+
+        return (int)$qb->executeQuery()->fetchOne();
+    }
 }

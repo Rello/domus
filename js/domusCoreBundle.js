@@ -357,7 +357,7 @@
             post: (path, data) => request('POST', path, data),
             put: (path, data) => request('PUT', path, data),
             delete: path => request('DELETE', path),
-            getDashboardSummary: () => request('GET', buildYearUrl('/dashboard/summary')),
+            getDashboardSummary: () => request('GET', '/dashboard/summary'),
             getSettings: () => request('GET', '/settings'),
             updateSettings: data => request('PUT', '/settings', data),
             createDemoContent: data => request('POST', '/settings/demo-content', data),
@@ -489,6 +489,7 @@
             getActionLogEntry: id => request('GET', `/api/action-logs/entry/${id}`),
             createActionLog: (entityType, entityId, data) => request('POST', `/api/action-logs/${entityType}/${entityId}`, data),
             updateActionLog: (id, data) => request('PUT', `/api/action-logs/entry/${id}`, data),
+            deleteActionLog: id => request('DELETE', `/api/action-logs/entry/${id}`),
             getDocuments: (entityType, entityId) => request('GET', `/documents/${entityType}/${entityId}`),
             getDocumentDetail: (id) => request('GET', `/documents/${id}`),
             linkDocument: (entityType, entityId, data) => request('POST', `/documents/${entityType}/${entityId}`, data),
@@ -997,44 +998,41 @@
             return container.outerHTML;
         }
 
+        function getDefaultEmptyStateMessage() {
+            return t('domus', 'No entries available.');
+        }
+
         function buildEmptyStateAction(message, options = {}) {
-            const iconClass = options.iconClass || 'domus-icon-add';
-            const btn = document.createElement('button');
+            const resolvedMessage = getDefaultEmptyStateMessage();
+            const iconClass = 'domus-icon-info';
+            const hasAction = Boolean(options.actionId);
+            const element = document.createElement('div');
             const classes = ['domus-empty-state-action'];
             if (options.className) {
                 classes.push(options.className);
             }
-            btn.className = classes.join(' ');
-            btn.type = 'button';
-            if (options.actionId) {
-                btn.id = options.actionId;
+            if (!hasAction) {
+                classes.push('domus-empty-state-static');
             }
-            if (message) {
-                btn.setAttribute('aria-label', message);
-                btn.title = message;
+            element.className = classes.join(' ');
+            if (hasAction) {
+                element.id = options.actionId;
+                element.setAttribute('role', 'button');
+                element.setAttribute('tabindex', '0');
             }
+            element.setAttribute('aria-label', resolvedMessage);
+            element.title = resolvedMessage;
 
-            const parts = String(message || '').split('. ');
-            const head = parts.shift() || '';
-            const headLine = head && !head.endsWith('.') && parts.length ? `${head}.` : head;
-            const subLine = parts.length ? parts.join('. ') : '';
-
-            btn.appendChild(createIconSpan(iconClass));
+            element.appendChild(createIconSpan(iconClass));
             const text = document.createElement('span');
             text.className = 'domus-empty-state-text';
             const headSpan = document.createElement('span');
             headSpan.className = 'domus-empty-state-head';
-            headSpan.textContent = headLine;
+            headSpan.textContent = resolvedMessage;
             text.appendChild(headSpan);
-            if (subLine) {
-                const subSpan = document.createElement('span');
-                subSpan.className = 'domus-empty-state-sub';
-                subSpan.textContent = subLine;
-                text.appendChild(subSpan);
-            }
-            btn.appendChild(text);
+            element.appendChild(text);
 
-            return '<div class="domus-empty-state">' + btn.outerHTML + '</div>';
+            return '<div class="domus-empty-state">' + element.outerHTML + '</div>';
         }
 
         function buildScopeAddButton(iconClass, label, options = {}) {
@@ -1114,8 +1112,7 @@
             let html = '<div class="domus-overview-list">';
 
             if (!safeItems.length) {
-                const emptyMessage = options.emptyMessage || t('domus', 'No entries found.');
-                html += '<div class="domus-overview-empty">' + Domus.Utils.escapeHtml(emptyMessage) + '</div>';
+                html += buildEmptyStateAction(options.emptyMessage, {});
             } else {
                 safeItems.forEach(item => {
                     const classes = ['domus-overview-card'];
@@ -1314,7 +1311,7 @@
             }
             html += '<tbody>';
             if (!rows || rows.length === 0) {
-                html += '<tr><td colspan="' + headers.length + '">' + Domus.Utils.escapeHtml(t('domus', 'No entries found.')) + '</td></tr>';
+                html += '<tr><td colspan="' + headers.length + '">' + buildEmptyStateAction() + '</td></tr>';
             } else {
                 rows.forEach(row => {
                     const rowData = Array.isArray(row) ? { cells: row } : (row || {});
@@ -1611,7 +1608,7 @@
 
         function buildSectionHeader(title, action) {
             const actions = (Array.isArray(action) ? action : [action]).filter(Boolean);
-            const actionHtml = actions.map(item => {
+            const renderAction = (item) => {
                 if (item.href) {
                     let attrs = ' href="' + Domus.Utils.escapeHtml(item.href) + '"';
                     if (item.id) {
@@ -1663,14 +1660,25 @@
                     });
                 }
                 const label = item.label || '+';
-                const titleAttr = item.title || t('domus', 'Add');
-                return '<button class="domus-section-action"' + attrs + ' title="' + Domus.Utils.escapeHtml(titleAttr) + '">' + Domus.Utils.escapeHtml(label) + '</button>';
-            }).join('');
-            const actionWrapHtml = actionHtml
-                ? '<div class="domus-section-header-actions">' + actionHtml + '</div>'
+                    const titleAttr = item.title || t('domus', 'Add');
+                    return '<button class="domus-section-action"' + attrs + ' title="' + Domus.Utils.escapeHtml(titleAttr) + '">' + Domus.Utils.escapeHtml(label) + '</button>';
+            };
+            const leftActionHtml = actions
+                .filter(item => item.align === 'left')
+                .map(renderAction)
+                .join('');
+            const rightActionHtml = actions
+                .filter(item => item.align !== 'left')
+                .map(renderAction)
+                .join('');
+            const leftActionWrapHtml = leftActionHtml
+                ? '<div class="domus-section-header-leading-actions">' + leftActionHtml + '</div>'
+                : '';
+            const actionWrapHtml = rightActionHtml
+                ? '<div class="domus-section-header-actions">' + rightActionHtml + '</div>'
                 : '';
 
-            return '<div class="domus-section-header"><h3>' + Domus.Utils.escapeHtml(title) + '</h3>' + actionWrapHtml + '</div>';
+            return '<div class="domus-section-header"><h3>' + Domus.Utils.escapeHtml(title) + '</h3>' + leftActionWrapHtml + actionWrapHtml + '</div>';
         }
 
         function buildStatCards(cards) {
@@ -1711,6 +1719,7 @@
             const linkIconClass = options.linkIconClass ? Domus.Utils.escapeHtml(options.linkIconClass) : '';
             const chartId = options.chartId ? Domus.Utils.escapeHtml(options.chartId) : '';
             const tileClassName = options.tileClassName ? ' ' + Domus.Utils.escapeHtml(options.tileClassName) : '';
+            const valueClassName = options.valueClassName ? ' ' + Domus.Utils.escapeHtml(options.valueClassName) : '';
             const chartClassName = options.chartClassName ? ' ' + Domus.Utils.escapeHtml(options.chartClassName) : '';
             const chartAriaLabel = options.chartAriaLabel ? ' aria-label="' + Domus.Utils.escapeHtml(options.chartAriaLabel) + '"' : '';
             const chartRole = options.chartRole ? ' role="' + Domus.Utils.escapeHtml(options.chartRole) + '"' : '';
@@ -1737,7 +1746,7 @@
                 '<div class="' + bodyClassName + '">' +
                 '<div class="domus-kpi-main">' +
                 '<div class="domus-kpi-value-block">' +
-                '<div class="domus-kpi-value">' + value + '</div>' +
+                '<div class="domus-kpi-value' + valueClassName + '">' + value + '</div>' +
                 subline +
                 '</div>' +
                 '</div>' +

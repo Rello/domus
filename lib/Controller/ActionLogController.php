@@ -92,6 +92,18 @@ class ActionLogController extends Controller {
         }
     }
 
+    #[NoAdminRequired]
+    public function destroy(int $id): DataResponse {
+        try {
+            $this->actionLogService->deleteEntry($this->getUserId(), $id);
+            return new DataResponse([], Http::STATUS_NO_CONTENT);
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_BAD_REQUEST, 'RUNTIME_ERROR');
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR');
+        }
+    }
+
     private function getUserId(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
     }

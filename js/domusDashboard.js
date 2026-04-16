@@ -251,11 +251,10 @@
         }
 
         function buildLandlordDashboard(data) {
-            const tenancyLabels = Domus.Role.getTenancyLabels();
             const cards = [
-                { label: t('domus', 'Units'), value: data.unitCount || 0, link: '#/units' },
-                { label: tenancyLabels.plural, value: data.tenancyCount || 0 },
-                { label: t('domus', 'Monthly base rents'), value: data.monthlyBaseRentSum || 0, formatter: Domus.Utils.formatCurrency }
+                { label: t('domus', 'Monthly base rents'), value: data.monthlyBaseRentSum || 0, formatter: Domus.Utils.formatCurrency },
+                { label: t('domus', 'Overall rentability'), value: data.overallRentability, formatter: value => value === null || value === undefined ? '—' : Domus.Utils.formatPercentage(value), subline: t('domus', 'Current year') },
+                { label: t('domus', 'Units'), value: data.unitCount || 0, link: '#/units' }
             ];
 
             const cardHtml = cards.map(card => {
@@ -264,6 +263,7 @@
                 return Domus.UI.buildKpiTile({
                     headline: card.label,
                     value: safeValue,
+                    subline: card.subline || '',
                     linkHref: card.link || '',
                     linkLabel: t('domus', 'More'),
                     linkIconClass: 'domus-icon-arrow-right',
@@ -295,7 +295,7 @@
                     Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
                 }
                 if (hasUnits) {
-                    document.getElementById('domus-dashboard-task-create')?.addEventListener('click', () => {
+                    bindQuickActionTrigger('domus-dashboard-task-create', () => {
                         Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
                     });
                 }
@@ -333,7 +333,7 @@
             return '<div class="domus-detail domus-dashboard">' +
                 occupancyTile +
                 (!hasUnits ? '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' : '') +
-                (panels ? '<div class="domus-panel-row">' + panels + '</div>' : '') +
+                (panels ? '<div class="domus-panel-row domus-dashboard-panel-row">' + panels + '</div>' : '') +
                 '</div>';
         }
 
@@ -442,7 +442,7 @@
                     Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
                 }
                 if (hasProperties) {
-                    document.getElementById('domus-dashboard-task-create')?.addEventListener('click', () => {
+                    bindQuickActionTrigger('domus-dashboard-task-create', () => {
                         Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
                     });
                 }
@@ -455,7 +455,7 @@
 
             return '<div class="domus-detail domus-dashboard">' +
                 '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' +
-                (panels ? '<div class="domus-panel-row">' + panels + '</div>' : '') +
+                (panels ? '<div class="domus-panel-row domus-dashboard-panel-row">' + panels + '</div>' : '') +
                 '</div>';
         }
 

@@ -53,7 +53,7 @@
 .domus-top-navigation,
 .domus-bottom-navigation {
     max-width: 1200px;
-    margin: 0 auto 16px;
+    margin: 0 auto var(--domus-layout-section-spacing);
     width: 100%;
 }
 
@@ -545,7 +545,6 @@
     box-shadow: none;
     overflow: hidden;
     position: relative;
-    padding-right: 18px;
 }
 
 .domus-overview-card:hover,
@@ -719,6 +718,47 @@
     gap: 6px;
 }
 
+.domus-unit-overview-card {
+    grid-template-columns: 124px minmax(240px, 1.5fr) minmax(170px, 0.9fr) minmax(320px, 1.2fr);
+}
+
+.domus-unit-overview-card .domus-overview-media {
+    padding-right: 0;
+}
+
+.domus-unit-overview-card .domus-overview-identity {
+    padding-left: 14px;
+}
+
+.domus-unit-overview-card .domus-overview-meta {
+    gap: 10px;
+}
+
+.domus-unit-overview-card .domus-overview-meta-value,
+.domus-unit-overview-card .domus-overview-status,
+.domus-unit-overview-card .domus-overview-badges {
+    justify-content: flex-start;
+}
+
+.domus-unit-overview-card .domus-overview-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    min-width: 0;
+}
+
+.domus-unit-overview-card .domus-overview-column {
+    padding: 14px 16px;
+}
+
+.domus-unit-overview-card .domus-overview-stat-label {
+    white-space: nowrap;
+}
+
+.domus-unit-overview-card .domus-overview-stat-value {
+    font-size: 1.02rem;
+}
+
 .domus-pagination-actions {
     display: flex;
     gap: 8px;
@@ -751,9 +791,18 @@
     cursor: pointer;
 }
 
+.domus-empty-state-static {
+    cursor: default;
+}
+
 .domus-empty-state-action:hover,
 .domus-empty-state-action:focus {
     background: var(--color-background-hover);
+}
+
+.domus-empty-state-static:hover,
+.domus-empty-state-static:focus {
+    background: var(--domus-kpi-detail-background);
 }
 
 .domus-empty-state-action .domus-icon {
@@ -826,8 +875,8 @@
 .domus-form select,
 .domus-form textarea {
     padding: 8px;
-    border: none;
-    border-bottom: var(--domus-input-border);
+    border: none !important;
+    border-bottom: var(--domus-input-border) !important;
     border-radius: 0;
 }
 
@@ -1252,8 +1301,13 @@
 .domus-section-header h3 {
     margin: 0;
     color: var(--domus-theme);
-    flex: 1 1 auto;
-    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.domus-section-header-leading-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .domus-section-header-actions {
@@ -1298,6 +1352,11 @@
     font-size: 14px;
     font-weight: 500;
     white-space: nowrap;
+}
+
+.domus-section-jump-link {
+    font-size: 12px;
+    font-weight: 400;
 }
 
 .domus-loading,
@@ -1475,7 +1534,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 18px;
+    gap: 26px;
     padding: 8px 10px 12px;
 }
 
@@ -1630,6 +1689,13 @@
     white-space: nowrap;
     text-align: left;
     font-weight: 500;
+    cursor: pointer;
+}
+
+.domus-task-detail-action-copy:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 .domus-task-detail-action-button {
@@ -1983,7 +2049,6 @@
 .domus-task-overview-card {
     grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1.3fr) auto auto auto;
     min-height: auto;
-    padding: 0 18px 0 0;
 }
 
 .domus-task-overview-cell {
@@ -2009,7 +2074,7 @@
 }
 
 .domus-upcoming-card-shell .domus-task-overview-cell-due {
-    padding-right: calc(16px + var(--domus-layout-content-spacing));
+    padding: 21px;
 }
 
 .domus-upcoming-card-shell-compact .domus-task-overview-card {
@@ -2018,7 +2083,7 @@
 }
 
 .domus-upcoming-card-shell-compact .domus-task-overview-cell-due {
-    padding-right: 16px;
+    padding: 14px;
 }
 
 .domus-task-overview-cell-type,
@@ -2437,9 +2502,6 @@
     align-items: center;
     gap: 10px;
     padding: 6px 10px;
-    border-radius: var(--domus-border-radius);
-    border: var(--domus-border);
-    background: transparent;
 }
 
 .domus-completion-circle {
@@ -2544,30 +2606,36 @@
 }
 
 .domus-task-closed-toggle {
-    width: 100%;
-    text-align: left;
-    background: none;
+    width: fit-content;
+    text-align: center;
+    background: transparent;
     border: none;
-    padding: 6px 0;
-    margin-top: 12px;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
     font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text-maxcontrast);
+    font-weight: 500;
+    color: var(--color-primary);
+    text-decoration: underline;
     cursor: pointer;
 }
 
+.domus-task-closed-toggle-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--domus-layout-content-spacing);
+}
+
 .domus-task-closed-toggle::after {
-    content: '▸';
-    float: right;
-    font-size: 14px;
+    content: none;
 }
 
 .domus-task-closed-toggle.is-open::after {
-    content: '▾';
+    content: none;
 }
 
 .domus-task-closed-body {
-    margin-top: 6px;
+    margin-top: var(--domus-layout-content-spacing);
 }
 
 .domus-task-steps-header {
@@ -2659,6 +2727,17 @@
     border-radius: var(--domus-border-radius);
     background: #a12626;
     color: #ffffff;
+    font-weight: 400;
+}
+
+.domus-task-date-badge-completed {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 2px 8px;
+    border-radius: var(--domus-border-radius);
+    background: rgba(15, 107, 47, 0.12);
+    color: var(--color-success-text, var(--color-success));
     font-weight: 400;
 }
 
@@ -2815,6 +2894,10 @@
     text-align: left;
 }
 
+.domus-kpi-value-priority {
+    font-size: 29px;
+}
+
 .domus-kpi-value .domus-partner-list {
     display: block;
     width: 100%;
@@ -2825,23 +2908,68 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 6px;
     width: 100%;
+    min-width: 0;
 }
 
 .domus-kpi-value .domus-partner-name {
+    display: block;
     width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: clip;
-    word-break: normal;
-    font-size: 25px;
-    line-height: 1;
+    min-width: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-size: clamp(18px, 2vw, 25px);
+    line-height: 1.15;
 }
 
 .domus-kpi-value .domus-partner-actions {
     display: inline-flex;
     align-items: center;
+    flex: 0 0 auto;
+}
+
+.domus-unit-tenancy-kpi-value {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+}
+
+.domus-unit-tenancy-kpi-name {
+    width: 100%;
+    min-width: 0;
+}
+
+.domus-unit-tenancy-kpi-caption {
+    font-size: 12px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--color-text-maxcontrast);
+    white-space: normal;
+}
+
+.domus-unit-tenancy-kpi-actions {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 6px;
+}
+
+.domus-unit-tenancy-kpi-actions .domus-partner-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-wrap: nowrap;
+}
+
+.domus-unit-tenancy-kpi-actions .domus-partner-phone {
+    margin-left: 4px;
+    white-space: nowrap;
 }
 
 .domus-kpi-documents {
@@ -2870,8 +2998,8 @@
 }
 
 .domus-kpi-documents-open .domus-icon {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
 }
 
 .domus-kpi-subline {
@@ -3082,6 +3210,21 @@
     flex-shrink: 0;
 }
 
+.domus-kpi-tiles-unit-detail .domus-unit-kpi-tile-tenancy .domus-kpi-main {
+    align-items: center;
+}
+
+.domus-kpi-tiles-unit-detail .domus-unit-kpi-tile-tenancy .domus-kpi-value {
+    white-space: normal;
+    line-height: 1.1;
+}
+
+.domus-kpi-tiles-unit-detail .domus-unit-kpi-tile-tenancy .domus-unit-tenancy-kpi-value {
+    justify-content: center;
+    min-height: 92px;
+    gap: 6px;
+}
+
 .domus-kpi-tiles-tenancy-detail .domus-kpi-tile {
     padding: 14px 16px;
     min-height: 164px;
@@ -3103,6 +3246,21 @@
 
 .domus-unit-landlord-panels .domus-panel {
     margin-bottom: 0;
+}
+
+.domus-unit-landlord-panels .domus-unit-upcoming-panel,
+.domus-unit-landlord-panels .domus-unit-documents-panel,
+.domus-unit-landlord-panels .domus-unit-action-log-panel {
+    height: 430px;
+    min-height: 430px;
+}
+
+.domus-unit-landlord-panels .domus-unit-upcoming-panel .domus-panel-body,
+.domus-unit-landlord-panels .domus-unit-documents-panel .domus-panel-body {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
 }
 
 .domus-unit-detail-landlord.domus-unit-detail-table-mode .domus-unit-landlord-default-block {
@@ -3328,6 +3486,23 @@
     margin-top: var(--domus-layout-content-spacing);
 }
 
+.domus-dashboard-panel-row {
+    align-items: start;
+}
+
+.domus-dashboard-panel-row .domus-upcoming-card-shell {
+    display: flex;
+    flex-direction: column;
+    max-height: 404px;
+}
+
+.domus-dashboard-panel-row .domus-upcoming-card-shell .domus-panel-body {
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    padding-right: 6px;
+}
+
 .domus-upcoming-card-shell .domus-table {
     margin-bottom: 0;
     overflow: hidden;
@@ -3430,16 +3605,14 @@
 .domus-dashboard-quick-card-icon-wrap {
     width: 42px;
     height: 42px;
-    border-radius: 12px;
-    background: rgba(18, 66, 110, 0.08);
     display: inline-flex;
     align-items: center;
     justify-content: center;
 }
 
 .domus-dashboard-quick-card-icon {
-    width: 18px;
-    height: 18px;
+    width: 27px;
+    height: 27px;
     filter: brightness(0) saturate(100%) invert(19%) sepia(32%) saturate(1666%) hue-rotate(174deg) brightness(93%) contrast(88%);
 }
 
@@ -3479,6 +3652,27 @@
         grid-template-columns: 1fr;
     }
 
+    .domus-unit-overview-card .domus-overview-media {
+        padding-right: 18px;
+    }
+
+    .domus-unit-overview-card .domus-overview-identity,
+    .domus-unit-overview-card .domus-overview-meta,
+    .domus-unit-overview-card .domus-overview-column {
+        padding-left: 18px;
+    }
+
+    .domus-unit-overview-card .domus-overview-meta,
+    .domus-unit-overview-card .domus-overview-stats,
+    .domus-unit-overview-card .domus-overview-column + .domus-overview-column {
+        border-left: 0;
+    }
+
+    .domus-unit-overview-card .domus-overview-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        border-top: var(--domus-border);
+    }
+
     .domus-task-overview-card {
         grid-template-columns: 1fr;
         padding-right: 0;
@@ -3510,6 +3704,15 @@
 }
 
 @media (max-width: 560px) {
+    .domus-unit-overview-card .domus-overview-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .domus-unit-overview-card .domus-overview-column + .domus-overview-column {
+        border-left: 0;
+        border-top: var(--domus-border);
+    }
+
     .domus-panel-row.domus-panel-row-thirds {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -3928,6 +4131,10 @@
     background-image: url(../img/add.svg);
 }
 
+.domus-icon-info {
+    background-image: url(../img/details.svg);
+}
+
 .domus-icon-add-child {
     background-image: url(../img/addChild.svg);
 }
@@ -4025,8 +4232,23 @@
         grid-template-columns: 1fr;
     }
 
+    .domus-unit-landlord-panels .domus-unit-upcoming-panel,
+    .domus-unit-landlord-panels .domus-unit-documents-panel,
+    .domus-unit-landlord-panels .domus-unit-action-log-panel {
+        height: auto;
+        min-height: 0;
+    }
+
     .domus-panel-half {
         width: 100%;
+    }
+
+    .domus-dashboard-panel-row .domus-upcoming-card-shell {
+        max-height: none;
+    }
+
+    .domus-dashboard-panel-row .domus-upcoming-card-shell .domus-panel-body {
+        overflow-y: visible;
     }
 
     .domus-analytics-layout {

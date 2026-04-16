@@ -11,6 +11,7 @@ This repository is a Nextcloud app; follow the existing design documents when ma
 - Add now strings to the existing language files.
 - Keep the main layout structure (`app-navigation`, `app-content`, `app-sidebar`) intact unless a design document explicitly says otherwise.
 - Avoid adding build tooling (e.g., webpack) or external Composer dependencies; stick to vanilla JS and Nextcloud-provided services.
+- Do not use ILogger. It is deprecated in favor of Psr\Log\LoggerInterface
 
 ## Testing and validation
 - There are no automated tests configured; manually verify affected UI or endpoints as appropriate and describe what you checked in your summary.

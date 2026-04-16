@@ -103,6 +103,14 @@ class StatisticCalculations {
             ],
             ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2500', 'visible' => false],
             [
+                'key' => 'gwb',
+                'label' => 'Gross profit',
+                'rule' => [
+                    ['op' => 'sub', 'args' => ['rent', 'hgnu']],
+                    ['op' => 'sub', 'args' => ['prev', 'zinsen']],
+                ],
+            ],
+            [
                 'key' => 'abschr',
                 'label' => 'Abschr. & sonstige',
                 'rule' => [
@@ -119,14 +127,6 @@ class StatisticCalculations {
                 ],
                 'visible' => false,
             ],
-            [
-                'key' => 'gwb',
-                'label' => 'Gross profit',
-                'rule' => [
-                    ['op' => 'sub', 'args' => ['rent', 'hgnu']],
-                    ['op' => 'sub', 'args' => ['prev', 'zinsen']],
-                ],
-            ],
 			[
 				'key' => 'gwn',
 				'label' => 'Gewinn Netto',
@@ -137,9 +137,9 @@ class StatisticCalculations {
 			],
             [
                 'key' => 'netRentab',
-                'label' => 'Rentability (gross)',
+                'label' => 'Rentability (net)',
                 'rule' => [
-                    ['op' => 'div', 'args' => ['gwb', '3000']],
+                    ['op' => 'div', 'args' => ['gwn', '3000']],
                 ],
                 'format' => 'percentage',
             ],

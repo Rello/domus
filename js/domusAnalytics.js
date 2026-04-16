@@ -23,7 +23,7 @@
                 '</option>'
             )).join('');
             const emptyState = options.length === 0
-                ? '<div class="domus-analytics-empty">' + Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Accounts') })) + '</div>'
+                ? '<div class="domus-analytics-empty">' + Domus.UI.buildEmptyStateAction() + '</div>'
                 : '';
             const propertyFilter = Domus.Role.isBuildingMgmtView()
                 ? '<label class="domus-analytics-filter domus-analytics-property-filter">' +
@@ -160,7 +160,7 @@
             if (!years.length) {
                 destroyChart();
                 if (status) {
-                    status.textContent = t('domus', 'No analytics data found.');
+                    status.textContent = t('domus', 'No entries available.');
                 }
                 return;
             }

@@ -6,6 +6,7 @@ use OCA\Domus\Db\DistributionKey;
 use OCA\Domus\Db\DistributionKeyMapper;
 use OCA\Domus\Db\DistributionKeyUnit;
 use OCA\Domus\Db\DistributionKeyUnitMapper;
+use OCA\Domus\Db\TaskTemplateMapper;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
@@ -19,8 +20,11 @@ class DemoContentService {
         private TaskService $taskService,
         private BookingService $bookingService,
         private BookingYearService $bookingYearService,
+        private WorkflowRunService $workflowRunService,
+        private ActionLogService $actionLogService,
         private DistributionKeyMapper $distributionKeyMapper,
         private DistributionKeyUnitMapper $distributionKeyUnitMapper,
+        private TaskTemplateMapper $taskTemplateMapper,
         private IDBConnection $connection,
         private IL10N $l10n,
     ) {
@@ -46,6 +50,10 @@ class DemoContentService {
     private function createLandlordDemoContent(string $userId, string $role): array {
         $unit = $this->unitService->createUnit([
             'label' => $this->l10n->t('Demo apartment'),
+            'street' => $this->l10n->t('Market Street 12'),
+            'zip' => '12345',
+            'city' => $this->l10n->t('Sampletown'),
+            'country' => 'DE',
             'unitNumber' => 'A-101',
             'livingArea' => '72',
             'unitType' => $this->l10n->t('Apartment'),
@@ -91,8 +99,11 @@ class DemoContentService {
             'partnerId' => $facilities->getId(),
         ], $userId, $role);
 
+        $this->createDemoCompletedTenancy($unit->getId(), $userId, $role);
         $this->createDemoTask($unit->getId(), $userId);
+        $this->startDemoYearEndProcess($unit->getId(), $userId);
         $this->createDemoBookings($userId, ['unitId' => $unit->getId()], $unit->getId());
+        $this->createDemoActionLogs($userId, 'unit', $unit->getId(), $tenant->getId());
 
         return [
             'unitId' => $unit->getId(),
@@ -115,6 +126,10 @@ class DemoContentService {
         $unit = $this->unitService->createUnit([
             'propertyId' => $property->getId(),
             'label' => $this->l10n->t('Demo unit'),
+            'street' => $this->l10n->t('Harbor Street 7'),
+            'zip' => '54321',
+            'city' => $this->l10n->t('Sampletown'),
+            'country' => 'DE',
             'unitNumber' => 'B-12',
             'livingArea' => '68',
             'unitType' => $this->l10n->t('Apartment'),
@@ -162,8 +177,10 @@ class DemoContentService {
         ], $userId, $role);
 
         $this->createDemoTask($unit->getId(), $userId);
+        $this->startDemoYearEndProcess($unit->getId(), $userId);
         $distributionKeyIds = $this->createPropertyDistributions($property->getId(), $unit->getId(), $userId);
         $this->createPropertyDemoBookings($userId, $property->getId(), $distributionKeyIds);
+        $this->createDemoActionLogs($userId, 'property', $property->getId(), $unit->getId(), 'unit');
 
         return [
             'propertyId' => $property->getId(),
@@ -173,104 +190,146 @@ class DemoContentService {
         ];
     }
 
+    private function createDemoCompletedTenancy(int $unitId, string $userId, string $role): void {
+        $formerTenant = $this->partnerService->createPartner([
+            'partnerType' => 'tenant',
+            'name' => $this->l10n->t('Former demo renter'),
+            'street' => $this->l10n->t('Market Street 12'),
+            'zip' => '12345',
+            'city' => $this->l10n->t('Sampletown'),
+            'email' => 'former-renter@example.com',
+            'phone' => '+49 30 1234555',
+            'notes' => $this->l10n->t('Historical tenant for older demo years.'),
+        ], $userId, $role);
+
+        $currentYear = (int)(new \DateTimeImmutable('today'))->format('Y');
+        $startDate = sprintf('%d-01-01', $currentYear - 4);
+        $endDate = sprintf('%d-12-31', $currentYear - 2);
+
+        $this->tenancyService->createTenancy([
+            'unitId' => $unitId,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'baseRent' => '790',
+            'serviceCharge' => '145',
+            'deposit' => '1580',
+            'conditions' => $this->l10n->t('Completed tenancy used for historical demo timelines.'),
+            'partnerIds' => [$formerTenant->getId()],
+        ], $userId, $role);
+    }
+
     private function createDemoTask(int $unitId, string $userId): void {
-        $dueDate = (new \DateTimeImmutable('+14 days'))->format('Y-m-d');
+        $dueDate = (new \DateTimeImmutable('+7 days'))->format('Y-m-d');
+        $titles = [
+            $this->l10n->t('Schedule gutter cleaning'),
+            $this->l10n->t('Check smoke detectors'),
+            $this->l10n->t('Review annual service contracts'),
+            $this->l10n->t('Prepare tenant information letter'),
+        ];
+        $descriptions = [
+            $this->l10n->t('Coordinate with vendors and confirm appointment windows.'),
+            $this->l10n->t('Schedule the annual safety inspection for the unit.'),
+            $this->l10n->t('Verify rates and renewal dates before approving next cycle.'),
+            $this->l10n->t('Draft and send the yearly update to all tenants.'),
+        ];
+        $randomIndex = random_int(0, count($titles) - 1);
+
         $this->taskService->createTask(
             'unit',
             $unitId,
-            $this->l10n->t('Check smoke detectors'),
-            $this->l10n->t('Schedule the annual safety inspection for the unit.'),
+            $titles[$randomIndex],
+            $descriptions[$randomIndex],
             $dueDate,
+            $userId,
+        );
+    }
+
+    private function startDemoYearEndProcess(int $unitId, string $userId): void {
+        $template = $this->taskTemplateMapper->findByKey('year_end');
+        if (!$template || $template->getId() === null) {
+            return;
+        }
+
+        $lastClosedYear = (int)(new \DateTimeImmutable('today'))->format('Y') - 1;
+        $this->workflowRunService->startWorkflowRun(
+            'unit',
+            $unitId,
+            (int)$template->getId(),
+            $lastClosedYear,
+            $this->l10n->t('Year End %s', [$lastClosedYear]),
             $userId,
         );
     }
 
     private function createDemoBookings(string $userId, array $relation, int $unitId): void {
         $currentYear = (int)(new \DateTimeImmutable('today'))->format('Y');
-        $previousYear = $currentYear - 1;
+        $years = [
+            $currentYear - 4,
+            $currentYear - 3,
+            $currentYear - 2,
+            $currentYear - 1,
+            $currentYear,
+        ];
         $bookings = [
             [
                 'account' => 2000,
                 'monthDay' => '01-15',
-                'amounts' => [
-                    'current' => '320.50',
-                    'previous' => '315.50',
-                ],
+                'baseAmount' => 305.50,
                 'description' => $this->l10n->t('Heating and water maintenance'),
             ],
             [
                 'account' => 2100,
                 'monthDay' => '02-10',
-                'amounts' => [
-                    'current' => '110.00',
-                    'previous' => '105.00',
-                ],
+                'baseAmount' => 95.00,
                 'description' => $this->l10n->t('Elevator service contract'),
             ],
             [
                 'account' => 2200,
                 'monthDay' => '03-05',
-                'amounts' => [
-                    'current' => '150.00',
-                    'previous' => '145.00',
-                ],
+                'baseAmount' => 135.00,
                 'description' => $this->l10n->t('Reserve fund contribution'),
             ],
             [
                 'account' => 2300,
                 'monthDay' => '04-08',
-                'amounts' => [
-                    'current' => '85.00',
-                    'previous' => '80.00',
-                ],
+                'baseAmount' => 70.00,
                 'description' => $this->l10n->t('Minor repairs and supplies'),
             ],
             [
                 'account' => 2400,
                 'monthDay' => '05-20',
-                'amounts' => [
-                    'current' => '240.00',
-                    'previous' => '235.00',
-                ],
+                'baseAmount' => 225.00,
                 'description' => $this->l10n->t('Quarterly property tax'),
             ],
             [
                 'account' => 2600,
                 'monthDay' => '06-12',
-                'amounts' => [
-                    'current' => '300.00',
-                    'previous' => '295.00',
-                ],
+                'baseAmount' => 285.00,
                 'description' => $this->l10n->t('Annual depreciation booking'),
             ],
             [
                 'account' => 2700,
                 'monthDay' => '07-18',
-                'amounts' => [
-                    'current' => '65.00',
-                    'previous' => '60.00',
-                ],
+                'baseAmount' => 50.00,
                 'description' => $this->l10n->t('Tax advisor fees'),
             ],
         ];
 
-        foreach ($bookings as $booking) {
-            $this->bookingService->createBooking(array_merge($relation, [
-                'account' => $booking['account'],
-                'date' => $previousYear . '-' . $booking['monthDay'],
-                'amount' => $booking['amounts']['previous'],
-                'description' => $booking['description'],
-            ]), $userId);
+        foreach ($years as $yearIndex => $year) {
+            foreach ($bookings as $booking) {
+                $amount = (float)$booking['baseAmount'] + ($yearIndex * 5.0);
+                $this->bookingService->createBooking(array_merge($relation, [
+                    'account' => $booking['account'],
+                    'date' => $year . '-' . $booking['monthDay'],
+                    'amount' => number_format($amount, 2, '.', ''),
+                    'description' => $booking['description'],
+                ]), $userId);
+            }
 
-            $this->bookingService->createBooking(array_merge($relation, [
-                'account' => $booking['account'],
-                'date' => $currentYear . '-' . $booking['monthDay'],
-                'amount' => $booking['amounts']['current'],
-                'description' => $booking['description'],
-            ]), $userId);
+            if ($year < $currentYear) {
+                $this->bookingYearService->closeYear($year, null, $unitId, $userId);
+            }
         }
-
-        $this->bookingYearService->closeYear($previousYear, null, $unitId, $userId);
     }
 
     /**
@@ -357,6 +416,38 @@ class DemoContentService {
             $this->bookingService->createBooking(array_merge($booking, [
                 'propertyId' => $propertyId,
             ]), $userId);
+        }
+    }
+
+    private function createDemoActionLogs(string $userId, string $entityType, int $entityId, int $linkedEntityId, string $linkedEntityType = 'partner'): void {
+        $entries = [
+            [
+                'type' => 'note',
+                'title' => $this->l10n->t('Initial onboarding call completed'),
+                'data' => $this->l10n->t('Walked through key contacts and the current maintenance backlog.'),
+            ],
+            [
+                'type' => 'email',
+                'title' => $this->l10n->t('Shared annual planning reminder'),
+                'data' => $this->l10n->t('Sent timeline and responsibilities for the upcoming settlement period.'),
+            ],
+            [
+                'type' => 'event',
+                'title' => $this->l10n->t('Scheduled property walkthrough'),
+                'data' => $this->l10n->t('Added an internal walkthrough appointment to validate open points.'),
+            ],
+            [
+                'type' => 'call',
+                'title' => $this->l10n->t('Follow-up call logged'),
+                'data' => $this->l10n->t('Confirmed that all required documents are ready for processing.'),
+            ],
+        ];
+
+        foreach ($entries as $entry) {
+            $this->actionLogService->createManualEntry($userId, $entityType, $entityId, array_merge($entry, [
+                'linkedEntityType' => $linkedEntityType,
+                'linkedEntityId' => $linkedEntityId,
+            ]));
         }
     }
 }

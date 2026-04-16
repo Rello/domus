@@ -7,8 +7,27 @@ use OCP\DB\Exception;
 use OCP\IDBConnection;
 
 class TaskMapper extends QBMapper {
+    private const SELECT_COLUMNS = [
+        'id',
+        'entity_type',
+        'entity_id',
+        'title',
+        'description',
+        'status',
+        'due_date',
+        'closed_at',
+        'closed_by',
+        'created_by',
+        'created_at',
+        'updated_at',
+    ];
+
     public function __construct(IDBConnection $db) {
         parent::__construct($db, 'domus_tasks', Task::class);
+    }
+
+    private function applyTaskSelect($qb): void {
+        $qb->select(...self::SELECT_COLUMNS);
     }
 
     /**
@@ -16,8 +35,8 @@ class TaskMapper extends QBMapper {
      */
     public function findByEntity(string $entityType, int $entityId, ?string $status = null): array {
         $qb = $this->db->getQueryBuilder();
-        $qb->select('*')
-            ->from($this->getTableName())
+        $this->applyTaskSelect($qb);
+        $qb->from($this->getTableName())
             ->where($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)))
             ->orderBy('created_at', 'DESC');
@@ -34,8 +53,8 @@ class TaskMapper extends QBMapper {
      */
     public function findById(int $id): ?Task {
         $qb = $this->db->getQueryBuilder();
-        $qb->select('*')
-            ->from($this->getTableName())
+        $this->applyTaskSelect($qb);
+        $qb->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
             ->setMaxResults(1);
 
@@ -66,8 +85,8 @@ class TaskMapper extends QBMapper {
         if ($conditions === []) {
             return [];
         }
-        $qb->select('*')
-            ->from($this->getTableName())
+        $this->applyTaskSelect($qb);
+        $qb->from($this->getTableName())
             ->where(call_user_func_array([$qb->expr(), 'orX'], $conditions))
             ->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('open')))
             ->orderBy('due_date', 'ASC');

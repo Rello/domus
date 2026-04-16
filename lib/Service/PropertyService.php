@@ -139,6 +139,7 @@ class PropertyService {
 
         $this->partnerRelMapper->deleteForRelation('property', $property->getId(), $userId);
         $this->actionLogMapper->deleteForEntity($userId, 'property', $property->getId());
+        $this->actionLogMapper->deleteForLinkedEntity($userId, 'property', $property->getId());
         $this->documentLinkMapper->deleteForEntity($userId, 'property', $property->getId());
         $workflowRuns = $this->workflowRunMapper->findByEntity('property', $property->getId());
         foreach ($workflowRuns as $run) {
@@ -164,6 +165,8 @@ class PropertyService {
             'tasks' => $this->taskMapper->countByEntity('property', $property->getId()),
             'taskSteps' => $this->taskStepMapper->countByEntity('property', $property->getId()),
             'workflowRuns' => count($this->workflowRunMapper->findByEntity('property', $property->getId())),
+            'documentLinks' => $this->documentLinkMapper->countForEntity($userId, 'property', $property->getId()),
+            'actionLogs' => $this->actionLogMapper->countAffectedByEntity($userId, 'property', $property->getId()),
             'distributionKeys' => count($distributionKeys),
             'distributionValues' => $distributionValues,
             'partnerRelations' => count($this->partnerRelMapper->findForProperty($property->getId(), $userId)),

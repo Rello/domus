@@ -17,7 +17,7 @@ use Psr\Log\LoggerInterface;
 
 class ActionLogService {
     private const OWNER_ENTITY_TYPES = ['property', 'unit'];
-    private const LINKED_ENTITY_TYPES = ['document', 'property', 'unit', 'partner', 'tenancy', 'booking'];
+    private const LINKED_ENTITY_TYPES = ['property', 'unit', 'partner'];
     private const TYPE_ALIASES = [
         'call',
         'email',
@@ -106,6 +106,23 @@ class ActionLogService {
         $entry->setUpdatedAt(time());
 
         return $this->hydrateEntry($userId, $this->actionLogMapper->update($entry));
+    }
+
+    public function deleteEntry(string $userId, int $id): void {
+        $entry = $this->actionLogMapper->findForUser($id, $userId);
+        if (!$entry) {
+            throw new \RuntimeException($this->l10n->t('Action log entry not found.'));
+        }
+
+        if ($entry->getSource() !== 'manual') {
+            throw new \RuntimeException($this->l10n->t('Only manual action log entries can be deleted.'));
+        }
+
+        $entityType = (string)$entry->getEntityType();
+        $entityId = (int)$entry->getEntityId();
+        $this->assertOwnerEntity($userId, $entityType, $entityId);
+
+        $this->actionLogMapper->delete($entry);
     }
 
     private function createEntry(string $userId, string $entityType, int $entityId, array $payload, string $source, string $createdBy): ActionLog {

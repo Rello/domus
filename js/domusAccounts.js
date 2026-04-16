@@ -126,9 +126,7 @@
                 if (level > 0) {
                     return '';
                 }
-                return '<div class="domus-empty">' +
-                    Domus.Utils.escapeHtml(t('domus', 'No {entity} available.', { entity: t('domus', 'Accounts') })) +
-                    '</div>';
+                return Domus.UI.buildEmptyStateAction();
             }
             const items = nodes.map(node => buildAccountNode(node, level)).join('');
             return '<ul class="domus-account-tree">' + items + '</ul>';
