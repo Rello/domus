@@ -26,7 +26,7 @@ Built for teams who want clear rental workflows without giving up the privacy an
     <licence>agpl</licence>
     <author>Marcel Scherello</author>
     <namespace>Domus</namespace>
-    <category>productivity</category>
+    <category>organization</category>
     <bugs>https://github.com/Rello/domus/issues</bugs>
     <screenshot>
         https://raw.githubusercontent.com/Rello/domus/master/screenshots/logo.png
