@@ -237,7 +237,7 @@
                     }
 
                     const modal = Domus.UI.openModal({
-                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Action log entry') }),
+                        title: t('domus', 'Add log entry'),
                         content: buildCreateForm(context)
                     });
 

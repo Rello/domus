@@ -3,28 +3,48 @@
 <desc id="desc">Default illustration for a unit without its own picture.</desc>
 <defs>
 <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-<stop offset="0%" stop-color="#eef4f0"/>
-<stop offset="55%" stop-color="#b5c5bb"/>
-<stop offset="100%" stop-color="#6e8478"/>
+<stop offset="0%" stop-color="#fff3df"/>
+<stop offset="38%" stop-color="#d7e5f1"/>
+<stop offset="100%" stop-color="#6f92b7"/>
 </linearGradient>
 <linearGradient id="frame" x1="0%" y1="0%" x2="0%" y2="100%">
-<stop offset="0%" stop-color="#fbfdfb"/>
-<stop offset="100%" stop-color="#e2ebe5"/>
+<stop offset="0%" stop-color="#ffffff"/>
+<stop offset="100%" stop-color="#e6edf5"/>
 </linearGradient>
 <linearGradient id="wall" x1="0%" y1="0%" x2="100%" y2="100%">
-<stop offset="0%" stop-color="#e1ebe4"/>
-<stop offset="100%" stop-color="#c1d0c6"/>
+<stop offset="0%" stop-color="#edf3f9"/>
+<stop offset="100%" stop-color="#cad9e7"/>
+</linearGradient>
+<linearGradient id="floor" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="#2a5b87"/>
+<stop offset="100%" stop-color="#12426e"/>
+</linearGradient>
+<linearGradient id="accentPanel" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#5f89b0"/>
+<stop offset="55%" stop-color="#2f5f8d"/>
+<stop offset="100%" stop-color="#163f67"/>
+</linearGradient>
+<linearGradient id="plant" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="#9bc5c0"/>
+<stop offset="100%" stop-color="#5d8f8a"/>
 </linearGradient>
 </defs>
 <rect width="400" height="260" rx="28" fill="url(#bg)"/>
-<rect width="400" height="260" rx="28" fill="#4B5E53" opacity="0.08"/>
-<path d="M0 212c54-15 117-24 182-21 72 4 139 23 218 55v14H0z" fill="#566a5f" opacity="0.14"/>
-<rect x="60" y="72" width="280" height="130" rx="16" fill="url(#frame)"/>
-<rect x="86" y="96" width="228" height="82" rx="10" fill="url(#wall)"/>
-<rect x="104" y="114" width="62" height="48" rx="8" fill="#ffffff"/>
-<rect x="178" y="114" width="62" height="48" rx="8" fill="#ffffff"/>
-<rect x="252" y="114" width="44" height="88" rx="8" fill="#9aaca1"/>
-<path d="M92 194h216" stroke="#4B5E53" stroke-width="10" stroke-linecap="round"/>
-<circle cx="224" cy="160" r="5" fill="#4B5E53"/>
-<path d="M86 96h228v18H86z" fill="#ffffff" opacity="0.3"/>
+<rect width="400" height="260" rx="28" fill="#12426e" opacity="0.08"/>
+<circle cx="330" cy="56" r="58" fill="#f2c983" opacity="0.16"/>
+<circle cx="78" cy="48" r="34" fill="#8cbab2" opacity="0.12"/>
+<path d="M0 212c54-15 117-24 182-21 72 4 139 23 218 55v14H0z" fill="#12426e" opacity="0.14"/>
+<rect x="54" y="68" width="292" height="138" rx="18" fill="url(#frame)"/>
+<rect x="80" y="92" width="240" height="90" rx="12" fill="url(#wall)"/>
+<rect x="104" y="112" width="58" height="46" rx="8" fill="url(#accentPanel)"/>
+<rect x="176" y="112" width="58" height="46" rx="8" fill="#ffffff"/>
+<rect x="248" y="112" width="48" height="78" rx="8" fill="#8ea8c2"/>
+<rect x="252" y="156" width="12" height="34" rx="4" fill="#eef3f8"/>
+<path d="M146 182c0-10 8-18 18-18s18 8 18 18" fill="none" stroke="#8cbab2" stroke-width="8" stroke-linecap="round"/>
+<rect x="136" y="176" width="28" height="14" rx="6" fill="url(#plant)"/>
+<path d="M112 118h42" stroke="#8fb1cf" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+<path d="M92 194h216" stroke="url(#floor)" stroke-width="10" stroke-linecap="round"/>
+<path d="M86 92h228v16H86z" fill="#ffffff" opacity="0.42"/>
+<circle cx="220" cy="152" r="5" fill="#12426e"/>
+<path d="M286 112v78" stroke="#ffffff" stroke-opacity="0.4" stroke-width="4" stroke-linecap="round"/>
 </svg>

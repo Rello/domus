@@ -7,6 +7,7 @@ use OCA\Domus\Db\Property;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
+use OCP\App\IAppManager;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -32,6 +33,7 @@ class EntityImageService {
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
         private IRootFolder $rootFolder,
+        private IAppManager $appManager,
         private IURLGenerator $urlGenerator,
         private IL10N $l10n,
         private LoggerInterface $logger,
@@ -97,6 +99,43 @@ class EntityImageService {
         }
 
         $file = $this->storeUploadedImage($userId, $unit->getDocumentPath(), self::UNIT_FILE_BASENAME, $uploadedFile, $unit->getImageFileId());
+        $unit->setImageFileId($file->getId());
+        $unit->setImageFileName($file->getName());
+        $unit->setUpdatedAt(time());
+        $unit = $this->unitMapper->update($unit);
+        $this->enrichUnit($unit);
+
+        return $unit;
+    }
+
+    public function applyBundledUnitImage(int $id, string $userId, string $assetRelativePath): Unit {
+        $unit = $this->unitMapper->findForUser($id, $userId);
+        if (!$unit) {
+            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+        }
+
+        $appPath = rtrim($this->appManager->getAppPath(Application::APP_ID), '/');
+        if ($appPath === '') {
+            throw new \RuntimeException($this->l10n->t('Unable to resolve app path.'));
+        }
+
+        $sourcePath = $appPath . '/' . ltrim($assetRelativePath, '/');
+        if (!is_readable($sourcePath)) {
+            throw new \RuntimeException($this->l10n->t('Bundled image file not found.'));
+        }
+
+        $mimeType = function_exists('mime_content_type') ? @mime_content_type($sourcePath) : null;
+        $file = $this->storeUploadedImage(
+            $userId,
+            $unit->getDocumentPath(),
+            self::UNIT_FILE_BASENAME,
+            [
+                'tmp_name' => $sourcePath,
+                'name' => basename($sourcePath),
+                'type' => is_string($mimeType) ? $mimeType : 'image/png',
+            ],
+            $unit->getImageFileId(),
+        );
         $unit->setImageFileId($file->getId());
         $unit->setImageFileName($file->getName());
         $unit->setUpdatedAt(time());

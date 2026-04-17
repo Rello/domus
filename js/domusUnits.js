@@ -8,6 +8,8 @@
         let kpiChartInstances = [];
         let kpiPartnerNameFitRafId = null;
         let kpiPartnerNameResizeBound = false;
+        let unitPanelHeightRafId = null;
+        let unitPanelHeightEventsBound = false;
         const statisticsPaginationState = {};
         const statisticsTablePageSize = 10;
         const listState = {
@@ -604,6 +606,59 @@
                     scheduleKpiPartnerNameFit();
                 }
             });
+        }
+
+        function applyUnitPanelHeights() {
+            const panelRow = document.querySelector('.domus-unit-landlord-panels');
+            if (!panelRow) {
+                return;
+            }
+            const panelColumns = panelRow.querySelectorAll('.domus-unit-upcoming-panel, .domus-unit-panel-column');
+            if (!panelColumns.length) {
+                return;
+            }
+            if (window.matchMedia('(max-width: 1000px)').matches) {
+                panelColumns.forEach(column => column.style.removeProperty('--domus-unit-panel-height'));
+                return;
+            }
+            const viewportHeight = Math.floor(window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 0);
+            const bottomGap = 20;
+            panelColumns.forEach(column => {
+                const rect = column.getBoundingClientRect();
+                const availableHeight = Math.floor(viewportHeight - rect.top - bottomGap);
+                if (availableHeight <= 0) {
+                    column.style.removeProperty('--domus-unit-panel-height');
+                    return;
+                }
+                const dynamicHeight = Math.min(430, Math.max(220, availableHeight));
+                column.style.setProperty('--domus-unit-panel-height', `${dynamicHeight}px`);
+            });
+        }
+
+        function scheduleUnitPanelHeightSync() {
+            if (unitPanelHeightRafId !== null) {
+                cancelAnimationFrame(unitPanelHeightRafId);
+            }
+            unitPanelHeightRafId = requestAnimationFrame(() => {
+                unitPanelHeightRafId = null;
+                applyUnitPanelHeights();
+            });
+        }
+
+        function bindUnitPanelHeightEvents() {
+            if (unitPanelHeightEventsBound) {
+                return;
+            }
+            unitPanelHeightEventsBound = true;
+            const onViewportChange = () => {
+                if (Domus.state.currentView === 'unitDetail') {
+                    scheduleUnitPanelHeightSync();
+                }
+            };
+            window.addEventListener('resize', onViewportChange, { passive: true });
+            window.addEventListener('scroll', onViewportChange, { passive: true });
+            window.visualViewport?.addEventListener('resize', onViewportChange, { passive: true });
+            window.visualViewport?.addEventListener('scroll', onViewportChange, { passive: true });
         }
 
         function buildKpiDetailPanel(title, body, action) {
@@ -1742,6 +1797,7 @@
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
                         iconClass: 'domus-icon-add'
                     } : null;
+                    const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentsHeaderAction);
                     const actionLogHeader = Domus.UI.buildSectionHeader(t('domus', 'Action log'), {
                         id: 'domus-unit-action-log-create',
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Action log entry') }),
@@ -1817,8 +1873,9 @@
                         '</div>'
                         : '';
                     const documentsPanelDefault = useKpiLayout
-                        ? '<div class="domus-panel domus-unit-default-panel domus-unit-documents-panel">' +
-                        Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentsHeaderAction) +
+                        ? '<div class="domus-unit-panel-column domus-unit-documents-column">' +
+                        documentsHeader +
+                        '<div class="domus-panel domus-unit-default-panel domus-unit-documents-panel domus-unit-panel-no-header">' +
                         '<div class="domus-panel-body">' +
                         Domus.Documents.renderLatestList('unit', id, {
                             defer: true,
@@ -1836,10 +1893,12 @@
                             }
                         }) +
                         '</div>' +
+                        '</div>' +
                         '</div>'
                         : '';
-                    const actionLogPanel = '<div class="domus-panel domus-unit-default-panel domus-unit-action-log-panel">' +
+                    const actionLogPanel = '<div class="domus-unit-panel-column domus-unit-action-log-column">' +
                         actionLogHeader +
+                        '<div class="domus-panel domus-unit-default-panel domus-unit-action-log-panel domus-unit-panel-no-header">' +
                         '<div class="domus-panel-body">' +
                         Domus.ActionLog.renderList('unit', id, {
                             containerId: `domus-unit-action-log-${id}`,
@@ -1847,6 +1906,7 @@
                             entityLabel: unit?.label || '',
                             onSaved: () => renderDetail(id)
                         }) +
+                        '</div>' +
                         '</div>' +
                         '</div>';
 
@@ -1948,6 +2008,8 @@
                     Domus.Bookings.bindInlineTables();
                     Domus.UI.bindActionMenus();
                     Domus.UI.bindCollapsibles();
+                    bindUnitPanelHeightEvents();
+                    scheduleUnitPanelHeightSync();
                     if (!useKpiLayout) {
                         bindYearStatusAction(id, statistics);
                     }

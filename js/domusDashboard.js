@@ -30,7 +30,7 @@
         function bindDashboard(data) {
             destroyOccupancyChart();
             if (!Domus.Role.isTenantView()) {
-                bindQuickActions();
+                bindQuickActions(data);
             }
             if (!Domus.Role.isBuildingMgmtView() && !Domus.Role.isTenantView()) {
                 renderOccupancyChart(data?.occupancy || null);
@@ -54,26 +54,30 @@
                 '</div>';
         }
 
-        function buildQuickActionsPanel() {
+        function buildQuickActionsPanel(options = {}) {
+            const isEmptyState = options.isEmptyState === true;
             const quickCards = [
-                buildQuickUploadCard(),
+                buildQuickUploadCard({ disabled: isEmptyState }),
                 {
                     id: 'domus-dashboard-action-log-create',
                     iconClass: 'domus-icon-action-custom',
-                    title: t('domus', 'Create action log entry'),
-                    copy: t('domus', 'Capture a quick note or event')
+                    title: t('domus', 'Add log entry'),
+                    copy: t('domus', 'Capture a quick note or event'),
+                    disabled: isEmptyState
                 },
                 {
                     id: 'domus-dashboard-unit-create',
                     iconClass: 'domus-icon-unit',
-                    title: t('domus', 'Add unit'),
-                    copy: t('domus', 'Create a new rentable object')
+                    title: isEmptyState ? t('domus', 'Add first unit') : t('domus', 'Add unit'),
+                    copy: t('domus', 'Create a new rentable object'),
+                    prominent: isEmptyState
                 },
                 {
                     id: 'domus-dashboard-partner-create',
                     iconClass: 'domus-icon-partner',
                     title: t('domus', 'Add partner'),
-                    copy: t('domus', 'Create a contact or stakeholder')
+                    copy: t('domus', 'Create a contact or stakeholder'),
+                    disabled: isEmptyState
                 }
             ].map(item => typeof item === 'string' ? item : buildQuickActionCard(item)).join('');
 
@@ -85,9 +89,15 @@
                 '</div>';
         }
 
-        function buildQuickUploadCard() {
-            return '<div class="domus-dashboard-quick-card domus-dashboard-quick-card-upload" id="domus-dashboard-quick-upload" role="button" tabindex="0" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Upload document. Add new file or drop here')) + '">' +
-                '<input type="file" class="domus-dashboard-quick-upload-input" id="domus-dashboard-quick-upload-input" aria-hidden="true" tabindex="-1">' +
+        function buildQuickUploadCard(options = {}) {
+            const disabled = options.disabled === true;
+            const cardClassName = 'domus-dashboard-quick-card domus-dashboard-quick-card-upload' + (disabled ? ' domus-dashboard-quick-card-disabled' : '');
+            const roleAttr = disabled ? '' : ' role="button" tabindex="0"';
+            const disabledAttr = disabled ? ' aria-disabled="true"' : '';
+            const inputHtml = disabled ? '' : '<input type="file" class="domus-dashboard-quick-upload-input" id="domus-dashboard-quick-upload-input" aria-hidden="true" tabindex="-1">';
+
+            return '<div class="' + Domus.Utils.escapeHtml(cardClassName) + '" id="domus-dashboard-quick-upload"' + roleAttr + disabledAttr + ' aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Upload document. Add new file or drop here')) + '">' +
+                inputHtml +
                 '<span class="domus-dashboard-quick-card-main">' +
                 '<span class="domus-dashboard-quick-card-icon-wrap">' +
                 '<span class="domus-icon domus-icon-document domus-dashboard-quick-card-icon" aria-hidden="true"></span>' +
@@ -102,7 +112,15 @@
         }
 
         function buildQuickActionCard(action) {
-            return '<div class="domus-dashboard-quick-card" id="' + Domus.Utils.escapeHtml(action.id) + '" role="button" tabindex="0" aria-label="' + Domus.Utils.escapeHtml(action.title) + '">' +
+            const disabled = action.disabled === true;
+            const prominent = action.prominent === true;
+            const cardClassName = 'domus-dashboard-quick-card' +
+                (disabled ? ' domus-dashboard-quick-card-disabled' : '') +
+                (prominent ? ' domus-dashboard-quick-card-prominent' : '');
+            const roleAttr = disabled ? '' : ' role="button" tabindex="0"';
+            const disabledAttr = disabled ? ' aria-disabled="true"' : '';
+
+            return '<div class="' + Domus.Utils.escapeHtml(cardClassName) + '" id="' + Domus.Utils.escapeHtml(action.id) + '"' + roleAttr + disabledAttr + ' aria-label="' + Domus.Utils.escapeHtml(action.title) + '">' +
                 '<span class="domus-dashboard-quick-card-main">' +
                 '<span class="domus-dashboard-quick-card-icon-wrap">' +
                 '<span class="domus-icon ' + Domus.Utils.escapeHtml(action.iconClass) + ' domus-dashboard-quick-card-icon" aria-hidden="true"></span>' +
@@ -132,22 +150,31 @@
             });
         }
 
-        function bindQuickActions() {
-            mountQuickUploadDropZone();
+        function bindQuickActions(data) {
+            const hasUnits = Number(data?.unitCount || 0) > 0;
+            const isEmptyState = !hasUnits;
 
-            bindQuickActionTrigger('domus-dashboard-action-log-create', () => {
-                Domus.ActionLog.openCreateModal({
-                    onSaved: () => Domus.Router.navigate('dashboard')
+            if (!isEmptyState) {
+                mountQuickUploadDropZone();
+            }
+
+            if (!isEmptyState) {
+                bindQuickActionTrigger('domus-dashboard-action-log-create', () => {
+                    Domus.ActionLog.openCreateModal({
+                        onSaved: () => Domus.Router.navigate('dashboard')
+                    });
                 });
-            });
+            }
 
             bindQuickActionTrigger('domus-dashboard-unit-create', () => {
                 Domus.Units.openCreateModal({}, () => Domus.Router.navigate('dashboard'));
             });
 
-            bindQuickActionTrigger('domus-dashboard-partner-create', () => {
-                Domus.Partners.openCreateModal({}, () => Domus.Router.navigate('dashboard'));
-            });
+            if (!isEmptyState) {
+                bindQuickActionTrigger('domus-dashboard-partner-create', () => {
+                    Domus.Partners.openCreateModal({}, () => Domus.Router.navigate('dashboard'));
+                });
+            }
         }
 
         function mountQuickUploadDropZone() {
@@ -252,9 +279,14 @@
 
         function buildLandlordDashboard(data) {
             const cards = [
-                { label: t('domus', 'Monthly base rents'), value: data.monthlyBaseRentSum || 0, formatter: Domus.Utils.formatCurrency },
+                {
+                    label: t('domus', 'Monthly base rents'),
+                    value: data.monthlyBaseRentSum || 0,
+                    formatter: value => `€ ${Domus.Utils.formatNumber(Math.round(Number(value) || 0), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                    subline: t('domus', 'Total')
+                },
                 { label: t('domus', 'Overall rentability'), value: data.overallRentability, formatter: value => value === null || value === undefined ? '—' : Domus.Utils.formatPercentage(value), subline: t('domus', 'Current year') },
-                { label: t('domus', 'Units'), value: data.unitCount || 0, link: '#/units' }
+                { label: t('domus', 'Units'), value: data.unitCount || 0, subline: t('domus', 'Active'), link: '#/units' }
             ];
 
             const cardHtml = cards.map(card => {
@@ -327,12 +359,11 @@
 
             const panels = [
                 hasUnits ? buildUpcomingPanel(openTasksTable) : '',
-                buildQuickActionsPanel()
+                buildQuickActionsPanel({ isEmptyState: !hasUnits })
             ].filter(Boolean).join('');
 
             return '<div class="domus-detail domus-dashboard">' +
                 occupancyTile +
-                (!hasUnits ? '<div class="domus-kpi-tiles domus-dashboard-kpi-row">' + cardHtml + '</div>' : '') +
                 (panels ? '<div class="domus-panel-row domus-dashboard-panel-row">' + panels + '</div>' : '') +
                 '</div>';
         }
@@ -450,7 +481,7 @@
 
             const panels = [
                 hasProperties ? buildUpcomingPanel(openTasksTable) : '',
-                buildQuickActionsPanel()
+                buildQuickActionsPanel({ isEmptyState: (data.unitCount || 0) === 0 })
             ].filter(Boolean).join('');
 
             return '<div class="domus-detail domus-dashboard">' +

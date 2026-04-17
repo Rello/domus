@@ -2,15 +2,21 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Db\DistributionKey;
 use OCA\Domus\Db\DistributionKeyMapper;
 use OCA\Domus\Db\DistributionKeyUnit;
 use OCA\Domus\Db\DistributionKeyUnitMapper;
 use OCA\Domus\Db\TaskTemplateMapper;
+use OCA\Domus\Db\UnitMapper;
 use OCP\IDBConnection;
+use OCP\IConfig;
 use OCP\IL10N;
+use Psr\Log\LoggerInterface;
 
 class DemoContentService {
+    private const CONFIG_INITIAL_DEMO_CONTENT_CREATED = 'initialDemoContentCreated';
+
     public function __construct(
         private PropertyService $propertyService,
         private UnitService $unitService,
@@ -20,14 +26,55 @@ class DemoContentService {
         private TaskService $taskService,
         private BookingService $bookingService,
         private BookingYearService $bookingYearService,
+        private UnitMapper $unitMapper,
         private WorkflowRunService $workflowRunService,
         private ActionLogService $actionLogService,
+        private DocumentService $documentService,
+        private EntityImageService $entityImageService,
         private DistributionKeyMapper $distributionKeyMapper,
         private DistributionKeyUnitMapper $distributionKeyUnitMapper,
         private TaskTemplateMapper $taskTemplateMapper,
         private IDBConnection $connection,
+        private IConfig $config,
         private IL10N $l10n,
+        private LoggerInterface $logger,
     ) {
+    }
+
+    public function createInitialDemoContentIfNeeded(string $userId): void {
+        if ($userId === '') {
+            return;
+        }
+
+        try {
+            $hasCreatedDemo = $this->config->getUserValue(
+                $userId,
+                Application::APP_ID,
+                self::CONFIG_INITIAL_DEMO_CONTENT_CREATED,
+                '0',
+            ) === '1';
+            if ($hasCreatedDemo || $this->hasUnits($userId)) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('Failed to evaluate initial demo content preconditions', [
+                'userId' => $userId,
+                'message' => $e->getMessage(),
+            ]);
+            return;
+        }
+
+        $this->config->setUserValue($userId, Application::APP_ID, self::CONFIG_INITIAL_DEMO_CONTENT_CREATED, '1');
+
+        try {
+            $this->createDemoContent($userId, 'landlord');
+        } catch (\Throwable $e) {
+            $this->config->setUserValue($userId, Application::APP_ID, self::CONFIG_INITIAL_DEMO_CONTENT_CREATED, '0');
+            $this->logger->warning('Failed to create initial demo content', [
+                'userId' => $userId,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function createDemoContent(string $userId, string $role): array {
@@ -60,6 +107,7 @@ class DemoContentService {
             'totalCosts' => '200000',
             'notes' => $this->l10n->t('Sample unit used to explore Domus features.'),
         ], $userId, $role);
+        $this->assignDemoApartmentImage($unit->getId(), $userId);
 
         $tenant = $this->partnerService->createPartner([
             'partnerType' => 'tenant',
@@ -103,6 +151,7 @@ class DemoContentService {
         $this->createDemoTask($unit->getId(), $userId);
         $this->startDemoYearEndProcess($unit->getId(), $userId);
         $this->createDemoBookings($userId, ['unitId' => $unit->getId()], $unit->getId());
+        $this->createDemoDocuments($userId, $unit->getId());
         $this->createDemoActionLogs($userId, 'unit', $unit->getId(), $tenant->getId());
 
         return [
@@ -110,6 +159,18 @@ class DemoContentService {
             'tenantId' => $tenant->getId(),
             'facilitiesId' => $facilities->getId(),
         ];
+    }
+
+    private function assignDemoApartmentImage(?int $unitId, string $userId): void {
+        if (!$unitId) {
+            return;
+        }
+
+        $this->entityImageService->applyBundledUnitImage($unitId, $userId, 'img/pictures/apartment.png');
+    }
+
+    private function hasUnits(string $userId): bool {
+        return $this->unitMapper->findByUser($userId) !== [];
     }
 
     private function createBuildingManagementDemoContent(string $userId, string $role): array {
@@ -448,6 +509,32 @@ class DemoContentService {
                 'linkedEntityType' => $linkedEntityType,
                 'linkedEntityId' => $linkedEntityId,
             ]));
+        }
+    }
+
+    private function createDemoDocuments(string $userId, int $unitId): void {
+        $documents = [
+            [
+                'fileName' => 'demo-document-1.txt',
+                'title' => $this->l10n->t('Document #%s', [1]),
+                'content' => $this->l10n->t('Document added.'),
+            ],
+            [
+                'fileName' => 'demo-document-2.txt',
+                'title' => $this->l10n->t('Document #%s', [2]),
+                'content' => $this->l10n->t('Document linked.'),
+            ],
+        ];
+
+        foreach ($documents as $document) {
+            $this->documentService->createContentForTargets(
+                $userId,
+                [['entityType' => 'unit', 'entityId' => $unitId]],
+                $document['fileName'],
+                $document['content'],
+                null,
+                $document['title']
+            );
         }
     }
 }

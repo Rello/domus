@@ -3,33 +3,53 @@
 <desc id="desc">Default illustration for a property without its own picture.</desc>
 <defs>
 <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-<stop offset="0%" stop-color="#edf4ef"/>
-<stop offset="55%" stop-color="#b1c2b8"/>
-<stop offset="100%" stop-color="#6c8276"/>
+<stop offset="0%" stop-color="#fff0dc"/>
+<stop offset="42%" stop-color="#d9e6f1"/>
+<stop offset="100%" stop-color="#6b8eb3"/>
 </linearGradient>
-<linearGradient id="base" x1="0%" y1="0%" x2="100%" y2="0%">
-<stop offset="0%" stop-color="#7f9589"/>
-<stop offset="100%" stop-color="#55695f"/>
+<linearGradient id="roof" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="#2c618f"/>
+<stop offset="100%" stop-color="#12426e"/>
 </linearGradient>
 <linearGradient id="facade" x1="0%" y1="0%" x2="0%" y2="100%">
-<stop offset="0%" stop-color="#fbfdfb"/>
-<stop offset="100%" stop-color="#e1eae4"/>
+<stop offset="0%" stop-color="#ffffff"/>
+<stop offset="100%" stop-color="#e7eef6"/>
 </linearGradient>
 <linearGradient id="window" x1="0%" y1="0%" x2="0%" y2="100%">
-<stop offset="0%" stop-color="#e7efe9"/>
-<stop offset="100%" stop-color="#c7d5cc"/>
+<stop offset="0%" stop-color="#eaf2f9"/>
+<stop offset="100%" stop-color="#c4d5e5"/>
+</linearGradient>
+<linearGradient id="ground" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="#456d94"/>
+<stop offset="100%" stop-color="#244f79"/>
+</linearGradient>
+<linearGradient id="door" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="#6b95bd"/>
+<stop offset="48%" stop-color="#34638f"/>
+<stop offset="100%" stop-color="#12426e"/>
+</linearGradient>
+<linearGradient id="shrub" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#9bc5c0"/>
+<stop offset="100%" stop-color="#5c8f88"/>
 </linearGradient>
 </defs>
 <rect width="400" height="260" rx="28" fill="url(#bg)"/>
-<rect width="400" height="260" rx="28" fill="#4B5E53" opacity="0.08"/>
-<path d="M0 206c62-18 123-26 189-20 60 5 130 20 211 52v22H0z" fill="#54685d" opacity="0.13"/>
-<rect x="36" y="170" width="328" height="56" rx="16" fill="url(#base)"/>
-<rect x="82" y="94" width="236" height="94" rx="10" fill="url(#facade)"/>
-<path d="M68 114l132-72 132 72" fill="none" stroke="#4B5E53" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="122" y="118" width="48" height="70" rx="8" fill="#9eb0a5"/>
+<rect width="400" height="260" rx="28" fill="#12426e" opacity="0.08"/>
+<circle cx="312" cy="54" r="52" fill="#f2c983" opacity="0.16"/>
+<circle cx="86" cy="58" r="28" fill="#8cbab2" opacity="0.12"/>
+<path d="M0 206c62-18 123-26 189-20 60 5 130 20 211 52v22H0z" fill="#12426e" opacity="0.13"/>
+<rect x="34" y="170" width="332" height="56" rx="16" fill="url(#ground)"/>
+<rect x="84" y="94" width="232" height="94" rx="12" fill="url(#facade)"/>
+<path d="M68 114l132-72 132 72" fill="none" stroke="url(#roof)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="122" y="118" width="48" height="70" rx="8" fill="url(#door)"/>
 <rect x="190" y="118" width="44" height="36" rx="6" fill="url(#window)"/>
 <rect x="246" y="118" width="44" height="36" rx="6" fill="url(#window)"/>
 <rect x="190" y="162" width="44" height="26" rx="6" fill="url(#window)"/>
 <rect x="246" y="162" width="44" height="26" rx="6" fill="url(#window)"/>
-<path d="M82 94h236v24H82z" fill="#ffffff" opacity="0.34"/>
+<circle cx="108" cy="188" r="16" fill="url(#shrub)"/>
+<circle cx="300" cy="188" r="18" fill="url(#shrub)"/>
+<rect x="140" y="148" width="6" height="6" rx="3" fill="#12426e"/>
+<path d="M84 94h232v22H84z" fill="#ffffff" opacity="0.38"/>
+<path d="M200 42v36" stroke="#ffffff" stroke-opacity="0.28" stroke-width="4" stroke-linecap="round"/>
+<path d="M130 124h28" stroke="#9fc1de" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
 </svg>

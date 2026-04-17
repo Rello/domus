@@ -4,6 +4,59 @@
     window.Domus = window.Domus || {};
 
     Domus.Settings = (function() {
+        function getDemoContentConfig(role) {
+            if (role === 'buildingMgmt') {
+                return {
+                    role: 'buildingMgmt',
+                    buttonLabel: t('domus', 'Create demo content (Building Mgmt)'),
+                    confirmMessage: t('domus', 'Create demo content for building management? This will add sample data to your account.'),
+                    confirmLabel: t('domus', 'Create demo content (Building Mgmt)'),
+                    successLabel: t('domus', 'Demo content created.'),
+                    errorLabel: t('domus', 'Unable to create demo content.')
+                };
+            }
+
+            return {
+                role: 'landlord',
+                buttonLabel: t('domus', 'Create demo content'),
+                confirmMessage: t('domus', 'Create demo content? This will add sample data to your account.'),
+                confirmLabel: t('domus', 'Create demo content'),
+                successLabel: t('domus', 'Demo content created.'),
+                errorLabel: t('domus', 'Unable to create demo content.')
+            };
+        }
+
+        function createDemoContent(role, buttonEl) {
+            const config = getDemoContentConfig(role);
+            return Domus.UI.confirmAction({
+                message: config.confirmMessage,
+                confirmLabel: config.confirmLabel
+            }).then(confirmed => {
+                if (!confirmed) {
+                    return false;
+                }
+                if (buttonEl) {
+                    buttonEl.disabled = true;
+                }
+                return Domus.Api.createDemoContent({ role: config.role })
+                    .then(() => {
+                        if (buttonEl) {
+                            buttonEl.textContent = config.successLabel;
+                            buttonEl.disabled = true;
+                        }
+                        Domus.UI.showNotification(config.successLabel, 'success');
+                        return true;
+                    })
+                    .catch(err => {
+                        if (buttonEl) {
+                            buttonEl.disabled = false;
+                        }
+                        Domus.UI.showNotification(err.message || config.errorLabel, 'error');
+                        return false;
+                    });
+            });
+        }
+
         function buildSettingsSection(config) {
             return '<div class="domus-panel domus-settings-section domus-collapsed" id="' + Domus.Utils.escapeHtml(config.id) + '">' +
                 '<div class="domus-section-header domus-settings-section-header" role="button" tabindex="0" aria-expanded="false">' +
@@ -65,6 +118,21 @@
             });
         }
 
+        function buildIntroSection() {
+            return buildSettingsSection({
+                id: 'domus-intro-settings-panel',
+                title: t('domus', 'Intro Wizard'),
+                body: '<div class="domus-form">' +
+                    '<p>' + Domus.Utils.escapeHtml(t('domus', 'Restart the welcome intro if you want to go through the onboarding steps again.')) + '</p>' +
+                    '<div class="domus-form-actions">' +
+                    '<button type="button" class="secondary" id="domus-restart-intro-button">' +
+                    Domus.Utils.escapeHtml(t('domus', 'Restart intro')) +
+                    '</button>' +
+                    '</div>' +
+                    '</div>'
+            });
+        }
+
         function bindForm() {
             const form = document.getElementById('domus-settings-form');
             if (!form) {
@@ -99,52 +167,39 @@
             const buildingButton = document.getElementById('domus-demo-content-building-button');
             if (buildingButton) {
                 buildingButton.addEventListener('click', function() {
-                    Domus.UI.confirmAction({
-                        message: t('domus', 'Create demo content for building management? This will add sample data to your account.'),
-                        confirmLabel: t('domus', 'Create demo content (Building Mgmt)')
-                    }).then(confirmed => {
-                        if (!confirmed) {
-                            return;
-                        }
-                        buildingButton.disabled = true;
-                        let created = false;
-                        Domus.Api.createDemoContent({ role: 'buildingMgmt' })
-                            .then(() => {
-                                created = true;
-                                buildingButton.textContent = t('domus', 'Demo content created.');
-                                Domus.UI.showNotification(t('domus', 'Demo content created.'), 'success');
-                            })
-                            .catch(err => Domus.UI.showNotification(err.message || t('domus', 'Unable to create demo content.'), 'error'))
-                            .finally(() => {
-                                buildingButton.disabled = created;
-                            });
-                    });
+                    createDemoContent('buildingMgmt', buildingButton);
                 });
             }
             if (button) {
                 button.addEventListener('click', function() {
-                    Domus.UI.confirmAction({
-                        message: t('domus', 'Create demo content? This will add sample data to your account.'),
-                        confirmLabel: t('domus', 'Create demo content')
-                    }).then(confirmed => {
-                        if (!confirmed) {
-                            return;
-                        }
-                        button.disabled = true;
-                        let created = false;
-                        Domus.Api.createDemoContent({ role: 'landlord' })
-                            .then(() => {
-                                created = true;
-                                button.textContent = t('domus', 'Demo content created.');
-                                Domus.UI.showNotification(t('domus', 'Demo content created.'), 'success');
-                            })
-                            .catch(err => Domus.UI.showNotification(err.message || t('domus', 'Unable to create demo content.'), 'error'))
-                            .finally(() => {
-                                button.disabled = created;
-                            });
-                    });
+                    createDemoContent('landlord', button);
                 });
             }
+        }
+
+        function bindRestartIntroButton() {
+            const button = document.getElementById('domus-restart-intro-button');
+            if (!button) {
+                return;
+            }
+            button.addEventListener('click', function() {
+                if (!Domus.Wizard || typeof Domus.Wizard.resetState !== 'function' || typeof Domus.Wizard.show !== 'function') {
+                    Domus.UI.showNotification(t('domus', 'Unable to restart intro.'), 'error');
+                    return;
+                }
+                button.disabled = true;
+                Domus.Wizard.resetState()
+                    .then(function() {
+                        Domus.Wizard.show();
+                        Domus.UI.showNotification(t('domus', 'Intro restarted.'), 'success');
+                    })
+                    .catch(function(error) {
+                        Domus.UI.showNotification(error?.message || t('domus', 'Unable to restart intro.'), 'error');
+                    })
+                    .finally(function() {
+                        button.disabled = false;
+                    });
+            });
         }
 
         function bindSectionToggles() {
@@ -181,12 +236,14 @@
                     const content = '<div class="domus-settings">' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
                         buildForm(settings) +
+                        buildIntroSection() +
                         Domus.TaskTemplates.renderSection() +
                         Domus.Accounts.renderSettingsSection() +
                         buildDemoSection(currentRole) +
                         '</div>';
                     Domus.UI.renderContent(content);
                     bindForm();
+                    bindRestartIntroButton();
                     bindDemoButton();
                     bindSectionToggles();
                     Domus.TaskTemplates.loadTemplates();
@@ -195,7 +252,11 @@
                 .catch(err => Domus.UI.showError(err.message || t('domus', 'An error occurred')));
         }
 
-        return { render };
+        return {
+            render,
+            createDemoContent,
+            getDemoContentConfig
+        };
     })();
 
     /**

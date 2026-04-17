@@ -9,15 +9,15 @@
             const cells = [
                 {
                     className: 'domus-documents-file-cell',
-                    content: '<span class="domus-documents-file-name">' + Domus.Utils.escapeHtml(fileName) + '</span>'
+                    content: '<span class="domus-documents-file-name domus-action-log-title-text">' + Domus.Utils.escapeHtml(fileName) + '</span>'
                 }
             ];
 
             if (options.showDate) {
                 const createdAt = doc?.createdAt ? Domus.Utils.formatDate(doc.createdAt * 1000) : '—';
                 cells.push({
-                    className: 'domus-documents-date-cell',
-                    content: Domus.Utils.escapeHtml(createdAt || '—')
+                    className: 'domus-documents-date-cell domus-action-log-cell-date',
+                    content: '<span class="domus-action-log-date">' + Domus.Utils.escapeHtml(createdAt || '—') + '</span>'
                 });
             }
 
@@ -59,7 +59,7 @@
                     const rows = filteredDocs.map(doc => buildDocumentRow(doc));
                     const html = '<div id="' + containerId + '">' +
                         '<div class="domus-documents-table">' +
-                        Domus.UI.buildTable([t('domus', 'File')], rows, { wrapPanel: false }) +
+                        Domus.UI.buildTable([t('domus', 'File')], rows, { wrapPanel: false, showHeader: false }) +
                         '</div>' +
                         '</div>';
                     updateContainer(html);
@@ -120,7 +120,7 @@
                     Domus.UI.buildTable([
                         { label: t('domus', 'File'), className: 'domus-documents-file-cell' },
                         { label: t('domus', 'Date'), className: 'domus-documents-date-cell' }
-                    ], rows, { wrapPanel: false }) +
+                    ], rows, { wrapPanel: false, showHeader: false }) +
                     '</div>';
                 const hasMore = docs.length > visibleCount;
                 const moreButton = hasMore

@@ -16,6 +16,7 @@ use OCA\Domus\Service\PermissionService;
 
 class SettingsController extends Controller {
     private const CONFIG_TAX_RATE = 'taxRate';
+    private const CONFIG_WIZARD = 'wizard';
 
     public function __construct(
         IRequest $request,
@@ -93,6 +94,9 @@ class SettingsController extends Controller {
             self::CONFIG_TAX_RATE => [
                 'default' => '0',
             ],
+            self::CONFIG_WIZARD => [
+                'default' => '0',
+            ],
         ];
     }
 
@@ -124,6 +128,20 @@ class SettingsController extends Controller {
             return (string)($percentage / 100);
         }
 
+        if ($key === self::CONFIG_WIZARD) {
+            $normalized = $value === null ? '' : trim((string)$value);
+            if ($normalized === '') {
+                return '0';
+            }
+            if ($normalized === '1' || strtolower($normalized) === 'true') {
+                return '1';
+            }
+            if ($normalized === '0' || strtolower($normalized) === 'false') {
+                return '0';
+            }
+            return null;
+        }
+
         return null;
     }
 
@@ -133,6 +151,10 @@ class SettingsController extends Controller {
                 return '0';
             }
             return (string)((float)$value * 100);
+        }
+
+        if ($key === self::CONFIG_WIZARD) {
+            return ($value === '1') ? '1' : '0';
         }
 
         return $value;

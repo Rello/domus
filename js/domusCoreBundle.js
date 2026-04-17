@@ -135,6 +135,23 @@
             return String(amount);
         }
 
+        function getInitialState(key) {
+            const app = 'domus';
+            const elem = document.querySelector('#initial-state-' + app + '-' + key);
+            if (elem === null) {
+                return false;
+            }
+            if (typeof elem.value !== 'string' || elem.value === '') {
+                return false;
+            }
+            try {
+                return JSON.parse(atob(elem.value));
+            } catch (error) {
+                console.warn('Failed to parse domus initial state for key:', key, error);
+                return false;
+            }
+        }
+
         const ibanLengths = {
             AD: 24,
             AE: 23,
@@ -254,6 +271,7 @@
             collectStatisticsYears,
             collectProvisionalMap,
             buildFilesFolderUrl,
+            getInitialState,
             normalizeIban,
             isValidIban
         };

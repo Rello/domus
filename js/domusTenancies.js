@@ -448,21 +448,19 @@
                         dataset: { entityType: 'tenancy', entityId: id }
                     } : null);
                     const partnersHeader = Domus.UI.buildSectionHeader(t('domus', 'Tenant'));
+                    const tenantPanel = '<div class="domus-panel domus-tenancy-tenant-panel">' + partnersHeader + '<div class="domus-panel-body">' +
+                        Domus.Partners.renderInline(tenancy.partners || [], { linkNameToDetail: true, includeTypeColumn: false, includeEmailColumn: false, showHeader: false }) + '</div></div>';
+                    const documentsPanel = '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
+                        Domus.Documents.renderList('tenancy', id, { showLinkAction: documentActionsEnabled }) + '</div></div>';
 
                     const content = '<div class="domus-detail domus-dashboard domus-tenancy-detail">' +
                         Domus.UI.buildBackButton('tenancies') +
                         hero +
                         kpiTiles +
+                        '<div class="domus-panel-row domus-panel-row-thirds domus-tenancy-detail-row">' +
                         conditionsPanel +
-                        '<div class="domus-dashboard-grid">' +
-                        '<div class="domus-dashboard-main">' +
-                        '<div class="domus-panel">' + partnersHeader + '<div class="domus-panel-body">' +
-                        Domus.Partners.renderInline(tenancy.partners || [], { linkNameToDetail: true, includeTypeColumn: false, includeEmailColumn: false, showHeader: false }) + '</div></div>' +
-                        '</div>' +
-                        '<div class="domus-dashboard-side">' +
-                        '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
-                        Domus.Documents.renderList('tenancy', id, { showLinkAction: documentActionsEnabled }) + '</div></div>' +
-                        '</div>' +
+                        tenantPanel +
+                        documentsPanel +
                         '</div>' +
                         '</div>';
                     Domus.UI.renderContent(content);
