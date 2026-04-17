@@ -22,7 +22,7 @@ Built for teams who want clear rental workflows without giving up the privacy an
 - Partners & Contacts: owners, service providers, and stakeholder data.
 - Tasks: assignments, checklists, and operational follow-ups.
 ]]></description>
-    <version>1.0.0</version>
+    <version>0.0.1</version>
     <licence>agpl</licence>
     <author>Marcel Scherello</author>
     <namespace>Domus</namespace>
