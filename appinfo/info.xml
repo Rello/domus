@@ -45,11 +45,13 @@ Built for teams who want clear rental workflows without giving up the privacy an
             <step>OCA\Domus\Migration\FillDefaultAccountsRepairStep</step>
         </install>
     </repair-steps>
-    <navigation>
-        <id>domus</id>
-        <name>Domus</name>
-        <route>domus.page.index</route>
-        <order>10</order>
-        <icon>app.svg</icon>
-    </navigation>
+    <navigations>
+        <navigation>
+            <id>domus</id>
+            <name>Domus</name>
+            <route>domus.page.index</route>
+            <order>10</order>
+            <icon>app.svg</icon>
+        </navigation>
+    </navigations>
 </info>

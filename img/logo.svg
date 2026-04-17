@@ -11,7 +11,7 @@
 
             stroke-dasharray: var(--len, 367);
             stroke-dashoffset: var(--len, 367);
-            animation: draw 2s ease-out forwards; /* runs once */
+            animation: draw 1s ease-out forwards; /* runs once */
             }
             @keyframes draw { to { stroke-dashoffset: 0; } }
         </style>

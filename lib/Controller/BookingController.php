@@ -45,8 +45,8 @@ class BookingController extends Controller {
     public function create(
         int $account,
         string $date,
-        ?string $deliveryDate = null,
         string $amount,
+        ?string $deliveryDate = null,
         ?int $propertyId = null,
         ?int $unitId = null,
         ?string $description = null,

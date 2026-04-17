@@ -2,7 +2,7 @@
     id="app-splash-screen"
     class="app-splash-screen"
     data-splash
-    data-draw-ms="2000"
+    data-draw-ms="1000"
     data-reveal-ms="420"
     data-hold-ms="1000"
     data-fade-ms="320"

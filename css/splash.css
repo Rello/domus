@@ -3,10 +3,6 @@
 }
 
 .app-splash-screen {
-    --splash-draw-ms: 2000ms;
-    --splash-reveal-ms: 2000ms;
-    --splash-hold-ms: 2000ms;
-    --splash-fade-ms: 320ms;
     position: absolute;
     inset: 0;
     z-index: 100;
