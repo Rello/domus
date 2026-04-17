@@ -1,0 +1,454 @@
+.domus-guidance-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(21, 28, 40, 0.62);
+}
+
+.domus-guidance-dialog {
+    position: relative;
+    width: min(900px, calc(100vw - 48px));
+    color: #20293a;
+}
+
+.domus-guidance-shell {
+    overflow: hidden;
+    border-radius: 6px;
+    background: #ffffff;
+    min-height: 600px;
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
+}
+
+.domus-guidance-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 90px;
+    padding: 24px 32px;
+    background: linear-gradient(180deg, #0f78ad 0%, #0c6c9b 100%);
+}
+
+.domus-guidance-brand {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.domus-guidance-brand-logo {
+    width: 74px;
+    height: 74px;
+    object-fit: contain;
+}
+
+.domus-guidance-brand-name {
+    font-size: 42px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+}
+
+.domus-guidance-close {
+    position: absolute;
+    top: 22px;
+    right: 18px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #123d63;
+    cursor: pointer;
+}
+
+.domus-guidance-close:hover,
+.domus-guidance-close:focus {
+    background: transparent;
+}
+
+.domus-guidance-close:focus-visible {
+    box-shadow: 0 0 0 2px rgba(15, 120, 173, 0.28);
+}
+
+.domus-guidance-close-icon {
+    position: relative;
+    display: block;
+    width: 18px;
+    height: 18px;
+}
+
+.domus-guidance-close-icon::before,
+.domus-guidance-close-icon::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 1px;
+    width: 16px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 999px;
+}
+
+.domus-guidance-close-icon::before {
+    transform: rotate(45deg);
+}
+
+.domus-guidance-close-icon::after {
+    transform: rotate(-45deg);
+}
+
+.domus-guidance-nav {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-top: -14px;
+    border: 0;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    color: #123d63;
+    cursor: pointer;
+}
+
+.domus-guidance-nav:hover,
+.domus-guidance-nav:focus {
+    background: #ffffff;
+}
+
+.domus-guidance-nav .domus-icon {
+    width: 22px;
+    height: 22px;
+    color: currentColor;
+}
+
+.domus-guidance-nav[hidden] {
+    display: none;
+}
+
+.domus-guidance-nav.is-disabled {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.domus-guidance-nav-previous {
+    left: -56px;
+}
+
+.domus-guidance-nav-next {
+    right: -56px;
+}
+
+.domus-guidance-content {
+    display: flex;
+    align-items: center;
+    min-height: 340px;
+    padding: 38px 42px 20px;
+    background: #ffffff;
+}
+
+.domus-guidance-content > .domus-guidance-page {
+    width: 100%;
+}
+
+.domus-guidance-page-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.domus-guidance-overview-intro {
+    max-width: 860px;
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.45;
+    color: #28374e;
+}
+
+.domus-guidance-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 44px;
+}
+
+.domus-guidance-feature {
+    text-align: center;
+}
+
+.domus-guidance-feature-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
+    color: #5f636b;
+}
+
+.domus-guidance-feature-icon .domus-icon {
+    width: 48px;
+    height: 48px;
+    color: currentColor;
+}
+
+.domus-guidance-feature-title {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 500;
+    color: #1f2a3c;
+}
+
+.domus-guidance-feature-body {
+    max-width: 300px;
+    margin: 0 auto;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #4d5c72;
+}
+
+.domus-guidance-page-detail {
+    display: grid;
+    grid-template-columns: minmax(300px, 1.05fr) minmax(260px, 0.95fr);
+    gap: 36px;
+    align-items: center;
+}
+
+.domus-guidance-detail-media {
+    display: flex;
+    justify-content: center;
+}
+
+.domus-guidance-media-placeholder {
+    width: 100%;
+    min-height: 260px;
+    padding: 16px;
+    background: linear-gradient(180deg, #2f8ccb 0%, #2c7eba 100%);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.16);
+}
+
+.domus-guidance-media-frame {
+    position: relative;
+    min-height: 228px;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0, rgba(255, 255, 255, 0.14) 1px, transparent 1px, transparent 25%),
+        linear-gradient(rgba(255, 255, 255, 0.14) 0, rgba(255, 255, 255, 0.14) 1px, transparent 1px, transparent 25%);
+    background-size: 120px 120px;
+}
+
+.domus-guidance-media-frame::before,
+.domus-guidance-media-frame::after {
+    content: "";
+    position: absolute;
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.domus-guidance-media-frame::before {
+    top: 30px;
+    left: 28px;
+    width: 44%;
+    height: 34%;
+}
+
+.domus-guidance-media-frame::after {
+    right: 26px;
+    bottom: 26px;
+    width: 34%;
+    height: 22%;
+}
+
+.domus-guidance-media-label {
+    position: absolute;
+    top: 20px;
+    left: 22px;
+    right: 22px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.domus-guidance-media-hint {
+    position: absolute;
+    left: 22px;
+    right: 22px;
+    bottom: 20px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.domus-guidance-media-image {
+    display: block;
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.16);
+}
+
+.domus-guidance-detail-title {
+    margin: 0 0 14px;
+    font-size: 26px;
+    font-weight: 500;
+    color: #1f2a3c;
+}
+
+.domus-guidance-detail-intro,
+.domus-guidance-detail-body {
+    margin: 0 0 14px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #2f3c51;
+}
+
+.domus-guidance-detail-bullets {
+    margin: 0;
+    padding-left: 24px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #20293a;
+}
+
+.domus-guidance-detail-bullet + .domus-guidance-detail-bullet {
+    margin-top: 10px;
+}
+
+.domus-guidance-detail-actions {
+    margin-top: 24px;
+}
+
+.domus-guidance-detail-action {
+    min-height: 40px;
+}
+
+.domus-guidance-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 0 42px 22px;
+    background: #ffffff;
+}
+
+.domus-guidance-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.domus-guidance-dot {
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    border: 1px solid #303845;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.domus-guidance-dot.is-active {
+    background: #0f78ad;
+    border-color: #0f78ad;
+}
+
+.domus-guidance-finish {
+    min-width: 180px;
+    min-height: 42px;
+    border: 0;
+    border-radius: 999px;
+    padding: 0 20px;
+    background: #0f78ad;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.domus-guidance-finish[hidden] {
+    display: none;
+}
+
+@media (max-width: 1220px) {
+    .domus-guidance-nav-previous {
+        left: 8px;
+    }
+
+    .domus-guidance-nav-next {
+        right: 8px;
+    }
+}
+
+@media (max-width: 920px) {
+    .domus-guidance-dialog {
+        width: min(100vw - 24px, 900px);
+    }
+
+    .domus-guidance-content {
+        min-height: 0;
+        padding: 28px 24px 18px;
+    }
+
+    .domus-guidance-page-detail {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+
+    .domus-guidance-feature-grid {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+
+    .domus-guidance-footer {
+        padding: 0 24px 20px;
+    }
+}
+
+@media (max-width: 640px) {
+    .domus-guidance-backdrop {
+        padding: 12px;
+    }
+
+    .domus-guidance-header {
+        min-height: 88px;
+        padding: 20px;
+    }
+
+    .domus-guidance-brand-logo {
+        width: 46px;
+        height: 46px;
+    }
+
+    .domus-guidance-brand-name {
+        font-size: 28px;
+    }
+
+    .domus-guidance-nav {
+        top: auto;
+        bottom: 78px;
+        width: 44px;
+        height: 44px;
+        margin-top: 0;
+        font-size: 44px;
+    }
+
+    .domus-guidance-page-overview,
+    .domus-guidance-page-detail {
+        gap: 24px;
+    }
+
+    .domus-guidance-feature-title,
+    .domus-guidance-detail-title {
+        font-size: 24px;
+    }
+}
