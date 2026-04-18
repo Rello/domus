@@ -12,11 +12,11 @@ Built for teams who want clear rental workflows without giving up the privacy an
 
 ## Preview
 <p>
-  <img src="screenshots/logo.png" alt="Unit list preview" width="300"><br>
-  <img src="screenshots/dashboard.png" alt="Dashboard preview" width="300">
-  <img src="screenshots/unitList.png" alt="Unit details preview" width="300">
-  <img src="screenshots/unit.png" alt="Unit details preview" width="300">
-  <img src="screenshots/revenue.png" alt="Tenancy preview" width="300">
+  <img src="screenshots/logo.png" alt="Unit list preview" width="350"><br>
+  <img src="screenshots/dashboard.png" alt="Dashboard preview" width="350">
+  <img src="screenshots/unitList.png" alt="Unit details preview" width="350">
+  <img src="screenshots/unit.png" alt="Unit details preview" width="350">
+  <img src="screenshots/revenue.png" alt="Tenancy preview" width="350">
 </p>
 
 ## Highlights
