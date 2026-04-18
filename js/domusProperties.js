@@ -371,8 +371,6 @@
                     const addressParts = [property.street, cityLine, property.country].filter(Boolean);
                     const address = addressParts.length ? addressParts.join(', ') : (property.address || '');
                     const detailAddress = [property.street, shortCityLine].filter(Boolean).join(', ') || address;
-                    const propertyDocumentPath = property.documentPath || '';
-                    const propertyDocumentUrl = propertyDocumentPath ? Domus.Utils.buildFilesFolderUrl(propertyDocumentPath) : '';
                     const showBookingFeatures = Domus.Role.hasCapability('manageBookings');
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const canManageDistributions = Domus.Distributions.canManageDistributions();
@@ -464,25 +462,14 @@
                         iconClass: 'domus-icon-add'
                     }) : '';
                     const documentsHeaderActions = [];
-                    if (propertyDocumentUrl) {
-                        documentsHeaderActions.push({
-                            href: propertyDocumentUrl,
-                            target: '_blank',
-                            rel: 'noopener',
-                            label: t('domus', 'View all'),
-                            title: t('domus', 'Open all documents')
-                        });
-                    }
                     if (documentActionsEnabled) {
                         documentsHeaderActions.push({
-                            id: 'domus-property-link-doc',
+                            id: 'domus-property-document-create',
                             title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
-                            label: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
-                            iconClass: 'domus-icon-add',
-                            dataset: { entityType: 'property', entityId: id }
+                            iconClass: 'domus-icon-add'
                         });
                     }
-                    const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Document Management'), documentsHeaderActions);
+                    const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentsHeaderActions);
                     const actionLogHeader = Domus.UI.buildSectionHeader(t('domus', 'Action log'), {
                         id: 'domus-property-action-log-create',
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Action log entry') }),
@@ -511,7 +498,14 @@
                         (showBookingFeatures ? '<div class="domus-panel">' + bookingsHeader + '<div class="domus-panel-body">' +
                         Domus.Bookings.renderInline(property.bookings || [], { refreshView: 'propertyDetail', refreshId: id }) + '</div></div>' : '') +
                         '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
-                        Domus.Documents.renderList('property', id, { showLinkAction: documentActionsEnabled }) + '</div></div>' +
+                        Domus.Documents.renderLatestList('property', id, {
+                            pageSize: 10,
+                            containerId: `domus-property-documents-${id}`,
+                            emptyActionId: 'domus-property-documents-empty-create',
+                            onEmptyAction: () => {
+                                Domus.Documents.openLinkModal('property', id, () => renderDetail(id));
+                            }
+                        }) + '</div></div>' +
                         '<div class="domus-panel">' + actionLogHeader + '<div class="domus-panel-body">' +
                         Domus.ActionLog.renderList('property', id, {
                             containerId: `domus-property-action-log-${id}`,
@@ -588,7 +582,7 @@
                 const bookingFormConfig = Domus.Role.isBuildingMgmtView() ? { restrictUnitsToProperty: true } : {};
                 Domus.Bookings.openCreateModal({ propertyId: id }, () => renderDetail(id), bookingFormConfig);
             });
-            document.getElementById('domus-property-link-doc')?.addEventListener('click', () => {
+            document.getElementById('domus-property-document-create')?.addEventListener('click', () => {
                 Domus.Documents.openLinkModal('property', id, () => renderDetail(id));
             });
             Domus.ActionLog.bindCreateButtons(['domus-property-action-log-create'], {

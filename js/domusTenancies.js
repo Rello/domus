@@ -446,17 +446,24 @@
                         '</div>';
 
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {
-                        id: 'domus-tenancy-link-doc',
+                        id: 'domus-tenancy-document-create',
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
-                        label: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
-                        iconClass: 'domus-icon-add',
-                        dataset: { entityType: 'tenancy', entityId: id }
+                        iconClass: 'domus-icon-add'
                     } : null);
                     const partnersHeader = Domus.UI.buildSectionHeader(t('domus', 'Tenant'));
                     const tenantPanel = '<div class="domus-panel domus-tenancy-tenant-panel">' + partnersHeader + '<div class="domus-panel-body">' +
                         Domus.Partners.renderInline(tenancy.partners || [], { linkNameToDetail: true, includeTypeColumn: false, includeEmailColumn: false, showHeader: false }) + '</div></div>';
                     const documentsPanel = '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
-                        Domus.Documents.renderList('tenancy', id, { showLinkAction: documentActionsEnabled }) + '</div></div>';
+                        Domus.Documents.renderLatestList('tenancy', id, {
+                            pageSize: 10,
+                            containerId: `domus-tenancy-documents-${id}`,
+                            emptyActionId: 'domus-tenancy-documents-empty-create',
+                            onEmptyAction: () => {
+                                Domus.Documents.openLinkModal('tenancy', id, () => renderDetail(id), 'link', {
+                                    unitId: tenancy?.unitId
+                                });
+                            }
+                        }) + '</div></div>';
 
                     const content = '<div class="domus-detail domus-dashboard domus-tenancy-detail">' +
                         Domus.UI.buildBackButton('tenancies') +
@@ -497,8 +504,10 @@
                 });
             });
 
-            document.getElementById('domus-tenancy-link-doc')?.addEventListener('click', () => {
-                Domus.Documents.openLinkModal('tenancy', id, () => renderDetail(id));
+            document.getElementById('domus-tenancy-document-create')?.addEventListener('click', () => {
+                Domus.Documents.openLinkModal('tenancy', id, () => renderDetail(id), 'link', {
+                    unitId: tenancy?.unitId
+                });
             });
             document.getElementById('domus-tenancy-change')?.addEventListener('click', () => openChangeConditionsModal(tenancy));
         }

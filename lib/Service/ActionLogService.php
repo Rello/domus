@@ -26,6 +26,7 @@ class ActionLogService {
     private const TYPE_ALIASES = [
         'call',
         'email',
+        'messenger',
         'note',
         'event',
         'document',

@@ -645,7 +645,7 @@
             });
         }
 
-        function attachDocumentsToEntities(bookingIds, metadata, selection) {
+        function attachDocumentsToEntities(bookingIds, metadata, selection, extraTargets = []) {
             if (!selection) {
                 return Promise.resolve();
             }
@@ -654,6 +654,15 @@
             (bookingIds || []).forEach(id => targets.push({ entityType: 'booking', entityId: id }));
             if (metadata?.unitId) targets.push({ entityType: 'unit', entityId: metadata.unitId });
             if (metadata?.propertyId) targets.push({ entityType: 'property', entityId: metadata.propertyId });
+            (Array.isArray(extraTargets) ? extraTargets : []).forEach(target => {
+                if (!target || !target.entityType) {
+                    return;
+                }
+                targets.push({
+                    entityType: String(target.entityType),
+                    entityId: target.entityId
+                });
+            });
 
             const uniqueTargets = dedupeTargets(targets);
             if (!uniqueTargets.length) {
@@ -709,70 +718,17 @@
             }
             const widget = Domus.Documents.createAttachmentWidget({
                 defaultYear: Domus.state.currentYear,
-                showActions: false,
                 includeYearInput: false,
                 title: t('domus', 'Document'),
-                subtitle: t('domus', 'Drop or select a file, or reuse one from Nextcloud.')
+                subtitle: t('domus', 'Drop or select a file, or reuse one from Nextcloud.'),
+                showHeader: false,
+                largeDropZone: false
             });
-            const card = widget.root.querySelector('.domus-doc-card');
-            const header = card?.querySelector('.domus-doc-header');
             const titleField = widget.uploadNameInput?.closest('label');
-            const dropZone = widget.dropZone?.element;
-            const dropZoneArea = dropZone?.querySelector('.domus-dropzone-area');
-            const dropZoneText = dropZoneArea?.querySelector('strong');
-            const dropZoneFileName = dropZone?.querySelector('.domus-dropzone-filename');
-            const pickerRow = widget.pickerButton?.closest('.domus-doc-picker-row');
-            const pickerDisplay = pickerRow?.querySelector('.domus-doc-picker-display');
-
-            if (header) {
-                header.remove();
-            }
             if (titleField) {
                 titleField.classList.add('domus-booking-doc-title');
-                placeholder.prepend(titleField);
             }
-            if (dropZone) {
-                dropZone.classList.remove('domus-dropzone-large');
-                if (dropZoneText) {
-                    dropZoneText.textContent = t('domus', 'Drag and drop or click to upload');
-                }
-                if (dropZoneArea) {
-                    const icon = document.createElement('span');
-                    icon.className = 'domus-icon domus-icon-upload domus-dropzone-icon';
-
-                    const content = document.createElement('div');
-                    content.className = 'domus-dropzone-content';
-
-                    content.appendChild(icon);
-
-                    if (dropZoneText) {
-                        content.appendChild(dropZoneText);
-                    }
-
-                    if (widget.pickerButton) {
-                        widget.pickerButton.classList.add('domus-dropzone-picker');
-                        content.appendChild(widget.pickerButton);
-                    }
-
-                    if (dropZoneFileName) {
-                        dropZoneFileName.textContent = t('domus', 'No file selected');
-                        dropZoneFileName.classList.add('domus-dropzone-filename');
-                        dropZoneFileName.classList.remove('muted');
-                        content.appendChild(dropZoneFileName);
-                    }
-
-                    dropZoneArea.remove();
-                    dropZone.querySelector('.domus-dropzone-label')?.remove();
-                    dropZone.appendChild(content);
-                }
-                placeholder.appendChild(dropZone);
-            }
-            if (pickerDisplay) {
-                pickerDisplay.remove();
-            }
-            if (pickerRow) {
-                pickerRow.remove();
-            }
+            placeholder.appendChild(widget.root);
 
             if (widget.pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
                 widget.pickerButton.addEventListener('click', function(e) {
@@ -780,17 +736,7 @@
                     e.stopPropagation();
                     OC.dialogs.filepicker(t('domus', 'Select file'), function(path) {
                         widget.setPath(path);
-                        if (dropZoneFileName) {
-                            const fileName = String(path || '').split('/').pop();
-                            dropZoneFileName.textContent = fileName || '';
-                        }
                     }, false, '', true, 1);
-                });
-            }
-            if (widget.dropZone?.input && dropZoneFileName) {
-                widget.dropZone.input.addEventListener('change', () => {
-                    const file = widget.dropZone.input.files?.[0] || null;
-                    dropZoneFileName.textContent = file ? file.name : t('domus', 'No file selected');
                 });
             }
 
@@ -897,7 +843,7 @@
                                 if (!data.documentEnabled || !data.document) {
                                     return Promise.resolve();
                                 }
-                                return attachDocumentsToEntities(bookingIds, data.metadata, data.document);
+                                return attachDocumentsToEntities(bookingIds, data.metadata, data.document, formConfig.documentTargets || []);
                             })
                             .then(() => {
                                 Domus.UI.showNotification(resolveCreateSuccessMessage(successMessage, data), 'success');
@@ -910,7 +856,8 @@
                         accountOptions,
                         initialEntries: defaults && (defaults.account || defaults.amount) ? [{ account: defaults.account, amount: defaults.amount }] : [],
                         docWidget,
-                        sectionMode
+                        sectionMode,
+                        allowDocumentWithoutRelation: formConfig.allowDocumentWithoutRelation === true
                     });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
@@ -939,7 +886,7 @@
                     });
                     const docWidget = mountBookingDocumentWidget(modal.modalEl);
                     bindBookingForm(modal, data => Domus.Api.updateBooking(id, Object.assign({}, data.metadata, data.entries[0] || {}))
-                        .then(() => attachDocumentsToEntities([id], data.metadata, data.document))
+                        .then(() => attachDocumentsToEntities([id], data.metadata, data.document, formConfig.documentTargets || []))
                         .then(() => {
                             Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Booking') }), 'success');
                             modal.close();
@@ -950,7 +897,8 @@
                         multiEntry: false,
                         accountOptions,
                         initialEntries: [{ account: booking.account, amount: booking.amount }],
-                        docWidget
+                        docWidget,
+                        allowDocumentWithoutRelation: formConfig.allowDocumentWithoutRelation === true
                     });
                     modal.modalEl.querySelector('#domus-booking-delete')?.addEventListener('click', () => {
                         Domus.UI.confirmAction({
@@ -1254,7 +1202,7 @@
                     Domus.UI.showNotification(t('domus', 'Choose a file to upload or link.'), 'error');
                     return;
                 }
-                if (!bookingEnabled && documentEnabled && !formData.propertyId && !formData.unitId) {
+                if (!bookingEnabled && documentEnabled && !formData.propertyId && !formData.unitId && !options.allowDocumentWithoutRelation) {
                     Domus.UI.showNotification(t('domus', 'Select a related property or unit, or enable booking creation.'), 'error');
                     return;
                 }

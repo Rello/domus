@@ -4288,6 +4288,10 @@
     background-image: url(../img/action/email.svg);
 }
 
+.domus-icon-action-messenger {
+    background-image: url(../img/action/messenger.svg);
+}
+
 .domus-icon-action-event {
     background-image: url(../img/action/event.svg);
 }

@@ -200,8 +200,9 @@
 
         function createAttachmentWidget(options = {}) {
             const defaultYear = options.defaultYear ?? Domus.state.currentYear;
-            const showActions = options.showActions !== false;
             const includeYearInput = options.includeYearInput !== false;
+            const showHeader = options.showHeader !== false;
+            const largeDropZone = options.largeDropZone !== false;
 
             const root = document.createElement('div');
             root.className = 'domus-doc-attachment domus-doc-attachment-modern';
@@ -242,19 +243,36 @@
                 label: t('domus', 'Drop file here or click to select one'),
                 onFileSelected: syncUploadTitle
             });
-            dropZone.element.classList.add('domus-dropzone-large');
+            if (largeDropZone) {
+                dropZone.element.classList.add('domus-dropzone-large');
+            }
 
-            const pickerRow = document.createElement('div');
-            pickerRow.className = 'domus-doc-picker-row';
             const pickerButton = document.createElement('button');
             pickerButton.type = 'button';
             pickerButton.textContent = t('domus', 'Select existing file');
-            pickerButton.className = 'domus-ghost';
-            const pickerDisplay = document.createElement('div');
-            pickerDisplay.className = 'domus-doc-picker-display muted';
-            pickerDisplay.textContent = t('domus', 'No existing file selected');
-            pickerRow.appendChild(pickerButton);
-            pickerRow.appendChild(pickerDisplay);
+            pickerButton.className = 'domus-dropzone-picker';
+
+            const dropZoneArea = dropZone.element.querySelector('.domus-dropzone-area');
+            const dropZoneText = dropZoneArea?.querySelector('strong');
+            const dropZoneFileName = dropZone.element.querySelector('.domus-dropzone-filename');
+            if (dropZoneArea && dropZoneText && dropZoneFileName) {
+                const icon = document.createElement('span');
+                icon.className = 'domus-icon domus-icon-upload domus-dropzone-icon';
+                const content = document.createElement('div');
+                content.className = 'domus-dropzone-content';
+                dropZoneText.textContent = t('domus', 'Drag and drop or click to upload');
+                dropZoneFileName.textContent = t('domus', 'No file selected');
+                dropZoneFileName.classList.remove('muted');
+                content.appendChild(icon);
+                content.appendChild(dropZoneText);
+                content.appendChild(pickerButton);
+                content.appendChild(dropZoneFileName);
+                dropZoneArea.remove();
+                dropZone.element.querySelector('.domus-dropzone-label')?.remove();
+                dropZone.element.appendChild(content);
+            } else {
+                card.appendChild(pickerButton);
+            }
 
             const uploadNameLabel = document.createElement('label');
             uploadNameLabel.textContent = t('domus', 'Title');
@@ -277,34 +295,13 @@
                 uploadYearLabel.appendChild(uploadYearInput);
             }
 
-            card.appendChild(header);
+            if (showHeader) {
+                card.appendChild(header);
+            }
             card.appendChild(dropZone.element);
-            card.appendChild(pickerRow);
             card.appendChild(uploadNameLabel);
             if (uploadYearLabel) {
                 card.appendChild(uploadYearLabel);
-            }
-
-            let cancelButton = null;
-            let linkButton = null;
-            let uploadButton = null;
-            if (showActions) {
-                const actions = document.createElement('div');
-                actions.className = 'domus-form-actions domus-doc-footer';
-                linkButton = document.createElement('button');
-                linkButton.type = 'button';
-                linkButton.textContent = t('domus', 'Link existing');
-                uploadButton = document.createElement('button');
-                uploadButton.type = 'button';
-                uploadButton.className = 'primary';
-                uploadButton.textContent = t('domus', 'Upload');
-                cancelButton = document.createElement('button');
-                cancelButton.type = 'button';
-                cancelButton.textContent = t('domus', 'Close');
-                actions.appendChild(linkButton);
-                actions.appendChild(uploadButton);
-                actions.appendChild(cancelButton);
-                card.appendChild(actions);
             }
 
             root.appendChild(card);
@@ -312,7 +309,10 @@
             let selectedPath = '';
             function updatePickerDisplay(path) {
                 selectedPath = path || '';
-                pickerDisplay.textContent = selectedPath || t('domus', 'No existing file selected');
+                const fileName = String(selectedPath || '').split('/').pop();
+                if (dropZoneFileName) {
+                    dropZoneFileName.textContent = fileName || t('domus', 'No file selected');
+                }
             }
 
             function getSelection(preferredType) {
@@ -351,10 +351,6 @@
             return {
                 root,
                 pickerButton,
-                pickerDisplay,
-                linkButton,
-                uploadButton,
-                cancelButton,
                 dropZone,
                 uploadNameInput,
                 uploadYearInput,
@@ -400,78 +396,58 @@
             });
         }
 
-        function openLinkModal(entityType, entityId, onLinked, focus = 'link') {
-            const attachment = createAttachmentWidget({ defaultYear: Domus.state.currentYear, showActions: true });
-            const modal = Domus.UI.openModal({
-                title: t('domus', 'Link document'),
-                content: attachment.root
-            });
+        function normalizeDocumentTarget(entityType) {
+            const normalized = String(entityType || '').toLowerCase();
+            return normalized;
+        }
 
-            const handleSuccess = () => {
-                modal.close();
-                if (onLinked) {
+        function openLinkModal(entityType, entityId, onLinked, focus = 'link', options = {}) {
+            const targetType = normalizeDocumentTarget(entityType);
+            const defaults = Object.assign({}, options.defaults || {});
+            const formConfig = Object.assign({}, options.formConfig || {});
+            const documentTargets = Array.isArray(formConfig.documentTargets)
+                ? formConfig.documentTargets.slice()
+                : [];
+
+            if (targetType === 'property' && !defaults.propertyId) {
+                defaults.propertyId = entityId;
+            } else if (targetType === 'unit' && !defaults.unitId) {
+                defaults.unitId = entityId;
+                if (!defaults.propertyId && options.propertyId) {
+                    defaults.propertyId = options.propertyId;
+                }
+            } else if (targetType === 'tenancy') {
+                if (!defaults.unitId && options.unitId) {
+                    defaults.unitId = options.unitId;
+                }
+                if (!defaults.propertyId && options.propertyId) {
+                    defaults.propertyId = options.propertyId;
+                }
+            }
+
+            if (targetType && entityId !== undefined && entityId !== null) {
+                documentTargets.push({ entityType: targetType, entityId });
+            }
+
+            formConfig.createContext = 'document';
+            if (formConfig.hidePropertyField === undefined) {
+                formConfig.hidePropertyField = Domus.Role.getCurrentRole() === 'landlord';
+            }
+            if (formConfig.allowDocumentWithoutRelation === undefined) {
+                formConfig.allowDocumentWithoutRelation = targetType === 'partner' || targetType === 'tenancy';
+            }
+            if (targetType === 'property' && formConfig.restrictUnitsToProperty === undefined) {
+                formConfig.restrictUnitsToProperty = Domus.Role.isBuildingMgmtView();
+            }
+            formConfig.documentTargets = documentTargets;
+
+            Domus.Bookings.openCreateModal(defaults, () => {
+                if (typeof onLinked === 'function') {
                     onLinked();
-                } else {
-                    renderList(entityType, entityId);
-                }
-            };
-
-            attachment.cancelButton?.addEventListener('click', modal.close);
-
-            if (attachment.pickerButton && typeof OC !== 'undefined' && OC.dialogs?.filepicker) {
-                attachment.pickerButton.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    OC.dialogs.filepicker(t('domus', 'Select file'), function(path) {
-                        attachment.setPath(path);
-                    }, false, '', true, 1);
-                });
-            }
-
-            const syncUploadTitle = () => {
-                const file = attachment.dropZone.input.files?.[0];
-                if (attachment.uploadNameInput && file && !attachment.uploadNameInput.value) {
-                    const originalName = file.name || '';
-                    const dotIndex = originalName.lastIndexOf('.');
-                    attachment.uploadNameInput.value = dotIndex > 0 ? originalName.substring(0, dotIndex) : originalName;
-                }
-            };
-            attachment.dropZone.input.addEventListener('change', syncUploadTitle);
-
-            if (focus === 'upload') {
-                attachment.dropZone.focus();
-            } else {
-                attachment.pickerButton?.focus();
-            }
-
-            attachment.linkButton?.addEventListener('click', function(e) {
-                e.preventDefault();
-                const selection = attachment.getSelection('link');
-                if (!selection) {
-                    Domus.UI.showNotification(t('domus', 'Please select a file to link.'), 'error');
                     return;
                 }
-                Domus.Api.linkDocument(entityType, entityId, { filePath: selection.filePath, year: selection.year, title: selection.title })
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Document linked.'), 'success');
-                        handleSuccess();
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
-            });
-
-            attachment.uploadButton?.addEventListener('click', function(e) {
-                e.preventDefault();
-                const selection = attachment.getSelection('upload');
-                if (!selection || !selection.file) {
-                    Domus.UI.showNotification(t('domus', 'Please choose a file to upload.'), 'error');
-                    return;
-                }
-                Domus.Api.uploadDocument(entityType, entityId, selection.file, selection.year, selection.title)
-                    .then(() => {
-                        Domus.UI.showNotification(t('domus', 'Document uploaded.'), 'success');
-                        handleSuccess();
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
-            });
+                renderList(entityType, entityId);
+            }, formConfig);
         }
 
         function openDetailModal(documentId, options = {}) {

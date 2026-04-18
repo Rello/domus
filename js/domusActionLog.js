@@ -13,6 +13,7 @@
             { value: 'note', label: t('domus', 'Note') },
             { value: 'call', label: t('domus', 'Call log') },
             { value: 'email', label: t('domus', 'Email') },
+            { value: 'messenger', label: t('domus', 'Messenger') },
             { value: 'event', label: t('domus', 'Event') },
             { value: 'document', label: t('domus', 'Document') },
             { value: 'custom', label: t('domus', 'Own action') }
@@ -28,6 +29,7 @@
             note: 'domus-icon-action-note',
             call: 'domus-icon-action-call',
             email: 'domus-icon-action-email',
+            messenger: 'domus-icon-action-messenger',
             event: 'domus-icon-action-event',
             document: 'domus-icon-action-document',
             yearstatus: 'domus-icon-action-year-status',
@@ -162,6 +164,8 @@
                 return 'domus-icon-action-call';
             case 'email':
                 return 'domus-icon-action-email';
+            case 'messenger':
+                return 'domus-icon-action-messenger';
             case 'event':
                 return 'domus-icon-action-event';
             case 'document':

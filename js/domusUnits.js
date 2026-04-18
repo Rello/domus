@@ -1803,6 +1803,11 @@
                         iconClass: 'domus-icon-add'
                     } : null;
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentsHeaderAction);
+                    const openUnitDocumentCreateModal = () => {
+                        Domus.Documents.openLinkModal('unit', id, () => renderDetail(id), 'link', {
+                            propertyId: unit?.propertyId
+                        });
+                    };
                     const actionLogHeader = Domus.UI.buildSectionHeader(t('domus', 'Action log'), {
                         id: 'domus-unit-action-log-create',
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Action log entry') }),
@@ -1887,15 +1892,7 @@
                             pageSize: 8,
                             containerId: defaultDocumentsContainerId,
                             emptyActionId: 'domus-unit-documents-empty-create',
-                            onEmptyAction: () => {
-                                Domus.Bookings.openCreateModal({
-                                    propertyId: unit?.propertyId,
-                                    unitId: id
-                                }, () => renderDetail(id), {
-                                    createContext: 'document',
-                                    hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
-                                });
-                            }
+                            onEmptyAction: openUnitDocumentCreateModal
                         }) +
                         '</div>' +
                         '</div>' +
@@ -2084,15 +2081,7 @@
                                 pageSize: 10,
                                 containerId: detailDocumentsContainerId,
                                 emptyActionId: 'domus-unit-documents-empty-create-detail',
-                                onEmptyAction: () => {
-                                    Domus.Bookings.openCreateModal({
-                                        propertyId: unit?.propertyId,
-                                        unitId: id
-                                    }, () => renderDetail(id), {
-                                        createContext: 'document',
-                                        hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
-                                    });
-                                }
+                                onEmptyAction: openUnitDocumentCreateModal
                             }), documentsHeaderAction)
                         };
                         bindKpiDetailArea(detailMap, (target) => {
@@ -2118,29 +2107,13 @@
                             }
                             if (target === 'documents') {
                                 document.querySelectorAll('[data-unit-document-create="1"]').forEach(button => {
-                                    button.addEventListener('click', () => {
-                                        Domus.Bookings.openCreateModal({
-                                            propertyId: unit?.propertyId,
-                                            unitId: id
-                                        }, () => renderDetail(id), {
-                                            createContext: 'document',
-                                            hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
-                                        });
-                                    });
+                                    button.addEventListener('click', openUnitDocumentCreateModal);
                                 });
                                 Domus.Documents.loadLatestList('unit', id, {
                                     pageSize: 10,
                                     containerId: detailDocumentsContainerId,
                                     emptyActionId: 'domus-unit-documents-empty-create-detail',
-                                    onEmptyAction: () => {
-                                        Domus.Bookings.openCreateModal({
-                                            propertyId: unit?.propertyId,
-                                            unitId: id
-                                        }, () => renderDetail(id), {
-                                            createContext: 'document',
-                                            hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
-                                        });
-                                    }
+                                    onEmptyAction: openUnitDocumentCreateModal
                                 });
                             }
                             bindStatisticsPagination();
@@ -2162,15 +2135,7 @@
                                 pageSize: 8,
                                 containerId: defaultDocumentsContainerId,
                                 emptyActionId: 'domus-unit-documents-empty-create',
-                                onEmptyAction: () => {
-                                    Domus.Bookings.openCreateModal({
-                                        propertyId: unit?.propertyId,
-                                        unitId: id
-                                    }, () => renderDetail(id), {
-                                        createContext: 'document',
-                                        hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
-                                    });
-                                }
+                                onEmptyAction: openUnitDocumentCreateModal
                             });
                         }
                     }
@@ -2251,17 +2216,13 @@
             });
             document.querySelectorAll('[data-unit-document-create="1"]').forEach(button => {
                 button.addEventListener('click', () => {
-                    Domus.Bookings.openCreateModal({propertyId: unit?.propertyId, unitId: id}, () => renderDetail(id), {
-                        createContext: 'document',
-                        hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
+                    Domus.Documents.openLinkModal('unit', id, () => renderDetail(id), 'link', {
+                        propertyId: unit?.propertyId
                     });
                 });
             });
             document.getElementById('domus-unit-service-charge')?.addEventListener('click', () => {
                 Domus.UnitSettlements.openModal(id, () => renderDetail(id));
-            });
-            document.getElementById('domus-unit-link-doc')?.addEventListener('click', () => {
-                Domus.Documents.openLinkModal('unit', id, () => renderDetail(id));
             });
             Domus.ActionLog.bindCreateButtons(['domus-unit-action-log-create'], {
                 entityType: 'unit',

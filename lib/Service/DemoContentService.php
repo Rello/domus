@@ -498,6 +498,11 @@ class DemoContentService {
                 'data' => $this->l10n->t('Sent timeline and responsibilities for the upcoming settlement period.'),
             ],
             [
+                'type' => 'messenger',
+                'title' => $this->l10n->t('Quick status update sent'),
+                'data' => $this->l10n->t('Sent a short chat update and received confirmation from all involved contacts.'),
+            ],
+            [
                 'type' => 'event',
                 'title' => $this->l10n->t('Scheduled property walkthrough'),
                 'data' => $this->l10n->t('Added an internal walkthrough appointment to validate open points.'),
