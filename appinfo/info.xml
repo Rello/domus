@@ -37,6 +37,9 @@ Built for teams who want clear rental workflows without giving up the privacy an
     <screenshot>
         https://raw.githubusercontent.com/Rello/domus/master/screenshots/dashboard.png
     </screenshot>
+    <screenshot>
+        https://raw.githubusercontent.com/Rello/domus/master/screenshots/revenue.png
+    </screenshot>
     <dependencies>
         <nextcloud min-version="31" max-version="99"/>
     </dependencies>

@@ -17,7 +17,7 @@
 
 .domus-guidance-shell {
     overflow: hidden;
-    border-radius: 6px;
+    border-radius: var(--domus-border-radius);
     background: #ffffff;
     min-height: 600px;
     box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
@@ -29,7 +29,7 @@
     justify-content: center;
     min-height: 90px;
     padding: 24px 32px;
-    background: linear-gradient(180deg, #0f78ad 0%, #0c6c9b 100%);
+    background: var(--domus-theme);
 }
 
 .domus-guidance-brand {
@@ -62,9 +62,9 @@
     width: 34px;
     height: 34px;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--domus-border-radius);
     background: transparent;
-    color: #123d63;
+    color: #ffffff;
     cursor: pointer;
 }
 
@@ -74,7 +74,7 @@
 }
 
 .domus-guidance-close:focus-visible {
-    box-shadow: 0 0 0 2px rgba(15, 120, 173, 0.28);
+    box-shadow: 0 0 0 2px rgba(18, 66, 110, 0.28);
 }
 
 .domus-guidance-close-icon {
@@ -115,10 +115,10 @@
     height: 40px;
     margin-top: -14px;
     border: 0;
-    border-radius: 12px;
+    border-radius: var(--domus-border-radius);
     background: rgba(255, 255, 255, 0.92);
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-    color: #123d63;
+    color: var(--domus-theme);
     cursor: pointer;
 }
 
@@ -193,7 +193,7 @@
     width: 48px;
     height: 48px;
     margin: 0 auto 16px;
-    color: #5f636b;
+    color: var(--domus-theme);
 }
 
 .domus-guidance-feature-icon .domus-icon {
@@ -234,6 +234,7 @@
     min-height: 260px;
     padding: 16px;
     background: linear-gradient(180deg, #2f8ccb 0%, #2c7eba 100%);
+    border-radius: var(--domus-border-radius);
     box-shadow: 0 18px 34px rgba(0, 0, 0, 0.16);
 }
 
@@ -241,6 +242,7 @@
     position: relative;
     min-height: 228px;
     border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: var(--domus-border-radius);
     background:
         linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0, rgba(255, 255, 255, 0.14) 1px, transparent 1px, transparent 25%),
         linear-gradient(rgba(255, 255, 255, 0.14) 0, rgba(255, 255, 255, 0.14) 1px, transparent 1px, transparent 25%);
@@ -292,6 +294,7 @@
     display: block;
     width: 100%;
     max-height: 300px;
+    border-radius: var(--domus-border-radius);
     object-fit: contain;
     box-shadow: 0 18px 34px rgba(0, 0, 0, 0.16);
 }
@@ -329,6 +332,15 @@
 
 .domus-guidance-detail-action {
     min-height: 40px;
+    border-radius: var(--domus-border-radius);
+}
+
+.domus-guidance-detail-action.primary,
+.domus-guidance-detail-action.primary:hover,
+.domus-guidance-detail-action.primary:focus {
+    background: var(--domus-theme);
+    border-color: var(--domus-theme);
+    color: #ffffff;
 }
 
 .domus-guidance-footer {
@@ -344,31 +356,31 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .domus-guidance-dot {
-    width: 12px;
-    height: 12px;
+    width: 8px;
+    height: 8px;
     padding: 0;
-    border: 1px solid #303845;
-    border-radius: 50%;
+    border: 1px solid var(--domus-theme);
+    border-radius: 999px;
     background: #ffffff;
     cursor: pointer;
 }
 
 .domus-guidance-dot.is-active {
-    background: #0f78ad;
-    border-color: #0f78ad;
+    background: var(--domus-theme);
+    border-color: var(--domus-theme);
 }
 
 .domus-guidance-finish {
     min-width: 180px;
     min-height: 42px;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--domus-border-radius);
     padding: 0 20px;
-    background: #0f78ad;
+    background: var(--domus-theme);
     color: #ffffff;
     font-size: 14px;
     font-weight: 600;
