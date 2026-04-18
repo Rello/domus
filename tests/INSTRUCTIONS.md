@@ -20,13 +20,8 @@ Notes:
   - `PHPUNIT_IMAGE=my-image:tag ./tests/run-unit.sh`
 
 ## UI Tests (Playwright)
-will folow later
+will follow later
 
 ## License Compliance (REUSE)
 - Run REUSE lint:
   - `./tests/run-reuse.sh`
-
-Notes:
-- Default container image: `fsfe/reuse`
-- Override image if needed:
-  - `REUSE_IMAGE=fsfe/reuse:latest ./tests/run-reuse.sh`
