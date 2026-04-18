@@ -1,0 +1,83 @@
+# SPDX-FileCopyrightText: 2026 Marcel Scherello
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+version = 1
+
+[[annotations]]
+path = [
+    "img/account.svg",
+    "img/app.svg",
+    "img/back.svg",
+    "img/booking.svg",
+    "img/dashboard.svg",
+    "img/delete.svg",
+    "img/details.svg",
+    "img/edit.svg",
+    "img/file.svg",
+    "img/icon.svg",
+    "img/partner.svg",
+    "img/property.svg",
+    "img/tenancy.svg",
+    "img/unit.svg",
+    "l10n/de.json",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 Marcel Scherello"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
+path = [
+    "img/action/call.svg",
+    "img/action/custom.svg",
+    "img/action/document.svg",
+    "img/action/email.svg",
+    "img/action/event.svg",
+    "img/action/note.svg",
+    "img/action/yearStatus.svg",
+    "img/add.svg",
+    "img/addChild.svg",
+    "img/alert.svg",
+    "img/arrowRight.svg",
+    "img/call.svg",
+    "img/chart.svg",
+    "img/checkmark.svg",
+    "img/confirmYear.svg",
+    "img/disable.svg",
+    "img/external.svg",
+    "img/folder.svg",
+    "img/fullscreen.svg",
+    "img/fullscreenExit.svg",
+    "img/location.svg",
+    "img/logo.svg",
+    "img/mail.svg",
+    "img/ok.svg",
+    "img/pictures/apartment.png",
+    "img/pictures/booking.png",
+    "img/pictures/dashboard.png",
+    "img/pictures/tenancy.png",
+    "img/pictures/unit.png",
+    "img/pictures/unitList.png",
+    "img/property-default-cover.svg",
+    "img/ruler.svg",
+    "img/settings.svg",
+    "img/task.svg",
+    "img/unit-default-cover.svg",
+    "img/upload.svg",
+    "img/warning.svg",
+    "screenshots/dashboard.png",
+    "screenshots/logo.png",
+    "screenshots/revenue.png",
+    "screenshots/unit.png",
+    "screenshots/unitList.png",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Marcel Scherello"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
+path = [
+    "js/3rdParty/chart.umd.js",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2025 Chart.js Contributors"
+SPDX-License-Identifier = "MIT"

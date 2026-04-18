@@ -13,9 +13,20 @@ This repository is a Nextcloud app; follow the existing design documents when ma
 - Avoid adding build tooling (e.g., webpack) or external Composer dependencies; stick to vanilla JS and Nextcloud-provided services.
 - Do not use ILogger. It is deprecated in favor of Psr\Log\LoggerInterface
 
+### License Header
+
+Every new file needs to get a SPDX header in the first rows according to this template.
+The year in the first line must be replaced with the year when the file is created (for example, 2026 for files first added in 2026).
+The commenting signs need to be used depending on the file type.
+If a file can not get a header like svg images, these need to be added to the REUSE.toml file.
+
+```plaintext
+SPDX-FileCopyrightText: <YEAR> Marcel Scherello
+SPDX-License-Identifier: AGPL-3.0-or-later
+```
+
 ## Testing and validation
-- There are no automated tests configured; manually verify affected UI or endpoints as appropriate and describe what you checked in your summary.
-- If you add migrations or routes, double-check that they comply with the Nextcloud constraints in the technical guidelines (route registration in `appinfo/routes.php`, table names <= 23 characters, etc.).
+Test execution instructions are maintained in `tests/INSTRUCTIONS.md`; prefer the reusable wrappers `tests/run-unit.sh` and `tests/run-playwright.sh` over ad-hoc container commands.
 
 ## Pull requests
 - Summaries should highlight the key behavioral or documentation changes and the manual checks performed.

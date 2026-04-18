@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2025 Marcel Scherello
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 [![Version](https://img.shields.io/github/release/rello/domus.svg)](https://github.com/rello/domus/blob/main/CHANGELOG.md)
 [![License: AGPLv3](https://img.shields.io/badge/license-AGPLv3-blue.svg)](http://www.gnu.org/licenses/agpl-3.0)
 [![REUSE status](https://api.reuse.software/badge/github.com/rello/domus)](https://api.reuse.software/info/github.com/rello/domus)
@@ -12,10 +17,10 @@ Built for teams who want clear rental workflows without giving up the privacy an
 
 ## Preview
 <p>
-  <img src="screenshots/logo.png" alt="Unit list preview" width="400"><br>
-  <img src="screenshots/dashboard.png" alt="Dashboard preview" width="400"><br>
-  <img src="screenshots/unitList.png" alt="Unit details preview" width="400"><br>
-  <img src="screenshots/unit.png" alt="Unit details preview" width="400"><br>
+  <img src="screenshots/logo.png" alt="Unit list preview" width="400"><br><br>
+  <img src="screenshots/dashboard.png" alt="Dashboard preview" width="400"><br><br>
+  <img src="screenshots/unitList.png" alt="Unit details preview" width="400"><br><br>
+  <img src="screenshots/unit.png" alt="Unit details preview" width="400"><br><br>
   <img src="screenshots/revenue.png" alt="Tenancy preview" width="400">
 </p>
 
