@@ -19,6 +19,7 @@ class DocumentLink extends Entity implements JsonSerializable {
     protected $createdAt;
 
     private ?string $fileUrl = null;
+    private ?string $filePath = null;
 
     public function __construct() {
         $this->addType('id', 'int');
@@ -36,11 +37,16 @@ class DocumentLink extends Entity implements JsonSerializable {
             'fileId' => $this->fileId,
             'fileName' => $this->fileName,
             'fileUrl' => $this->fileUrl,
+            'filePath' => $this->filePath,
             'createdAt' => $this->createdAt,
         ];
     }
 
     public function setFileUrl(?string $fileUrl): void {
         $this->fileUrl = $fileUrl;
+    }
+
+    public function setFilePath(?string $filePath): void {
+        $this->filePath = $filePath;
     }
 }

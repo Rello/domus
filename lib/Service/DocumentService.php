@@ -381,15 +381,16 @@ class DocumentService {
         $fileId = $link->getFileId();
         if ($fileId !== null) {
             $link->setFileUrl($this->urlGenerator->getAbsoluteURL('/f/' . $fileId));
-            if (!$link->getFileName()) {
-                try {
-                    $node = $this->rootFolder->getById($fileId)[0] ?? null;
-                    if ($node instanceof File) {
+            try {
+                $node = $this->rootFolder->getById($fileId)[0] ?? null;
+                if ($node instanceof File) {
+                    if (!$link->getFileName()) {
                         $link->setFileName($node->getName());
                     }
-                } catch (\Throwable $e) {
-                    $this->logger->warning('Failed to fetch file name for document link', ['fileId' => $fileId, 'message' => $e->getMessage()]);
+                    $link->setFilePath($this->normalizeSerializedFilePath((string)$node->getPath(), (string)$link->getUserId()));
                 }
+            } catch (\Throwable $e) {
+                $this->logger->warning('Failed to fetch file name for document link', ['fileId' => $fileId, 'message' => $e->getMessage()]);
             }
         }
     }
@@ -571,6 +572,19 @@ class DocumentService {
         }
 
         return $cleanTitle;
+    }
+
+    private function normalizeSerializedFilePath(string $path, string $userId): string {
+        $userPrefix = '/' . trim($userId, '/') . '/files/';
+        if (str_starts_with($path, $userPrefix)) {
+            return ltrim(substr($path, strlen($userPrefix)), '/');
+        }
+
+        if (preg_match('#^/[^/]+/files/(.+)$#', $path, $matches) === 1) {
+            return ltrim((string)$matches[1], '/');
+        }
+
+        return ltrim($path, '/');
     }
 
     private function normalizePath(string $path): string {

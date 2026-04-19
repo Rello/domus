@@ -991,7 +991,7 @@
                         const badgeLabel = Domus.Utils.escapeHtml(t('domus', 'Provisional'));
                         return {
                             content: '<span class="domus-statistics-year-value">' + yearLabel + '</span>' +
-                                '<span class="domus-badge domus-badge-muted domus-badge-provisional">' +
+                                '<span class="domus-badge domus-badge-warning domus-badge-provisional" data-year-status-open="1">' +
                                 badgeLabel +
                                 '</span>',
                             alignRight: false,
@@ -1118,17 +1118,24 @@
             const years = Domus.Utils.collectStatisticsYears(statistics);
             const provisionalMap = Domus.Utils.collectProvisionalMap(statistics);
             const yearOptions = years.map(year => '<option value="' + Domus.Utils.escapeHtml(String(year)) + '">' + Domus.Utils.escapeHtml(String(year)) + '</option>').join('');
-            const content = '<form id="domus-year-status-form">' +
-                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Year')) +
-                '<select id="domus-year-status-year" name="year">' + yearOptions + '</select></label>' +
+            const rows = [
+                Domus.UI.buildFormRow({
+                    label: t('domus', 'Year'),
+                    content: '<select id="domus-year-status-year" name="year">' + yearOptions + '</select>'
+                })
+            ];
+            const content = '<div class="domus-form domus-year-status-form">' +
+                '<form id="domus-year-status-form">' +
+                Domus.UI.buildFormTable(rows) +
                 '<div class="muted domus-year-status-hint" id="domus-year-status-hint"></div>' +
-                '<div class="domus-modal-footer">' +
+                '<div class="domus-form-actions">' +
                 '<button type="button" id="domus-year-status-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
                 '<button type="submit" class="primary" id="domus-year-status-submit"></button>' +
                 '</div>' +
-                '</form>';
+                '</form>' +
+                '</div>';
 
-            const modal = Domus.UI.openModal({title: t('domus', 'Manage year status'), content});
+            const modal = Domus.UI.openModal({title: t('domus', 'Close or open year'), content});
             const form = modal.modalEl.querySelector('#domus-year-status-form');
             const yearSelect = modal.modalEl.querySelector('#domus-year-status-year');
             const hint = modal.modalEl.querySelector('#domus-year-status-hint');
@@ -1177,6 +1184,23 @@
         function bindYearStatusAction(unitId, statistics) {
             document.getElementById('domus-unit-year-status')?.addEventListener('click', () => {
                 openYearStatusModal(unitId, statistics, () => renderDetail(unitId));
+            });
+        }
+
+        function bindProvisionalYearStatusBadges(unitId, statistics) {
+            document.querySelectorAll('[data-year-status-open="1"]').forEach(badge => {
+                if (badge.dataset.domusYearStatusBound) {
+                    return;
+                }
+                badge.dataset.domusYearStatusBound = 'true';
+                badge.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const yearAttr = badge.closest('tr')?.getAttribute('data-stat-year');
+                    const year = Number(yearAttr);
+                    const modalOptions = Number.isFinite(year) ? {defaultYear: year} : {};
+                    openYearStatusModal(unitId, statistics, () => renderDetail(unitId), modalOptions);
+                });
             });
         }
 
@@ -1720,8 +1744,12 @@
                     }) : '';
                     const yearStatusAction = {
                         id: 'domus-unit-year-status',
-                        title: t('domus', 'Manage year status'),
+                        title: t('domus', 'Close or open year'),
                         iconClass: 'domus-icon-confirm-year'
+                    };
+                    const bindStatisticInteractions = () => {
+                        bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled});
+                        bindProvisionalYearStatusBadges(id, statistics);
                     };
                     const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'), [
                         yearStatusAction,
@@ -1748,7 +1776,7 @@
                         pagination: true,
                         paginationKey: `unit-${id}-result`,
                         pageSize: statisticsTablePageSize,
-                        onPageRender: () => bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled}),
+                        onPageRender: bindStatisticInteractions,
                         ...bookingEmptyState
                     });
                     const costTable = statistics && statistics.cost
@@ -1766,7 +1794,7 @@
                         pagination: true,
                         paginationKey: `unit-${id}-cost`,
                         pageSize: statisticsTablePageSize,
-                        onPageRender: () => bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled}),
+                        onPageRender: bindStatisticInteractions,
                         ...bookingEmptyState
                     }) + '</div>'
                         : '';
@@ -2014,6 +2042,7 @@
                     scheduleUnitPanelHeightSync();
                     if (!useKpiLayout) {
                         bindYearStatusAction(id, statistics);
+                        bindProvisionalYearStatusBadges(id, statistics);
                     }
                     Domus.Partners.bindContactActions();
                     if (canManageDistributions && !useKpiLayout) {
@@ -2042,7 +2071,7 @@
                             pagination: true,
                             paginationKey: `unit-${id}-cost`,
                             pageSize: statisticsTablePageSize,
-                            onPageRender: () => bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled}),
+                            onPageRender: bindStatisticInteractions,
                             ...bookingEmptyState
                         }) + '</div>';
                         const detailMap = {
@@ -2117,7 +2146,7 @@
                                 });
                             }
                             bindStatisticsPagination();
-                            bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled});
+                            bindStatisticInteractions();
                             Domus.Bookings.bindInlineTables();
                         }, {
                             initialTarget: initialTarget,

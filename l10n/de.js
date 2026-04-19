@@ -79,6 +79,7 @@ OC.L10N.register(
         "Next": "Weiter",
         "Showing {from} - {to} of {total}": "Zeige {from} - {to} von {total}",
         "Manage year status": "Jahresstatus verwalten",
+        "Close or open year": "Jahr schließen oder öffnen",
         "Masterdata": "Stammdaten",
         "Completion": "Fortschritt",
         "Maintain unit distributions": "Umlagen der Einheit pflegen",

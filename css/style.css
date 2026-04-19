@@ -1866,6 +1866,34 @@
     flex-wrap: wrap;
 }
 
+.domus-year-status-form .domus-form-table {
+    grid-template-columns: 1fr;
+}
+
+.domus-year-status-form .domus-form-label {
+    text-align: center;
+}
+
+.domus-year-status-form .domus-form-value {
+    align-items: center;
+}
+
+.domus-year-status-form .domus-form-value select {
+    max-width: 220px;
+    text-align: center;
+    text-align-last: center;
+}
+
+.domus-year-status-hint {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.domus-year-status-form .domus-form-actions {
+    margin: 12px -11px 0;
+    padding: 0 14px;
+}
+
 .domus-detail-hero {
     display: flex;
     align-items: flex-start;
@@ -2369,6 +2397,12 @@
     color: var(--color-success-text, var(--color-success));
 }
 
+.domus-badge-warning {
+    background: rgba(169, 122, 0, 0.16);
+    color: var(--color-warning-text, #7a5700);
+    border-color: rgba(169, 122, 0, 0.35);
+}
+
 .domus-badge-occupied {
     background: rgba(15, 107, 47, 0.12);
     color: var(--color-success-text, var(--color-success));
@@ -2381,6 +2415,16 @@
 
 .domus-badge-provisional {
     margin-left: 6px;
+    cursor: pointer;
+}
+
+.domus-badge-provisional:hover {
+    background: rgba(169, 122, 0, 0.22);
+}
+
+.domus-badge-provisional:focus-visible {
+    outline: 2px solid rgba(169, 122, 0, 0.55);
+    outline-offset: 1px;
 }
 
 .domus-statistics-year-cell {

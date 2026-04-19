@@ -28,7 +28,7 @@
 
             return {
                 className: 'domus-documents-row',
-                dataset: { docInfo: doc.id },
+                dataset: { 'doc-info': doc.id },
                 cells
             };
         }
@@ -69,8 +69,11 @@
                         '</div>';
                     updateContainer(html);
                     bindDocumentActions(containerId, documentId => openDetailModal(documentId, {
-                        canDelete: canManageDocuments,
-                        onDeleted: () => renderList(entityType, entityId, options)
+                        entityType,
+                        entityId,
+                        onUpdated: typeof options.onUpdated === 'function'
+                            ? options.onUpdated
+                            : () => renderList(entityType, entityId, options)
                     }));
                     bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
                 })
@@ -135,8 +138,11 @@
                     : '';
                 updateContainer('<div id="' + containerId + '">' + table + moreButton + '</div>');
                 bindDocumentActions(containerId, documentId => openDetailModal(documentId, {
-                    canDelete: canManageDocuments,
-                    onDeleted: () => loadLatestList(entityType, entityId, options)
+                    entityType,
+                    entityId,
+                    onUpdated: typeof options.onUpdated === 'function'
+                        ? options.onUpdated
+                        : () => loadLatestList(entityType, entityId, options)
                 }));
                 const moreBtn = document.getElementById(containerId + '-more');
                 if (moreBtn) {
@@ -401,6 +407,22 @@
             return normalized;
         }
 
+        function buildDocumentOnlySectionMode() {
+            return {
+                primary: 'document',
+                booking: {
+                    enabled: false,
+                    required: true,
+                    title: t('domus', 'Create a booking for this document')
+                },
+                document: {
+                    enabled: true,
+                    required: true,
+                    title: t('domus', 'Document')
+                }
+            };
+        }
+
         function openLinkModal(entityType, entityId, onLinked, focus = 'link', options = {}) {
             const targetType = normalizeDocumentTarget(entityType);
             const defaults = Object.assign({}, options.defaults || {});
@@ -439,6 +461,9 @@
             if (targetType === 'property' && formConfig.restrictUnitsToProperty === undefined) {
                 formConfig.restrictUnitsToProperty = Domus.Role.isBuildingMgmtView();
             }
+            if ((targetType === 'partner' || targetType === 'tenancy') && formConfig.sectionMode === undefined) {
+                formConfig.sectionMode = buildDocumentOnlySectionMode();
+            }
             formConfig.documentTargets = documentTargets;
 
             Domus.Bookings.openCreateModal(defaults, () => {
@@ -450,73 +475,153 @@
             }, formConfig);
         }
 
+        function parseEntityId(value) {
+            const parsed = parseInt(value, 10);
+            return Number.isNaN(parsed) ? null : parsed;
+        }
+
+        function buildDocumentSelection(detail) {
+            const filePath = String(detail?.document?.filePath || '').trim();
+            if (!filePath) {
+                return null;
+            }
+
+            const selection = {
+                type: 'link',
+                filePath
+            };
+
+            const title = String(detail?.document?.fileName || '').trim();
+            if (title) {
+                selection.title = title;
+            }
+
+            const createdAt = Number(detail?.document?.createdAt);
+            if (!Number.isNaN(createdAt) && createdAt > 0) {
+                selection.year = new Date(createdAt * 1000).getFullYear();
+            }
+
+            return selection;
+        }
+
+        function resolveDocumentEditContext(documentId, detail, options = {}) {
+            const linkedEntities = Array.isArray(detail?.linkedEntities) ? detail.linkedEntities : [];
+            const requestedType = normalizeDocumentTarget(options.entityType);
+            const requestedId = parseEntityId(options.entityId);
+
+            let primaryLink = linkedEntities.find(link => String(link?.id) === String(documentId)) || null;
+            if (!primaryLink && requestedType && requestedId !== null) {
+                primaryLink = linkedEntities.find(link => (
+                    normalizeDocumentTarget(link?.entityType) === requestedType
+                    && parseEntityId(link?.entityId) === requestedId
+                )) || null;
+            }
+            if (!primaryLink && linkedEntities.length) {
+                [primaryLink] = linkedEntities;
+            }
+
+            const targetType = requestedType || normalizeDocumentTarget(primaryLink?.entityType);
+            const targetId = requestedId !== null ? requestedId : parseEntityId(primaryLink?.entityId);
+
+            const preferredBookingLink = linkedEntities.find(link => (
+                normalizeDocumentTarget(link?.entityType) === 'booking'
+                && parseEntityId(link?.entityId) === targetId
+            )) || null;
+            const bookingLink = preferredBookingLink || linkedEntities.find(link => normalizeDocumentTarget(link?.entityType) === 'booking') || null;
+
+            return {
+                targetType,
+                targetId,
+                bookingId: parseEntityId(bookingLink?.entityId),
+                bookingMeta: bookingLink?.booking || null
+            };
+        }
+
         function openDetailModal(documentId, options = {}) {
             Domus.Api.getDocumentDetail(documentId)
                 .then(detail => {
-                    const fileLink = detail.document?.fileUrl
-                        ? '<a class="domus-link" target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(detail.document.fileUrl) + '">' + Domus.Utils.escapeHtml(detail.document.fileName || detail.document.fileUrl || '') + '</a>'
-                        : Domus.Utils.escapeHtml(detail.document?.fileName || '');
-                    const linked = detail.linkedEntities || [];
-                    const typeLabels = {
-                        property: t('domus', 'Property'),
-                        unit: t('domus', 'Unit'),
-                        partner: t('domus', 'Partner'),
-                        tenancy: t('domus', 'Tenancy'),
-                        booking: t('domus', 'Booking'),
-                        report: t('domus', 'Report')
-                    };
-                    const list = linked.length ? linked.map(link => {
-                        const type = typeLabels[link.entityType] || link.entityType;
-                        let name = link.label || `${type} #${link.entityId}`;
-
-                        if (link.entityType === 'booking' && link.booking) {
-                            const date = Domus.Utils.formatDate(link.booking.date);
-                            const accountNumber = link.booking.account !== undefined && link.booking.account !== null
-                                ? String(link.booking.account)
-                                : '';
-                            const account = [accountNumber, link.booking.accountLabel].filter(Boolean).join(' — ');
-                            const amount = Domus.Utils.formatCurrency(link.booking.amount);
-                            const parts = [date, account, amount].filter(Boolean).join(' | ');
-                            if (parts) {
-                                name = parts;
-                            }
-                        }
-
-                        return '<li><strong>' + Domus.Utils.escapeHtml(type) + ':</strong> ' + Domus.Utils.escapeHtml(name) + '</li>';
-                    }).join('') : '<li>' + Domus.Utils.escapeHtml(t('domus', 'No entries available.')) + '</li>';
-
-                    let modal;
-                    const headerActions = [];
-                    if (options.canDelete !== false) {
-                        headerActions.push(Domus.UI.buildModalAction(t('domus', 'Remove'), () => {
-                            Domus.UI.confirmAction({
-                                message: t('domus', 'Remove document?'),
-                                confirmLabel: t('domus', 'Delete')
-                            }).then(confirmed => {
-                                if (!confirmed) {
-                                    return;
-                                }
-                                Domus.Api.unlinkDocument(documentId)
-                                    .then(() => {
-                                        Domus.UI.showNotification(t('domus', 'Document removed.'), 'success');
-                                        modal?.close();
-                                        if (typeof options.onDeleted === 'function') {
-                                            options.onDeleted();
-                                        }
-                                    })
-                                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                            });
-                        }, 'domus-icon-delete'));
+                    const context = resolveDocumentEditContext(documentId, detail, options);
+                    const initialDocumentSelection = buildDocumentSelection(detail);
+                    if (!context.targetType || context.targetId === null || !initialDocumentSelection) {
+                        Domus.UI.showNotification(t('domus', 'Document link not found.'), 'error');
+                        return;
                     }
 
-                    modal = Domus.UI.openModal({
-                        title: t('domus', 'Document links'),
-                        content: '<div class="domus-doc-detail">' +
-                            '<p><strong>' + Domus.Utils.escapeHtml(t('domus', 'File')) + ':</strong> ' + fileLink + '</p>' +
-                            '<ul>' + list + '</ul>' +
-                            '</div>',
-                        headerActions
-                    });
+                    const defaults = {};
+                    if (context.targetType === 'property') {
+                        defaults.propertyId = context.targetId;
+                    } else if (context.targetType === 'unit') {
+                        defaults.unitId = context.targetId;
+                    }
+
+                    const formConfig = {
+                        createContext: 'document',
+                        initialDocumentSelection,
+                        initialBookingEnabled: context.bookingId !== null,
+                        editDocumentLinkId: documentId,
+                        documentTargets: [{ entityType: context.targetType, entityId: context.targetId }],
+                        allowDocumentWithoutRelation: context.targetType === 'partner' || context.targetType === 'tenancy'
+                    };
+                    if (context.targetType === 'property') {
+                        formConfig.restrictUnitsToProperty = Domus.Role.isBuildingMgmtView();
+                    }
+                    if (context.targetType === 'partner' || context.targetType === 'tenancy') {
+                        formConfig.sectionMode = buildDocumentOnlySectionMode();
+                        formConfig.initialBookingEnabled = false;
+                    }
+
+                    const onUpdated = typeof options.onUpdated === 'function' ? options.onUpdated : null;
+                    const openEditor = (bookingDefaults = {}, initialEntries = []) => {
+                        const nextDefaults = Object.assign({}, defaults, bookingDefaults);
+                        if (context.bookingId !== null) {
+                            formConfig.editBookingId = context.bookingId;
+                            formConfig.multiEntry = false;
+                            formConfig.initialBookingEnabled = true;
+                            if (Array.isArray(initialEntries) && initialEntries.length) {
+                                formConfig.initialEntries = initialEntries;
+                            }
+                        }
+                        Domus.Bookings.openCreateModal(nextDefaults, () => {
+                            if (onUpdated) {
+                                onUpdated();
+                            }
+                        }, formConfig);
+                    };
+
+                    if (context.bookingId === null) {
+                        openEditor();
+                        return;
+                    }
+
+                    Domus.Api.get('/bookings/' + context.bookingId)
+                        .then(booking => {
+                            const bookingDefaults = {
+                                propertyId: booking?.propertyId || undefined,
+                                unitId: booking?.unitId || undefined,
+                                date: booking?.date || undefined,
+                                deliveryDate: booking?.deliveryDate || booking?.date || undefined,
+                                distributionKeyId: booking?.distributionKeyId || undefined
+                            };
+                            const initialEntries = [{
+                                account: booking?.account || '',
+                                amount: booking?.amount !== undefined && booking?.amount !== null ? booking.amount : ''
+                            }];
+                            openEditor(bookingDefaults, initialEntries);
+                        })
+                        .catch(() => {
+                            const initialEntries = context.bookingMeta
+                                ? [{
+                                    account: context.bookingMeta.account || '',
+                                    amount: context.bookingMeta.amount !== undefined && context.bookingMeta.amount !== null
+                                        ? context.bookingMeta.amount
+                                        : ''
+                                }]
+                                : [];
+                            const fallbackDefaults = context.bookingMeta?.date
+                                ? { date: context.bookingMeta.date, deliveryDate: context.bookingMeta.date }
+                                : {};
+                            openEditor(fallbackDefaults, initialEntries);
+                        });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
