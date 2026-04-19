@@ -918,23 +918,29 @@
                 return Domus.Utils.escapeHtml(String(value || ''));
             }
 
+            function translateStatLabel(value) {
+                const label = String(value || '');
+                return label ? t('domus', label) : '';
+            }
+
             function buildStatisticsHeader(column) {
                 const help = column?.help;
+                const translatedLabel = translateStatLabel(column.label || column.key || '');
                 if (!help || typeof help !== 'object') {
                     return {
-                        label: column.label || column.key || '',
+                        label: translatedLabel,
                         alignRight: column.alignRight
                     };
                 }
                 const helpLabel = t('domus', 'Explain {label}', {
-                    label: column.label || column.key || ''
+                    label: translatedLabel
                 });
                 return {
-                    label: column.label || column.key || '',
+                    label: translatedLabel,
                     alignRight: column.alignRight,
                     className: 'domus-stat-help-header',
                     dataset: {
-                        helpTitle: escapeHelpData(help.title || column.label || column.key || ''),
+                        helpTitle: escapeHelpData(translateStatLabel(help.title || column.label || column.key || '')),
                         helpSummary: escapeHelpData(help.summary || ''),
                         helpCalculation: escapeHelpData(help.calculation || ''),
                         helpIncludes: escapeHelpData(help.includes || ''),
@@ -1155,7 +1161,8 @@
                     return null;
                 }
                 const formatted = formatStatValue(sum, column.format, column.unit);
-                const label = config.label || t('domus', 'Total {label}', {label: column.label || column.key});
+                const translatedLabel = translateStatLabel(column.label || column.key);
+                const label = config.label || t('domus', 'Total {label}', {label: translatedLabel});
                 return '<div class="domus-table-summary-item">' +
                     '<span class="domus-table-summary-label">' + Domus.Utils.escapeHtml(label) + '</span>' +
                     '<span class="domus-table-summary-value">' + Domus.Utils.escapeHtml(formatted.content) + '</span>' +
