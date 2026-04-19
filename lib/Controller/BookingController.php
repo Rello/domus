@@ -110,6 +110,8 @@ class BookingController extends Controller {
         try {
             $this->bookingService->deleteBooking($id, $this->getUserId());
             return new DataResponse([], Http::STATUS_NO_CONTENT);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
         } catch (\Throwable $e) {
             return $this->notFound();
         }

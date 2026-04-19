@@ -98,7 +98,9 @@
                 } : null
             }));
             const table = Domus.UI.buildTable([
-                t('domus', 'Invoice date'), t('domus', 'Account'), t('domus', 'Amount')
+                t('domus', 'Invoice date'),
+                t('domus', 'Account'),
+                { label: t('domus', 'Amount'), alignRight: true }
             ], rows, { wrapPanel: false });
             const pagination = Domus.UI.buildPagination(pageInfo);
             return { table, pagination };
@@ -842,7 +844,8 @@
                             multiEntry,
                             hidePropertyField,
                             hideUnitField,
-                            sectionMode
+                            sectionMode,
+                            editDocumentLinkId
                         })
                     });
                     const docWidget = mountBookingDocumentWidget(modal.modalEl, {
@@ -886,12 +889,18 @@
                     }, {
                         multiEntry,
                         accountOptions,
+                        editBookingId,
+                        editDocumentLinkId,
                         initialEntries: Array.isArray(formConfig.initialEntries) && formConfig.initialEntries.length
                             ? formConfig.initialEntries
                             : (defaults && (defaults.account || defaults.amount) ? [{ account: defaults.account, amount: defaults.amount }] : []),
                         docWidget,
                         sectionMode,
-                        allowDocumentWithoutRelation: formConfig.allowDocumentWithoutRelation === true
+                        allowDocumentWithoutRelation: formConfig.allowDocumentWithoutRelation === true,
+                        onDeleted: () => {
+                            modal.close();
+                            (onCreated || renderList)();
+                        }
                     });
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
@@ -981,6 +990,8 @@
             const propertySelect = form?.querySelector('select[name="propertyId"]');
             const invoiceDateInput = form?.querySelector('input[name="date"]');
             const deliveryDateInput = form?.querySelector('input[name="deliveryDate"]');
+            const deleteBookingButton = modalContext.modalEl.querySelector('#domus-booking-delete');
+            const deleteDocumentButton = modalContext.modalEl.querySelector('#domus-document-delete');
             const unitField = form?.querySelector('[data-role="unit-field"]');
             const unitSelect = form?.querySelector('select[name="unitId"]');
             const isBuildingMgmt = Domus.Role.isBuildingMgmtView();
@@ -1149,6 +1160,40 @@
             }
 
             cancel?.addEventListener('click', modalContext.close);
+            deleteBookingButton?.addEventListener('click', () => {
+                Domus.UI.confirmAction({
+                    title: t('domus', 'Delete {entity}?', { entity: t('domus', 'Booking') }),
+                    message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Booking') }),
+                    confirmLabel: t('domus', 'Delete')
+                }).then(confirmed => {
+                    if (!confirmed || !options.editBookingId) {
+                        return;
+                    }
+                    Domus.Api.deleteBooking(options.editBookingId)
+                        .then(() => {
+                            Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Booking') }), 'success');
+                            options.onDeleted?.();
+                        })
+                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                });
+            });
+            deleteDocumentButton?.addEventListener('click', () => {
+                Domus.UI.confirmAction({
+                    title: t('domus', 'Delete {entity}?', { entity: t('domus', 'Document') }),
+                    message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Document') }),
+                    confirmLabel: t('domus', 'Delete')
+                }).then(confirmed => {
+                    if (!confirmed || !options.editDocumentLinkId) {
+                        return;
+                    }
+                    Domus.Api.unlinkDocument(options.editDocumentLinkId)
+                        .then(() => {
+                            Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Document') }), 'success');
+                            options.onDeleted?.();
+                        })
+                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                });
+            });
             propertySelect?.addEventListener('change', function() {
                 updateDistributionOptions(this.value);
             });
@@ -1240,7 +1285,6 @@
         }
 
         function buildBookingForm(options, booking, formOptions = {}) {
-            const { accountOptions, propertyOptions, unitOptions } = options;
             const multiEntry = formOptions.multiEntry !== undefined ? formOptions.multiEntry : !booking;
             const bookingDate = booking?.date ? Domus.Utils.escapeHtml(booking.date) : '';
             const bookingDeliveryDate = booking?.deliveryDate
@@ -1255,13 +1299,14 @@
             const selectedDistributionKey = booking?.distributionKeyId
                 ? String(booking.distributionKeyId)
                 : (booking?.unitId && isBuildingMgmt ? unitAllocationValue : '');
+            const isBookingEditMode = Boolean(formOptions.editBookingId);
             const hideProperty = formOptions.hidePropertyField || Domus.Role.getCurrentRole() === 'landlord';
             const hideUnit = Boolean(formOptions.hideUnitField) && Boolean(selectedUnit);
             const showDistribution = Domus.Distributions.canManageDistributions();
-            const existingDocuments = booking?.id
+            const existingDocuments = isBookingEditMode
                 ? '<div class="domus-booking-documents-existing">' +
                 '<div class="domus-booking-documents-header">' + Domus.Utils.escapeHtml(t('domus', 'Linked documents')) + '</div>' +
-                Domus.Documents.renderList('booking', booking.id, { showLinkAction: false }) +
+                Domus.Documents.renderList('booking', formOptions.editBookingId, { showLinkAction: false }) +
                 '</div>'
                 : '';
             const bookingSectionContent = '<div class="domus-booking-dates">' +
@@ -1331,9 +1376,10 @@
                 '<form id="domus-booking-form">' +
                 bookingArea +
                 '<div class="domus-form-actions">' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
-                (booking?.id ? '<button type="button" class="domus-ghost" id="domus-booking-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' : '') +
                 '<button type="button" id="domus-booking-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                (isBookingEditMode ? '<button type="button" class="domus-ghost" id="domus-booking-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' : '') +
+                (formOptions.editDocumentLinkId ? '<button type="button" class="domus-ghost" id="domus-document-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete document')) + '</button>' : '') +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>' +
                 '</form>' +
                 '</div>';

@@ -1228,13 +1228,26 @@
                 const classes = [];
                 if (header.className) classes.push(header.className);
                 if (header.alignRight) classes.push('domus-cell-number');
+                let dataAttrs = '';
+                if (header.dataset) {
+                    Object.keys(header.dataset).forEach(key => {
+                        const value = header.dataset[key];
+                        if (value === undefined || value === null) {
+                            return;
+                        }
+                        dataAttrs += ' data-' + Domus.Utils.escapeHtml(key) + '="' + Domus.Utils.escapeHtml(String(value)) + '"';
+                    });
+                }
                 return {
                     label,
-                    classAttr: classes.length ? ' class="' + Domus.Utils.escapeHtml(classes.join(' ')) + '"' : ''
+                    isHtml: header.isHtml === true,
+                    classAttr: classes.length ? ' class="' + Domus.Utils.escapeHtml(classes.join(' ')) + '"' : '',
+                    dataAttrs,
+                    titleAttr: header.title ? ' title="' + Domus.Utils.escapeHtml(header.title) + '"' : ''
                 };
             }
 
-            return { label: header, classAttr: '' };
+            return { label: header, isHtml: false, classAttr: '', dataAttrs: '', titleAttr: '' };
         }
 
         function paginateArray(items, page, pageSize) {
@@ -1328,8 +1341,8 @@
             let html = '<table class="domus-table">';
             if (showHeader) {
                 html += '<thead><tr>' + headers.map(h => {
-                    const { label, classAttr } = normalizeHeader(h);
-                    return '<th' + classAttr + '>' + Domus.Utils.escapeHtml(label) + '</th>';
+                    const { label, isHtml, classAttr, dataAttrs, titleAttr } = normalizeHeader(h);
+                    return '<th' + classAttr + dataAttrs + titleAttr + '>' + (isHtml ? label : Domus.Utils.escapeHtml(label)) + '</th>';
                 }).join('') + '</tr></thead>';
             }
             html += '<tbody>';
@@ -1864,8 +1877,8 @@
                     '<form id="' + Domus.Utils.escapeHtml(formId) + '">' +
                     buildFormTable(rows) +
                     '<div class="domus-form-actions">' +
-                    '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                     '<button type="button" id="' + Domus.Utils.escapeHtml(cancelId) + '">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                    '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                     '</div>' +
                     '</form>' +
                     '</div>'

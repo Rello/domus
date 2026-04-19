@@ -11,7 +11,18 @@ class StatisticCalculations {
     public static function unitRevenue(): array {
         return [
             ['key' => 'year', 'label' => 'Year', 'type' => 'year'],
-            ['key' => 'rent', 'label' => 'Base rent', 'account' => '1000'],
+            [
+                'key' => 'rent',
+                'label' => 'Base rent',
+                'account' => '1000',
+                'help' => [
+                    'title' => 'Base rent',
+                    'summary' => 'Annual recurring cold rent from the tenancy assigned to this unit.',
+                    'calculation' => 'This column sums the amount from account 1000 for the selected year. It uses the tenancy base rent and does not add utility prepayments.',
+                    'includes' => 'Recurring base rent agreed in the tenancy for the active period of the year.',
+                    'excludes' => 'Utility costs, deposits, one-time charges, and property-level cost postings.',
+                ],
+            ],
             [
                 'key' => 'hgnu',
                 'label' => 'Non-allocable costs',

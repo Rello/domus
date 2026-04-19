@@ -104,7 +104,6 @@
             const isBuildingManagement = Domus.Role.isBuildingMgmtView();
             const address = buildPropertyAddress(property);
             const occupiedCount = Number(property?.occupiedUnitCount) || 0;
-            const vacantCount = Number(property?.vacantUnitCount) || 0;
             const unitCount = Number(property?.unitCount) || 0;
             const badges = isBuildingManagement
                 ? ''
@@ -605,10 +604,6 @@
             });
         }
 
-        function openEditModal(id) {
-            openPropertyModal(id, 'edit');
-        }
-
         function openPropertyDeleteModal(property, summary, onConfirm) {
             const expectedTitle = property?.name || '';
             const content = document.createElement('div');
@@ -835,8 +830,8 @@
             const actions = isView
                 ? '<div class="domus-form-actions"><button type="button" id="domus-property-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
                 : '<div class="domus-form-actions">' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-property-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>';
 
             return '<div class="domus-form">' +
@@ -946,8 +941,8 @@
                         })
                     ]) +
                     '<div class="domus-form-actions">' +
-                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                         '<button type="button" id="domus-property-image-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                     '</div>' +
                     '</form>' +
                     '</div>'

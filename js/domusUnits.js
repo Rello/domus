@@ -914,6 +914,51 @@
                 return ['currency', 'percentage', 'ratio', 'number'].includes(format || (hasNumericValues ? 'currency' : ''));
             }
 
+            function escapeHelpData(value) {
+                return Domus.Utils.escapeHtml(String(value || ''));
+            }
+
+            function buildStatisticsHeader(column) {
+                const help = column?.help;
+                if (!help || typeof help !== 'object') {
+                    return {
+                        label: column.label || column.key || '',
+                        alignRight: column.alignRight
+                    };
+                }
+                const helpLabel = t('domus', 'Explain {label}', {
+                    label: column.label || column.key || ''
+                });
+                return {
+                    label: column.label || column.key || '',
+                    alignRight: column.alignRight,
+                    className: 'domus-stat-help-header',
+                    dataset: {
+                        helpTitle: escapeHelpData(help.title || column.label || column.key || ''),
+                        helpSummary: escapeHelpData(help.summary || ''),
+                        helpCalculation: escapeHelpData(help.calculation || ''),
+                        helpIncludes: escapeHelpData(help.includes || ''),
+                        helpExcludes: escapeHelpData(help.excludes || ''),
+                        helpLabel: escapeHelpData(helpLabel),
+                        helpHint: escapeHelpData(t('domus', 'Show help'))
+                    },
+                    title: t('domus', 'Show help')
+                };
+            }
+            
+            function normalizeHelpHeaderTitle(header) {
+                if (!header || !header.dataset || !header.dataset.helpHint) {
+                    return '';
+                }
+                const label = header.label || '';
+                return label
+                    ? t('domus', '{label} - {hint}', {
+                        label,
+                        hint: header.dataset.helpHint
+                    })
+                    : header.dataset.helpHint;
+            }
+
             const columnMeta = columns.map(col => {
                 const isYearColumn = (col.key || '').toLowerCase() === 'year';
                 const columnFormat = col.format || (isYearColumn ? 'year' : null);
@@ -926,8 +971,14 @@
                     alignRight: isYearColumn ? false : shouldAlignRight(columnFormat, hasNumericValues)
                 });
             });
+            const headers = columnMeta.map(col => {
+                const header = buildStatisticsHeader(col);
+                if (header && header.className === 'domus-stat-help-header') {
+                    header.title = normalizeHelpHeaderTitle(header);
+                }
+                return header;
+            });
 
-            const headers = columnMeta.map(col => ({label: col.label || col.key || '', alignRight: col.alignRight}));
             const sortedRows = [...rowsData];
             if (yearColumn && options.sortByYear !== false) {
                 sortedRows.sort((a, b) => (parseInt(b[yearColumn.key], 10) || 0) - (parseInt(a[yearColumn.key], 10) || 0));
@@ -1034,6 +1085,51 @@
                 return tableHtml + totalsHtml;
             }
             return '<div class="domus-panel domus-panel-table">' + tableHtml + totalsHtml + '</div>';
+        }
+
+        function buildStatisticsHelpContent(data) {
+            const sections = [
+                data?.summary ? '<section class="domus-help-panel-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Meaning')) + '</h3><p>' + Domus.Utils.escapeHtml(data.summary) + '</p></section>' : '',
+                data?.calculation ? '<section class="domus-help-panel-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Calculation')) + '</h3><p>' + Domus.Utils.escapeHtml(data.calculation) + '</p></section>' : '',
+                data?.includes ? '<section class="domus-help-panel-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Includes')) + '</h3><p>' + Domus.Utils.escapeHtml(data.includes) + '</p></section>' : '',
+                data?.excludes ? '<section class="domus-help-panel-section"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Excludes')) + '</h3><p>' + Domus.Utils.escapeHtml(data.excludes) + '</p></section>' : ''
+            ].filter(Boolean).join('');
+
+            return '<div class="domus-help-panel">' +
+                '<div class="domus-help-panel-eyebrow">' + Domus.Utils.escapeHtml(t('domus', 'Context help')) + '</div>' +
+                '<div class="domus-help-panel-body">' + sections + '</div>' +
+                '</div>';
+        }
+
+        function bindStatisticsHelpInteractions(root = document) {
+            const container = root || document;
+            if (container.dataset && container.dataset.domusStatHelpBound === 'true') {
+                return;
+            }
+            if (container.dataset) {
+                container.dataset.domusStatHelpBound = 'true';
+            }
+            container.addEventListener('click', event => {
+                const header = event.target instanceof Element
+                    ? event.target.closest('th.domus-stat-help-header[data-help-title]')
+                    : null;
+                if (!header) {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                Domus.UI.openModal({
+                    title: header.dataset.helpTitle || '',
+                    content: buildStatisticsHelpContent({
+                        title: header.dataset.helpTitle || '',
+                        summary: header.dataset.helpSummary || '',
+                        calculation: header.dataset.helpCalculation || '',
+                        includes: header.dataset.helpIncludes || '',
+                        excludes: header.dataset.helpExcludes || ''
+                    }),
+                    size: 'lg'
+                });
+            });
         }
 
         function buildStatisticsTotals(columnMeta, rowsData, totalsConfig) {
@@ -1505,7 +1601,7 @@
                         Domus.Api.getProperties().catch(() => [])
                     ]);
                 })
-                .then(([unit, statistics, bookings, distributions, partners, property, properties]) => {
+                .then(([unit, statistics, bookings, distributions, partners]) => {
 
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const unitDetailConfig = Domus.Role.getUnitDetailConfig();
@@ -1750,6 +1846,7 @@
                     const bindStatisticInteractions = () => {
                         bindStatisticsBookingRows(id, {showLinkAction: documentActionsEnabled});
                         bindProvisionalYearStatusBadges(id, statistics);
+                        bindStatisticsHelpInteractions();
                     };
                     const statisticsHeader = Domus.UI.buildSectionHeader(t('domus', 'Revenue'), [
                         yearStatusAction,
@@ -1958,11 +2055,6 @@
                         Domus.Bookings.renderInline(bookings || [], {refreshView: 'unitDetail', refreshId: id}) +
                         '</div></div>'
                         : '';
-                    const bookingsPanel = (!useKpiLayout && canManageBookings)
-                        ? '<div class="domus-panel-body" id="domus-unit-bookings-panel">' + bookingsHeader + '<div class="domus-panel-body" id="domus-unit-bookings-body">' +
-                        Domus.Bookings.renderInline(bookings || [], {refreshView: 'unitDetail', refreshId: id}) +
-                        '</div></div>'
-                        : '';
                     const managementSideBySidePanels = isBuildingManagement
                         ? [
                             tasksPanel,
@@ -2035,6 +2127,7 @@
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindRowNavigation();
                     bindStatisticsPagination();
+                    bindStatisticInteractions();
                     Domus.Bookings.bindInlineTables();
                     Domus.UI.bindActionMenus();
                     Domus.UI.bindCollapsibles();
@@ -2119,6 +2212,12 @@
                             });
                             document.getElementById('domus-unit-tenancies-empty-create')?.addEventListener('click', () => {
                                 Domus.Tenancies.openCreateModal({unitId: id}, () => renderDetail(id));
+                            });
+                            document.getElementById('domus-add-unit-booking-inline')?.addEventListener('click', () => {
+                                Domus.Bookings.openCreateModal({propertyId: unit?.propertyId, unitId: id}, () => renderDetail(id), {
+                                    accountFilter: (nr) => String(nr).startsWith('2'),
+                                    hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
+                                });
                             });
                             if (target === 'revenue' || target === 'cost') {
                                 document.getElementById('domus-unit-statistics-booking-create')?.addEventListener('click', () => {
@@ -2272,10 +2371,6 @@
                     year: Domus.state.currentYear
                 });
             });
-        }
-
-        function openEditModal(id) {
-            openUnitModal(id, 'edit');
         }
 
         function openDocumentLocationModal(unit) {
@@ -2759,8 +2854,8 @@
             const actions = isView
                 ? '<div class="domus-form-actions"><button type="button" id="domus-unit-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
                 : '<div class="domus-form-actions">' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-unit-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>';
 
             return '<div class="domus-form">' +
@@ -2849,8 +2944,8 @@
                         })
                     ]) +
                     '<div class="domus-form-actions">' +
-                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                         '<button type="button" id="domus-unit-image-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                     '</div>' +
                     '</form>' +
                     '</div>'

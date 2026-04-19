@@ -91,6 +91,18 @@ class BookingYearService {
         return $this->bookingYearMapper->findClosed($year, $propertyId, $unitId) !== null;
     }
 
+    public function isYearClosedForBookingScope(int $year, ?int $propertyId, ?int $unitId): bool {
+        if ($unitId !== null && $this->isYearClosedForScope($year, null, $unitId)) {
+            return true;
+        }
+
+        if ($propertyId !== null && $this->isYearClosedForScope($year, $propertyId, null)) {
+            return true;
+        }
+
+        return false;
+    }
+
     private function assertScope(?int $propertyId, ?int $unitId, string $userId): array {
         $propertyId = $propertyId ?: null;
         $unitId = $unitId ?: null;

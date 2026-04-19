@@ -12,10 +12,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # DomusNC
 
-Domus gives landlords one structured place for units, tenancies, bookings, documents, and dashboard visibility.
-Built for teams who want clear rental workflows without giving up the privacy and convenience of Nextcloud.
+Domus hilft Ihnen dabei, Ihre Mietobjekte in Nextcloud ordentlich zu verwalten, ohne Tabellen, Haftnotizen oder verstreute Ordner.
 
-## Preview
+Egal ob Sie eine Wohnung oder mehrere Objekte vermieten: Domus hält die wichtigen Informationen zusammen, damit Sie sie schnell finden und den Alltag besser im Blick behalten.
+
+## Vorschau
 <p>
   <img src="screenshots/logo.png" alt="Unit list preview" width="400"><br><br>
   <img src="screenshots/dashboard.png" alt="Dashboard preview" width="400"><br><br>
@@ -24,28 +25,29 @@ Built for teams who want clear rental workflows without giving up the privacy an
   <img src="screenshots/revenue.png" alt="Tenancy preview" width="400">
 </p>
 
-## Highlights
-- Manage each unit with complete details and clear follow-up actions.
-- Track all invoices and payments with linked documents and rentability context.
-- Keep tenant and tenancy management connected to service charge reporting.
-- Use dashboard and analytics views for a fast operational overview.
+## Warum Sie es nutzen
+- Behalten Sie Wohnungen, Mieter, Zahlungen und Dokumente an einem Ort zusammen.
+- Sehen Sie, was bezahlt wurde, was fehlt und worum Sie sich als Nächstes kümmern sollten.
+- Legen Sie Verträge, Rechnungen und Notizen dort ab, wo Sie sie später wirklich wiederfinden.
+- Erhalten Sie einen einfachen Überblick über Ihre Vermietungen, ohne komplizierte Software zu benutzen.
 
-## Modules
-- Dashboard: at-a-glance summaries, activity signals, and reporting context.
-- Units & Activities: unit details, action log entries, and upcoming tasks.
-- Bookings & Documents: invoice/payment tracking and linked documentation.
-- Tenancies & Service Charge: tenancy tracking and service charge reporting.
-- Partners & Contacts: owners, service providers, and stakeholder data.
-- Tasks: assignments, checklists, and operational follow-ups.
+Entwickelt für Vermieter und kleine Hausverwaltungen, die einen klaren Überblick im Alltag wollen und ihre Daten trotzdem privat in Nextcloud behalten möchten.
 
-## Languages
+## Was Sie damit tun können
+- Für jedes Objekt oder jede Einheit eine klare Übersicht führen.
+- Mieter, Mietzeiträume und wichtige Termine im Blick behalten.
+- Einnahmen und Ausgaben erfassen und mit den passenden Dokumenten verknüpfen.
+- Offene Aufgaben verfolgen, damit nichts vergessen wird.
+- Das Dashboard öffnen und Ihre aktuelle Situation auf einen Blick sehen.
+
+## Sprachen
 - EN, DE
 
-## Maintainers
+## Maintainer
 - [Marcel Scherello](https://github.com/rello) (author, project leader)
 
-## Support
-Supported by PhpStorm from [JetBrains](https://www.jetbrains.com/?from=AudioPlayerforNextcloudandownCloud)
+## Unterstützung
+Unterstützt von PhpStorm von [JetBrains](https://www.jetbrains.com/?from=AudioPlayerforNextcloudandownCloud)
 
 <p>
   <img src="https://raw.githubusercontent.com/rello/analytics/master/screenshots/jetbrains.svg" alt="JetBrains" width="250" title="JetBrains">

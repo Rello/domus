@@ -459,10 +459,6 @@
             });
         }
 
-        function openEditModal(id) {
-            openPartnerModal(id, 'edit');
-        }
-
         function openPartnerModal(id, mode = 'edit') {
             Domus.Api.get('/partners/' + id)
                 .then(partner => {
@@ -614,8 +610,8 @@
             const actions = isView
                 ? '<div class="domus-form-actions"><button type="button" id="domus-partner-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
                 : '<div class="domus-form-actions">' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-partner-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>';
 
             return '<div class="domus-form">' +
@@ -715,8 +711,8 @@
                         fields.hiddenFields.join('') +
                         Domus.UI.buildFormTable([existingRow].concat(fields.rows)) +
                         '<div class="domus-form-actions">' +
-                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                         '<button type="button" id="domus-partner-relation-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                         '</div>' +
                         '</form>' +
                         '</div>';

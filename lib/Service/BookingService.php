@@ -6,6 +6,7 @@
  */
 
 namespace OCA\Domus\Service;
+use OCA\Domus\Db\ActionLogMapper;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DocumentLinkMapper;
@@ -21,6 +22,8 @@ class BookingService {
         private PropertyMapper $propertyMapper,
         private UnitMapper $unitMapper,
         private DistributionKeyMapper $distributionKeyMapper,
+        private ActionLogMapper $actionLogMapper,
+        private BookingYearService $bookingYearService,
         private AccountService $accountService,
         private IL10N $l10n,
     ) {
@@ -53,6 +56,7 @@ class BookingService {
     public function createBooking(array $data, string $userId): Booking {
         $data['deliveryDate'] = $data['deliveryDate'] ?? $data['date'] ?? null;
         $this->assertBookingInput($data, $userId);
+        $this->assertYearOpenForData($data);
         $now = time();
         $booking = new Booking();
         $booking->setUserId($userId);
@@ -78,11 +82,13 @@ class BookingService {
         if ($booking->getStatus() !== null && $booking->getStatus() !== 'draft') {
             throw new \RuntimeException($this->l10n->t('Only draft bookings can be updated.'));
         }
+        $this->assertYearOpenForBooking($booking);
         $merged = array_merge($booking->jsonSerialize(), $data);
         if ((empty($merged['deliveryDate']) || !isset($merged['deliveryDate'])) && !empty($merged['date'])) {
             $merged['deliveryDate'] = $merged['date'];
         }
         $this->assertBookingInput($merged, $userId);
+        $this->assertYearOpenForData($merged);
 
         $setters = [
             'account' => 'setAccount',
@@ -115,7 +121,39 @@ class BookingService {
 
     public function deleteBooking(int $id, string $userId): void {
         $booking = $this->getBookingForUser($id, $userId);
+        $this->assertYearOpenForBooking($booking);
+        $this->documentLinkMapper->deleteForEntity($userId, 'booking', $booking->getId());
+        $this->actionLogMapper->deleteForEntity($userId, 'booking', $booking->getId());
+        $this->actionLogMapper->deleteForLinkedEntity($userId, 'booking', $booking->getId());
         $this->bookingMapper->delete($booking);
+    }
+
+    private function assertYearOpenForBooking(Booking $booking): void {
+        $this->assertYearOpen(
+            (int)$booking->getYear(),
+            $booking->getPropertyId(),
+            $booking->getUnitId(),
+        );
+    }
+
+    private function assertYearOpenForData(array $data): void {
+        if (!isset($data['date']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$data['date'])) {
+            return;
+        }
+
+        $this->assertYearOpen(
+            (int)substr((string)$data['date'], 0, 4),
+            isset($data['propertyId']) && $data['propertyId'] !== '' ? (int)$data['propertyId'] : null,
+            isset($data['unitId']) && $data['unitId'] !== '' ? (int)$data['unitId'] : null,
+        );
+    }
+
+    private function assertYearOpen(int $year, ?int $propertyId, ?int $unitId): void {
+        if (!$this->bookingYearService->isYearClosedForBookingScope($year, $propertyId, $unitId)) {
+            return;
+        }
+
+        throw new \InvalidArgumentException($this->l10n->t('Bookings cannot be changed in a closed year.'));
     }
 
     private function assertBookingInput(array $data, string $userId): void {

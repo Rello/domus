@@ -225,8 +225,8 @@
                         fields.hiddenFields.join('') +
                         Domus.UI.buildFormTable([existingRow].concat(fields.rows)) +
                         '<div class="domus-form-actions">' +
-                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Next')) + '</button>' +
                         '<button type="button" id="domus-guided-partner-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Next')) + '</button>' +
                         '</div>' +
                         '</form>' +
                         '</div>';
@@ -571,10 +571,6 @@
             });
         }
 
-        function openEditModal(id, tenancy) {
-            openTenancyModal(id, tenancy, 'edit');
-        }
-
         function openTenancyModal(id, tenancy, mode = 'edit') {
             const partnerTypeFilter = Domus.Role.isBuildingMgmtView() ? 'owner' : 'tenant';
             Promise.all([
@@ -725,8 +721,8 @@
             const actions = isView
                 ? '<div class="domus-form-actions"><button type="button" id="domus-tenancy-close">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button></div>'
                 : '<div class="domus-form-actions">' +
-                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '<button type="button" id="domus-tenancy-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>';
 
             return '<div class="domus-form">' +

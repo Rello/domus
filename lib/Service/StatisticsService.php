@@ -230,6 +230,9 @@ class StatisticsService {
                         }
 
                         $column['label'] = $this->l10n->t((string)$column['label']);
+                        if (isset($column['help']) && is_array($column['help'])) {
+                                $column['help'] = $this->normalizeHelpText($column['help']);
+                        }
 
                         if (!isset($column['visible'])) {
                                 $column['visible'] = true;
@@ -239,6 +242,16 @@ class StatisticsService {
                         }
                         return $column;
                 }, $columns);
+        }
+
+        private function normalizeHelpText(array $help): array {
+                foreach (['title', 'summary', 'calculation', 'includes', 'excludes'] as $field) {
+                        if (isset($help[$field]) && is_string($help[$field])) {
+                                $help[$field] = $this->l10n->t($help[$field]);
+                        }
+                }
+
+                return $help;
         }
 
         private function containsOperation(array $rule, string $operation): bool {
@@ -584,6 +597,7 @@ class StatisticsService {
                         'label' => $col['label'],
                         'format' => $col['format'] ?? null,
                         'unit' => $col['unit'] ?? null,
+                        'help' => $col['help'] ?? null,
                 ], array_filter($definitions, fn(array $definition) => $definition['visible'] ?? true)));
         }
 

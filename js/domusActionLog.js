@@ -25,17 +25,6 @@
             { value: 'partner', label: t('domus', 'Partner') }
         ];
 
-        const typeIconMap = {
-            note: 'domus-icon-action-note',
-            call: 'domus-icon-action-call',
-            email: 'domus-icon-action-email',
-            messenger: 'domus-icon-action-messenger',
-            event: 'domus-icon-action-event',
-            document: 'domus-icon-action-document',
-            yearstatus: 'domus-icon-action-year-status',
-            custom: 'domus-icon-action-custom'
-        };
-
         function renderList(entityType, entityId, options = {}) {
             const containerId = options.containerId || `domus-action-log-${entityType}-${entityId}`;
             loadEntityList(entityType, entityId, { ...options, containerId });
@@ -576,8 +565,8 @@
                 '<form id="domus-action-log-edit-form">' +
                 Domus.UI.buildFormTable(rows) +
                 '<div class="domus-form-actions">' +
-                '<button type="button" id="domus-action-log-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
                 '<button type="button" id="domus-action-log-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
+                '<button type="button" id="domus-action-log-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
                 '<button type="submit" class="primary" id="domus-action-log-submit">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>' +
                 '</form>' +

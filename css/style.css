@@ -362,6 +362,10 @@
     display: none !important;
 }
 
+.domus-sidebar-hidden {
+    display: none !important;
+}
+
 .domus-analytics-select {
     min-height: 320px;
     background: #fff;
@@ -917,6 +921,56 @@
 .domus-form-label .domus-form-help {
     margin-top: 4px;
     font-weight: 400;
+}
+
+.domus-stat-help-header {
+    cursor: pointer;
+    transition: color 120ms ease, background-color 120ms ease;
+}
+
+.domus-stat-help-header:hover,
+.domus-stat-help-header:focus-within {
+    color: var(--domus-theme);
+}
+
+.domus-help-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.domus-help-panel-eyebrow {
+    color: var(--domus-table-header-color);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.domus-help-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.domus-help-panel-section {
+    padding: 14px;
+    border: var(--domus-border);
+    border-radius: var(--domus-border-radius);
+    background: #fff;
+}
+
+.domus-help-panel-section h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--domus-table-header-color);
+}
+
+.domus-help-panel-section p {
+    margin: 0;
+    line-height: 1.5;
 }
 
 .domus-form-value {
