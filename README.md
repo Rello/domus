@@ -12,9 +12,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # DomusNC
 
-Domus hilft Ihnen dabei, Ihre Mietobjekte in Nextcloud ordentlich zu verwalten, ohne Tabellen, Haftnotizen oder verstreute Ordner.
+Domus hilft Ihnen dabei, Ihre Mietobjekte in Nextcloud zu verwalten, ohne Tabellen, Notizen oder verteilte Ordner.
 
-Egal ob Sie eine Wohnung oder mehrere Objekte vermieten: Domus hält die wichtigen Informationen zusammen, damit Sie sie schnell finden und den Alltag besser im Blick behalten.
+Egal ob Sie eine Wohnung oder mehrere Objekte vermieten: Domus hält die wichtigen Informationen zusammen, damit Sie sie schnell finden und besser im Blick behalten.
 
 ## Vorschau
 <p>
