@@ -105,6 +105,11 @@
             return map[normalized] || status;
         }
 
+        function translateTemplateText(value) {
+            const normalized = typeof value === 'string' ? value.trim() : '';
+            return normalized ? t('domus', normalized) : '';
+        }
+
         function buildStatusBadge(status) {
             const label = getStatusLabel(status);
             if (!label) {
@@ -182,10 +187,14 @@
         }
 
         function buildTaskDetailDataset(task = {}) {
+            const isProcessTask = (task.type || '') === 'process' || !!(task.runId || task.workflowRunId);
+            const title = isProcessTask ? (translateTemplateText(task.title) || task.title || '') : (task.title || '');
+            const description = isProcessTask ? (translateTemplateText(task.description) || task.description || '') : (task.description || '');
+            const workflowName = isProcessTask ? (translateTemplateText(task.workflowName) || task.workflowName || '') : (task.workflowName || '');
             return {
                 'task-detail': 'true',
-                'task-title': task.title || '',
-                'task-description': task.description || '',
+                'task-title': title,
+                'task-description': description,
                 'task-action-type': task.actionType || '',
                 'task-action-url': task.actionUrl || '',
                 'task-action-year': task.year || '',
@@ -196,7 +205,7 @@
                 'task-entity-id': task.entityId || task.unitId || '',
                 'task-entity-name': getEntityName(task),
                 'task-entity-image-url': getEntityImageUrl(task),
-                'task-workflow-name': task.workflowName || '',
+                'task-workflow-name': workflowName,
                 'task-due-date': task.dueDate || '',
                 'task-type': task.type || 'task',
                 'task-status': task.status || 'open',
@@ -265,6 +274,10 @@
         }
 
         function buildTaskDetailContent(task = {}) {
+            const isProcessTask = task.type === 'process';
+            const translatedTitle = isProcessTask ? (translateTemplateText(task.title) || task.title || '') : (task.title || '');
+            const translatedDescription = isProcessTask ? (translateTemplateText(task.description) || task.description || '') : (task.description || '');
+            const translatedWorkflowName = isProcessTask ? (translateTemplateText(task.workflowName) || task.workflowName || '') : (task.workflowName || '');
             const typeLabel = task.type === 'process' ? t('domus', 'Process') : t('domus', 'Task');
             const statusLabel = getStatusLabel(task.status) || (task.type === 'process' ? t('domus', 'Open') : '');
             const actionMeta = getActionMeta(task.actionType);
@@ -273,7 +286,7 @@
             const hasCompletion = task.type === 'process' && completion.total !== '' && completion.total !== null && completion.total !== undefined;
             const badges = [
                 buildDetailBadge(typeLabel),
-                task.workflowName ? buildDetailBadge(task.workflowName, 'domus-task-detail-badge-accent') : '',
+                translatedWorkflowName ? buildDetailBadge(translatedWorkflowName, 'domus-task-detail-badge-accent') : '',
                 statusLabel ? buildDetailBadge(statusLabel, String(task.status).toLowerCase() === 'closed' ? 'domus-badge-success' : 'domus-task-detail-badge-outline') : ''
             ].filter(Boolean).join('');
             const entityName = getEntityName(task);
@@ -354,10 +367,10 @@
                     })) +
                     '</div>'
                 : '';
-            const descriptionHtml = task.description
+            const descriptionHtml = translatedDescription
                 ? '<div class="domus-task-detail-section">' +
                     '<div class="domus-task-detail-section-title">' + Domus.Utils.escapeHtml(t('domus', 'Description')) + '</div>' +
-                    '<div class="domus-task-detail-description">' + Domus.Utils.escapeHtml(task.description).replace(/\n/g, '<br>') + '</div>' +
+                    '<div class="domus-task-detail-description">' + Domus.Utils.escapeHtml(translatedDescription).replace(/\n/g, '<br>') + '</div>' +
                     '</div>'
                 : '';
             const attachmentHtml = task.actionType === 'url' && task.actionUrl
@@ -374,7 +387,7 @@
                 '<div class="domus-task-detail-header">' +
                 (imageHtml ? '<div class="domus-task-detail-media">' + imageHtml + '</div>' : '') +
                 '<div class="domus-task-detail-main">' +
-                '<div class="domus-task-detail-title">' + Domus.Utils.escapeHtml(task.title || t('domus', 'Task details')) + '</div>' +
+                '<div class="domus-task-detail-title">' + Domus.Utils.escapeHtml(translatedTitle || t('domus', 'Task details')) + '</div>' +
                 (entityName ? '<div class="domus-task-detail-subtitle">' + Domus.Utils.escapeHtml(entityName) + '</div>' : '') +
                 '</div>' +
                 '</div>' +
@@ -613,7 +626,13 @@
                 showAction ? { label: t('domus', 'Action'), alignRight: true } : null
             ].filter(item => item !== null);
             const rows = sorted.map(item => {
-                const titleMarkup = '<span class="domus-task-title">' + Domus.Utils.escapeHtml(item.title || '') + '</span>';
+                const itemTitle = item.type === 'process'
+                    ? translateTemplateText(item.title) || item.title || ''
+                    : item.title || '';
+                const workflowName = item.type === 'process'
+                    ? translateTemplateText(item.workflowName) || item.workflowName || ''
+                    : item.workflowName || '';
+                const titleMarkup = '<span class="domus-task-title">' + Domus.Utils.escapeHtml(itemTitle) + '</span>';
                 const entityType = item.entityType || 'unit';
                 const entityId = item.entityId || '';
                 const navigateTarget = entityType === 'property' ? 'propertyDetail' : 'unitDetail';
@@ -632,8 +651,8 @@
                     : '';
                 const titleParts = [];
                 titleParts.push(titleMarkup);
-                if (item.workflowName) {
-                    titleParts.push('<div class="domus-task-subtitle">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
+                if (workflowName) {
+                    titleParts.push('<div class="domus-task-subtitle">' + Domus.Utils.escapeHtml(workflowName) + '</div>');
                 }
                 const dueHtml = buildDueDateBadge(item.dueDate);
                 const actionMeta = getActionMeta(item.actionType);
@@ -698,7 +717,13 @@
             }
             let html = '<div class="domus-overview-list domus-task-overview-list">';
             (items || []).forEach(item => {
-                const titleMarkup = '<span class="domus-task-title">' + Domus.Utils.escapeHtml(item.title || '') + '</span>';
+                const itemTitle = item.type === 'process'
+                    ? translateTemplateText(item.title) || item.title || ''
+                    : item.title || '';
+                const workflowName = item.type === 'process'
+                    ? translateTemplateText(item.workflowName) || item.workflowName || ''
+                    : item.workflowName || '';
+                const titleMarkup = '<span class="domus-task-title">' + Domus.Utils.escapeHtml(itemTitle) + '</span>';
                 const entityType = item.entityType || 'unit';
                 const entityId = item.entityId || '';
                 const navigateTarget = entityType === 'property' ? 'propertyDetail' : 'unitDetail';
@@ -719,8 +744,8 @@
                     : '';
                 const titleParts = [];
                 titleParts.push(titleMarkup);
-                if (item.workflowName) {
-                    titleParts.push('<div class="domus-task-subtitle">' + Domus.Utils.escapeHtml(item.workflowName) + '</div>');
+                if (workflowName) {
+                    titleParts.push('<div class="domus-task-subtitle">' + Domus.Utils.escapeHtml(workflowName) + '</div>');
                 }
                 const dueHtml = buildDueDateBadge(item.dueDate);
                 const actionMeta = getActionMeta(item.actionType);
@@ -918,12 +943,16 @@
             Promise.all(loadData)
                 .then(([templates, entityLists]) => {
                     const allTemplates = templates || [];
+                    const getTemplateById = (templateId, selectedEntityType) => allTemplates.find(template => (
+                        String(template.id) === String(templateId)
+                        && (!selectedEntityType || template.appliesTo === selectedEntityType)
+                    )) || null;
                     const buildTemplateOptions = (selectedEntityType) => ['<option value="">' + Domus.Utils.escapeHtml(t('domus', 'No template')) + '</option>']
                         .concat(allTemplates
                             .filter(template => !selectedEntityType || template.appliesTo === selectedEntityType)
                             .map(template => (
                                 '<option value="' + Domus.Utils.escapeHtml(String(template.id)) + '">' +
-                                Domus.Utils.escapeHtml(template.name || '') +
+                                Domus.Utils.escapeHtml(translateTemplateText(template.name) || template.name || '') +
                                 '</option>'
                             ))).join('');
 
@@ -1021,11 +1050,17 @@
                             }
                         }
                         const hasTemplate = !!templateSelect?.value;
+                        const selectedTemplate = hasTemplate
+                            ? getTemplateById(templateSelect?.value || '', selectedEntity.entityType || null)
+                            : null;
                         if (titleInput && hasTemplate && !titleInput.value) {
-                            const selected = templateSelect?.selectedOptions?.[0];
-                            titleInput.value = (selected?.textContent || '').trim();
+                            const fallbackTitle = (templateSelect?.selectedOptions?.[0]?.textContent || '').trim();
+                            titleInput.value = translateTemplateText(selectedTemplate?.name) || fallbackTitle;
                         }
                         if (descriptionInput) {
+                            if (hasTemplate) {
+                                descriptionInput.value = translateTemplateText(selectedTemplate?.description || '');
+                            }
                             descriptionInput.disabled = hasTemplate;
                         }
                         if (dueDateInput) {
@@ -1101,8 +1136,10 @@
         function openDescriptionModal(title, description, actionType, actionUrl) {
             const meta = getActionMeta(actionType);
             const actionLabel = Domus.Utils.escapeHtml(t('domus', 'Action'));
+            const translatedTitle = translateTemplateText(title) || title || t('domus', 'Description');
+            const translatedDescription = translateTemplateText(description) || description || '';
             const descriptionHtml = description
-                ? '<p>' + Domus.Utils.escapeHtml(description).replace(/\n/g, '<br>') + '</p>'
+                ? '<p>' + Domus.Utils.escapeHtml(translatedDescription).replace(/\n/g, '<br>') + '</p>'
                 : '';
             let actionHtml = '';
             if (meta) {
@@ -1117,31 +1154,34 @@
                 }
             }
             const content = '<div class="domus-form">' + descriptionHtml + actionHtml + '</div>';
-            Domus.UI.openModal({ title: title || t('domus', 'Description'), content });
+            Domus.UI.openModal({ title: translatedTitle, content });
         }
 
         function openProcessTasksModal(run) {
             const rows = (run.steps || []).map(step => {
                 const completedLabel = Domus.Utils.formatDate(step.closedAt ? step.closedAt * 1000 : step.closedAt) || '—';
                 const statusBadge = buildStatusBadge(step.status);
+                const stepTitle = translateTemplateText(step.title) || step.title || '';
+                const stepDescription = translateTemplateText(step.description) || step.description || '';
                 const actionBtn = step.description
                     ? Domus.UI.buildIconButton('domus-icon-details', t('domus', 'Description'), {
                         className: 'domus-step-description',
                         dataset: {
-                            title: step.title || '',
-                            description: step.description || ''
+                            title: stepTitle,
+                            description: stepDescription
                         }
                     })
                     : '';
                 return [
-                    Domus.Utils.escapeHtml(step.title || ''),
+                    Domus.Utils.escapeHtml(stepTitle),
                     statusBadge,
                     Domus.Utils.escapeHtml(completedLabel),
                     actionBtn
                 ];
             });
             const content = Domus.UI.buildTable([t('domus', 'Step'), t('domus', 'Status'), t('domus', 'Completed'), ''], rows);
-            const modal = Domus.UI.openModal({ title: run.name || t('domus', 'Process'), content });
+            const runTitle = translateTemplateText(run.name) || run.name || t('domus', 'Process');
+            const modal = Domus.UI.openModal({ title: runTitle, content });
             modal.modalEl.querySelectorAll('.domus-step-description').forEach(btn => {
                 btn.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -1232,13 +1272,13 @@
                         entityId: unitId,
                         entityName: data.unitName || '',
                         entityImageUrl: data.unitImageUrl || '',
-                        title: openStep.title,
-                        description: openStep.description,
+                        title: translateTemplateText(openStep.title) || openStep.title,
+                        description: translateTemplateText(openStep.description) || openStep.description,
                         actionType: openStep.actionType,
                         actionUrl: openStep.actionUrl,
                         year: run.year,
                         dueDate: openStep.dueDate,
-                        workflowName: run.name,
+                        workflowName: translateTemplateText(run.name) || run.name,
                         status: openStep.status,
                         completion: {
                             completed: completedSteps,
@@ -1298,7 +1338,7 @@
                     closedItems.push({
                         type: 'processRun',
                         runId: run.id,
-                        title: run.name,
+                        title: translateTemplateText(run.name) || run.name,
                         closedAt: run.closedAt
                     });
                 }
@@ -1501,9 +1541,10 @@
             const statusLabel = template.isActive ? t('domus', 'Active') : t('domus', 'Inactive');
             const toggleLabel = template.isActive ? t('domus', 'Disable') : t('domus', 'Enable');
             const toggleIcon = template.isActive ? 'domus-icon-back' : 'domus-icon-ok';
+            const templateName = translateTemplateText(template.name) || template.name || '';
             return {
                 cells: [
-                    Domus.Utils.escapeHtml(template.name || ''),
+                    Domus.Utils.escapeHtml(templateName),
                     Domus.Utils.escapeHtml(String(template.stepsCount ?? 0)),
                     Domus.Utils.escapeHtml(statusLabel),
                     '<div class="domus-task-template-actions">' +
@@ -1748,8 +1789,8 @@
             list.innerHTML = (template.steps || []).map(step => (
                 '<li class="domus-task-step-item" draggable="true" data-id="' + Domus.Utils.escapeHtml(String(step.id)) + '">' +
                 '<div class="domus-task-step-main">' +
-                '<strong>' + Domus.Utils.escapeHtml(step.title || '') + '</strong>' +
-                '<div class="muted">' + Domus.Utils.escapeHtml(step.description || '') + '</div>' +
+                '<strong>' + Domus.Utils.escapeHtml(translateTemplateText(step.title) || step.title || '') + '</strong>' +
+                '<div class="muted">' + Domus.Utils.escapeHtml(translateTemplateText(step.description) || step.description || '') + '</div>' +
                 '</div>' +
                 '<div class="domus-task-step-meta">' +
                 Domus.Utils.escapeHtml(t('domus', 'Due +{days} days', { days: step.defaultDueDaysOffset || 0 })) +

@@ -314,7 +314,7 @@
                 '<div class="muted domus-booking-import-columns">' + columnsLabel + '</div>' +
                 '<label class="domus-booking-import-label">' +
                 Domus.Utils.escapeHtml(t('domus', 'Paste CSV data')) +
-                '<textarea id="domus-booking-csv-input" placeholder="' + Domus.Utils.escapeHtml(t('domus', 'account,date,deliveryDate,amount,propertyId,unitId,distributionKeyId,periodFrom,periodTo,description')) + '"></textarea>' +
+                '<textarea id="domus-booking-csv-input" placeholder="account,date,deliveryDate,amount,propertyId,unitId,distributionKeyId,periodFrom,periodTo,description"></textarea>' +
                 '</label>' +
                 '<div class="domus-booking-import-actions">' +
                 '<button type="button" class="primary" id="domus-booking-csv-import">' + Domus.Utils.escapeHtml(t('domus', 'Import bookings')) + '</button>' +
@@ -1003,10 +1003,6 @@
 
             initializeBookingEntries(entriesContainer, options.accountOptions || [], options.initialEntries || [{}], multiEntry);
 
-            function isBookingSectionEnabled() {
-                return sectionState.bookingEnabled;
-            }
-
             function setSectionEnabled(sectionName, enabled) {
                 const section = sectionName === 'booking' ? bookingSection : documentSection;
                 const toggle = sectionName === 'booking' ? bookingToggle : documentToggle;
@@ -1050,11 +1046,6 @@
                 if (!unitField) {
                     return;
                 }
-                if (!isBookingSectionEnabled()) {
-                    unitField.setAttribute('hidden', '');
-                    unitSelect?.removeAttribute('required');
-                    return;
-                }
                 if (isVisible) {
                     unitField.removeAttribute('hidden');
                     unitSelect?.setAttribute('required', '');
@@ -1093,12 +1084,12 @@
                         if (isBuildingMgmt) {
                             toggleUnitField(distributionSelect.value === unitAllocationValue);
                         }
-                        distributionSelect.disabled = !isBookingSectionEnabled();
+                        distributionSelect.disabled = false;
                     })
                     .catch(err => {
                         Domus.UI.showNotification(err.message, 'error');
                         distributionSelect.innerHTML = emptyOption;
-                        distributionSelect.disabled = !isBookingSectionEnabled();
+                        distributionSelect.disabled = false;
                     });
             }
 
@@ -1285,6 +1276,12 @@
         }
 
         function buildBookingForm(options, booking, formOptions = {}) {
+            const propertyOptions = Array.isArray(options?.propertyOptions)
+                ? options.propertyOptions
+                : [{ value: '', label: t('domus', 'Select property') }];
+            const unitOptions = Array.isArray(options?.unitOptions)
+                ? options.unitOptions
+                : [{ value: '', label: t('domus', 'Select unit') }];
             const multiEntry = formOptions.multiEntry !== undefined ? formOptions.multiEntry : !booking;
             const bookingDate = booking?.date ? Domus.Utils.escapeHtml(booking.date) : '';
             const bookingDeliveryDate = booking?.deliveryDate
@@ -1317,7 +1314,9 @@
                 '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Amounts')) + '</div>' +
                 '<div id="domus-booking-entries" class="domus-booking-entries" data-multi="' + (multiEntry ? '1' : '0') + '"></div>' +
                 '<div class="domus-booking-hint">' + Domus.Utils.escapeHtml(t('domus', 'Add multiple booking lines. A new row appears automatically when you enter an amount.')) + '</div>' +
-                '</div>' +
+                '</div>';
+            const relationSectionContent = '<div class="domus-booking-relations">' +
+                '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Assignment')) + '</div>' +
                 (hideProperty ? (selectedProperty ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '')
                     : ('<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId"' + (propertyLocked ? ' disabled' : '') + '>' +
                     propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedProperty ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
@@ -1331,7 +1330,8 @@
                         '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId"' + (unitLocked ? ' disabled' : '') + '>' +
                         unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedUnit ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                         '</select>' + (unitLocked ? '<input type="hidden" name="unitId" value="' + Domus.Utils.escapeHtml(selectedUnit) + '">' : '') + '</label>' +
-                        '</div>'));
+                        '</div>')) +
+                '</div>';
             const documentSectionContent = existingDocuments;
             const sectionMode = formOptions.sectionMode || null;
             const useSectionMode = Boolean(sectionMode);
@@ -1364,11 +1364,13 @@
                     const orderedSections = sectionMode.primary === 'document'
                         ? [documentSection, bookingSection]
                         : [bookingSection, documentSection];
-                    return '<div class="domus-booking-sections">' +
+                    return relationSectionContent +
+                        '<div class="domus-booking-sections">' +
                         orderedSections.map(section => renderSection(section.key, section.title, section.enabled, section.required, section.content)).join('') +
                         '</div>';
                 })()
                 : ('<div class="domus-booking-layout">' +
+                    relationSectionContent +
                     bookingSectionContent +
                     documentSectionContent +
                     '</div>');

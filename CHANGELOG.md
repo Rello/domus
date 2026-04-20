@@ -5,6 +5,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
-## 1.0.0 - 2026-04-17
+## 1.0.1 - 2026-04-20
+### Fixed
+- Translation issues
+- Document upload
+
+## 1.0.0 - 2026-04-19
 ### Added
 - Initial version of DomusNC
