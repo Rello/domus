@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
-## 1.0.1 - 2026-04-20
+## 1.0.1 - 2026-05-10
 ### Fixed
 - Translation issues
 - Document upload

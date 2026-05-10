@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <info>
     <id>domus</id>
-    <name>DomusNC</name>
+    <name>Domus</name>
     <summary>Alles rund um Ihre Vermietung im Blick</summary>
     <description><![CDATA[
 Domus hilft Ihnen dabei, Ihre Mietobjekte in Nextcloud zu verwalten, ohne Tabellen, Notizen oder verteilte Ordner.
@@ -27,7 +27,7 @@ Entwickelt für Vermieter und kleine Hausverwaltungen, die einen klaren Überbli
 - Offene Aufgaben verfolgen, damit nichts vergessen wird.
 - Das Dashboard öffnen und Ihre aktuelle Situation auf einen Blick sehen.
 ]]></description>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <licence>agpl</licence>
     <author>Marcel Scherello</author>
     <namespace>Domus</namespace>
