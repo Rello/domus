@@ -10,7 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 [![Bitcoin](https://img.shields.io/badge/donate-Bitcoin-blue.svg)](https://github.com/rello/audioplayer/wiki/donate)
 [![PayPal](https://img.shields.io/badge/donate-PayPal-blue.svg)](https://github.com/rello/audioplayer/wiki/donate)
 
-# DomusNC
+# Domus
 
 Domus hilft Ihnen dabei, Ihre Mietobjekte in Nextcloud zu verwalten, ohne Tabellen, Notizen oder verteilte Ordner.
 
