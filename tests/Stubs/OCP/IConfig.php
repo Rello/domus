@@ -7,4 +7,7 @@
 namespace OCP;
 
 interface IConfig {
+    public function getUserValue(string $userId, string $appName, string $key, mixed $default = ''): string;
+
+    public function setUserValue(string $userId, string $appName, string $key, mixed $value): void;
 }

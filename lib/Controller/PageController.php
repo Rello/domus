@@ -21,6 +21,7 @@ use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IL10N;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\IURLGenerator;
 use OCP\IUserSession;
 
 class PageController extends Controller {
@@ -31,6 +32,7 @@ class PageController extends Controller {
         private PermissionService $permissionService,
         private IEventDispatcher $eventDispatcher,
         private IConfig $config,
+        private IURLGenerator $urlGenerator,
         private IUserSession $userSession,
         private IL10N $l10n,
         private IInitialState $initialState,
@@ -58,6 +60,7 @@ class PageController extends Controller {
         return new TemplateResponse(Application::APP_ID, 'main', [
             'accounts' => $this->accountService->getHierarchyForUser($this->getUserId(), $this->l10n),
             'roleInfo' => $this->permissionService->getRoleInfoForCurrentUser(),
+            'urlGenerator' => $this->urlGenerator,
         ]);
     }
 

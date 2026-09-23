@@ -42,8 +42,8 @@ class DocumentController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function link(string $entityType, int $entityId, string $filePath, ?int $year = null, ?string $title = null): DataResponse {
-        $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $filePath, $year, $title);
+    public function link(string $entityType, int $entityId, string $filePath, ?int $year = null, ?string $title = null, ?string $note = null): DataResponse {
+        $link = $this->documentService->linkFile($this->getUserId(), $entityType, $entityId, $filePath, $year, $title, $note);
         return new DataResponse($link, Http::STATUS_CREATED);
     }
 
@@ -56,7 +56,8 @@ class DocumentController extends Controller {
         $yearParam = $this->request->getParam('year');
         $year = $yearParam !== null ? (int)$yearParam : null;
         $title = $this->request->getParam('title');
-        $link = $this->documentService->uploadAndLink($this->getUserId(), $entityType, $entityId, $file, $year, $title);
+        $note = $this->request->getParam('note');
+        $link = $this->documentService->uploadAndLink($this->getUserId(), $entityType, $entityId, $file, $year, $title, $note);
         return new DataResponse($link, Http::STATUS_CREATED);
     }
 
@@ -65,6 +66,7 @@ class DocumentController extends Controller {
         $targetsRaw = $this->request->getParam('targets');
         $yearParam = $this->request->getParam('year');
         $title = $this->request->getParam('title');
+        $note = $this->request->getParam('note');
         $uploadedFile = $this->request->getUploadedFile('file');
         $filePath = $this->request->getParam('filePath');
 
@@ -84,7 +86,7 @@ class DocumentController extends Controller {
         $year = $yearParam !== null ? (int)$yearParam : null;
 
         try {
-            $links = $this->documentService->attachToTargets($this->getUserId(), $targets, $uploadedFile, $filePath, $year, $title);
+            $links = $this->documentService->attachToTargets($this->getUserId(), $targets, $uploadedFile, $filePath, $year, $title, $note);
             return new DataResponse($links, Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());

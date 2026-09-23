@@ -158,6 +158,7 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addColumn('entity_id', 'bigint', ['notnull' => true]);
             $table->addColumn('file_id', 'bigint', ['notnull' => true, 'default' => 0]);
             $table->addColumn('file_name', 'string', ['notnull' => false, 'length' => 512]);
+            $table->addColumn('note', 'text', ['notnull' => false]);
             $table->addColumn('created_at', 'bigint', ['notnull' => true]);
             $table->setPrimaryKey(['id']);
             $table->addIndex(['user_id'], 'domus_doc_user');

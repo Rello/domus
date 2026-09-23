@@ -16,6 +16,10 @@ class File {
     ) {
     }
 
+    public function getSize(): int|float { return 0; }
+
+    public function fopen(string $mode) { return false; }
+
     public function getId(): ?int {
         return $this->id;
     }

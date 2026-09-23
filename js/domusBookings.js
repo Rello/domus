@@ -685,6 +685,7 @@
                 file: selection.file,
                 filePath: selection.filePath,
                 title: selection.title,
+                note: selection.note,
                 year: derivedYear,
                 targets: uniqueTargets
             });
@@ -707,6 +708,9 @@
                 widget.uploadNameInput.value = selection.title;
                 widget.uploadNameInput.dataset.autoTitle = '';
             }
+            if (widget.noteInput && selection.note) {
+                widget.noteInput.value = selection.note;
+            }
 
             if (widget.uploadYearInput && selection.year !== undefined && selection.year !== null) {
                 widget.uploadYearInput.value = selection.year;
@@ -718,6 +722,63 @@
             if (!placeholder) {
                 return null;
             }
+            const lockedSelection = options.lockSelection === true ? options.initialSelection : null;
+            if (lockedSelection?.type === 'link') {
+                const root = document.createElement('div');
+                root.className = 'domus-doc-attachment domus-doc-attachment-modern';
+                const card = document.createElement('div');
+                card.className = 'domus-doc-card';
+                const previewUrl = String(lockedSelection.fileUrl || '').trim();
+                const previewPath = String(lockedSelection.filePath || '').trim();
+                const previewTitle = String(
+                    lockedSelection.title
+                    || (previewPath ? previewPath.split('/').pop() : '')
+                    || t('domus', 'Document')
+                ).trim();
+                const previewIconHtml = '<span class="domus-icon domus-icon-document domus-dropzone-icon" aria-hidden="true"></span>';
+
+                if (previewUrl) {
+                    card.innerHTML = '' +
+                        '<a class="domus-booking-document-preview" href="' + Domus.Utils.escapeHtml(previewUrl) + '" target="_blank" rel="noopener">' +
+                        '<div class="domus-booking-document-preview-content">' +
+                        previewIconHtml +
+                        '<strong>' + Domus.Utils.escapeHtml(previewTitle) + '</strong>' +
+                        '</div>' +
+                        '</a>';
+                } else {
+                    card.innerHTML = '' +
+                        '<div class="domus-booking-document-preview">' +
+                        '<div class="domus-booking-document-preview-content">' +
+                        previewIconHtml +
+                        '<strong>' + Domus.Utils.escapeHtml(previewTitle) + '</strong>' +
+                        '</div>' +
+                        '</div>';
+                }
+
+                const noteLabel = document.createElement('label');
+                noteLabel.className = 'domus-booking-doc-note';
+                noteLabel.textContent = t('domus', 'Note');
+                const noteInput = document.createElement('textarea');
+                noteInput.name = 'note';
+                noteInput.value = String(lockedSelection.note || '');
+                noteLabel.appendChild(noteInput);
+                card.appendChild(noteLabel);
+                root.appendChild(card);
+                placeholder.appendChild(root);
+                return {
+                    root,
+                    getSelection: () => ({
+                        type: 'link',
+                        filePath: String(lockedSelection.filePath || ''),
+                        fileId: lockedSelection.fileId || undefined,
+                        fileUrl: lockedSelection.fileUrl || undefined,
+                        title: String(lockedSelection.title || '').trim() || undefined,
+                        year: lockedSelection.year,
+                        note: noteInput.value.trim() || undefined
+                    })
+                };
+            }
+
             const widget = Domus.Documents.createAttachmentWidget({
                 defaultYear: Domus.state.currentYear,
                 includeYearInput: false,
@@ -849,7 +910,8 @@
                         })
                     });
                     const docWidget = mountBookingDocumentWidget(modal.modalEl, {
-                        initialSelection: formConfig.initialDocumentSelection || null
+                        initialSelection: formConfig.initialDocumentSelection || null,
+                        lockSelection: formConfig.lockDocumentSelection === true
                     });
                     bindBookingForm(modal, data => {
                         const bookingPromise = (() => {
@@ -896,6 +958,7 @@
                             : (defaults && (defaults.account || defaults.amount) ? [{ account: defaults.account, amount: defaults.amount }] : []),
                         docWidget,
                         sectionMode,
+                        lockDocumentSelection: formConfig.lockDocumentSelection === true,
                         allowDocumentWithoutRelation: formConfig.allowDocumentWithoutRelation === true,
                         onDeleted: () => {
                             modal.close();
@@ -917,7 +980,8 @@
                         unitId: booking?.unitId || undefined,
                         date: booking?.date || undefined,
                         deliveryDate: booking?.deliveryDate || booking?.date || undefined,
-                        distributionKeyId: booking?.distributionKeyId || undefined
+                        distributionKeyId: booking?.distributionKeyId || undefined,
+                        description: booking?.description || undefined
                     };
                     const sortedDocuments = (documents || []).slice().sort((a, b) => {
                         const aDate = Number(a?.createdAt) || 0;
@@ -929,7 +993,10 @@
                         ? {
                             type: 'link',
                             filePath: String(primaryDocument.filePath),
+                            fileId: primaryDocument.fileId || undefined,
+                            fileUrl: primaryDocument.fileUrl || undefined,
                             title: primaryDocument.fileName || undefined,
+                            note: primaryDocument.note || undefined,
                             year: primaryDocument.createdAt
                                 ? new Date(Number(primaryDocument.createdAt) * 1000).getFullYear()
                                 : undefined
@@ -944,7 +1011,8 @@
                             account: booking?.account || '',
                             amount: booking?.amount !== undefined && booking?.amount !== null ? booking.amount : ''
                         }],
-                        initialDocumentSelection: documentSelection
+                        initialDocumentSelection: documentSelection,
+                        lockDocumentSelection: Boolean(documentSelection)
                     });
                     openCreateModal(defaults, () => refreshBookingContext(refreshContext), nextFormConfig);
                 })
@@ -1254,8 +1322,8 @@
                     }
                 }
 
-                const documentSelection = documentEnabled && docWidget?.getSelection ? docWidget.getSelection() : null;
-                if (options.sectionMode && documentEnabled && !documentSelection) {
+                let documentSelection = documentEnabled && docWidget?.getSelection ? docWidget.getSelection() : null;
+                if (options.sectionMode && documentEnabled && !documentSelection && options.lockDocumentSelection !== true) {
                     Domus.UI.showNotification(t('domus', 'Choose a file to upload or link.'), 'error');
                     return;
                 }
@@ -1314,7 +1382,9 @@
                 '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Amounts')) + '</div>' +
                 '<div id="domus-booking-entries" class="domus-booking-entries" data-multi="' + (multiEntry ? '1' : '0') + '"></div>' +
                 '<div class="domus-booking-hint">' + Domus.Utils.escapeHtml(t('domus', 'Add multiple booking lines. A new row appears automatically when you enter an amount.')) + '</div>' +
-                '</div>';
+                '</div>' +
+                '<label class="domus-booking-description-field">' + Domus.Utils.escapeHtml(t('domus', 'Description')) +
+                '<input type="text" name="description" value="' + Domus.Utils.escapeHtml(String(booking?.description || '')) + '"></label>';
             const relationSectionContent = '<div class="domus-booking-relations">' +
                 '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Assignment')) + '</div>' +
                 (hideProperty ? (selectedProperty ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '')

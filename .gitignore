@@ -30,3 +30,6 @@ __MACOSX/*
 # VSCode
 .vscode/
 *.code-workspace
+
+# PHPUnit
+/.phpunit.result.cache

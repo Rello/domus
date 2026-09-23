@@ -120,6 +120,7 @@ class ServiceChargeSettlementService {
             $content,
             $year,
             $this->l10n->t('Utility Bill Statement %d', [$year]),
+            null,
             $this->l10n->t('Utility Bill Statement')
         );
 

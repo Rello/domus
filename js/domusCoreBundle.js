@@ -525,6 +525,9 @@
                 if (payload.title) {
                     formData.append('title', payload.title);
                 }
+                if (payload.note) {
+                    formData.append('note', payload.note);
+                }
                 if (payload.type === 'upload' && payload.file) {
                     formData.append('file', payload.file);
                 }
@@ -541,7 +544,7 @@
                 };
                 return fetch(baseUrl + '/documents/attach', opts).then(handleResponse);
             },
-            uploadDocument: (entityType, entityId, file, year, title) => {
+            uploadDocument: (entityType, entityId, file, year, title, note) => {
                 const formData = new FormData();
                 formData.append('file', file);
                 if (year !== undefined && year !== null) {
@@ -549,6 +552,9 @@
                 }
                 if (title) {
                     formData.append('title', title);
+                }
+                if (note) {
+                    formData.append('note', note);
                 }
                 const opts = {
                     method: 'POST',

@@ -218,9 +218,18 @@
 }
 
 .domus-detail.domus-dashboard {
+    --domus-dashboard-section-spacing: clamp(22px, 4vh, var(--domus-layout-section-spacing));
+    --domus-dashboard-content-spacing: clamp(8px, 1.5vh, var(--domus-layout-content-spacing));
+    --domus-dashboard-kpi-min-height: clamp(126px, 17vh, 150px);
+    --domus-dashboard-kpi-padding-block: clamp(8px, 1.25vh, 10px);
+    --domus-dashboard-quick-min-height: clamp(126px, 18vh, 156px);
+    --domus-dashboard-quick-padding: clamp(10px, 1.6vh, 14px);
+    --domus-dashboard-quick-icon-size: clamp(34px, 5vh, 42px);
+    --domus-dashboard-quick-icon-inner-size: clamp(22px, 3.4vh, 27px);
+    --domus-dashboard-occupancy-chart-size: clamp(104px, 14vh, 132px);
     display: flex;
     flex-direction: column;
-    gap: var(--domus-layout-section-spacing);
+    gap: var(--domus-dashboard-section-spacing);
 }
 
 .domus-detail.domus-dashboard .domus-panel {
@@ -771,7 +780,8 @@
 }
 
 .domus-unit-overview-card .domus-overview-stat-label {
-    white-space: nowrap;
+    line-height: 1.25;
+    overflow-wrap: break-word;
 }
 
 .domus-unit-overview-card .domus-overview-stat-value {
@@ -1172,6 +1182,16 @@
     color: var(--color-text-maxcontrast);
 }
 
+.domus-form .domus-booking-description-field {
+    width: 100%;
+}
+
+.domus-form .domus-booking-description-field input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
 .domus-booking-layout {
     display: grid;
     grid-template-columns: 1.2fr 0.8fr;
@@ -1299,11 +1319,36 @@
     width: 100%;
 }
 
+#domus-booking-documents .domus-doc-card {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    gap: 12px;
+}
+
+#domus-booking-documents .domus-booking-doc-title,
+#domus-booking-documents .domus-booking-doc-note {
+    width: 100%;
+}
+
+#domus-booking-documents .domus-booking-doc-title input,
+#domus-booking-documents .domus-booking-doc-note textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#domus-booking-documents .domus-booking-doc-note textarea {
+    min-height: 76px;
+}
+
 #domus-booking-documents .domus-dropzone {
     display: flex;
     align-items: stretch;
     justify-content: stretch;
     text-align: left;
+    background: transparent;
 }
 
 #domus-booking-documents .domus-dropzone .domus-dropzone-icon {
@@ -1335,6 +1380,31 @@
     font-size: 12px;
     color: var(--color-text-maxcontrast);
     min-height: 16px;
+}
+
+#domus-booking-documents .domus-booking-document-preview {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 120px;
+    border: 3px dashed var(--color-border);
+    border-radius: var(--domus-border-radius);
+    background: transparent;
+    padding: 10px;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+#domus-booking-documents .domus-booking-document-preview .domus-booking-document-preview-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+    width: 100%;
 }
 
 .domus-booking-doc-picker-row {
@@ -3214,7 +3284,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
 }
 
 .domus-dashboard-occupancy-tile .domus-kpi-main {
@@ -3249,6 +3319,12 @@
     min-height: 20px;
 }
 
+.domus-dashboard .domus-dashboard-kpi-tile {
+    gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
+    min-height: var(--domus-dashboard-kpi-min-height, 150px);
+    padding-block: var(--domus-dashboard-kpi-padding-block, 10px);
+}
+
 .domus-dashboard-kpi-tile .domus-kpi-headline {
     flex: 1 1 100%;
     width: 100%;
@@ -3264,12 +3340,12 @@
 }
 
 .domus-dashboard-occupancy-chart {
-    max-width: 132px;
+    max-width: var(--domus-dashboard-occupancy-chart-size, 132px);
 }
 
 .domus-dashboard-occupancy-chart .domus-kpi-chart-inner {
-    width: 132px;
-    height: 132px;
+    width: var(--domus-dashboard-occupancy-chart-size, 132px);
+    height: var(--domus-dashboard-occupancy-chart-size, 132px);
 }
 
 .domus-dashboard-occupancy-chart .domus-kpi-chart-center-label {
@@ -3280,6 +3356,7 @@
 
 .domus-dashboard-kpi-row {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
 }
 
 .domus-kpi-tiles-unit-detail {
@@ -3554,7 +3631,7 @@
 .domus-dashboard-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: var(--domus-layout-section-spacing);
+    gap: var(--domus-dashboard-section-spacing, var(--domus-layout-section-spacing));
 }
 
 .domus-dashboard-grid.domus-dashboard-grid-single {
@@ -3646,11 +3723,12 @@
 }
 
 .domus-upcoming-card-shell .domus-panel-body {
-    margin-top: var(--domus-layout-content-spacing);
+    margin-top: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
 }
 
 .domus-dashboard-panel-row {
     align-items: start;
+    gap: var(--domus-dashboard-section-spacing, var(--domus-layout-section-spacing));
 }
 
 .domus-dashboard-panel-row .domus-upcoming-card-shell {
@@ -3706,19 +3784,19 @@
 }
 
 .domus-dashboard-quick-panel .domus-panel-body {
-    margin-top: var(--domus-layout-content-spacing);
+    margin-top: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
 }
 
 .domus-dashboard-quick-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--domus-layout-content-spacing);
+    gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
 }
 
 .domus-dashboard-quick-card {
     width: 100%;
-    min-height: 156px;
-    padding: 14px;
+    min-height: var(--domus-dashboard-quick-min-height, 156px);
+    padding: var(--domus-dashboard-quick-padding, 14px);
     border: var(--domus-border);
     border-radius: var(--domus-border-radius);
     background: linear-gradient(180deg, var(--domus-theme-lighter) 0%, var(--domus-theme-light) 100%);
@@ -3727,7 +3805,7 @@
     flex-direction: column;
     justify-content: space-between;
     align-items: stretch;
-    gap: var(--domus-layout-content-spacing);
+    gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
     text-align: left;
     cursor: pointer;
 }
@@ -3783,12 +3861,12 @@
 .domus-dashboard-quick-card-main {
     display: flex;
     flex-direction: column;
-    gap: var(--domus-layout-content-spacing);
+    gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
 }
 
 .domus-dashboard-quick-card-icon-wrap {
-    width: 42px;
-    height: 42px;
+    width: var(--domus-dashboard-quick-icon-size, 42px);
+    height: var(--domus-dashboard-quick-icon-size, 42px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -3798,8 +3876,8 @@
 }
 
 .domus-dashboard-quick-card-icon {
-    width: 27px;
-    height: 27px;
+    width: var(--domus-dashboard-quick-icon-inner-size, 27px);
+    height: var(--domus-dashboard-quick-icon-inner-size, 27px);
     filter: brightness(0) saturate(100%) invert(19%) sepia(32%) saturate(1666%) hue-rotate(174deg) brightness(93%) contrast(88%);
 }
 

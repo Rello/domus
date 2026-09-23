@@ -11,10 +11,15 @@
     Domus.Documents = (function() {
         function buildDocumentRow(doc, options = {}) {
             const fileName = doc.fileName || doc.fileUrl || doc.fileId || '';
+            const note = String(doc?.note || '').trim();
+            const fileCellContent = note
+                ? '<span class="domus-documents-file-name domus-action-log-title-text">' + Domus.Utils.escapeHtml(fileName) + '</span>' +
+                '<div class="muted">' + Domus.Utils.escapeHtml(note) + '</div>'
+                : '<span class="domus-documents-file-name domus-action-log-title-text">' + Domus.Utils.escapeHtml(fileName) + '</span>';
             const cells = [
                 {
                     className: 'domus-documents-file-cell',
-                    content: '<span class="domus-documents-file-name domus-action-log-title-text">' + Domus.Utils.escapeHtml(fileName) + '</span>'
+                    content: fileCellContent
                 }
             ];
 
@@ -281,6 +286,7 @@
             }
 
             const uploadNameLabel = document.createElement('label');
+            uploadNameLabel.className = 'domus-booking-doc-title';
             uploadNameLabel.textContent = t('domus', 'Title');
             const uploadNameInput = document.createElement('input');
             uploadNameInput.type = 'text';
@@ -288,6 +294,13 @@
             uploadNameInput.placeholder = t('domus', 'Defaults to file name');
             uploadNameInput.addEventListener('input', () => { uploadNameInput.dataset.autoTitle = ''; });
             uploadNameLabel.appendChild(uploadNameInput);
+
+            const noteLabel = document.createElement('label');
+            noteLabel.className = 'domus-booking-doc-note';
+            noteLabel.textContent = t('domus', 'Note');
+            const noteInput = document.createElement('textarea');
+            noteInput.name = 'note';
+            noteLabel.appendChild(noteInput);
 
             let uploadYearInput = null;
             let uploadYearLabel = null;
@@ -306,6 +319,7 @@
             }
             card.appendChild(dropZone.element);
             card.appendChild(uploadNameLabel);
+            card.appendChild(noteLabel);
             if (uploadYearLabel) {
                 card.appendChild(uploadYearLabel);
             }
@@ -324,6 +338,7 @@
             function getSelection(preferredType) {
                 const uploadedFile = dropZone.input.files[0];
                 const uploadTitleValue = uploadNameInput.value.trim();
+                const noteValue = noteInput.value.trim();
                 const yearValue = includeYearInput && uploadYearInput ? (Number(uploadYearInput.value) || defaultYear) : undefined;
 
                 if (!preferredType || preferredType === 'upload') {
@@ -332,7 +347,8 @@
                             type: 'upload',
                             file: uploadedFile,
                             year: yearValue,
-                            title: uploadTitleValue || undefined
+                            title: uploadTitleValue || undefined,
+                            note: noteValue || undefined
                         };
                     }
                     if (preferredType === 'upload') {
@@ -346,7 +362,8 @@
                             type: 'link',
                             filePath: selectedPath,
                             year: yearValue,
-                            title: uploadTitleValue || undefined
+                            title: uploadTitleValue || undefined,
+                            note: noteValue || undefined
                         };
                     }
                 }
@@ -359,6 +376,7 @@
                 pickerButton,
                 dropZone,
                 uploadNameInput,
+                noteInput,
                 uploadYearInput,
                 getSelection,
                 setPath: updatePickerDisplay,
@@ -367,6 +385,7 @@
                     dropZone.reset();
                     uploadNameInput.value = '';
                     uploadNameInput.dataset.autoTitle = '';
+                    noteInput.value = '';
                     if (uploadYearInput) uploadYearInput.value = defaultYear;
                 }
             };
@@ -490,10 +509,22 @@
                 type: 'link',
                 filePath
             };
+            const fileId = Number(detail?.document?.fileId);
+            if (!Number.isNaN(fileId) && fileId > 0) {
+                selection.fileId = fileId;
+            }
+            const fileUrl = String(detail?.document?.fileUrl || '').trim();
+            if (fileUrl) {
+                selection.fileUrl = fileUrl;
+            }
 
             const title = String(detail?.document?.fileName || '').trim();
             if (title) {
                 selection.title = title;
+            }
+            const note = String(detail?.document?.note || '').trim();
+            if (note) {
+                selection.note = note;
             }
 
             const createdAt = Number(detail?.document?.createdAt);
@@ -557,6 +588,7 @@
                     const formConfig = {
                         createContext: 'document',
                         initialDocumentSelection,
+                        lockDocumentSelection: true,
                         initialBookingEnabled: context.bookingId !== null,
                         editDocumentLinkId: documentId,
                         documentTargets: [{ entityType: context.targetType, entityId: context.targetId }],
@@ -600,7 +632,8 @@
                                 unitId: booking?.unitId || undefined,
                                 date: booking?.date || undefined,
                                 deliveryDate: booking?.deliveryDate || booking?.date || undefined,
-                                distributionKeyId: booking?.distributionKeyId || undefined
+                                distributionKeyId: booking?.distributionKeyId || undefined,
+                                description: booking?.description || undefined
                             };
                             const initialEntries = [{
                                 account: booking?.account || '',

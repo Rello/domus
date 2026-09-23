@@ -9,11 +9,26 @@ namespace OCA\Domus\Db;
 
 use OCP\AppFramework\Db\QBMapper;
 use OCP\DB\Exception;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
 class PartnerRelMapper extends QBMapper {
     public function __construct(IDBConnection $db) {
         parent::__construct($db, 'domus_partner_rel', PartnerRel::class);
+    }
+
+    /** @param int[] $ids */
+    public function findForTenancies(array $ids, string $userId): array {
+        $entities = [];
+        foreach (array_chunk(array_values(array_unique(array_map('intval', $ids))), 500) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('*')->from($this->getTableName())
+                ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+                ->andWhere($qb->expr()->eq('type', $qb->createNamedParameter('tenancy')))
+                ->andWhere($qb->expr()->in('relation_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+            array_push($entities, ...$this->findEntities($qb));
+        }
+        return $entities;
     }
 
     /**

@@ -5,7 +5,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-$urlGenerator = \OC::$server->getURLGenerator();
 $wizardConfig = [
     'brandName' => $l->t('Domus'),
     'brandLogo' => $urlGenerator->imagePath('domus', 'app.svg'),

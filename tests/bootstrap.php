@@ -16,6 +16,7 @@ spl_autoload_register(static function (string $class): void {
     $prefixes = [
         'OCA\\Domus\\Tests\\' => __DIR__ . '/',
         'OCA\\Domus\\' => dirname(__DIR__) . '/lib/',
+        'Symfony\\Component\\Console\\' => __DIR__ . '/Stubs/Symfony/Component/Console/',
         'OCP\\' => __DIR__ . '/Stubs/OCP/',
         'Psr\\Log\\' => __DIR__ . '/Stubs/Psr/Log/',
     ];

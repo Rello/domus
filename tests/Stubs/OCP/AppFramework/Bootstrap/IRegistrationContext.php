@@ -10,4 +10,5 @@ declare(strict_types=1);
 namespace OCP\AppFramework\Bootstrap;
 
 interface IRegistrationContext {
+    public function registerUserMigrator(string $migratorClass): void;
 }

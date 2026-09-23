@@ -73,7 +73,7 @@ class DocumentService {
         ];
     }
 
-    public function linkFile(string $userId, string $entityType, int $entityId, string $filePath, ?int $year = null, ?string $title = null): DocumentLink {
+    public function linkFile(string $userId, string $entityType, int $entityId, string $filePath, ?int $year = null, ?string $title = null, ?string $note = null): DocumentLink {
         $this->assertEntityType($entityType);
         $normalizedPath = $this->normalizePath($filePath);
         $userFolder = $this->rootFolder->getUserFolder($userId);
@@ -86,10 +86,10 @@ class DocumentService {
             throw new \InvalidArgumentException($this->l10n->t('Selected item is not a file.'));
         }
 
-        return $this->persistLink($userId, $entityType, $entityId, $node, $title);
+        return $this->persistLink($userId, $entityType, $entityId, $node, $title, $note);
     }
 
-    public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null, ?string $title = null, ?string $typeFolder = null): DocumentLink {
+    public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null, ?string $title = null, ?string $note = null, ?string $typeFolder = null): DocumentLink {
         $this->assertEntityType($entityType);
         if (!isset($uploadedFile['tmp_name']) || !is_readable($uploadedFile['tmp_name'])) {
             throw new \InvalidArgumentException($this->l10n->t('No file uploaded.'));
@@ -116,7 +116,7 @@ class DocumentService {
             throw new \RuntimeException($this->l10n->t('Unable to create file.'));
         }
 
-        return $this->persistLink($userId, $entityType, $entityId, $file, $title);
+        return $this->persistLink($userId, $entityType, $entityId, $file, $title, $note);
     }
 
     /**
@@ -125,7 +125,7 @@ class DocumentService {
      * @param array $targets List of ['entityType' => string, 'entityId' => int]
      * @return DocumentLink[]
      */
-    public function attachToTargets(string $userId, array $targets, ?array $uploadedFile, ?string $filePath, ?int $year = null, ?string $title = null, ?string $typeFolder = null): array {
+    public function attachToTargets(string $userId, array $targets, ?array $uploadedFile, ?string $filePath, ?int $year = null, ?string $title = null, ?string $note = null, ?string $typeFolder = null): array {
         $normalizedTargets = $this->normalizeTargets($targets);
 
         if (empty($normalizedTargets)) {
@@ -136,12 +136,12 @@ class DocumentService {
 
         if ($uploadedFile && isset($uploadedFile['tmp_name'])) {
             $primary = array_shift($normalizedTargets);
-            $primaryLink = $this->uploadAndLink($userId, $primary['entityType'], $primary['entityId'], $uploadedFile, $year, $title, $typeFolder);
+            $primaryLink = $this->uploadAndLink($userId, $primary['entityType'], $primary['entityId'], $uploadedFile, $year, $title, $note, $typeFolder);
             $links[] = $primaryLink;
 
             $file = $this->getFileById($primaryLink->getFileId());
             foreach ($normalizedTargets as $target) {
-                $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title);
+                $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title, $note);
             }
 
             return $links;
@@ -150,7 +150,7 @@ class DocumentService {
         if ($filePath) {
             $file = $this->getFileFromPath($userId, $filePath);
             foreach ($normalizedTargets as $target) {
-                $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title);
+                $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title, $note);
             }
             return $links;
         }
@@ -166,13 +166,14 @@ class DocumentService {
         $this->documentLinkMapper->delete($link);
     }
 
-    private function persistLink(string $userId, string $entityType, int $entityId, File $file, ?string $title = null): DocumentLink {
+    private function persistLink(string $userId, string $entityType, int $entityId, File $file, ?string $title = null, ?string $note = null): DocumentLink {
         $link = new DocumentLink();
         $link->setUserId($userId);
         $link->setEntityType($entityType);
         $link->setEntityId($entityId);
         $link->setFileId($file->getId());
         $link->setFileName($this->buildDisplayTitle($file->getName(), $title));
+        $link->setNote($note !== null && trim($note) !== '' ? trim($note) : null);
         $link->setCreatedAt(time());
 
         $created = $this->documentLinkMapper->insert($link);
@@ -324,7 +325,7 @@ class DocumentService {
         return array_values($normalized);
     }
 
-    public function createContentForTargets(string $userId, array $targets, string $fileName, string $content, ?int $year = null, ?string $title = null, ?string $typeFolder = null): array {
+    public function createContentForTargets(string $userId, array $targets, string $fileName, string $content, ?int $year = null, ?string $title = null, ?string $note = null, ?string $typeFolder = null): array {
         $normalizedTargets = $this->normalizeTargets($targets);
 
         if (empty($normalizedTargets)) {
@@ -342,10 +343,10 @@ class DocumentService {
         }
 
         $links = [];
-        $links[] = $this->persistLink($userId, $primary['entityType'], $primary['entityId'], $file, $title);
+        $links[] = $this->persistLink($userId, $primary['entityType'], $primary['entityId'], $file, $title, $note);
 
         foreach ($normalizedTargets as $target) {
-            $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title);
+            $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title, $note);
         }
 
         return [

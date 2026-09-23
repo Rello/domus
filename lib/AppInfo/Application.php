@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\AppInfo;
 
+use OCA\Domus\UserMigration\DomusMigrator;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IBootContext;
@@ -20,6 +21,7 @@ class Application extends App implements IBootstrap {
     }
 
     public function register(IRegistrationContext $context): void {
+        $context->registerUserMigrator(DomusMigrator::class);
     }
 
     public function boot(IBootContext $context): void {

@@ -16,6 +16,7 @@ class DocumentLink extends Entity implements JsonSerializable {
     protected $entityId;
     protected $fileId;
     protected $fileName;
+    protected $note;
     protected $createdAt;
 
     private ?string $fileUrl = null;
@@ -36,6 +37,7 @@ class DocumentLink extends Entity implements JsonSerializable {
             'entityId' => $this->entityId,
             'fileId' => $this->fileId,
             'fileName' => $this->fileName,
+            'note' => $this->note,
             'fileUrl' => $this->fileUrl,
             'filePath' => $this->filePath,
             'createdAt' => $this->createdAt,

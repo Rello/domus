@@ -9,11 +9,25 @@ namespace OCA\Domus\Db;
 
 use OCP\AppFramework\Db\QBMapper;
 use OCP\DB\Exception;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
 class UnitMapper extends QBMapper {
     public function __construct(IDBConnection $db) {
         parent::__construct($db, 'domus_units', Unit::class);
+    }
+
+    /** @param int[] $ids */
+    public function findForUserByIds(array $ids, string $userId): array {
+        $entities = [];
+        foreach (array_chunk(array_values(array_unique(array_map('intval', $ids))), 500) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('*')->from($this->getTableName())
+                ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+                ->andWhere($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+            array_push($entities, ...$this->findEntities($qb));
+        }
+        return $entities;
     }
 
     /**

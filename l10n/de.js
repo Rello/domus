@@ -228,6 +228,7 @@ OC.L10N.register(
         "Domus": "Domus",
         "Domus for Nextcloud": "Domus für Nextcloud",
         "Domus helps you keep homes, tenants, payments, and documents together, so daily rental life feels less messy.": "Domus hilft Ihnen, Wohnungen, Mieter, Zahlungen und Dokumente an einem Ort zu behalten, damit sich der Alltag mit Vermietungen weniger chaotisch anfühlt.",
+        "Properties, units, bookings and documents": "Immobilien, Einheiten, Buchungen und Dokumente",
         "Download": "Herunterladen",
         "Download CSV template": "CSV-Vorlage herunterladen",
         "Download the CSV template to see the required column order, then paste your rows below.": "Laden Sie die CSV-Vorlage herunter, um die erforderliche Spaltenreihenfolge zu sehen, und fügen Sie dann unten Ihre Zeilen ein.",

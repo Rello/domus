@@ -59,12 +59,14 @@ class PartnerMapper extends QBMapper {
             return [];
         }
 
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('*')
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->in('id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
-
-        return $this->findEntities($qb);
+        $partners = [];
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('*')->from($this->getTableName())
+                ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+                ->andWhere($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+            array_push($partners, ...$this->findEntities($qb));
+        }
+        return $partners;
     }
 }

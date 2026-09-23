@@ -101,10 +101,6 @@ class StatisticsService {
                         }
                 }
 
-                $this->logger->info('StatisticsService: calculated statistics rows for all years', [
-                        'tables' => $tables,
-                ]);
-
                 return $tables;
         }
 
@@ -268,7 +264,6 @@ class StatisticsService {
                 $sums = [];
                 foreach ($rows as $row) {
                         if (!isset($row['account'])) {
-                                $this->logger->info('StatisticsService: skipping row missing account', ['row' => $row]);
                                 continue;
                         }
                         $account = $this->resolveTopAccountNumber((string)$row['account'], $topAccountMap);
@@ -284,13 +279,11 @@ class StatisticsService {
                 $perYear = [];
                 foreach ($rows as $row) {
                         if (!isset($row['year'])) {
-                                $this->logger->info('StatisticsService: skipping row missing year', ['row' => $row]);
                                 continue;
                         }
                         $year = (int)$row['year'];
                         $account = (string)($row['account'] ?? '');
                         if ($account === '') {
-                                $this->logger->info('StatisticsService: skipping row missing account while grouping by year', ['row' => $row]);
                                 continue;
                         }
                         if (!isset($perYear[$year])) {
@@ -313,9 +306,6 @@ class StatisticsService {
                         try {
                                 $start = new \DateTimeImmutable($tenancy->getStartDate());
                         } catch (\Exception $e) {
-                                $this->logger->info('StatisticsService: skipping tenancy while collecting years due to invalid start date', [
-                                        'tenancyId' => $tenancy->getId(),
-                                ]);
                                 continue;
                         }
 
@@ -324,9 +314,6 @@ class StatisticsService {
                                 try {
                                         $end = new \DateTimeImmutable($tenancy->getEndDate());
                                 } catch (\Exception $e) {
-                                        $this->logger->info('StatisticsService: skipping tenancy end date parsing', [
-                                                'tenancyId' => $tenancy->getId(),
-                                        ]);
                                 }
                         }
 
@@ -472,7 +459,7 @@ class StatisticsService {
                         // the getter and let __call resolve it when no concrete method exists.
                         $value = $unit->$method();
                 } catch (\Throwable $e) {
-                        $this->logger->info('StatisticsService: failed to resolve unit field', [
+                        $this->logger->warning('StatisticsService: failed to resolve unit field', [
                                 'field' => $field,
                                 'exception' => $e,
                         ]);
@@ -506,21 +493,8 @@ class StatisticsService {
         }
 
         private function buildStatisticsRowForUnitYear(int $unitId, ?Unit $unit, string $userId, int $year, array $definitions, array $topAccountMap = []): array {
-                $this->logger->info('StatisticsService: calculating unit stats', [
-                        'unitId' => $unitId,
-                        'userId' => $userId,
-                        'year' => $year,
-                        'columns' => array_column($definitions, 'key'),
-                ]);
-
                 $grouped = $this->bookingService->sumByAccountGrouped($userId, $year, 'unit', $unitId);
-                $this->logger->info('StatisticsService: grouped sums fetched', [
-                        'count' => count($grouped),
-                        'grouped' => $grouped,
-                ]);
-
                 $sums = $this->mapSums($grouped, $topAccountMap);
-                $this->logger->info('StatisticsService: sums for unit extracted', ['sums' => $sums]);
 
                 $tenancySums = $this->mapSumsToTopAccounts(
                         $this->tenancyService->sumTenancyForYear($userId, $unitId, $year),
@@ -529,11 +503,8 @@ class StatisticsService {
                 $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                 $mergedSums = $this->mergeSums($sums, $tenancySums, $unitSums);
                 $mergedSums = $this->applyUserTaxRate($mergedSums, $userId);
-                $this->logger->info('StatisticsService: merged booking and tenancy sums', ['sums' => $mergedSums]);
 
                 $row = $this->buildRowForYear($year, $definitions, $mergedSums, ['unit' => $unit], $topAccountMap);
-
-                $this->logger->info('StatisticsService: calculated statistics row', ['row' => $row]);
 
                 return $row;
         }

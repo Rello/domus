@@ -49,15 +49,7 @@ class DashboardService {
         $tenancies = $this->tenancyService->listTenancies($userId);
         $partnerType = $isBuildingManagement ? 'owner' : null;
         $tenancies = $this->filterTenanciesForRole($tenancies, $partnerType, $unitIds, !$isBuildingManagement);
-        $activeTenancies = array_filter($tenancies, function (Tenancy $tenancy) {
-            $status = $tenancy->getStatus();
-            if ($status !== null) {
-                return in_array($status, ['active', 'future'], true);
-            }
-
-            $endDate = $tenancy->getEndDate();
-            return $endDate === null || $endDate >= date('Y-m-d');
-        });
+        $activeTenancies = array_filter($tenancies, fn(Tenancy $tenancy) => $tenancy->getStatus() === 'active');
         $occupiedUnitIds = [];
         foreach ($tenancies as $tenancy) {
             if ($tenancy->getStatus() === 'active') {
@@ -68,6 +60,8 @@ class DashboardService {
         $bookings = $this->bookingMapper->findByUser($userId, ['year' => $year]);
         if ($isBuildingManagement) {
             $bookings = array_filter($bookings, fn(Booking $booking) => $this->bookingMatchesManagedScope($booking, $propertyIds, $unitIds));
+        } else {
+            $bookings = array_filter($bookings, fn(Booking $booking) => in_array($booking->getUnitId(), $unitIds, true));
         }
 
         $rentSum = 0.0;
@@ -171,7 +165,7 @@ class DashboardService {
         $unitScope = array_map('intval', $unitIds);
 
         return array_values(array_filter($tenancies, function (Tenancy $tenancy) use ($expectedPartnerType, $unitScope, $allowPartnerless) {
-            if (!empty($unitScope) && !in_array((int)$tenancy->getUnitId(), $unitScope, true)) {
+            if (!in_array((int)$tenancy->getUnitId(), $unitScope, true)) {
                 return false;
             }
 
