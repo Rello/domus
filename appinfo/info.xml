@@ -27,7 +27,7 @@ Entwickelt für Vermieter und kleine Hausverwaltungen, die einen klaren Überbli
 - Offene Aufgaben verfolgen, damit nichts vergessen wird.
 - Das Dashboard öffnen und Ihre aktuelle Situation auf einen Blick sehen.
 ]]></description>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <licence>agpl</licence>
     <author>Marcel Scherello</author>
     <namespace>Domus</namespace>

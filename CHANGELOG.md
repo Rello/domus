@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
-## Unreleased
+## 1.0.2 - 2026-09-23
 ### Fixed
 - Prorate rent and service-charge totals by calendar days for partial months.
 - Exclude future tenancies and unrelated bookings from landlord dashboard totals; keep empty unit scopes empty.
