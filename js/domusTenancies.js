@@ -289,7 +289,8 @@
 
             existingSelect?.addEventListener('change', toggleFields);
             toggleFields();
-            cancel?.addEventListener('click', modalContext.close);
+            modalContext.protectChanges();
+            cancel?.addEventListener('click', modalContext.requestClose);
 
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -527,7 +528,8 @@
                 });
                 return;
             }
-            cancel?.addEventListener('click', modalContext.close);
+            modalContext.protectChanges();
+            cancel?.addEventListener('click', modalContext.requestClose);
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const data = {};

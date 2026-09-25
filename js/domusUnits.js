@@ -2705,7 +2705,8 @@
                 return;
             }
 
-            cancel?.addEventListener('click', modalContext.close);
+            modalContext.protectChanges();
+            cancel?.addEventListener('click', modalContext.requestClose);
             form?.addEventListener('submit', function (e) {
                 e.preventDefault();
                 const data = {};
@@ -2957,7 +2958,8 @@
                     '</div>'
             });
             const imageState = bindUnitImageField(modal.modalEl);
-            modal.modalEl.querySelector('#domus-unit-image-cancel')?.addEventListener('click', modal.close);
+            modal.protectChanges();
+            modal.modalEl.querySelector('#domus-unit-image-cancel')?.addEventListener('click', modal.requestClose);
             modal.modalEl.querySelector('#domus-unit-image-form')?.addEventListener('submit', event => {
                 event.preventDefault();
                 applyUnitImageChange(unit.id, imageState?.getValue())

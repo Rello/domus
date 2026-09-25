@@ -599,6 +599,7 @@
     })();
     Domus.UI = (function() {
         let actionMenuHandlersBound = false;
+        const modalStack = [];
         function renderContent(html) {
             const appContent = document.getElementById('app-content');
             if (appContent) {
@@ -664,6 +665,35 @@
             setTimeout(() => container.remove(), 4000);
         }
 
+        // Compare values, not input events. Include disabled/hidden values so temporarily
+        // hiding a section cannot erase its draft, and ignore presentation-only controls.
+        function getFormState(root, excludeSelector = '') {
+            return Array.from(root.querySelectorAll('input, select, textarea'))
+                .filter(control => !['button', 'submit', 'reset'].includes(control.type)
+                    && (!excludeSelector || !control.matches(excludeSelector)))
+                .map(control => {
+                    let value = control.value.replace(/\r\n/g, '\n');
+                    if (control.type === 'checkbox' || control.type === 'radio') {
+                        value = control.checked;
+                    } else if (control.type === 'file') {
+                        value = Array.from(control.files || []).map(file => [file.name, file.size, file.type, file.lastModified]);
+                    } else if (control.multiple) {
+                        value = Array.from(control.selectedOptions).map(option => option.value).sort();
+                    } else if (control.type === 'number' && value !== '' && Number.isFinite(Number(value))) {
+                        value = Number(value);
+                    }
+                    return [control.name || control.id || control.type, value, control.validity.badInput];
+                });
+        }
+
+        function updateModalStack() {
+            modalStack.forEach((entry, index) => {
+                const active = index === modalStack.length - 1;
+                entry.modal.inert = !active;
+                entry.modal.setAttribute('aria-modal', String(active));
+            });
+        }
+
         function openModal(options) {
             const { title, content, size, headerActions = [], onClose } = options || {};
             const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -723,16 +753,65 @@
             document.body.appendChild(backdrop);
 
             let closed = false;
+            let readState = null;
+            let initialState;
+            let discardPending = false;
+            let discardModal = null;
+            const stackEntry = { modal };
+            modalStack.push(stackEntry);
+            updateModalStack();
 
+            // Call after applying defaults and mounting widgets. Custom readers cover
+            // values held outside native controls and normalize dynamic form rows.
+            function protectChanges(getState = () => getFormState(body)) {
+                readState = getState;
+                initialState = JSON.stringify(readState());
+            }
+
+            function requestClose() {
+                if (closed || discardPending || modalStack[modalStack.length - 1] !== stackEntry) {
+                    return;
+                }
+                if (!readState || JSON.stringify(readState()) === initialState) {
+                    closeModal();
+                    return;
+                }
+                discardPending = true;
+                confirmAction({
+                    title: t('domus', 'Discard changes?'),
+                    message: t('domus', 'Your unsaved changes will be lost.'),
+                    confirmLabel: t('domus', 'Discard changes'),
+                    cancelLabel: t('domus', 'Keep editing'),
+                    onOpen: confirmation => { discardModal = confirmation; }
+                }).then(discard => {
+                    discardPending = false;
+                    discardModal = null;
+                    if (discard) {
+                        closeModal();
+                    }
+                });
+            }
+
+            // Completion path for successful saves, deletes and workflow transitions.
+            // User dismissal must use requestClose instead.
             function closeModal() {
                 if (closed) {
                     return;
                 }
                 closed = true;
+                // A save may finish while its discard confirmation is open.
+                discardModal?.close();
+                const wasTopModal = modalStack[modalStack.length - 1] === stackEntry;
+                modalStack.splice(modalStack.indexOf(stackEntry), 1);
+                updateModalStack();
                 document.removeEventListener('keydown', onKeyDown);
                 backdrop.remove();
-                if (previousActiveElement && document.body.contains(previousActiveElement)) {
-                    previousActiveElement.focus();
+                if (wasTopModal) {
+                    if (previousActiveElement && document.body.contains(previousActiveElement) && !previousActiveElement.closest('[inert]')) {
+                        previousActiveElement.focus();
+                    } else {
+                        modalStack[modalStack.length - 1]?.modal.focus();
+                    }
                 }
                 if (typeof onClose === 'function') {
                     onClose();
@@ -757,8 +836,18 @@
             }
 
             function onKeyDown(event) {
+                if (event.defaultPrevented || modalStack[modalStack.length - 1] !== stackEntry) {
+                    return;
+                }
+                // Let a Nextcloud picker above this modal own its keyboard events.
+                const activeDialog = event.target instanceof Element ? event.target.closest('[role="dialog"]') : null;
+                if (activeDialog && activeDialog !== modal) {
+                    return;
+                }
                 if (event.key === 'Escape') {
-                    closeModal();
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    requestClose();
                     return;
                 }
                 if (event.key !== 'Tab') {
@@ -790,10 +879,10 @@
             }
 
             document.addEventListener('keydown', onKeyDown);
-            closeBtn.addEventListener('click', closeModal);
+            closeBtn.addEventListener('click', requestClose);
             backdrop.addEventListener('click', function(e) {
                 if (e.target === backdrop) {
-                    closeModal();
+                    requestClose();
                 }
             });
 
@@ -806,7 +895,7 @@
                 modal.focus();
             }
 
-            return { modalEl: modal, close: closeModal };
+            return { modalEl: modal, close: closeModal, requestClose, protectChanges };
         }
 
         function confirmAction(options = {}) {
@@ -854,6 +943,7 @@
                     content,
                     onClose: () => finish(false)
                 });
+                options.onOpen?.(modal);
                 cancelButton.addEventListener('click', () => finish(false));
                 confirmButton.addEventListener('click', () => finish(true));
             });
@@ -1894,6 +1984,7 @@
             });
 
             const form = modal.modalEl.querySelector('#' + formId);
+            modal.protectChanges();
             const documentPathInput = form?.querySelector('input[name="documentPath"]');
             const pickerButton = modal.modalEl.querySelector('#' + pickerId);
             const pickerDisplay = modal.modalEl.querySelector('#' + displayId);
@@ -1928,7 +2019,7 @@
                     })
                     .catch(err => showNotification(err.message, 'error'));
             });
-            modal.modalEl.querySelector('#' + cancelId)?.addEventListener('click', modal.close);
+            modal.modalEl.querySelector('#' + cancelId)?.addEventListener('click', modal.requestClose);
 
             return modal;
         }
@@ -1999,6 +2090,7 @@
             buildGuidedSteps,
             buildGuidedWorkflowLayout,
             openModal,
+            getFormState,
             confirmAction,
             buildIconButton,
             buildIconLabelButton,

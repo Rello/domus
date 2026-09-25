@@ -13,6 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Show note and description fields as single-line inputs by default, with vertical resizing available for longer text.
 
 ### Fixed
+- Confirm dismissal of changed booking, document, unit, tenancy, and task forms, preserving unsaved input and keyboard focus when continuing to edit.
 - Wrap long document titles and notes so the document date remains visible.
 - Prevent a JavaScript error when loading the task templates list.
 - Make linked KPI headlines clickable across the full tile, including unit details.

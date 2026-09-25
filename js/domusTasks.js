@@ -602,7 +602,8 @@
             const descriptionInput = modal.modalEl.querySelector('#domus-task-edit-description');
             const dueDateInput = modal.modalEl.querySelector('#domus-task-edit-due-date');
 
-            modal.modalEl.querySelector('#domus-task-edit-cancel')?.addEventListener('click', modal.close);
+            modal.protectChanges();
+            modal.modalEl.querySelector('#domus-task-edit-cancel')?.addEventListener('click', modal.requestClose);
             form?.addEventListener('submit', (event) => {
                 event.preventDefault();
                 const titleValue = (titleInput?.value || '').trim();
@@ -1114,7 +1115,8 @@
                     templateSelect?.addEventListener('change', updateTemplateState);
                     updateTemplateState();
 
-                    modal.modalEl.querySelector('#domus-task-create-cancel')?.addEventListener('click', modal.close);
+                    modal.protectChanges();
+                    modal.modalEl.querySelector('#domus-task-create-cancel')?.addEventListener('click', modal.requestClose);
                     form?.addEventListener('submit', (event) => {
                         event.preventDefault();
                         const selectedTemplateId = templateSelect?.value || '';
@@ -1711,7 +1713,8 @@
                 '</form></div>';
             const modal = Domus.UI.openModal({ title: isEdit ? t('domus', 'Edit template') : t('domus', 'Add template'), content });
             const form = modal.modalEl.querySelector('#domus-task-template-form');
-            modal.modalEl.querySelector('#domus-task-template-cancel')?.addEventListener('click', modal.close);
+            modal.protectChanges();
+            modal.modalEl.querySelector('#domus-task-template-cancel')?.addEventListener('click', modal.requestClose);
 
             if (isEdit) {
                 renderStepsList(template);
@@ -1799,7 +1802,7 @@
             const actionSelect = modal.modalEl.querySelector('select[name="actionType"]');
             const actionUrlInput = modal.modalEl.querySelector('input[name="actionUrl"]');
             const actionUrlRow = actionUrlInput?.closest('.domus-form-row');
-            modal.modalEl.querySelector('#domus-task-step-cancel')?.addEventListener('click', modal.close);
+            modal.modalEl.querySelector('#domus-task-step-cancel')?.addEventListener('click', modal.requestClose);
 
             const updateActionVisibility = () => {
                 const type = actionSelect?.value || '';
@@ -1813,6 +1816,7 @@
             };
             actionSelect?.addEventListener('change', updateActionVisibility);
             updateActionVisibility();
+            modal.protectChanges();
 
             form?.addEventListener('submit', (event) => {
                 event.preventDefault();

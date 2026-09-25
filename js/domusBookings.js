@@ -1057,6 +1057,9 @@
                     : (documentToggle ? documentToggle.checked : true)
             };
             const distributionSelect = modalContext.modalEl.querySelector('#domus-booking-distribution');
+            // The initial selection is applied after the options arrive. Loading
+            // those options is initialization, not a change to the user's draft.
+            let distributionValue = distributionSelect?.dataset.selected || '';
             const propertySelect = form?.querySelector('select[name="propertyId"]');
             const invoiceDateInput = form?.querySelector('input[name="date"]');
             const deliveryDateInput = form?.querySelector('input[name="deliveryDate"]');
@@ -1220,7 +1223,7 @@
                 });
             }
 
-            cancel?.addEventListener('click', modalContext.close);
+            cancel?.addEventListener('click', modalContext.requestClose);
             deleteBookingButton?.addEventListener('click', () => {
                 Domus.UI.confirmAction({
                     title: t('domus', 'Delete {entity}?', { entity: t('domus', 'Booking') }),
@@ -1259,6 +1262,7 @@
                 updateDistributionOptions(this.value);
             });
             distributionSelect?.addEventListener('change', function() {
+                distributionValue = this.value;
                 if (isBuildingMgmt) {
                     toggleUnitField(this.value === unitAllocationValue);
                 }
@@ -1276,6 +1280,21 @@
                 }
                 lastInvoiceDate = this.value;
             });
+            modalContext.protectChanges(() => ({
+                fields: Domus.UI.getFormState(form, '#domus-booking-entries input, #domus-booking-entries select, #domus-booking-distribution'),
+                distribution: distributionValue,
+                documentPath: docWidget?.getSelection()?.filePath || '',
+                entries: Array.from(entriesContainer?.querySelectorAll('.domus-booking-entry') || []).map(row => {
+                    const account = row.querySelector('[data-role="account"]')?.value || '';
+                    const input = row.querySelector('[data-role="amount"]');
+                    const amount = input?.value || '';
+                    const emptyDefault = input?.dataset.defaultAmount === '1' && Number(amount) === 0;
+                    if (!account && (amount === '' || emptyDefault) && !input?.validity.badInput) {
+                        return null;
+                    }
+                    return [account, amount === '' ? '' : Number(amount), !!input?.validity.badInput];
+                }).filter(Boolean)
+            }));
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const bookingEnabled = sectionState.bookingEnabled;
