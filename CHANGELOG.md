@@ -5,6 +5,18 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
+## 1.0.3
+### Added
+- Allow cancelling an open template process and deleting its steps from the process detail panel.
+
+### Changed
+- Show note and description fields as single-line inputs by default, with vertical resizing available for longer text.
+
+### Fixed
+- Wrap long document titles and notes so the document date remains visible.
+- Prevent a JavaScript error when loading the task templates list.
+- Make linked KPI headlines clickable across the full tile, including unit details.
+
 ## 1.0.2 - 2026-09-23
 ### Fixed
 - Prorate rent and service-charge totals by calendar days for partial months.

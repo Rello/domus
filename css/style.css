@@ -900,6 +900,16 @@
     border-radius: 0;
 }
 
+.app-domus textarea {
+    height: calc(1.5em + 16px);
+    min-height: 0;
+    resize: vertical;
+}
+
+.app-domus textarea[rows]:not([rows='1']) {
+    height: auto;
+}
+
 .domus-form input,
 .domus-form select,
 .domus-form textarea {
@@ -910,7 +920,13 @@
 }
 
 .domus-form textarea {
-    min-height: 90px;
+    height: calc(1.5em + 16px);
+    min-height: 0;
+    resize: vertical;
+}
+
+.domus-form textarea[rows]:not([rows='1']) {
+    height: auto;
 }
 
 .domus-form-table {
@@ -1340,7 +1356,9 @@
 }
 
 #domus-booking-documents .domus-booking-doc-note textarea {
-    min-height: 76px;
+    height: calc(1.5em + 16px);
+    min-height: 0;
+    resize: vertical;
 }
 
 #domus-booking-documents .domus-dropzone {
@@ -2993,6 +3011,7 @@
 }
 
 .domus-kpi-tile {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -3319,6 +3338,37 @@
     min-height: 20px;
 }
 
+.domus-kpi-tile .domus-kpi-headline-link {
+    display: block;
+    color: inherit;
+    margin: 0;
+    overflow: visible;
+    text-align: inherit;
+    text-overflow: clip;
+    text-decoration: none;
+    white-space: inherit;
+    cursor: pointer;
+}
+
+.domus-kpi-tile .domus-kpi-headline-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.domus-kpi-tile .domus-kpi-headline-link:focus-visible::after {
+    outline: var(--domus-hover-outline);
+    outline-offset: 2px;
+}
+
+.domus-kpi-tile .domus-kpi-more,
+.domus-kpi-tile .domus-kpi-value a,
+.domus-kpi-tile .domus-kpi-value button {
+    position: relative;
+    z-index: 2;
+}
+
 .domus-dashboard .domus-dashboard-kpi-tile {
     gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
     min-height: var(--domus-dashboard-kpi-min-height, 150px);
@@ -3333,10 +3383,11 @@
     color: var(--domus-theme);
 }
 
-.domus-dashboard-kpi-tile .domus-kpi-more-icon {
+.domus-kpi-tile .domus-kpi-more-icon {
     position: absolute;
     top: 0;
     right: 0;
+    z-index: 2;
 }
 
 .domus-dashboard-occupancy-chart {
@@ -4304,8 +4355,12 @@
 }
 
 .domus-documents-date-cell {
-    width: 1%;
-    white-space: nowrap;
+    width: 10em;
+    white-space: normal;
+}
+
+.domus-documents-table .domus-table {
+    table-layout: fixed;
 }
 
 .domus-documents-table .domus-table tr[data-doc-info] {
@@ -4323,9 +4378,21 @@
     vertical-align: middle;
 }
 
+.domus-documents-file-cell {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
 .domus-documents-file-name {
     display: block;
-    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.domus-documents-file-cell .muted,
+.domus-documents-date-cell .domus-action-log-date {
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 .domus-documents-more-row {

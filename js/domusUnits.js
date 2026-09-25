@@ -794,7 +794,7 @@
                 animateOpenFromTile(sourceRect);
             };
 
-            document.querySelectorAll('.domus-kpi-more[data-kpi-target]').forEach(btn => {
+            document.querySelectorAll('.domus-kpi-more[data-kpi-target], .domus-kpi-headline-link[data-kpi-target]').forEach(btn => {
                 btn.addEventListener('click', (event) => {
                     if (btn.tagName.toLowerCase() === 'a') {
                         event.preventDefault();
@@ -2264,7 +2264,6 @@
                     bindDetailActions(id, unit);
                     if (!Domus.Role.isTenantView()) {
                         Domus.Tasks.loadUnitTasks(id);
-                        Domus.Tasks.bindUnitTaskButtons(id, () => Domus.Tasks.loadUnitTasks(id));
                         if (useKpiLayout) {
                             Domus.Documents.loadLatestList('unit', id, {
                                 pageSize: 8,

@@ -945,7 +945,9 @@
                             .then(() => {
                                 Domus.UI.showNotification(resolveCreateSuccessMessage(successMessage, data), 'success');
                                 modal.close();
-                                (onCreated || renderList)();
+                                if (!bookingEditMode) {
+                                    (onCreated || renderList)();
+                                }
                             })
                             .catch(err => Domus.UI.showNotification(err.message, 'error'));
                     }, {

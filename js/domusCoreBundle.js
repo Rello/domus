@@ -1778,11 +1778,14 @@
             const linkHtml = hasAction
                 ? '<a href="' + linkHref + '" class="' + linkClassName + '"' + detailTarget + ' aria-label="' + linkLabel + '" title="' + linkLabel + '">' + linkContent + '</a>'
                 : '';
+            const headlineHtml = hasAction
+                ? '<a class="domus-kpi-headline-link" href="' + linkHref + '"' + detailTarget + '>' + headline + '</a>'
+                : headline;
             const bodyClassName = chart ? 'domus-kpi-body domus-kpi-body-split' : 'domus-kpi-body';
 
             return '<div class="domus-kpi-tile' + tileClassName + '">' +
                 '<div class="domus-kpi-header-row">' +
-                '<div class="domus-kpi-headline">' + headline + '</div>' +
+                '<div class="domus-kpi-headline">' + headlineHtml + '</div>' +
                 linkHtml +
                 '</div>' +
                 '<div class="' + bodyClassName + '">' +

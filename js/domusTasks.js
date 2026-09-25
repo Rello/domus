@@ -310,15 +310,25 @@
             }
             if (String(task.status).toLowerCase() === 'open') {
                 const isProcessTask = task.type === 'process';
-                actionItems.push({
-                    icon: 'domus-icon-task',
-                    label: t('domus', 'Mark done'),
-                    type: 'close',
-                    dataset: {
-                        taskId: task.taskId || '',
-                        stepId: task.stepId || ''
-                    }
-                });
+                if (!isProcessTask || task.taskId || task.stepId) {
+                    actionItems.push({
+                        icon: 'domus-icon-task',
+                        label: t('domus', 'Mark done'),
+                        type: 'close',
+                        dataset: {
+                            taskId: task.taskId || '',
+                            stepId: task.stepId || ''
+                        }
+                    });
+                }
+                if (isProcessTask && task.runId) {
+                    actionItems.push({
+                        icon: 'domus-icon-delete',
+                        label: t('domus', 'Cancel process'),
+                        type: 'cancel',
+                        dataset: { runId: task.runId }
+                    });
+                }
             }
             if (String(task.status).toLowerCase() === 'closed') {
                 if (task.type === 'task' && task.taskId) {
@@ -432,6 +442,27 @@
                     button.addEventListener('click', (event) => {
                         event.preventDefault();
                         const action = button.getAttribute('data-modal-action');
+                        if (action === 'cancel') {
+                            const runId = button.getAttribute('data-run-id');
+                            if (!runId) {
+                                return;
+                            }
+                            Domus.UI.confirmAction({
+                                message: t('domus', 'Cancel this process and delete all its steps?'),
+                                confirmLabel: t('domus', 'Cancel process')
+                            }).then(confirmed => {
+                                if (!confirmed) {
+                                    return;
+                                }
+                                Domus.Api.deleteWorkflowRun(runId)
+                                    .then(() => {
+                                        modal.close();
+                                        Domus.Router.navigate(Domus.state.currentView, Domus.state.currentViewArgs || []);
+                                    })
+                                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                            });
+                            return;
+                        }
                         if (action === 'run') {
                             runTaskAction(
                                 button.getAttribute('data-action-type'),
@@ -1026,6 +1057,8 @@
                     const titleInput = modal.modalEl.querySelector('#domus-task-title');
                     const descriptionInput = modal.modalEl.querySelector('#domus-task-description');
                     const dueDateInput = modal.modalEl.querySelector('#domus-task-due-date');
+                    const descriptionRow = descriptionInput?.closest('.domus-form-row');
+                    const dueDateRow = dueDateInput?.closest('.domus-form-row');
                     const submitBtn = modal.modalEl.querySelector('#domus-task-create-submit');
 
                     function resolveSelectedEntity() {
@@ -1063,8 +1096,14 @@
                             }
                             descriptionInput.disabled = hasTemplate;
                         }
+                        if (descriptionRow) {
+                            descriptionRow.style.display = hasTemplate ? 'none' : '';
+                        }
                         if (dueDateInput) {
                             dueDateInput.disabled = hasTemplate;
+                        }
+                        if (dueDateRow) {
+                            dueDateRow.style.display = hasTemplate ? 'none' : '';
                         }
                         if (submitBtn) {
                             submitBtn.textContent = hasTemplate ? t('domus', 'Start process') : t('domus', 'Create task');
@@ -1504,13 +1543,21 @@
                 '</div>';
         }
 
+        const taskCreateButtonHandlers = new WeakMap();
+
         function bindUnitTaskButtons(unitId, onRefresh) {
             const openUnitTaskModal = () => {
                 openNewTaskModal({ entityType: 'unit', entityId: unitId, onSaved: onRefresh });
             };
-            document.getElementById('domus-unit-new-task')?.addEventListener('click', () => {
-                openUnitTaskModal();
-            });
+            const createButton = document.getElementById('domus-unit-new-task');
+            if (createButton) {
+                const previousHandler = taskCreateButtonHandlers.get(createButton);
+                if (previousHandler) {
+                    createButton.removeEventListener('click', previousHandler);
+                }
+                createButton.addEventListener('click', openUnitTaskModal);
+                taskCreateButtonHandlers.set(createButton, openUnitTaskModal);
+            }
             const emptyCreate = document.getElementById('domus-unit-tasks-empty-create');
             emptyCreate?.addEventListener('click', openUnitTaskModal);
             emptyCreate?.addEventListener('keydown', event => {
@@ -1537,6 +1584,11 @@
      * Dashboard view
      */
     Domus.TaskTemplates = (function() {
+        function translateTemplateText(value) {
+            const normalized = typeof value === 'string' ? value.trim() : '';
+            return normalized ? t('domus', normalized) : '';
+        }
+
         function buildTemplateRow(template) {
             const statusLabel = template.isActive ? t('domus', 'Active') : t('domus', 'Inactive');
             const toggleLabel = template.isActive ? t('domus', 'Disable') : t('domus', 'Enable');
