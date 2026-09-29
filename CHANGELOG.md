@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
-## 1.0.3
+## 1.1.0 - 2026-09-29
 ### Added
 - Search contacts by name, contact details, address, and notes, with a combinable type filter.
 - Complete eligible process steps early or cancel an open process, with clear handling of skipped work.
