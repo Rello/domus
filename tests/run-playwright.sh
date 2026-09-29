@@ -11,3 +11,22 @@ fi
 docker run --rm --init --ipc=host --entrypoint node \
     -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
     "$playwrightImage" tests/playwright/modal-changes.js
+docker run --rm --init --ipc=host --entrypoint node \
+    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
+    "$playwrightImage" tests/playwright/dashboard.js
+docker run --rm --init --ipc=host --entrypoint node \
+    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
+    "$playwrightImage" tests/playwright/unit-workspace.js
+docker run --rm --init --ipc=host --entrypoint node \
+    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
+    "$playwrightImage" tests/playwright/process-detail.js
+docker run --rm --init --ipc=host --entrypoint node \
+    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
+    "$playwrightImage" tests/playwright/task-creation.js
+
+docker run --rm --init --ipc=host --entrypoint node \
+    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
+    "$playwrightImage" tests/playwright/analytics.js
+docker run --rm --init --ipc=host --entrypoint node \
+    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
+    "$playwrightImage" tests/playwright/contacts.js

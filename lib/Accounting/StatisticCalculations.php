@@ -17,7 +17,7 @@ class StatisticCalculations {
                 'account' => '1000',
                 'help' => [
                     'title' => 'Base rent',
-                    'summary' => 'Annual recurring cold rent from the tenancy assigned to this unit.',
+                    'summary' => 'Annual recurring base rent agreed in the tenancy assigned to this unit. This is not a record of payments received.',
                     'calculation' => 'This column sums the amount from account 1000 for the selected year. It uses the tenancy base rent and does not add utility prepayments.',
                     'includes' => 'Recurring base rent agreed in the tenancy for the active period of the year.',
                     'excludes' => 'Utility costs, deposits, one-time charges, and property-level cost postings.',
@@ -48,26 +48,41 @@ class StatisticCalculations {
             ],
             [
                 'key' => 'steuer',
-                'label' => 'Taxes',
+                'label' => 'Estimated taxes',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['gwb', 'abschr']],
                     ['op' => 'mul', 'args' => ['prev', 'taxRate']],
                 ],
+                'help' => [
+                    'title' => 'Estimated taxes',
+                    'summary' => 'Calculated with the tax rate shown above the financial table; this is not a settled tax amount.',
+                    'calculation' => 'Gross profit minus depreciation and other amounts, multiplied by the configured tax rate.',
+                ],
             ],
             [
                 'key' => 'gwn',
-                'label' => 'Net profit',
+                'label' => 'Estimated net profit',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['gwb', 'steuer']],
+                ],
+                'help' => [
+                    'title' => 'Estimated net profit',
+                    'summary' => 'Gross profit after estimated taxes, not a payment balance.',
+                    'calculation' => 'Gross profit minus estimated taxes.',
                 ],
             ],
             [
                 'key' => 'netRentab',
-                'label' => 'Rentability (net)',
+                'label' => 'Estimated rentability (net)',
                 'rule' => [
                     ['op' => 'div', 'args' => ['gwn', '3000']],
                 ],
                 'format' => 'percentage',
+                'help' => [
+                    'title' => 'Estimated rentability (net)',
+                    'summary' => 'Calculated using estimated net profit.',
+                    'calculation' => 'Estimated net profit divided by the unit value recorded in account 3000.',
+                ],
             ],
         ];
     }
@@ -136,7 +151,7 @@ class StatisticCalculations {
             ],
             [
                 'key' => 'steuer',
-                'label' => 'Taxes',
+                'label' => 'Estimated taxes',
                 'rule' => [
                     ['op' => 'sub', 'args' => ['gwb', 'abschr']],
                     ['op' => 'mul', 'args' => ['prev', 'taxRate']],
@@ -153,7 +168,7 @@ class StatisticCalculations {
 			],
             [
                 'key' => 'netRentab',
-                'label' => 'Rentability (net)',
+                'label' => 'Estimated rentability (net)',
                 'rule' => [
                     ['op' => 'div', 'args' => ['gwn', '3000']],
                 ],

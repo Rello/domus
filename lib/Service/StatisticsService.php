@@ -189,7 +189,7 @@ class StatisticsService {
                 }
 
                 if ($years === []) {
-                        $years = [(int)date('Y')];
+                        return ['years' => [], 'series' => []];
                 } else {
                         $years = array_keys($years);
                         sort($years, SORT_NUMERIC);

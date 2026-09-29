@@ -9,6 +9,21 @@
     window.Domus = window.Domus || {};
 
     Domus.Partners = (function() {
+        const listState = { partners: [], type: '', query: '' };
+
+        function updateNavSearch() {
+            Domus.Navigation.setPrimarySearch({
+                views: ['partners'],
+                label: t('domus', 'Search contacts'),
+                placeholder: t('domus', 'Search contacts, addresses or email'),
+                value: listState.query,
+                onInput: value => {
+                    listState.query = value || '';
+                    renderPartnersTable();
+                }
+            });
+        }
+
         function getPartnerTypeOptions() {
             return [
                 { value: 'tenant', label: t('domus', 'Tenant') },
@@ -21,7 +36,7 @@
 
         function getPartnerTypeLabel(type) {
             const match = getPartnerTypeOptions().find(option => option.value === type);
-            return match?.label || type || t('domus', 'Partner');
+            return match?.label || type || t('domus', 'Contact');
         }
 
         function renderPartnerTypeBadge(type) {
@@ -99,7 +114,7 @@
             const actionsHtml = actions.length ? '<span class="domus-partner-actions">' + actions.join('') + '</span>' : '';
             const partnerId = partner?.id;
             const nameHtml = (options.linkNameToDetail && partnerId)
-                ? '<a class="domus-link domus-partner-name domus-partner-name-link" href="#" data-partner-id="' + Domus.Utils.escapeHtml(String(partnerId)) + '">' + name + '</a>'
+                ? '<a class="domus-link domus-partner-name domus-partner-name-link" href="#/partnerDetail/' + encodeURIComponent(String(partnerId)) + '" data-partner-id="' + Domus.Utils.escapeHtml(String(partnerId)) + '">' + name + '</a>'
                 : '<span class="domus-partner-name">' + name + '</span>';
             return '<span class="domus-partner-contact">' +
                 nameHtml +
@@ -172,6 +187,9 @@
                 }
                 button.dataset.domusBound = 'true';
                 button.addEventListener('click', event => {
+                    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                        return;
+                    }
                     event.preventDefault();
                     event.stopPropagation();
                     const partnerId = button.getAttribute('data-partner-id');
@@ -210,43 +228,27 @@
         }
 
         function renderList() {
-            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Partners') }));
+            updateNavSearch();
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Contacts') }));
             const typeOptions = [{ value: '', label: t('domus', 'All types') }].concat(getPartnerTypeOptions());
-            Domus.Api.getPartners()
+            Domus.Api.getPartners(listState.type)
                 .then(partners => {
+                    listState.partners = partners || [];
                     const toolbar = '<div class="domus-toolbar">' +
-                        Domus.UI.buildScopeAddButton('domus-icon-partner', t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }), {
+                        Domus.UI.buildScopeAddButton('domus-icon-partner', t('domus', 'Add contact'), {
                             id: 'domus-partner-create',
                             className: 'primary'
                         }) +
+                        '</div>' +
+                        '<div class="domus-toolbar">' +
                         '<label class="domus-inline-label">' + Domus.Utils.escapeHtml(t('domus', 'Type')) + ' <select id="domus-partner-filter">' +
                         typeOptions.map(option => '<option value="' + Domus.Utils.escapeHtml(option.value) + '">' + Domus.Utils.escapeHtml(option.label) + '</option>').join('') +
                         '</select></label>' +
                         '</div>';
-                    const rows = (partners || []).map(p => ({
-                        cells: [
-                            renderPartnerContact(p),
-                            Domus.Utils.escapeHtml(getPartnerTypeLabel(p.partnerType)),
-                            Domus.Utils.escapeHtml(p.email || '')
-                        ],
-                        dataset: { navigate: 'partnerDetail', args: p.id }
-                    }));
-                    const hasRows = rows.length > 0;
-                    const table = Domus.UI.buildTable([
-                        t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Email')
-                    ], rows);
-                    const emptyState = Domus.UI.buildEmptyStateAction(
-                        t('domus', 'There is no {entity} yet. Create the first one', {
-                            entity: t('domus', 'Partners')
-                        }),
-                        {
-                            iconClass: 'domus-icon-partner',
-                            actionId: 'domus-partners-empty-create'
-                        }
-                    );
-                    Domus.UI.renderContent(toolbar + (hasRows ? table : emptyState));
+                    Domus.UI.renderContent(toolbar + '<div id="domus-partners-results"></div>');
+                    document.getElementById('domus-partner-filter').value = listState.type;
                     bindList();
-                    bindContactActions();
+                    renderPartnersTable();
                 })
                 .catch(err => Domus.UI.showError(err.message));
         }
@@ -255,7 +257,13 @@
             document.getElementById('domus-partner-create')?.addEventListener('click', openCreateModal);
             bindEmptyCreateAction();
             document.getElementById('domus-partner-filter')?.addEventListener('change', function() {
-                Domus.Api.getPartners(this.value).then(renderPartnersTable).catch(err => Domus.UI.showError(err.message));
+                listState.type = this.value;
+                Domus.Api.getPartners(listState.type)
+                    .then(partners => {
+                        listState.partners = partners || [];
+                        renderPartnersTable();
+                    })
+                    .catch(err => Domus.UI.showError(err.message));
             });
             Domus.UI.bindRowNavigation();
         }
@@ -264,10 +272,21 @@
             document.getElementById('domus-partners-empty-create')?.addEventListener('click', openCreateModal);
         }
 
-        function renderPartnersTable(partners) {
-            const rows = (partners || []).map(p => ({
+        function renderPartnersTable() {
+            const query = Domus.Utils.normalizeSearchValue(listState.query);
+            const partners = listState.partners.filter(partner => {
+                if (listState.type && partner.partnerType !== listState.type) {
+                    return false;
+                }
+                const searchText = Domus.Utils.normalizeSearchValue([
+                    partner.name, partner.email, partner.phone, partner.street,
+                    partner.zip, partner.city, partner.country, partner.customerRef, partner.notes
+                ].filter(Boolean).join(' '));
+                return !query || searchText.includes(query);
+            });
+            const rows = partners.map(p => ({
                 cells: [
-                    renderPartnerContact(p),
+                    renderPartnerContact(p, { linkNameToDetail: true }),
                     Domus.Utils.escapeHtml(getPartnerTypeLabel(p.partnerType)),
                     Domus.Utils.escapeHtml(p.email || '')
                 ],
@@ -279,24 +298,20 @@
             ], rows);
             const emptyState = Domus.UI.buildEmptyStateAction(
                 t('domus', 'There is no {entity} yet. Create the first one', {
-                    entity: t('domus', 'Partners')
+                    entity: t('domus', 'Contacts')
                 }),
                 {
                     iconClass: 'domus-icon-partner',
                     actionId: 'domus-partners-empty-create'
                 }
             );
-            const content = document.getElementById('app-content');
-            if (content) {
-                const tables = content.querySelectorAll('.domus-table');
-                if (tables.length) {
-                    tables[0].outerHTML = hasRows ? table : emptyState;
-                } else {
-                    const panels = content.querySelectorAll('.domus-empty-state');
-                    if (panels.length) {
-                        panels[0].outerHTML = hasRows ? table : emptyState;
-                    }
-                }
+            const results = document.getElementById('domus-partners-results');
+            if (results) {
+                results.innerHTML = hasRows ? table : (query || listState.type)
+                    ? Domus.UI.buildOverviewList([], {
+                        emptyMessage: t('domus', 'No matching {entity} found.', { entity: t('domus', 'Contacts') })
+                    })
+                    : emptyState;
             }
             Domus.UI.bindRowNavigation();
             bindEmptyCreateAction();
@@ -304,8 +319,8 @@
         }
 
         function openCreateModal(defaults = {}, onCreated, options = {}) {
-            const title = options.title || t('domus', 'Add {entity}', { entity: t('domus', 'Partner') });
-            const successMessage = options.successMessage || t('domus', '{entity} created.', { entity: t('domus', 'Partner') });
+            const title = options.title || t('domus', 'Add contact');
+            const successMessage = options.successMessage || t('domus', '{entity} created.', { entity: t('domus', 'Contact') });
             const content = buildPartnerForm(defaults, {
                 partnerTypeConfig: options.partnerTypeConfig,
                 partnerTypeOptions: options.partnerTypeOptions
@@ -330,7 +345,8 @@
         }
 
         function renderDetail(id) {
-            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Partner') }));
+            Domus.Navigation.clearPrimarySearch();
+            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Contact') }));
             Domus.Api.get('/partners/' + id)
                 .then(partner => {
                     const tenancies = partner.tenancies || [];
@@ -338,7 +354,7 @@
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
                     const supportsTenancyRelations = ['owner', 'tenant'].includes(String(partner.partnerType || '').toLowerCase());
                     const masterdataStatus = getPartnerMasterdataStatus(partner);
-                    const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Masterdata'), masterdataStatus.completed, masterdataStatus.total, {
+                    const masterdataIndicator = Domus.UI.buildCompletionIndicator(t('domus', 'Contact details'), masterdataStatus.completed, masterdataStatus.total, {
                         id: 'domus-partner-masterdata'
                     });
                     const partnerTypeLabel = getPartnerTypeLabel(partner.partnerType);
@@ -349,8 +365,8 @@
                         })
                     ];
                     const actionMenu = Domus.UI.buildActionMenu(menuActions, {
-                        label: t('domus', 'Quick Actions'),
-                        ariaLabel: t('domus', 'Quick Actions')
+                        label: t('domus', 'More actions'),
+                        ariaLabel: t('domus', 'More actions')
                     });
                     const contactMeta = buildPartnerHeroMeta(partner);
                     const hero = '<div class="domus-detail-hero">' +
@@ -415,7 +431,7 @@
                         Domus.UI.buildBackButton('partners') +
                         hero +
                         '<div class="domus-panel-row">' +
-                        '<div class="domus-panel domus-panel-half">' + '<div class="domus-panel-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Partner details')) + '</h3></div>' +
+                        '<div class="domus-panel domus-panel-half">' + '<div class="domus-panel-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Contact details')) + '</h3></div>' +
                         '<div class="domus-panel-body">' + infoList + '</div></div>' +
                         documentsPanel +
                         '</div>' +
@@ -439,7 +455,7 @@
             });
             deleteBtn?.addEventListener('click', () => {
                 Domus.UI.confirmAction({
-                    message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Partner') }),
+                    message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Contact') }),
                     confirmLabel: t('domus', 'Delete')
                 }).then(confirmed => {
                     if (!confirmed) {
@@ -447,7 +463,7 @@
                     }
                     Domus.Api.deletePartner(id)
                         .then(() => {
-                            Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Partner') }), 'success');
+                            Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Contact') }), 'success');
                             Domus.Router.back('partners');
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error'));
@@ -472,13 +488,13 @@
                     }
 
                     modal = Domus.UI.openModal({
-                        title: mode === 'view' ? t('domus', 'Partner details') : t('domus', 'Edit {entity}', { entity: t('domus', 'Partner') }),
+                        title: mode === 'view' ? t('domus', 'Contact details') : t('domus', 'Edit contact'),
                         content: buildPartnerForm(partner, { mode }),
                         headerActions
                     });
                     bindPartnerForm(modal, data => Domus.Api.updatePartner(id, data)
                         .then(() => {
-                            Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Partner') }), 'success');
+                            Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Contact') }), 'success');
                             modal.close();
                             renderDetail(id);
                         })
@@ -503,7 +519,8 @@
                 return;
             }
 
-            cancel?.addEventListener('click', modalContext.close);
+            modalContext.protectChanges();
+            cancel?.addEventListener('click', modalContext.requestClose);
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const data = {};
@@ -646,17 +663,18 @@
             const entityType = options.entityType || 'unit';
             const addId = `domus-${entityType}-add-partner`;
             const emptyAddId = `domus-${entityType}-add-partner-empty`;
-            const sectionTitle = options.sectionTitle || t('domus', 'Partners');
+            const sectionTitle = options.sectionTitle || (entityType === 'property'
+                ? t('domus', 'Property contacts') : t('domus', 'Unit contacts'));
             const header = Domus.UI.buildSectionHeader(sectionTitle, {
                 id: addId,
-                title: t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }),
+                title: t('domus', 'Add contact'),
                 iconClass: 'domus-icon-add'
             });
             const rows = (partners || []).map(partner => {
                 const contact = [partner.email, partner.phone].filter(Boolean).join(' • ');
                 return {
                     cells: [
-                        Domus.Partners.renderPartnerContact(partner),
+                        Domus.Partners.renderPartnerContact(partner, { linkNameToDetail: true }),
                         Domus.Partners.renderPartnerTypeBadge(partner.partnerType),
                         Domus.Utils.escapeHtml(contact || '—')
                     ],
@@ -686,16 +704,16 @@
             Domus.Api.getPartners()
                 .then(partners => {
                     const existingPartners = (partners || []).filter(partner => !['tenant', 'owner'].includes(partner.partnerType));
-                    const partnerOptions = [{ value: '', label: t('domus', 'Create new partner') }].concat(existingPartners.map(partner => ({
+                    const partnerOptions = [{ value: '', label: t('domus', 'Create new contact') }].concat(existingPartners.map(partner => ({
                         value: partner.id,
-                        label: partner.name || `${t('domus', 'Partner')} #${partner.id}`,
+                        label: partner.name || `${t('domus', 'Contact')} #${partner.id}`,
                         partnerType: partner.partnerType
                     })));
                     const existingSelect = '<select name="partnerId">' +
                         partnerOptions.map(option => '<option value="' + Domus.Utils.escapeHtml(option.value) + '">' + Domus.Utils.escapeHtml(option.label) + '</option>').join('') +
                         '</select>';
                     const existingRow = Domus.UI.buildFormRow({
-                        label: t('domus', 'Existing partner'),
+                        label: t('domus', 'Existing contact'),
                         content: existingSelect
                     });
                     const partnerTypeOptions = (entityType === 'unit' || entityType === 'property')
@@ -718,7 +736,7 @@
                         '</div>';
 
                     const modal = Domus.UI.openModal({
-                        title: t('domus', 'Add {entity}', { entity: t('domus', 'Partner') }),
+                        title: t('domus', 'Add contact'),
                         content
                     });
                     bindRelationForm(modal, { entityType, entityId, onRefresh, partnerOptions });
@@ -747,7 +765,8 @@
 
             existingSelect?.addEventListener('change', toggleNewFields);
             toggleNewFields();
-            cancel?.addEventListener('click', modalContext.close);
+            modalContext.protectChanges();
+            cancel?.addEventListener('click', modalContext.requestClose);
 
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();

@@ -148,6 +148,7 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
                     ],
                     [
                         'title' => 'Second reminder',
+                        'allowEarlyCompletion' => true,
                         'description' => 'Follow up with a second reminder after the grace period.',
                         'defaultDueDaysOffset' => 0,
                         'actionType' => null,
@@ -155,6 +156,7 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
                     ],
                     [
                         'title' => 'Court reminder',
+                        'allowEarlyCompletion' => true,
                         'description' => 'Escalate to a formal court reminder if needed.',
                         'defaultDueDaysOffset' => 0,
                         'actionType' => null,
@@ -162,6 +164,7 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
                     ],
                     [
                         'title' => 'Start cancellation process',
+                        'allowEarlyCompletion' => true,
                         'description' => 'Begin the cancellation process if no payment arrives.',
                         'defaultDueDaysOffset' => 0,
                         'actionType' => null,
@@ -199,6 +202,7 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
                         'sort_order' => $stepInsert->createNamedParameter($order, $stepInsert::PARAM_INT),
                         'title' => $stepInsert->createNamedParameter($step['title']),
                         'description' => $stepInsert->createNamedParameter($step['description']),
+                        'allow_early_completion' => $stepInsert->createNamedParameter(!empty($step['allowEarlyCompletion']) ? 1 : 0, $stepInsert::PARAM_INT),
                         'action_type' => $stepInsert->createNamedParameter($step['actionType']),
                         'action_url' => $stepInsert->createNamedParameter($step['actionUrl']),
                         'default_due_days_offset' => $stepInsert->createNamedParameter((int)($step['defaultDueDaysOffset'] ?? 0), $stepInsert::PARAM_INT),

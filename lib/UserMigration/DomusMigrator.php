@@ -25,7 +25,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
     private const EXPORT_FILE = Application::APP_ID . '/user-data.json';
-    private const VERSION = 2;
+    private const VERSION = 3;
     private const SETTINGS = ['taxRate', 'wizard', 'initialDemoContentCreated'];
 
     public function __construct(
@@ -95,6 +95,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 'taskSteps' => $this->fetchAllByIds('domus_task_steps', 'workflow_run_id', $workflowRunIds),
                 'tasks' => $this->fetchAllByColumn('domus_tasks', 'created_by', $uid),
                 'taskTemplates' => $this->fetchAllByIds('domus_task_templates', 'id', $templateIds),
+                'taskTemplateSteps' => $this->fetchAllByIds('domus_task_tpl_steps', 'template_id', $templateIds),
             ];
 
             $payload['documentFiles'] = $this->documentFiles->export($uid, $payload['documentLinks'], $exportDestination);
@@ -122,7 +123,6 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         }
 
         $uid = $user->getUID();
-        $templateMap = $this->buildTemplateMap($payload['taskTemplates'] ?? []);
         $maps = [
             'property' => [],
             'unit' => [],
@@ -145,6 +145,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         try {
             $this->db->beginTransaction();
             $transactionStarted = true;
+            $templateMap = $this->importTemplates($payload['taskTemplates'] ?? [], $payload['taskTemplateSteps'] ?? null);
             $this->importSettings($uid, $payload['settings'] ?? []);
             $maps['property'] = $this->importProperties($uid, $payload['properties'] ?? []);
             $maps['unit'] = $this->importUnits($uid, $payload['units'] ?? [], $maps);
@@ -155,7 +156,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
             $maps['booking'] = $this->importBookings($uid, $payload['bookings'] ?? [], $maps);
             $this->remapBookingSources($payload['bookings'] ?? [], $maps['booking']);
             $this->importPartnerRelations($uid, $payload['partnerRelations'] ?? [], $maps);
-            $this->importDocumentLinks($uid, $payload['documentLinks'] ?? [], $maps);
+            $maps['document'] = $this->importDocumentLinks($uid, $payload['documentLinks'] ?? [], $maps);
             $this->importBookingYears($payload['bookingYears'] ?? [], $maps);
             $this->importActionLogs($uid, $payload['actionLogs'] ?? [], $maps);
             $maps['workflowRun'] = $this->importWorkflowRuns($uid, $payload['workflowRuns'] ?? [], $maps, $templateMap);
@@ -405,9 +406,11 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
 
     /**
      * @param list<array<string,mixed>> $rows
+     * @return array<int,int>
      * @throws Exception
      */
-    private function importDocumentLinks(string $uid, array $rows, array $maps): void {
+    private function importDocumentLinks(string $uid, array $rows, array $maps): array {
+        $idMap = [];
         foreach ($rows as $row) {
             $entityType = (string)($row['entity_type'] ?? '');
             $entityId = $this->remapEntityId($entityType, $row['entity_id'] ?? null, $maps);
@@ -420,8 +423,12 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
             $values['entity_id'] = $entityId;
             $values['file_id'] = $maps['file'][(int)$row['file_id']]
                 ?? throw new UserMigrationException('Missing imported Domus document');
-            $this->insertAndReturnId('domus_docLinks', $values);
+            $id = $this->insertAndReturnId('domus_docLinks', $values);
+            if (isset($row['id'])) {
+                $idMap[(int)$row['id']] = $id;
+            }
         }
+        return $idMap;
     }
 
     /**
@@ -482,8 +489,10 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
             $oldTemplateId = (int)($row['template_id'] ?? 0);
             $values = $this->valuesWithoutId($row);
             $values['entity_id'] = $entityId;
-            $values['template_id'] = $templateMap[$oldTemplateId] ?? $oldTemplateId;
+            $values['template_id'] = $templateMap[$oldTemplateId]
+                ?? throw new UserMigrationException('Missing imported Domus process template');
             $values['created_by'] = $uid;
+            $values['closed_by'] = $this->remapUserValue($values['closed_by'] ?? null, $uid);
             $idMap[(int)$row['id']] = $this->insertAndReturnId('domus_workflow_runs', $values);
         }
 
@@ -554,7 +563,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
     private function remapLinkedEntityValues(array &$values, array $maps): void {
         $linkedType = $values['linked_entity_type'] ?? null;
         $linkedId = $this->remapNullableEntityId((string)$linkedType, $values['linked_entity_id'] ?? null, $maps);
-        if ($linkedType !== null && $values['linked_entity_id'] !== null && $linkedId === null) {
+        if ($linkedType !== null && ($values['linked_entity_id'] ?? null) !== null && $linkedId === null) {
             $values['linked_entity_type'] = null;
             $values['linked_entity_id'] = null;
             return;
@@ -575,7 +584,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
      * @param list<array<string,mixed>> $rows
      * @return array<int,int>
      */
-    private function buildTemplateMap(array $rows): array {
+    private function importTemplates(array $rows, ?array $steps): array {
         $map = [];
         foreach ($rows as $row) {
             if (!isset($row['id'], $row['key'])) {
@@ -585,6 +594,20 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
             $existingId = $this->findIdByColumn('domus_task_templates', 'key', (string)$row['key']);
             if ($existingId !== null) {
                 $map[(int)$row['id']] = $existingId;
+                continue;
+            }
+            if ($steps === null) {
+                throw new UserMigrationException('The archive is missing Domus process template steps. Export it again with the current Domus version.');
+            }
+            $templateId = $this->insertAndReturnId('domus_task_templates', $this->valuesWithoutId($row));
+            $map[(int)$row['id']] = $templateId;
+            foreach ($steps as $step) {
+                if ((int)($step['template_id'] ?? 0) !== (int)$row['id']) {
+                    continue;
+                }
+                $values = $this->valuesWithoutId($step);
+                $values['template_id'] = $templateId;
+                $this->insertAndReturnId('domus_task_tpl_steps', $values);
             }
         }
 

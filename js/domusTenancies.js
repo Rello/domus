@@ -44,6 +44,16 @@
                 .join(', ');
         }
 
+        function buildTenancyLink(tenancy, content) {
+            if (!tenancy.id) {
+                return content;
+            }
+            const label = Domus.Role.getTenancyLabels().singular + ' #' + tenancy.id;
+            return '<a class="domus-table-action-link" data-domus-row-link href="#/tenancyDetail/' +
+                encodeURIComponent(String(tenancy.id)) + '" aria-label="' + Domus.Utils.escapeHtml(label) + '">' +
+                content + '</a>';
+        }
+
         function renderList() {
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().plural }));
             Domus.Api.getTenancies()
@@ -60,7 +70,7 @@
                         });
                         return {
                             cells: [
-                                Domus.Utils.escapeHtml(formatUnitLabel(tn)),
+                                buildTenancyLink(tn, Domus.Utils.escapeHtml(formatUnitLabel(tn))),
                                 partnerLabel || Domus.Utils.escapeHtml(''),
                                 Domus.Utils.escapeHtml(formatStatusLabel(tn.status))
                             ],
@@ -109,7 +119,7 @@
             const rows = (tenancies || []).map(tn => {
                 const cells = [];
                 if (!hideUnitColumn) {
-                    cells.push(Domus.Utils.escapeHtml(formatUnitLabel(tn)));
+                    cells.push(buildTenancyLink(tn, Domus.Utils.escapeHtml(formatUnitLabel(tn))));
                 }
                 if (!hidePartnersColumn) {
                     cells.push(
@@ -119,11 +129,12 @@
                         }) || Domus.Utils.escapeHtml('')
                     );
                 }
+                const statusContent = statusAsBadge
+                    ? renderStatusBadge(tn.status)
+                    : Domus.Utils.escapeHtml(formatStatusLabel(tn.status));
                 cells.push(
-                    statusAsBadge
-                        ? renderStatusBadge(tn.status)
-                        : Domus.Utils.escapeHtml(formatStatusLabel(tn.status)),
-                    Domus.Utils.escapeHtml(tn.period || '')
+                    hideUnitColumn && hidePartnersColumn ? buildTenancyLink(tn, statusContent) : statusContent,
+                    Domus.Utils.escapeHtml([Domus.Utils.formatDate(tn.startDate), tn.endDate ? Domus.Utils.formatDate(tn.endDate) : t('domus', 'Ongoing')].filter(Boolean).join(' – '))
                 );
                 return {
                     cells,
@@ -387,11 +398,11 @@
                         })
                     ];
                     const actionMenu = Domus.UI.buildActionMenu(menuActions, {
-                        label: t('domus', 'Quick Actions'),
-                        ariaLabel: t('domus', 'Quick Actions')
+                        label: t('domus', 'More actions'),
+                        ariaLabel: t('domus', 'More actions')
                     });
                     const statusTag = renderStatusBadge(tenancy.status);
-                    const tenancyPeriod = tenancy.period || [Domus.Utils.formatDate(tenancy.startDate), Domus.Utils.formatDate(tenancy.endDate)].filter(Boolean).join(' • ');
+                    const tenancyPeriod = [Domus.Utils.formatDate(tenancy.startDate), tenancy.endDate ? Domus.Utils.formatDate(tenancy.endDate) : t('domus', 'Ongoing')].filter(Boolean).join(' – ');
                     const partnerSummary = formatPartnerNames(tenancy.partners) || tenancy.partnerName || '';
                     const heroMetaLines = [
                         tenancyPeriod ? Domus.UI.buildHeroMetaLine('domus-icon-booking', tenancyPeriod) : '',
@@ -403,26 +414,25 @@
                         '<span class="domus-icon domus-icon-tenancy" aria-hidden="true"></span>' +
                         '</div>' +
                         '<div class="domus-hero-main">' +
-                        '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(tenancy.unitLabel || `${tenancyLabels.singular} #${id}`) + '</div>' +
+                        '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(`${tenancyLabels.singular} #${id}`) + '</div>' +
                         '<div class="domus-hero-main-top">' +
                         '<div class="domus-hero-heading-group">' +
                         '<div class="domus-hero-heading-row">' +
-                        '<h2>' + Domus.Utils.escapeHtml(tenancyLabels.singular) + ' #' + Domus.Utils.escapeHtml(id) + '</h2>' +
+                        '<h2>' + Domus.Utils.escapeHtml([partnerSummary, tenancy.unitLabel].filter(Boolean).join(' · ') || tenancyLabels.singular) + '</h2>' +
                         statusTag +
                         '</div>' +
                         '<div class="domus-hero-meta-stack">' + heroMetaLines + '</div>' +
                         '</div>' +
                         '<div class="domus-hero-actions">' +
                         '<div class="domus-hero-actions-row domus-hero-actions-standard">' +
-                        '<button type="button" class="primary" id="domus-tenancy-change">' + Domus.Utils.escapeHtml(t('domus', 'Change conditions')) + '</button>' +
-                        '</div>' +
                         actionMenu +
                         '</div>' +
                         '</div>' +
                         '</div>' +
                         '</div>' +
+                        '</div>' +
                         '</div>';
-                    const kpiTiles = '<div class="domus-kpi-tiles domus-kpi-tiles-tenancy-detail">' +
+                    const kpiTiles = '<div class="domus-kpi-tiles domus-kpi-tiles-tenancy-detail domus-panel-row domus-panel-row-thirds">' +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Base rent'),
                             value: Domus.Utils.formatCurrency(tenancy.baseRent) || '—',
@@ -469,6 +479,12 @@
                     const content = '<div class="domus-detail domus-dashboard domus-tenancy-detail">' +
                         Domus.UI.buildBackButton('tenancies') +
                         hero +
+                        '<div class="domus-tenancy-direct-actions">' +
+                        Domus.UI.buildQuickActionCard({
+                            iconClass: 'domus-icon-edit', title: t('domus', 'Change conditions'),
+                            id: 'domus-tenancy-change', compact: true
+                        }) +
+                        '</div>' +
                         kpiTiles +
                         '<div class="domus-panel-row domus-panel-row-thirds domus-tenancy-detail-row">' +
                         conditionsPanel +

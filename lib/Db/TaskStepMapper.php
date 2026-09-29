@@ -70,7 +70,8 @@ class TaskStepMapper extends QBMapper {
             ->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('open')))
             ->setMaxResults(1);
 
-        return $this->findEntity($qb);
+        $steps = $this->findEntities($qb);
+        return $steps[0] ?? null;
     }
 
     /**

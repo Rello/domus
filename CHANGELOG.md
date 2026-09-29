@@ -7,16 +7,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ## 1.0.3
 ### Added
-- Allow cancelling an open template process and deleting its steps from the process detail panel.
+- Search contacts by name, contact details, address, and notes, with a combinable type filter.
+- Complete eligible process steps early or cancel an open process, with clear handling of skipped work.
 
 ### Changed
-- Show note and description fields as single-line inputs by default, with vertical resizing available for longer text.
+- Refresh the dashboard, unit and tenancy views with clearer navigation, actions, financial context, and mobile layouts.
+- Make task and process creation and progress easier to follow, including step previews, due dates, and completion actions.
+- Expand booking search and filters, and improve analytics with annual breakdowns, trend presets, and account selection.
+- Simplify document access and forms, and clarify contact controls and linked contacts.
+- Refresh German translations, welcome screenshots, and the README and app description.
 
 ### Fixed
-- Confirm dismissal of changed booking, document, unit, tenancy, and task forms, preserving unsaved input and keyboard focus when continuing to edit.
-- Wrap long document titles and notes so the document date remains visible.
-- Prevent a JavaScript error when loading the task templates list.
-- Make linked KPI headlines clickable across the full tile, including unit details.
+- Preserve unsaved form input, booking filters, and the selected unit finance year during navigation and editing.
+- Restore activity links, process templates, and permissions in unit exports and imports.
+- Correct task urgency displays, contact filtering, document layout, and task template loading.
+- Improve table and form accessibility, including keyboard access and linked dashboard tiles.
 
 ## 1.0.2 - 2026-09-23
 ### Fixed

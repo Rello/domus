@@ -12,33 +12,33 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Domus
 
-Domus hilft Ihnen dabei, Ihre Mietobjekte in Nextcloud zu verwalten, ohne Tabellen, Notizen oder verteilte Ordner.
+Domus bündelt die Verwaltung Ihrer Mietobjekte in Nextcloud: von Objekten und Einheiten über Mietverhältnisse und Kontakte bis zu Buchungen, Dokumenten und Aufgaben.
 
-Egal ob Sie eine Wohnung oder mehrere Objekte vermieten: Domus hält die wichtigen Informationen zusammen, damit Sie sie schnell finden und besser im Blick behalten.
+Ob einzelne Wohnung oder mehrere Objekte: Sie finden die zugehörigen Informationen an einem Ort und behalten anstehende Arbeiten im Blick.
 
 ## Vorschau
 <p>
-  <img src="screenshots/logo.png" alt="Unit list preview" width="400"><br><br>
-  <img src="screenshots/dashboard.png" alt="Dashboard preview" width="400"><br><br>
-  <img src="screenshots/unitList.png" alt="Unit details preview" width="400"><br><br>
-  <img src="screenshots/unit.png" alt="Unit details preview" width="400"><br><br>
-  <img src="screenshots/revenue.png" alt="Tenancy preview" width="400">
+  <img src="screenshots/logo.png" alt="Domus-Logo" width="400"><br><br>
+  <img src="screenshots/dashboard.png" alt="Domus-Dashboard" width="400"><br><br>
+  <img src="screenshots/unitList.png" alt="Liste der Einheiten" width="400"><br><br>
+  <img src="screenshots/unit.png" alt="Details einer Einheit" width="400"><br><br>
+  <img src="screenshots/revenue.png" alt="Finanzübersicht" width="400">
 </p>
 
 ## Warum Sie es nutzen
-- Behalten Sie Wohnungen, Mieter, Zahlungen und Dokumente an einem Ort zusammen.
-- Sehen Sie, was bezahlt wurde, was fehlt und worum Sie sich als Nächstes kümmern sollten.
-- Legen Sie Verträge, Rechnungen und Notizen dort ab, wo Sie sie später wirklich wiederfinden.
-- Erhalten Sie einen einfachen Überblick über Ihre Vermietungen, ohne komplizierte Software zu benutzen.
+- Verknüpfen Sie Einheiten, Mietverhältnisse, Kontakte, Buchungen und Dokumente.
+- Vergleichen Sie vereinbarte Mieten mit erfassten Buchungen und sehen Sie offene Aufgaben.
+- Finden Sie Dokumente und Notizen im Zusammenhang mit dem jeweiligen Objekt wieder.
+- Nutzen Sie Dashboard und Auswertungen für den Überblick über Ihre Vermietungen.
 
 Entwickelt für Vermieter und kleine Hausverwaltungen, die einen klaren Überblick im Alltag wollen und ihre Daten trotzdem privat in Nextcloud behalten möchten.
 
 ## Was Sie damit tun können
 - Für jedes Objekt oder jede Einheit eine klare Übersicht führen.
-- Mieter, Mietzeiträume und wichtige Termine im Blick behalten.
-- Einnahmen und Ausgaben erfassen und mit den passenden Dokumenten verknüpfen.
-- Offene Aufgaben verfolgen, damit nichts vergessen wird.
-- Das Dashboard öffnen und Ihre aktuelle Situation auf einen Blick sehen.
+- Mietverhältnisse, Kontakte und Mietzeiträume im Blick behalten.
+- Einnahmen und Ausgaben als Buchungen erfassen und Dokumente zuordnen.
+- Einzelne Aufgaben und mehrstufige Prozesse verfolgen.
+- Buchungen nach Jahr, Einheit und Konto auswerten.
 
 ## Sprachen
 - EN, DE

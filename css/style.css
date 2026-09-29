@@ -65,6 +65,10 @@
     width: 100%;
 }
 
+.domus-top-navigation {
+    margin-bottom: var(--domus-layout-content-spacing);
+}
+
 .domus-bottom-navigation {
     margin: 16px auto 0;
 }
@@ -218,15 +222,11 @@
 }
 
 .domus-detail.domus-dashboard {
-    --domus-dashboard-section-spacing: clamp(22px, 4vh, var(--domus-layout-section-spacing));
+    --domus-dashboard-section-spacing: clamp(16px, 3vh, var(--domus-layout-section-spacing));
     --domus-dashboard-content-spacing: clamp(8px, 1.5vh, var(--domus-layout-content-spacing));
-    --domus-dashboard-kpi-min-height: clamp(126px, 17vh, 150px);
+    --domus-dashboard-kpi-min-height: 100px;
     --domus-dashboard-kpi-padding-block: clamp(8px, 1.25vh, 10px);
-    --domus-dashboard-quick-min-height: clamp(126px, 18vh, 156px);
-    --domus-dashboard-quick-padding: clamp(10px, 1.6vh, 14px);
-    --domus-dashboard-quick-icon-size: clamp(34px, 5vh, 42px);
-    --domus-dashboard-quick-icon-inner-size: clamp(22px, 3.4vh, 27px);
-    --domus-dashboard-occupancy-chart-size: clamp(104px, 14vh, 132px);
+    --domus-dashboard-occupancy-chart-size: 76px;
     display: flex;
     flex-direction: column;
     gap: var(--domus-dashboard-section-spacing);
@@ -469,28 +469,51 @@
     white-space: nowrap;
 }
 
-.domus-table tr[data-navigate] {
+.domus-table .domus-table-row-action,
+.domus-table .domus-table-row-action td {
     cursor: pointer;
 }
 
-.domus-table tr[data-task-detail] {
+.domus-table .domus-table-primary-action,
+.domus-table .domus-table-primary-action:visited,
+.domus-table .domus-table-primary-action:hover,
+.domus-table .domus-table-primary-action:active,
+.domus-table .domus-table-primary-action:focus {
+    color: var(--color-primary);
+    text-decoration: none;
+    background: transparent !important;
+    box-shadow: none !important;
     cursor: pointer;
 }
 
-.domus-table tbody tr:nth-child(even) {
-    /*background-color: var(--color-background-hover);*/
+.domus-table button.domus-table-primary-action {
+    display: inline-block;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    font: inherit;
+    line-height: inherit;
+    text-align: left;
 }
 
-.domus-table tbody tr:nth-child(odd) {
-    /*background-color: var(--color-background-dark);*/
+.domus-table .domus-table-primary-action:focus-visible {
+    outline: 1px auto -webkit-focus-ring-color;
+    outline-offset: 0;
 }
 
-.domus-table tbody tr:hover {
+.domus-table .domus-badge-provisional:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+}
+
+.domus-table .domus-action-log-open {
+    width: 100%;
+}
+
+.domus-table tbody tr.domus-table-row-action:hover {
     background: var(--domus-table-row-hover-background);
-}
-
-.domus-table tr[data-stat-year] {
-    cursor: pointer;
 }
 
 .domus-table tr.domus-stat-year-selected,
@@ -503,18 +526,11 @@
     background: var(--domus-table-row-selected-hover-background);
 }
 
-.domus-property-distribution-table .domus-table td {
-    padding-top: 16px;
-    padding-bottom: 16px;
-    vertical-align: middle;
-}
-
 .domus-property-distribution-table .domus-table td:first-child {
     width: 100%;
 }
 
 .domus-distribution-name-cell {
-    font-weight: 600;
     line-height: 1.35;
 }
 
@@ -524,11 +540,6 @@
 }
 
 @media (max-width: 700px) {
-    .domus-property-distribution-table .domus-table td {
-        padding-left: 6px;
-        padding-right: 6px;
-    }
-
     .domus-property-distribution-table .domus-table td:first-child {
         min-width: 140px;
     }
@@ -1044,6 +1055,30 @@
     color: var(--color-text-maxcontrast);
 }
 
+.domus-task-create-preview {
+    padding: 10px 12px;
+    border: var(--domus-border);
+    border-radius: var(--domus-border-radius);
+    line-height: 1.4;
+}
+
+.domus-task-create-preview p {
+    margin: 0 0 8px;
+}
+
+.domus-task-create-preview ol {
+    margin: 8px 0 0;
+    padding-left: 22px;
+}
+
+.domus-task-create-preview li + li {
+    margin-top: 6px;
+}
+
+.domus-task-create-preview li span {
+    display: block;
+}
+
 .domus-action-log-value {
     display: block;
     line-height: 1.5;
@@ -1479,7 +1514,7 @@
 }
 
 .domus-settings-section-header::after {
-    content: '▾';
+    transform: rotate(90deg);
     margin-left: auto;
     font-size: 14px;
 }
@@ -2562,16 +2597,27 @@
     color: #ffffff;
 }
 
-.domus-badge-provisional {
+.domus-table button.domus-badge-provisional {
     margin-left: 6px;
     cursor: pointer;
+    min-height: 0;
+    height: auto;
+    padding: 4px 10px;
+    border: var(--domus-border);
+    border-color: rgba(169, 122, 0, 0.35);
+    border-radius: var(--domus-border-radius);
+    background: rgba(169, 122, 0, 0.16);
+    color: var(--color-warning-text, #7a5700);
+    box-shadow: none;
+    font-family: inherit;
+    font-size: 12px;
 }
 
-.domus-badge-provisional:hover {
+.domus-table button.domus-badge-provisional:hover {
     background: rgba(169, 122, 0, 0.22);
 }
 
-.domus-badge-provisional:focus-visible {
+.domus-table button.domus-badge-provisional:focus-visible {
     outline: 2px solid rgba(169, 122, 0, 0.55);
     outline-offset: 1px;
 }
@@ -3327,7 +3373,7 @@
 }
 
 .domus-dashboard-summary-tile .domus-kpi-value {
-    font-size: 30px;
+    font-size: 24px;
     text-align: center;
 }
 
@@ -3401,7 +3447,7 @@
 
 .domus-dashboard-occupancy-chart .domus-kpi-chart-center-label {
     padding: 8px;
-    font-size: 17px;
+    font-size: 13px;
     line-height: 1.05;
 }
 
@@ -3416,9 +3462,196 @@
     margin: 0;
 }
 
+.domus-detail.domus-dashboard.domus-unit-workspace {
+    align-items: stretch;
+    gap: 0;
+}
+
+.domus-detail.domus-unit-workspace > .domus-back-button {
+    align-self: flex-end;
+    margin: 0 0 8px;
+}
+
+.domus-unit-workspace .domus-detail-hero {
+    padding: 0;
+    margin-bottom: 12px;
+}
+
+.domus-unit-workspace .domus-hero-content {
+    gap: 18px;
+}
+
+.domus-unit-workspace .domus-hero-indicator {
+    width: 128px;
+    height: 96px;
+}
+
+.domus-unit-workspace .domus-hero-meta-stack {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 20px;
+    row-gap: 4px;
+}
+
+.domus-unit-workspace .domus-hero-meta-line {
+    min-width: 0;
+}
+
+.domus-unit-workspace-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    margin-bottom: 16px;
+    padding: 4px 0;
+    background: transparent;
+}
+
+.domus-unit-workspace-toolbar .domus-unit-direct-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin: 0;
+}
+
+.domus-tenancy-direct-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.domus-unit-current-tenancy-link {
+    position: relative;
+    z-index: 2;
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.domus-unit-sections {
+    display: flex;
+    box-sizing: border-box;
+    flex: 0 1 auto;
+    gap: 4px;
+    min-width: 0;
+    margin-inline-end: auto;
+    overflow-x: auto;
+    padding: 4px;
+    border-radius: var(--domus-border-radius);
+    background: var(--color-background-hover, #edf0f3);
+}
+
+.domus-unit-workspace .domus-kpi-tiles-unit-detail {
+    margin-bottom: var(--domus-layout-section-spacing);
+}
+
+@media (max-width: 640px) {
+    .domus-unit-workspace-toolbar {
+        gap: 8px;
+    }
+
+    .domus-unit-workspace-toolbar .domus-unit-sections,
+    .domus-unit-workspace-toolbar .domus-unit-direct-actions {
+        flex-basis: 100%;
+    }
+
+    .domus-unit-workspace-toolbar .domus-unit-sections {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+        overflow: visible;
+    }
+
+    .domus-unit-workspace-toolbar .domus-unit-section-link {
+        justify-content: center;
+        min-width: 0;
+        padding: 8px 4px;
+        text-align: center;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .domus-unit-workspace-toolbar .domus-unit-direct-actions {
+        flex-wrap: wrap;
+    }
+
+    .domus-unit-workspace-toolbar .domus-unit-direct-action {
+        flex: 1 1 145px;
+        min-width: 0;
+        justify-content: center;
+    }
+
+    .domus-unit-workspace-toolbar .domus-dashboard-quick-card-copy {
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+}
+
+.domus-unit-section-link {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 7px;
+    color: var(--color-main-text);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.domus-unit-section-link:hover,
+.domus-unit-section-link:focus-visible {
+    background: var(--domus-theme-lighter);
+    color: var(--color-primary);
+}
+
+.domus-unit-section-link[aria-current="page"] {
+    background: var(--color-main-background, #fff);
+    box-shadow: 0 1px 3px var(--domus-theme-soft-border);
+    color: var(--color-primary);
+}
+
+.domus-unit-section-link:focus-visible,
+.domus-unit-current-tenancy-link:focus-visible {
+    outline: var(--domus-hover-outline);
+    outline-offset: 2px;
+}
+
+.domus-unit-finance-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin-bottom: 18px;
+    padding: 14px;
+    border-radius: var(--domus-border-radius);
+    background: var(--color-background-hover);
+}
+
+.domus-unit-finance-summary > div:not(.domus-unit-finance-year) {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.domus-unit-finance-year {
+    flex-basis: 100%;
+    color: var(--color-text-maxcontrast);
+}
+
+.domus-unit-finance-explanation {
+    flex-basis: 100%;
+    margin: 2px 0 0;
+    color: var(--color-text-maxcontrast);
+}
+
 .domus-kpi-tiles-tenancy-detail {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--domus-layout-content-spacing);
     margin: 0;
 }
 
@@ -3490,11 +3723,6 @@
     margin-bottom: 0;
 }
 
-.domus-tenancy-detail-row .domus-tenancy-tenant-panel .domus-table td {
-    padding-top: 10px;
-    padding-bottom: 10px;
-}
-
 .domus-tenancy-conditions-copy {
     color: var(--color-main-text);
     line-height: 1.6;
@@ -3558,7 +3786,12 @@
     display: none;
 }
 
+.domus-unit-workspace.domus-unit-detail-table-mode .domus-unit-default-block {
+    display: none;
+}
+
 .domus-unit-default-panel {
+    box-sizing: border-box;
     min-height: 360px;
     display: flex;
     flex-direction: column;
@@ -3575,6 +3808,7 @@
 
 .domus-panel.domus-kpi-detail {
     background: var(--domus-kpi-detail-background);
+    box-sizing: border-box;
     padding: 18px 20px 20px;
     position: relative;
     width: 100%;
@@ -3613,30 +3847,11 @@
 
 .domus-kpi-detail-content {
     min-height: inherit;
-    padding-right: 48px;
 }
 
 .domus-kpi-detail-content > .domus-section-header:first-child,
 .domus-kpi-detail-content > .domus-panel-body:first-child {
     margin-top: 0;
-}
-
-.domus-kpi-detail-close {
-    position: absolute;
-    top: 0;
-    right: 0;
-    color: var(--color-main-text);
-    z-index: 1;
-}
-
-.domus-kpi-detail-close .domus-icon {
-    width: 18px;
-    height: 18px;
-}
-
-.domus-kpi-detail-close:hover,
-.domus-kpi-detail-close:focus-visible {
-    color: var(--color-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3675,7 +3890,7 @@
     }
 
     .domus-dashboard-kpi-row {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -3727,6 +3942,81 @@
     margin-bottom: 0;
 }
 
+.domus-booking-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 12px;
+}
+
+.domus-booking-filters label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.domus-booking-filters input,
+.domus-booking-filters select {
+    width: 100%;
+    min-width: 0;
+}
+
+.domus-booking-filter-search {
+    grid-column: span 2;
+}
+
+.domus-booking-clear-filters {
+    justify-self: start;
+}
+
+.domus-booking-result-count {
+    color: var(--color-text-maxcontrast);
+    margin-bottom: 8px;
+}
+
+.domus-booking-results .domus-table {
+    min-width: 800px;
+}
+
+.domus-booking-results .domus-table td:first-child {
+    white-space: nowrap;
+    word-break: normal;
+}
+
+.domus-booking-scope-primary,
+.domus-booking-scope-secondary {
+    display: block;
+}
+
+.domus-booking-scope-secondary {
+    color: var(--color-text-maxcontrast);
+    font-size: 0.9em;
+}
+
+.domus-booking-no-matches {
+    padding: 24px;
+    text-align: center;
+    color: var(--color-text-maxcontrast);
+}
+
+@media (max-width: 900px) {
+    .domus-booking-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .domus-booking-filters {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .domus-booking-filter-search {
+        grid-column: auto;
+    }
+}
+
 .domus-panel-header h3 {
     margin: 0;
     color: var(--domus-theme);
@@ -3741,14 +4031,12 @@
 }
 
 .domus-dashboard-kpi-tile,
-.domus-upcoming-card-shell .domus-table,
 .domus-upcoming-card-shell .domus-empty-state,
 .domus-dashboard-quick-card {
     transition: border-color 160ms ease;
 }
 
 .domus-dashboard-kpi-tile:hover,
-.domus-upcoming-card-shell .domus-table:hover,
 .domus-upcoming-card-shell .domus-empty-state:hover {
     border-color: var(--domus-hover-border-color);
     border-style: solid;
@@ -3756,7 +4044,6 @@
 }
 
 .domus-dashboard-kpi-tile:focus-within,
-.domus-upcoming-card-shell .domus-table:focus-within,
 .domus-upcoming-card-shell .domus-empty-state:focus-within,
 .domus-dashboard-quick-card:focus-visible {
     border-color: var(--domus-hover-border-color);
@@ -3782,10 +4069,78 @@
     gap: var(--domus-dashboard-section-spacing, var(--domus-layout-section-spacing));
 }
 
+.domus-dashboard-panel-row .domus-section-header {
+    margin-bottom: 0;
+}
+
 .domus-dashboard-panel-row .domus-upcoming-card-shell {
     display: flex;
     flex-direction: column;
-    max-height: 404px;
+    max-height: 520px;
+}
+
+.domus-dashboard-attention-header {
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.domus-dashboard-attention-status {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.domus-dashboard-attention-status .domus-dashboard-task-group-title {
+    margin: 0;
+}
+
+.domus-dashboard-task-group + .domus-dashboard-task-group {
+    margin-top: 16px;
+}
+
+.domus-dashboard-task-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-main-text);
+}
+
+.domus-dashboard-task-group-overdue .domus-dashboard-task-group-title {
+    color: var(--color-element-error);
+}
+
+.domus-dashboard-task-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--color-background-hover);
+    color: var(--color-main-text);
+    font-size: 12px;
+}
+
+.domus-dashboard-task-group .domus-task-overview-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.domus-dashboard-task-group .domus-task-overview-cell-due {
+    padding: 10px 14px;
+}
+
+.domus-task-date-badge-relative {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    line-height: 1.3;
+}
+
+.domus-task-date-exact {
+    font-size: 11px;
+    font-weight: 400;
 }
 
 .domus-dashboard-panel-row .domus-upcoming-card-shell .domus-panel-body {
@@ -3798,10 +4153,6 @@
 .domus-upcoming-card-shell .domus-table {
     margin-bottom: 0;
     overflow: hidden;
-    border: var(--domus-border);
-    border-radius: var(--domus-border-radius);
-    background: #fff;
-    cursor: pointer;
 }
 
 .domus-upcoming-card-shell .domus-empty-state {
@@ -3815,10 +4166,6 @@
     cursor: pointer;
 }
 
-.domus-upcoming-card-shell .domus-table * {
-    cursor: inherit;
-}
-
 .domus-upcoming-card-shell .domus-empty-state * {
     cursor: inherit;
 }
@@ -3828,6 +4175,7 @@
 }
 
 .domus-dashboard-quick-panel {
+    container-type: inline-size;
     border: 0;
     box-shadow: none;
     padding: 0;
@@ -3841,23 +4189,29 @@
 .domus-dashboard-quick-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
+    gap: 12px;
 }
 
-.domus-dashboard-quick-card {
-    width: 100%;
-    min-height: var(--domus-dashboard-quick-min-height, 156px);
-    padding: var(--domus-dashboard-quick-padding, 14px);
+/* Override Nextcloud's native button defaults for the same layout as the upload card. */
+.app-domus .domus-dashboard .domus-dashboard-quick-card {
+    box-sizing: border-box;
+    width: var(--domus-quick-action-width, 100%);
+    min-width: 0;
+    min-height: var(--domus-quick-action-min-height, 88px);
+    height: auto;
+    margin: 0;
+    padding: var(--domus-quick-action-padding, 18px 20px);
     border: var(--domus-border);
-    border-radius: var(--domus-border-radius);
-    background: linear-gradient(180deg, var(--domus-theme-lighter) 0%, var(--domus-theme-light) 100%);
-    box-shadow: var(--domus-shadow);
+    border-radius: 10px;
+    background: var(--color-main-background, #fff);
+    box-shadow: none;
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: stretch;
-    gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
-    text-align: left;
+    align-items: center;
+    font: inherit;
+    font-weight: 400;
+    line-height: 1.4;
+    white-space: normal;
+    text-align: start;
     cursor: pointer;
 }
 
@@ -3865,35 +4219,26 @@
     cursor: inherit;
 }
 
-.domus-dashboard-quick-card:not(.domus-dashboard-quick-card-disabled):hover,
-.domus-dashboard-quick-card:not(.domus-dashboard-quick-card-disabled):focus-visible,
-.domus-dashboard-quick-card-drop-hover {
+.app-domus .domus-dashboard .domus-dashboard-quick-card:not(.domus-dashboard-quick-card-disabled):hover,
+.app-domus .domus-dashboard .domus-dashboard-quick-card:not(.domus-dashboard-quick-card-disabled):focus-visible,
+.app-domus .domus-dashboard .domus-dashboard-quick-card-drop-hover {
     border-color: var(--domus-hover-border-color);
+    background: var(--domus-theme-lighter);
 }
 
 .domus-dashboard-quick-card-upload {
     position: relative;
 }
 
-.domus-dashboard-quick-card-disabled {
+.app-domus .domus-dashboard .domus-dashboard-quick-card-disabled {
     cursor: default;
     opacity: 0.62;
     filter: grayscale(0.2);
 }
 
-.domus-dashboard-quick-card-disabled .domus-dashboard-quick-card-plus {
-    opacity: 0.5;
-}
-
-.domus-dashboard-quick-card-prominent {
+.app-domus .domus-dashboard .domus-dashboard-quick-card-prominent {
     border-color: var(--domus-theme);
     background: linear-gradient(180deg, color-mix(in srgb, var(--domus-theme) 8%, white) 0%, color-mix(in srgb, var(--domus-theme) 16%, white) 100%);
-}
-
-.domus-dashboard-quick-card-prominent .domus-dashboard-quick-card-plus {
-    background: var(--domus-theme);
-    border-color: var(--domus-theme);
-    color: #fff;
 }
 
 .domus-dashboard-quick-upload-input {
@@ -3911,57 +4256,61 @@
 
 .domus-dashboard-quick-card-main {
     display: flex;
-    flex-direction: column;
-    gap: var(--domus-dashboard-content-spacing, var(--domus-layout-content-spacing));
+    align-items: center;
+    min-width: 0;
+    gap: var(--domus-quick-action-gap, 14px);
 }
 
 .domus-dashboard-quick-card-icon-wrap {
-    width: var(--domus-dashboard-quick-icon-size, 42px);
-    height: var(--domus-dashboard-quick-icon-size, 42px);
+    flex: 0 0 var(--domus-quick-action-icon-size, 22px);
+    width: var(--domus-quick-action-icon-size, 22px);
+    height: var(--domus-quick-action-icon-size, 22px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.72);
-    border: 1px solid rgba(18, 66, 110, 0.1);
 }
 
 .domus-dashboard-quick-card-icon {
-    width: var(--domus-dashboard-quick-icon-inner-size, 27px);
-    height: var(--domus-dashboard-quick-icon-inner-size, 27px);
+    width: var(--domus-quick-action-icon-size, 22px);
+    height: var(--domus-quick-action-icon-size, 22px);
     filter: brightness(0) saturate(100%) invert(19%) sepia(32%) saturate(1666%) hue-rotate(174deg) brightness(93%) contrast(88%);
 }
 
 .domus-dashboard-quick-card-copy {
+    min-width: 0;
+    overflow-wrap: anywhere;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
 }
 
 .domus-dashboard-quick-card-title {
-    font-weight: 700;
+    font-weight: 400;
     line-height: 1.35;
     color: var(--domus-theme);
 }
 
 .domus-dashboard-quick-card-subtitle {
+    font-size: 12px;
+    font-weight: 400;
     color: var(--color-text-maxcontrast);
     line-height: 1.45;
 }
 
-.domus-dashboard-quick-card-plus {
-    align-self: flex-end;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.82);
-    border: 1px solid rgba(18, 66, 110, 0.12);
-    color: var(--domus-theme);
-    font-size: 22px;
-    line-height: 1;
+.domus-quick-action-card-compact {
+    --domus-quick-action-width: auto;
+    --domus-quick-action-min-height: 44px;
+    --domus-quick-action-padding: 8px 12px;
+    --domus-quick-action-gap: 8px;
+    --domus-quick-action-icon-size: 18px;
+}
+
+@container (max-width: 390px) {
+    .domus-dashboard-quick-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
+
 }
 
 @media (max-width: 900px) {
@@ -4034,12 +4383,12 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .domus-dashboard-quick-card {
-        border-radius: 14px;
+    .domus-dashboard-task-group .domus-task-overview-card {
+        grid-template-columns: minmax(0, 1fr) auto;
     }
 
-    .domus-dashboard-quick-grid {
-        grid-template-columns: minmax(0, 1fr);
+    .domus-dashboard-task-group .domus-task-overview-cell-due {
+        align-self: center;
     }
 
     .domus-overview-meta,
@@ -4076,7 +4425,7 @@
 }
 
 .domus-booking-import-toggle::after {
-    content: '▾';
+    transform: rotate(90deg);
     float: right;
 }
 
@@ -4363,14 +4712,32 @@
     table-layout: fixed;
 }
 
-.domus-documents-table .domus-table tr[data-doc-info] {
-    cursor: pointer;
+.domus-document-edit:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
-.domus-documents-table .domus-table tr[data-doc-info]:focus,
-.domus-documents-table .domus-table tr[data-doc-info]:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: -2px;
+.domus-documents-actions-cell {
+    width: 52px;
+    padding: 4px 8px !important;
+}
+
+.domus-document-edit {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.domus-documents-row:hover .domus-document-edit,
+.domus-documents-row:focus-within .domus-document-edit {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (hover: none), (max-width: 600px) {
+    .domus-document-edit {
+        opacity: 1;
+        pointer-events: auto;
+    }
 }
 
 .domus-documents-table .domus-table tr[data-doc-info] td {
@@ -4624,5 +4991,257 @@
 
     .domus-booking-dates {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Keep booking actions outside the scrollable fields. */
+.domus-modal-header, .domus-modal > .domus-modal-footer {
+    flex-shrink: 0;
+}
+.domus-modal-body {
+    min-height: 0;
+}
+.domus-modal > .domus-modal-footer {
+    margin: 0;
+    padding: 12px 25px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-main-background);
+}
+.domus-booking-assignment-context {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.domus-booking-disclosure::before {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-block: 5px solid transparent;
+    border-inline-start: 6px solid currentColor;
+    margin-inline-end: 8px;
+}
+.domus-booking-disclosure[aria-expanded="true"]::before {
+    transform: rotate(90deg);
+}
+
+/* Process sequence and work stay in the same detail surface. */
+.domus-modal-process-detail .domus-modal-header h3 {
+    position: static;
+    transform: none;
+    max-width: none;
+    min-width: 0;
+    flex: 1;
+    text-align: start;
+    overflow-wrap: anywhere;
+    font-size: 1.1em;
+}
+.domus-modal-process-detail .domus-modal-header-actions:empty { display: none; }
+.domus-modal-process-detail .domus-modal-close { flex-shrink: 0; }
+
+.domus-process-detail { display: grid; gap: 16px; min-width: 0; }
+.domus-process-progress { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.domus-process-detail progress { width: 100%; accent-color: var(--color-primary); }
+.domus-process-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.domus-process-step { border: 1px solid var(--color-border); border-radius: 8px; }
+.domus-process-step[aria-current="step"] { border-color: var(--color-primary); }
+.domus-process-step summary { display: flex; align-items: center; gap: 12px; padding: 12px; cursor: pointer; }
+.domus-process-step summary::before { content: '›'; }
+.domus-process-step[open] summary::before { content: '⌄'; }
+.domus-process-step-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.domus-process-step-number { font-weight: bold; }
+.domus-process-step-content { display: grid; gap: 12px; padding: 0 16px 16px; }
+.domus-process-step-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.domus-process-step-actions button { flex: 0 1 auto; min-width: 0; white-space: normal; }
+.domus-process-step-actions .domus-dashboard-quick-card-prominent { border: 1px solid var(--domus-theme); }
+.domus-process-menu { justify-self: start; }
+.domus-process-menu summary { cursor: pointer; padding: 8px; }
+.domus-process-step summary:focus-visible, .domus-process-menu summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+@media (max-width: 480px) {
+    .domus-process-step summary { flex-wrap: wrap; gap: 8px; }
+    .domus-process-step summary .domus-badge { margin-inline-start: 24px; }
+}
+
+/* Analytics controls and accessible booking totals. */
+.domus-analytics-results { flex: 1; min-width: 0; }
+.domus-analytics-results .domus-analytics-chart { height: 340px; min-width: 0; }
+.domus-analytics-results .domus-analytics-values { overflow-x: auto; }
+.domus-analytics-results #domus-analytics-context { overflow-wrap: anywhere; }
+.domus-analytics-panel { flex-shrink: 0; }
+.domus-analytics-panel select, .domus-analytics-panel input[type="search"] { width: 100%; min-width: 0; }
+.domus-analytics-accounts { max-height: 320px; overflow-y: auto; min-width: 0; border: var(--domus-border); }
+.domus-analytics-account { display: flex; align-items: center; gap: 8px; padding: 6px 0; overflow-wrap: anywhere; }
+.domus-analytics-account[hidden] { display: none; }
+.domus-analytics-account input { flex-shrink: 0; }
+
+.domus-analytics-results canvas { max-width: 100%; }
+
+.domus-analytics-account input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; margin: 0; }
+
+.domus-analytics-values .domus-table tbody tr:not(:last-child) th {
+    border-bottom: 1px solid var(--domus-table-separator-color);
+}
+
+.domus-analytics-values .domus-table tfoot th,
+.domus-analytics-values .domus-table tfoot td {
+    border-top: 1px solid var(--domus-table-separator-color);
+}
+
+.domus-form label.domus-task-step-early-completion {
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-weight: normal;
+}
+
+.domus-task-step-early-completion span {
+    min-width: 0;
+}
+
+.domus-form .domus-task-step-early-completion input[type='checkbox'] {
+    flex: 0 0 16px;
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    min-height: 0;
+    margin: 0;
+}
+
+/* Entity image fallbacks and detail focus. */
+.domus-entity-image-missing { background: var(--color-background-dark); }
+.domus-entity-image-missing::after {
+    content: ''; display: block; width: 40%; height: 40%; margin: auto;
+    background: var(--color-main-text); mask: url(../img/unit.svg) center / contain no-repeat;
+}
+.domus-entity-image img[hidden] { display: none; }
+.domus-back-button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.domus-tenancy-detail .domus-hero-main h2 { overflow-wrap: anywhere; }
+
+/* Text navigation beside detail content and settings at the end of primary navigation. */
+.domus-detail.domus-unit-workspace > .domus-back-button,
+.domus-detail > .domus-back-button { align-self: flex-start; }
+a.domus-back-button {
+    padding: 0; border: 0; background: transparent; box-shadow: none;
+    color: var(--color-main-text); font-size: 13px; font-weight: normal;
+    min-height: 24px; text-decoration: none;
+}
+a.domus-back-button:hover { text-decoration: underline; background: transparent; }
+#app-content .domus-top-nav-primary .domus-nav-settings { margin-inline-start: auto; }
+
+@media (max-width: 640px) {
+    #app-content {
+        padding: 8px;
+    }
+
+    #app-content .domus-top-navigation {
+        margin-bottom: 8px;
+    }
+
+    #app-content .domus-top-nav-primary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        width: 100%;
+        gap: 0 4px;
+    }
+
+    #app-content .domus-top-nav-primary .domus-nav-top {
+        min-width: 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    #app-content .domus-top-nav-primary .domus-nav-top li {
+        flex: 0 0 auto;
+    }
+
+    #app-content .domus-top-nav-primary .domus-nav-settings {
+        margin-inline-start: 0;
+    }
+
+    #app-content .domus-top-nav-primary .domus-nav a {
+        min-height: 40px;
+        padding: 6px 1px;
+        font-size: 0.875em;
+        white-space: nowrap;
+    }
+
+    #app-content .domus-top-nav-primary .domus-nav {
+        gap: 2px;
+    }
+
+    #app-content .domus-top-nav-primary .domus-nav-icon {
+        display: none;
+    }
+
+    #app-content .domus-top-nav-primary .domus-nav-search {
+        grid-column: 1 / -1;
+        min-width: 0;
+    }
+
+    .domus-unit-workspace .domus-hero-content {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .domus-unit-workspace .domus-hero-indicator {
+        width: 76px;
+        height: 76px;
+        flex: 0 0 76px;
+    }
+
+    .domus-unit-workspace .domus-hero-main-top {
+        gap: 8px;
+    }
+
+    .domus-unit-workspace .domus-hero-heading-row {
+        gap: 4px 8px;
+    }
+
+    .domus-unit-workspace .domus-hero-meta-stack {
+        gap: 2px 10px;
+    }
+
+    .domus-unit-workspace .domus-hero-actions-row {
+        justify-content: flex-start;
+    }
+
+    .domus-unit-workspace .domus-hero-actions-status {
+        justify-content: flex-start;
+    }
+
+    .domus-unit-workspace .domus-detail-hero {
+        margin-bottom: 4px;
+    }
+
+    .domus-unit-workspace .domus-hero-kicker {
+        line-height: 1.25;
+    }
+
+    .domus-unit-workspace .domus-hero-meta-line {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .domus-unit-workspace .domus-hero-actions button {
+        white-space: normal;
+    }
+
+    .domus-unit-workspace .domus-hero-actions-row > button,
+    .domus-unit-workspace .domus-hero-actions-row > .domus-action-menu {
+        flex: 1 1 auto;
+    }
+
+    .domus-unit-workspace .domus-hero-actions-row > .domus-action-menu > button {
+        width: 100%;
+    }
+
+    .domus-unit-finance-summary > div:not(.domus-unit-finance-year) {
+        flex-basis: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
     }
 }

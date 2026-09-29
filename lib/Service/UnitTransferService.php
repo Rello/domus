@@ -8,6 +8,8 @@
 namespace OCA\Domus\Service;
 
 use OCA\Domus\Db\AccountMapper;
+use OCA\Domus\Db\ActionLog;
+use OCA\Domus\Db\ActionLogMapper;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\BookingYear;
@@ -53,6 +55,7 @@ class UnitTransferService {
         private DocumentPathService $documentPathService,
         private IDBConnection $connection,
         private IL10N $l10n,
+        private ActionLogMapper $actionLogMapper,
     ) {
     }
 
@@ -120,6 +123,7 @@ class UnitTransferService {
             'bookings' => array_map(fn(Booking $booking) => $booking->jsonSerialize(), $bookings),
             'bookingYears' => array_map(fn(BookingYear $bookingYear) => $bookingYear->jsonSerialize(), $bookingYears),
             'tasks' => array_map(fn(Task $task) => $task->jsonSerialize(), $tasks),
+            'actionLogs' => array_map(fn(ActionLog $entry) => $entry->jsonSerialize(), $this->actionLogMapper->findByEntity($userId, 'unit', $unitId)),
             'workflowRuns' => $workflowRunsPayload,
             'taskTemplates' => array_map(fn(TaskTemplate $template) => $template->jsonSerialize(), $taskTemplates),
         ];
@@ -182,7 +186,13 @@ class UnitTransferService {
             $tenancyMap = $this->importTenancies($this->normalizeRecords($payload['tenancies'] ?? []), $unit, $userId, $role, $now, $warnings);
             $this->importPartnerRelations($this->normalizeRecords($payload['partnerRelations'] ?? []), $partnerMap, $tenancyMap, $unit->getId(), $userId, $warnings);
             $this->importBookingYears($this->normalizeRecords($payload['bookingYears'] ?? []), $unit->getId(), $now);
-            $this->importBookings($bookings, $unit->getId(), $propertyId, $userId, $warnings, $now);
+            $bookingMap = $this->importBookings($bookings, $unit->getId(), $propertyId, $userId, $warnings, $now);
+            $this->importActionLogs($this->normalizeRecords($payload['actionLogs'] ?? []), $unit->getId(), $userId, [
+                'unit' => [(int)($unitData['id'] ?? 0) => $unit->getId()],
+                'partner' => $partnerMap,
+                'tenancy' => $tenancyMap,
+                'booking' => $bookingMap,
+            ], $warnings, $now);
             $this->importTasks($this->normalizeRecords($payload['tasks'] ?? []), $unit->getId(), $userId, $now);
 
             $templateMap = $this->importTemplates($this->normalizeRecords($payload['taskTemplates'] ?? []), $now);
@@ -346,7 +356,8 @@ class UnitTransferService {
         }
     }
 
-    private function importBookings(array $bookings, int $unitId, ?int $propertyId, string $userId, array &$warnings, int $now): void {
+    private function importBookings(array $bookings, int $unitId, ?int $propertyId, string $userId, array &$warnings, int $now): array {
+        $bookingMap = [];
         $hasDistributionKey = false;
         $hasSourceBooking = false;
 
@@ -375,7 +386,10 @@ class UnitTransferService {
             $booking->setCreatedAt($this->normalizeTimestamp($bookingData['createdAt'] ?? null, $now));
             $booking->setUpdatedAt($this->normalizeTimestamp($bookingData['updatedAt'] ?? null, $now));
 
-            $this->bookingMapper->insert($booking);
+            $inserted = $this->bookingMapper->insert($booking);
+            if (isset($bookingData['id'])) {
+                $bookingMap[(int)$bookingData['id']] = $inserted->getId();
+            }
         }
 
         if ($hasDistributionKey) {
@@ -383,6 +397,35 @@ class UnitTransferService {
         }
         if ($hasSourceBooking) {
             $this->addWarning($warnings, $this->l10n->t('Linked source bookings were not imported.'));
+        }
+        return $bookingMap;
+    }
+
+    private function importActionLogs(array $entries, int $unitId, string $userId, array $maps, array &$warnings, int $now): void {
+        foreach ($entries as $entryData) {
+            $linkedType = $entryData['linkedEntityType'] ?? null;
+            $linkedId = $entryData['linkedEntityId'] ?? null;
+            $mappedId = $linkedId !== null ? ($maps[$linkedType ?? ''][(int)$linkedId] ?? null) : null;
+            if ($linkedId !== null && $mappedId === null) {
+                $linkedType = null;
+                $this->addWarning($warnings, $this->l10n->t('Some activity links could not be restored because the linked objects were not imported.'));
+            }
+
+            $entry = new ActionLog();
+            $entry->setUserId($userId);
+            $entry->setEntityType('unit');
+            $entry->setEntityId($unitId);
+            $entry->setType($entryData['type'] ?? 'note');
+            $entry->setTitle($entryData['title'] ?? '');
+            $entry->setData($entryData['data'] ?? null);
+            $entry->setSource($entryData['source'] ?? 'manual');
+            $entry->setLinkedEntityType($mappedId !== null ? $linkedType : null);
+            $entry->setLinkedEntityId($mappedId);
+            $entry->setLinkedLabel($entryData['linkedLabel'] ?? null);
+            $entry->setCreatedBy($userId);
+            $entry->setCreatedAt($this->normalizeTimestamp($entryData['createdAt'] ?? null, $now));
+            $entry->setUpdatedAt($this->normalizeTimestamp($entryData['updatedAt'] ?? null, $now));
+            $this->actionLogMapper->insert($entry);
         }
     }
 
@@ -443,6 +486,7 @@ class UnitTransferService {
                 $step->setActionType($stepData['actionType'] ?? null);
                 $step->setActionUrl($stepData['actionUrl'] ?? null);
                 $step->setDefaultDueDaysOffset((int)($stepData['defaultDueDaysOffset'] ?? 0));
+                $step->setAllowEarlyCompletion(!empty($stepData['allowEarlyCompletion']) ? 1 : 0);
                 $step->setCreatedAt($this->normalizeTimestamp($stepData['createdAt'] ?? null, $now));
                 $step->setUpdatedAt($this->normalizeTimestamp($stepData['updatedAt'] ?? null, $now));
                 $this->taskTemplateStepMapper->insert($step);
@@ -475,6 +519,7 @@ class UnitTransferService {
             $run->setStartedAt($this->normalizeTimestamp($runData['startedAt'] ?? null, $now));
             $run->setClosedAt($this->normalizeNullableTimestamp($runData['closedAt'] ?? null));
             $run->setCreatedBy($userId);
+            $run->setClosedBy($this->normalizeUserReference($runData['closedBy'] ?? null, $userId));
             $run->setCreatedAt($this->normalizeTimestamp($runData['createdAt'] ?? null, $now));
             $run->setUpdatedAt($this->normalizeTimestamp($runData['updatedAt'] ?? null, $now));
             $run = $this->workflowRunMapper->insert($run);
@@ -489,6 +534,7 @@ class UnitTransferService {
                 $step->setTitle($stepData['title'] ?? '');
                 $step->setDescription($stepData['description'] ?? null);
                 $step->setStatus($stepData['status'] ?? 'new');
+                $step->setAllowEarlyCompletion(!empty($stepData['allowEarlyCompletion']) ? 1 : 0);
                 $step->setDueDate($stepData['dueDate'] ?? null);
                 $step->setOpenedAt($this->normalizeNullableTimestamp($stepData['openedAt'] ?? null));
                 $step->setClosedAt($this->normalizeNullableTimestamp($stepData['closedAt'] ?? null));

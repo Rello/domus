@@ -27,6 +27,7 @@ class WorkflowRunService {
     private const STEP_STATUS_NEW = 'new';
     private const STEP_STATUS_OPEN = 'open';
     private const STEP_STATUS_CLOSED = 'closed';
+    private const STEP_STATUS_SKIPPED = 'skipped';
 
     public function __construct(
         private WorkflowRunMapper $workflowRunMapper,
@@ -88,6 +89,7 @@ class WorkflowRunService {
                 $taskStep->setSortOrder($order);
                 $taskStep->setTitle($stepTemplate->getTitle());
                 $taskStep->setDescription($stepTemplate->getDescription());
+                $taskStep->setAllowEarlyCompletion((int)$stepTemplate->getAllowEarlyCompletion());
                 $taskStep->setActionType($stepTemplate->getActionType());
                 $taskStep->setActionUrl($stepTemplate->getActionUrl());
                 $isOpen = $order === 1;
@@ -182,6 +184,8 @@ class WorkflowRunService {
                 if ($run) {
                     $run->setStatus(self::STATUS_CLOSED);
                     $run->setClosedAt($now);
+                    $run->setClosedBy($userId);
+                    $run->setCompletionType('standard');
                     $run->setUpdatedAt($now);
                     $this->workflowRunMapper->update($run);
                 }
@@ -196,6 +200,47 @@ class WorkflowRunService {
     }
 
     /**
+     * Resolve a process positively without claiming that remaining work was done.
+     * The permission is a snapshot from the template when this run was created.
+     * @throws DbException
+     */
+    public function closeEarly(int $stepId, string $userId): WorkflowRun {
+        $step = $this->taskStepMapper->findById($stepId);
+        if (!$step) {
+            throw new \RuntimeException($this->l10n->t('Task step not found.'));
+        }
+        $this->assertEntityExists((string)$step->getEntityType(), (int)$step->getEntityId(), $userId);
+        $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
+        if (!$run || $run->getStatus() !== self::STATUS_OPEN || $step->getStatus() !== self::STEP_STATUS_OPEN || !(bool)$step->getAllowEarlyCompletion()) {
+            throw new \InvalidArgumentException($this->l10n->t('Early completion is not allowed for this step.'));
+        }
+        $now = time();
+        $this->connection->beginTransaction();
+        try {
+            $steps = $this->taskStepMapper->findByRun($run->getId());
+            foreach ($steps as $remaining) {
+                if (in_array($remaining->getStatus(), [self::STEP_STATUS_OPEN, self::STEP_STATUS_NEW], true)) {
+                    $remaining->setStatus(self::STEP_STATUS_SKIPPED);
+                    $remaining->setUpdatedAt($now);
+                    $this->taskStepMapper->update($remaining);
+                }
+            }
+            $run->setStatus(self::STATUS_CLOSED);
+            $run->setCompletionType('early');
+            $run->setClosedAt($now);
+            $run->setClosedBy($userId);
+            $run->setUpdatedAt($now);
+            $this->workflowRunMapper->update($run);
+            $this->connection->commit();
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+            throw $e;
+        }
+        $run->setSteps($steps);
+        return $run;
+    }
+
+    /**
      * @throws DbException
      */
     public function reopenStep(int $stepId, string $userId): TaskStep {
@@ -206,14 +251,30 @@ class WorkflowRunService {
 
         $this->assertEntityExists((string)$step->getEntityType(), (int)$step->getEntityId(), $userId);
 
-        if ($step->getStatus() !== self::STEP_STATUS_CLOSED) {
-            throw new \InvalidArgumentException($this->l10n->t('Only closed steps can be reopened.'));
+        if (!in_array($step->getStatus(), [self::STEP_STATUS_CLOSED, self::STEP_STATUS_SKIPPED], true)) {
+            throw new \InvalidArgumentException($this->l10n->t('Only completed or skipped steps can be reopened.'));
+        }
+        $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
+        $skippedSteps = [];
+        if ($run && $run->getCompletionType() === 'early') {
+            $skippedSteps = array_values(array_filter($this->taskStepMapper->findByRun($run->getId()), fn(TaskStep $item) => $item->getStatus() === self::STEP_STATUS_SKIPPED));
+        }
+        if ($step->getStatus() === self::STEP_STATUS_SKIPPED && (!$skippedSteps || $skippedSteps[0]->getId() !== $step->getId())) {
+            throw new \InvalidArgumentException($this->l10n->t('Reopen the step where this process was closed early.'));
         }
 
         $now = time();
 
         $this->connection->beginTransaction();
         try {
+            foreach ($skippedSteps as $skipped) {
+                if ($skipped->getId() === $step->getId()) continue;
+                $skipped->setStatus(self::STEP_STATUS_NEW);
+                $skipped->setOpenedAt(null);
+                $skipped->setDueDate(null);
+                $skipped->setUpdatedAt($now);
+                $this->taskStepMapper->update($skipped);
+            }
             $openStep = $this->taskStepMapper->findOpenStepForRun($step->getWorkflowRunId());
             if ($openStep && $openStep->getId() !== $step->getId()) {
                 $openStep->setStatus(self::STEP_STATUS_NEW);
@@ -239,6 +300,8 @@ class WorkflowRunService {
             if ($run && $run->getStatus() !== self::STATUS_OPEN) {
                 $run->setStatus(self::STATUS_OPEN);
                 $run->setClosedAt(null);
+                $run->setClosedBy(null);
+                $run->setCompletionType(null);
                 $run->setUpdatedAt($now);
                 $this->workflowRunMapper->update($run);
             }

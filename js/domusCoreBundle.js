@@ -405,6 +405,7 @@
             startWorkflowRun: (entityType, entityId, data) => request('POST', `/api/workflow-runs/${entityType}/${entityId}`, data),
             getWorkflowRunsByEntity: (entityType, entityId) => request('GET', `/api/workflow-runs/${entityType}/${entityId}`),
             getWorkflowRun: runId => request('GET', `/api/workflow-runs/${runId}`),
+            closeWorkflowRunEarly: stepId => request('POST', `/api/task-steps/${stepId}/close-early`),
             deleteWorkflowRun: runId => request('DELETE', `/api/workflow-runs/${runId}`),
             closeTaskStep: stepId => request('POST', `/api/task-steps/${stepId}/close`),
             reopenTaskStep: stepId => request('POST', `/api/task-steps/${stepId}/reopen`),
@@ -456,7 +457,7 @@
                 const resolvedType = type && String(type).trim() !== ''
                     ? type
                     : null;
-                const params = resolvedType ? appendFilters(new URLSearchParams(), { partnerType: resolvedType }) : null;
+                const params = resolvedType ? appendFilters(new URLSearchParams(), { type: resolvedType }) : null;
                 return request('GET', buildUrl('/partners', params));
             },
             getUnitPartners: unitId => request('GET', `/units/${unitId}/partners`),
@@ -600,6 +601,35 @@
     Domus.UI = (function() {
         let actionMenuHandlersBound = false;
         const modalStack = [];
+        // Capture the existing workspace before a refresh replaces its nodes.
+        function captureContentContext() {
+            const root = document.getElementById('app-content');
+            const windowScroll = {top: window.scrollY, left: window.scrollX};
+            const active = document.activeElement;
+            const focusSelector = active instanceof Element && root?.contains(active)
+                ? (active.id ? '#' + CSS.escape(active.id)
+                    : active.closest('[data-booking-id]') ? '[data-booking-id="' + CSS.escape(active.closest('[data-booking-id]').getAttribute('data-booking-id')) + '"] [data-domus-booking-edit]'
+                    : active.closest('[data-process-sequence]') ? '[data-process-sequence="' + CSS.escape(active.closest('[data-process-sequence]').getAttribute('data-process-sequence')) + '"]'
+                    : active.closest('[data-task-detail]')?.getAttribute('data-task-run-id') ? '[data-task-detail][data-task-run-id="' + CSS.escape(active.closest('[data-task-detail]').getAttribute('data-task-run-id')) + '"]'
+                    : active.closest('[data-task-detail]')?.getAttribute('data-task-id') ? '[data-task-detail][data-task-id="' + CSS.escape(active.closest('[data-task-detail]').getAttribute('data-task-id')) + '"]'
+                    : active.getAttribute('data-unit-section') ? '[data-unit-section="' + CSS.escape(active.getAttribute('data-unit-section')) + '"]'
+                    : active.getAttribute('name') ? '[name="' + CSS.escape(active.getAttribute('name')) + '"]' : null)
+                : null;
+            const scrolls = Array.from(document.querySelectorAll('#app-content, #app-content [id]'))
+                .filter(el => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth)
+                .map(el => ({id: el.id, top: el.scrollTop, left: el.scrollLeft}));
+            return () => {
+                const replacement = focusSelector ? document.querySelector(focusSelector) : null;
+                const fallback = document.querySelector('.domus-unit-sections [aria-current="page"], #domus-booking-create, .domus-task-overview-card, #domus-dashboard-task-create');
+                if (replacement || fallback) (replacement || fallback).focus({preventScroll: true});
+                window.scrollTo(windowScroll.left, windowScroll.top);
+                scrolls.forEach(position => {
+                    const el = document.getElementById(position.id);
+                    if (el) { el.scrollTop = position.top; el.scrollLeft = position.left; }
+                });
+            };
+        }
+
         function renderContent(html) {
             const appContent = document.getElementById('app-content');
             if (appContent) {
@@ -624,7 +654,7 @@
                 toolbarHost.appendChild(toolbar);
             }
             const backButton = contentTarget.querySelector('.domus-back-button');
-            if (backButton) {
+            if (backButton && !backButton.closest('.domus-detail')) {
                 toolbarHost.appendChild(backButton);
             }
         }
@@ -749,6 +779,15 @@
 
             modal.appendChild(header);
             modal.appendChild(body);
+            if (options?.persistentFooter) {
+                const actions = body.querySelector('.domus-form-actions');
+                const form = actions?.closest('form');
+                if (actions && form?.id) {
+                    actions.querySelectorAll('button').forEach(button => button.setAttribute('form', form.id));
+                    actions.classList.add('domus-modal-footer');
+                    modal.appendChild(actions);
+                }
+            }
             backdrop.appendChild(modal);
             document.body.appendChild(backdrop);
 
@@ -808,7 +847,7 @@
                 backdrop.remove();
                 if (wasTopModal) {
                     if (previousActiveElement && document.body.contains(previousActiveElement) && !previousActiveElement.closest('[inert]')) {
-                        previousActiveElement.focus();
+                        previousActiveElement.focus({preventScroll: options?.persistentFooter === true});
                     } else {
                         modalStack[modalStack.length - 1]?.modal.focus();
                     }
@@ -1045,12 +1084,38 @@
             return createIconLabelButton(iconClass, label, options).outerHTML;
         }
 
+        function buildQuickActionCard(action) {
+            const disabled = action.disabled === true;
+            const prominent = action.prominent === true;
+            const cardClassName = 'domus-dashboard-quick-card' +
+                (disabled ? ' domus-dashboard-quick-card-disabled' : '') +
+                (prominent ? ' domus-dashboard-quick-card-prominent' : '') +
+                (action.compact ? ' domus-quick-action-card-compact' : '') +
+                (action.className ? ' ' + action.className : '');
+            const disabledAttr = disabled ? ' disabled' : '';
+            const datasetAttrs = Object.entries(action.dataset || {}).map(([key, value]) =>
+                ' data-' + Domus.Utils.escapeHtml(key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase())) + '="' + Domus.Utils.escapeHtml(String(value)) + '"'
+            ).join('');
+
+            return '<button type="button" class="' + Domus.Utils.escapeHtml(cardClassName) + '" id="' + Domus.Utils.escapeHtml(action.id) + '"' + disabledAttr + datasetAttrs + ' aria-label="' + Domus.Utils.escapeHtml(action.title) + '">' +
+                '<span class="domus-dashboard-quick-card-main">' +
+                '<span class="domus-dashboard-quick-card-icon-wrap">' +
+                '<span class="domus-icon ' + Domus.Utils.escapeHtml(action.iconClass) + ' domus-dashboard-quick-card-icon" aria-hidden="true"></span>' +
+                '</span>' +
+                '<span class="domus-dashboard-quick-card-copy">' +
+                '<span class="domus-dashboard-quick-card-title">' + Domus.Utils.escapeHtml(action.title) + '</span>' +
+                (!action.compact && action.copy ? '<span class="domus-dashboard-quick-card-subtitle">' + Domus.Utils.escapeHtml(action.copy) + '</span>' : '') +
+                '</span>' +
+                '</span>' +
+                '</button>';
+        }
+
         function buildActionMenu(actions, options = {}) {
             if (!actions || actions.length === 0) {
                 return '';
             }
-            const label = options.label || t('domus', 'Quick Actions');
-            const ariaLabel = options.ariaLabel || t('domus', 'Quick Actions');
+            const label = options.label || t('domus', 'More actions');
+            const ariaLabel = options.ariaLabel || t('domus', 'More actions');
             const buttonLabel = options.buttonLabel || `${label}`;
             const menuId = options.id || ('domus-action-menu-' + Math.random().toString(36).slice(2));
             return '<div class="domus-action-menu" id="' + Domus.Utils.escapeHtml(menuId) + '">' +
@@ -1122,8 +1187,8 @@
         }
 
         function buildEmptyStateAction(message, options = {}) {
-            const resolvedMessage = getDefaultEmptyStateMessage();
-            const iconClass = 'domus-icon-info';
+            const resolvedMessage = message || getDefaultEmptyStateMessage();
+            const iconClass = options.iconClass || 'domus-icon-info';
             const hasAction = Boolean(options.actionId);
             const element = document.createElement('div');
             const classes = ['domus-empty-state-action'];
@@ -1206,6 +1271,17 @@
                 || entity.imageUrl
                 || (typeof OC !== 'undefined' && typeof OC.imagePath === 'function' ? OC.imagePath('domus', defaultFile) : '');
         }
+
+        // Capture image errors for dynamically rendered entity lists and detail panels.
+        document.addEventListener('error', event => {
+            const image = event.target;
+            if (image instanceof HTMLImageElement && image.parentElement?.classList.contains('domus-entity-image')) {
+                image.hidden = true;
+                image.parentElement.classList.add('domus-entity-image-missing');
+                image.parentElement.setAttribute('role', 'img');
+                image.parentElement.setAttribute('aria-label', image.alt || t('domus', 'Image unavailable'));
+            }
+        }, true);
 
         function buildEntityImage(entityType, entity = {}, options = {}) {
             const variant = options.variant || 'table';
@@ -1435,20 +1511,53 @@
             const wrapPanel = options.wrapPanel !== false;
             const showHeader = options.showHeader !== false;
             let html = '<table class="domus-table">';
+            if (options.caption) {
+                html += '<caption>' + Domus.Utils.escapeHtml(options.caption) + '</caption>';
+            }
             if (showHeader) {
                 html += '<thead><tr>' + headers.map(h => {
                     const { label, isHtml, classAttr, dataAttrs, titleAttr } = normalizeHeader(h);
-                    return '<th' + classAttr + dataAttrs + titleAttr + '>' + (isHtml ? label : Domus.Utils.escapeHtml(label)) + '</th>';
+                    return '<th scope="col"' + classAttr + dataAttrs + titleAttr + '>' + (isHtml ? label : Domus.Utils.escapeHtml(label)) + '</th>';
                 }).join('') + '</tr></thead>';
             }
             html += '<tbody>';
             if (!rows || rows.length === 0) {
-                html += '<tr><td colspan="' + headers.length + '">' + buildEmptyStateAction() + '</td></tr>';
+                if (options.emptyState !== false) {
+                    html += '<tr><td colspan="' + headers.length + '">' + buildEmptyStateAction() + '</td></tr>';
+                }
             } else {
                 rows.forEach(row => {
                     const rowData = Array.isArray(row) ? { cells: row } : (row || {});
-                    const cells = rowData.cells || [];
-                    const classes = rowData.className ? ' class="' + Domus.Utils.escapeHtml(rowData.className) + '"' : '';
+                    const cells = (rowData.cells || []).slice();
+                    const destination = rowData.dataset?.navigate;
+                    const args = rowData.dataset?.args;
+                    if (destination && args !== undefined && args !== null && cells.length) {
+                        const first = cells[0];
+                        const content = typeof first === 'string' ? first : first?.content;
+                        if (typeof content === 'string') {
+                            const href = '#/' + encodeURIComponent(String(destination)) + '/' +
+                                String(args).split(',').map(part => encodeURIComponent(part)).join('/');
+                            let linkedContent = content;
+                            const template = document.createElement('template');
+                            template.innerHTML = content;
+                            const name = template.content.querySelector('span.domus-partner-name');
+                            if (name) {
+                                const link = document.createElement('a');
+                                link.className = 'domus-link domus-partner-name domus-table-action-link';
+                                link.setAttribute('data-domus-row-link', '');
+                                link.href = href;
+                                link.innerHTML = name.innerHTML;
+                                name.replaceWith(link);
+                                linkedContent = template.innerHTML;
+                            } else if (!/<(?:a|button|input|select|textarea)\b/i.test(content)) {
+                                linkedContent = '<a class="domus-table-action-link" data-domus-row-link href="' +
+                                    Domus.Utils.escapeHtml(href) + '">' + content + '</a>';
+                            }
+                            cells[0] = typeof first === 'string' ? linkedContent : { ...first, content: linkedContent };
+                        }
+                    }
+                    const interactiveRow = rowData.dataset && ['navigate', 'booking-id', 'actionLogId', 'action-log-id', 'task-detail', 'distid', 'stat-year']
+                        .some(key => rowData.dataset[key] !== undefined && rowData.dataset[key] !== null);
                     let dataAttrs = '';
                     if (rowData.dataset) {
                         Object.keys(rowData.dataset).forEach(key => {
@@ -1457,13 +1566,37 @@
                             dataAttrs += ' data-' + Domus.Utils.escapeHtml(key) + '="' + Domus.Utils.escapeHtml(String(value)) + '"';
                         });
                     }
-                    html += '<tr' + classes + dataAttrs + '>' + cells.map(cell => {
+                    let primaryActionFound = false;
+                    const renderedCells = cells.map(cell => {
                         const { content, classAttr } = normalizeCell(cell);
-                        return '<td' + classAttr + '>' + content + '</td>';
-                    }).join('') + '</tr>';
+                        const tag = cell && typeof cell === 'object' && cell.rowHeader ? 'th scope="row"' : 'td';
+                        let cellContent = content;
+                        if (!primaryActionFound && typeof cellContent === 'string' && /<(?:a|button)\b/i.test(cellContent)) {
+                            const template = document.createElement('template');
+                            template.innerHTML = cellContent;
+                            const action = template.content.querySelector('a:not(.domus-icon-only-button), button:not(.domus-icon-only-button)');
+                            if (action) {
+                                action.classList.add('domus-table-primary-action');
+                                cellContent = template.innerHTML;
+                                primaryActionFound = true;
+                            }
+                        }
+                        return '<' + tag + classAttr + '>' + cellContent + '</' + (tag.startsWith('th') ? 'th' : 'td') + '>';
+                    }).join('');
+                    const rowClasses = [rowData.className, interactiveRow || primaryActionFound ? 'domus-table-row-action' : ''].filter(Boolean);
+                    const classes = rowClasses.length ? ' class="' + Domus.Utils.escapeHtml(rowClasses.join(' ')) + '"' : '';
+                    html += '<tr' + classes + dataAttrs + '>' + renderedCells + '</tr>';
                 });
             }
-            html += '</tbody></table>';
+            html += '</tbody>';
+            if (options.footer) {
+                html += '<tfoot><tr>' + options.footer.map(cell => {
+                    const { content, classAttr } = normalizeCell(cell);
+                    const tag = cell && typeof cell === 'object' && cell.rowHeader ? 'th scope="row"' : 'td';
+                    return '<' + tag + classAttr + '>' + content + '</' + (tag.startsWith('th') ? 'th' : 'td') + '>';
+                }).join('') + '</tr></tfoot>';
+            }
+            html += '</table>';
             if (!wrapPanel) {
                 return html;
             }
@@ -1504,13 +1637,32 @@
                 };
 
                 row.addEventListener('click', handleActivate);
-                row.addEventListener('keydown', function(e) {
-                    if (e.key !== 'Enter' && e.key !== ' ') {
-                        return;
-                    }
-                    e.preventDefault();
-                    handleActivate(e);
+                row.querySelectorAll('a[data-domus-row-link], button[data-domus-row-action="booking"]').forEach(control => {
+                    control.addEventListener('click', event => {
+                        if (control.matches('a[data-domus-row-link]')) {
+                            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                                return;
+                            }
+                            event.preventDefault();
+                            const args = (row.getAttribute('data-args') || '').split(',').filter(Boolean);
+                            Domus.Router.navigate(row.getAttribute('data-navigate'), args);
+                        } else {
+                            Domus.Bookings.openEditModal(row.getAttribute('data-booking-id'), {
+                                refreshView: row.getAttribute('data-refresh-view'),
+                                refreshId: row.getAttribute('data-refresh-id')
+                            });
+                        }
+                    });
                 });
+                if (!row.matches('tr')) {
+                    row.addEventListener('keydown', function(e) {
+                        if ((e.key !== 'Enter' && e.key !== ' ') || e.target !== row) {
+                            return;
+                        }
+                        e.preventDefault();
+                        handleActivate(e);
+                    });
+                }
             });
         }
 
@@ -1729,13 +1881,13 @@
 
         function buildBackButton(targetView, args) {
             const serializedArgs = (args || []).join(',');
-            return createIconLabelButton('domus-icon-back', t('domus', 'Back'), {
-                className: 'domus-back-button primary',
-                dataset: {
-                    back: targetView,
-                    backArgs: serializedArgs
-                }
-            }).outerHTML;
+            const link = document.createElement('a');
+            link.className = 'domus-back-button';
+            link.href = '#/' + targetView + (args?.length ? '/' + args.map(encodeURIComponent).join('/') : '');
+            link.dataset.back = targetView;
+            link.dataset.backArgs = serializedArgs;
+            link.textContent = '← ' + t('domus', 'Back');
+            return link.outerHTML;
         }
 
         function buildSectionHeader(title, action) {
@@ -1916,6 +2068,8 @@
             return '<div class="domus-form-section">' + Domus.Utils.escapeHtml(title) + '</div>';
         }
 
+        let formRowSequence = 0;
+
         function buildFormRow(row) {
             if (!row) {
                 return '';
@@ -1923,8 +2077,27 @@
 
             const labelText = row.label ? Domus.Utils.escapeHtml(row.label) + (row.required ? ' *' : '') : '';
             const helpText = row.helpText ? '<div class="domus-form-help">' + Domus.Utils.escapeHtml(row.helpText) + '</div>' : '';
-            const label = '<div class="domus-form-label">' + labelText + helpText + '</div>';
-            const value = '<div class="domus-form-value">' + (row.content || '') + '</div>';
+            const labelId = 'domus-form-label-' + (++formRowSequence);
+            const valueElement = document.createElement('div');
+            valueElement.className = 'domus-form-value';
+            valueElement.innerHTML = row.content || '';
+            const controls = Array.from(valueElement.querySelectorAll('input:not([type="hidden"]), select, textarea'));
+            const controlId = controls[0]?.id || labelId;
+            const shouldAssociate = controls.length === 1 && labelText && !controls[0].closest('label') &&
+                !controls[0].hasAttribute('aria-label') && !controls[0].hasAttribute('aria-labelledby');
+            const label = shouldAssociate
+                ? '<div class="domus-form-label"><label for="' + Domus.Utils.escapeHtml(controlId) + '">' + labelText + '</label>' + helpText + '</div>'
+                : '<div class="domus-form-label" id="' + labelId + '">' + labelText + helpText + '</div>';
+            if (labelText) {
+                controls.forEach(control => {
+                    if (shouldAssociate) {
+                        if (!control.id) control.id = controlId;
+                    } else if (controls.length > 1 && !control.closest('label') && !control.hasAttribute('aria-label') && !control.hasAttribute('aria-labelledby')) {
+                        control.setAttribute('aria-labelledby', labelId);
+                    }
+                });
+            }
+            const value = valueElement.outerHTML;
             const classes = ['domus-form-row'];
             if (row.fullWidth) {
                 classes.push('domus-form-row-full');
@@ -2051,8 +2224,9 @@
         }
 
         function bindBackButtons() {
-            document.querySelectorAll('button[data-back]').forEach(btn => {
-                btn.addEventListener('click', function() {
+            document.querySelectorAll('[data-back]').forEach(btn => {
+                btn.addEventListener('click', function(event) {
+                    event.preventDefault();
                     const target = this.getAttribute('data-back');
                     const argsRaw = this.getAttribute('data-back-args') || '';
                     const args = argsRaw ? argsRaw.split(',').filter(Boolean) : [];
@@ -2063,6 +2237,7 @@
 
         return {
             renderContent,
+            captureContentContext,
             renderSidebar,
             showLoading,
             showError,
@@ -2094,6 +2269,7 @@
             confirmAction,
             buildIconButton,
             buildIconLabelButton,
+            buildQuickActionCard,
             buildActionMenu,
             buildCompletionIndicator,
             buildEmptyStateAction,
@@ -2113,6 +2289,19 @@
         const routes = {};
         let skipNextHashChange = false;
         const maxHistoryEntries = 50;
+        const contentContexts = new Map();
+        const contextKey = (name, args) => JSON.stringify([Domus.Role.getCurrentRole(), name, normalizeArgs(args)]);
+
+        function rememberContentContext() {
+            const key = contextKey(Domus.state.currentView, getCurrentArgsSnapshot());
+            contentContexts.delete(key);
+            contentContexts.set(key, Domus.UI.captureContentContext());
+            if (contentContexts.size > maxHistoryEntries) contentContexts.delete(contentContexts.keys().next().value);
+        }
+
+        function restoreContentContext() {
+            contentContexts.get(contextKey(Domus.state.currentView, getCurrentArgsSnapshot()))?.();
+        }
 
         function normalizeArgs(args) {
             return (args || [])
@@ -2194,6 +2383,7 @@
             if (!options.skipHistory && currentView && !isSameRoute) {
                 pushHistoryEntry(currentView, currentArgs);
             }
+            rememberContentContext();
             updateCurrentRouteState(name, normalizedArgs);
             if (routes[name]) {
                 routes[name].apply(null, normalizedArgs);
@@ -2239,6 +2429,7 @@
                     Domus.state.navigationHistory = history;
                     effectiveArgs = previousEntry.args;
                 }
+                rememberContentContext();
                 updateCurrentRouteState(parsed.name, effectiveArgs);
                 routes[parsed.name].apply(null, effectiveArgs);
                 Domus.Navigation.render();
@@ -2265,6 +2456,11 @@
                 return;
             }
             const normalizedArgs = normalizeArgs(args);
+            const previousArgs = normalizeArgs(Domus.state.currentViewArgs);
+            if (options.pushHistory && !areArgsEqual(previousArgs, normalizedArgs)) {
+                pushHistoryEntry(Domus.state.currentView, previousArgs);
+            }
+            if (options.pushHistory) rememberContentContext();
             Domus.state.currentViewArgs = normalizedArgs;
             const shouldSkipHashChange = updateHash(Domus.state.currentView, normalizedArgs, options.replaceHash === true);
             if (shouldSkipHashChange) {
@@ -2284,7 +2480,7 @@
             return false;
         }
 
-        return { register, navigate, navigateFromHash, back, setCurrentArgs };
+        return { register, navigate, navigateFromHash, back, setCurrentArgs, restoreContentContext };
     })();
 
     /**
@@ -2366,16 +2562,9 @@
                 }
             }
 
-            const bottomItems = getBottomItems();
-            if (bottomItems.length) {
-                const bottomList = buildNavList(bottomItems, activeView);
-                bottomList.classList.add('domus-nav-bottom');
-                if (bottomNavPrimary) {
-                    bottomNavPrimary.appendChild(bottomList);
-                } else if (container) {
-                    container.appendChild(bottomList);
-                }
-            }
+            const settingsList = buildNavList(getSettingsItems(), activeView);
+            settingsList.classList.add('domus-nav-settings');
+            (topNavContainer || container)?.appendChild(settingsList);
         }
 
         function buildNavList(items, activeView) {
@@ -2445,7 +2634,7 @@
             return Domus.Role.getNavigationItems();
         }
 
-        function getBottomItems() {
+        function getSettingsItems() {
             return [
                 { view: 'settings', label: t('domus', 'Settings'), icon: 'domus-icon-settings' }
             ];
@@ -2479,7 +2668,7 @@
                 navigation: [
                     { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
                     { view: 'units', label: t('domus', 'Units'), icon: 'domus-icon-unit' },
-                    { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
+                    { view: 'partners', label: t('domus', 'Contacts'), icon: 'domus-icon-partner' },
                     { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' },
                     { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' }
                 ],
@@ -2492,7 +2681,7 @@
                 navigation: [
                     { view: 'dashboard', label: t('domus', 'Dashboard'), icon: 'domus-icon-dashboard' },
                     { view: 'properties', label: t('domus', 'Properties'), icon: 'domus-icon-property' },
-                    { view: 'partners', label: t('domus', 'Partners'), icon: 'domus-icon-partner' },
+                    { view: 'partners', label: t('domus', 'Contacts'), icon: 'domus-icon-partner' },
                     { view: 'bookings', label: t('domus', 'Bookings'), icon: 'domus-icon-booking' },
                     { view: 'analytics', label: t('domus', 'Analytics'), icon: 'domus-icon-analytics' }
                 ],

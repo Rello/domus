@@ -35,6 +35,23 @@
             return '<span class="domus-inline-label">' + accountLabel + indicator + '</span>';
         }
 
+        function buildBookingEditButton(booking) {
+            const date = Domus.Utils.escapeHtml(Domus.Utils.formatDate(booking.date));
+            if (!booking.id) {
+                return date;
+            }
+            const label = t('domus', 'Edit {entity}', { entity: t('domus', 'Booking') }) + ' #' + booking.id;
+            return '<button type="button" class="domus-table-action-button" data-domus-booking-edit aria-label="' +
+                Domus.Utils.escapeHtml(label) + '">' +
+                date + '</button>';
+        }
+
+        function buildBookingListAccountCell(booking) {
+            const number = Domus.Utils.escapeHtml(String(booking.account ?? ''));
+            const label = formatAccount(booking);
+            return (label ? number + ' · ' : '') + (label ? buildAccountCell(booking) : number + buildDocumentIndicator(booking));
+        }
+
         const bookingCsvColumns = [
             'account',
             'date',
@@ -51,7 +68,9 @@
         const bookingsPageSize = 20;
         let bookingsCache = [];
         let bookingsCurrentPage = 1;
-        let bookingListContext = { distMap: {}, isBuildingMgmt: false };
+        let bookingListContext = { distMap: {}, unitMap: {}, propertyMap: {}, duplicateUnitLabels: {}, isBuildingMgmt: false, role: null };
+        let bookingListRequestId = 0;
+        let bookingFilters = { query: '', unitId: '', account: '', dateMode: 'invoice', from: '', to: '' };
         const inlineBookingsState = {};
 
         function sortBookings(bookings) {
@@ -87,7 +106,7 @@
         function buildInlineBookingsMarkup(pageInfo, options = {}) {
             const rows = (pageInfo.items || []).map(b => ({
                 cells: [
-                    Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
+                    buildBookingEditButton(b),
                     buildAccountCell(b),
                     { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
                 ],
@@ -120,6 +139,7 @@
             const markup = buildInlineBookingsMarkup(pageInfo, state.options);
             wrapper.innerHTML = markup.table + markup.pagination;
             Domus.UI.bindRowNavigation();
+            bindBookingEditActions(wrapper);
             Domus.UI.bindPagination(wrapper, {
                 currentPage: state.currentPage,
                 onPageChange: nextPage => {
@@ -129,15 +149,59 @@
             });
         }
 
+        function getBookingUnitLabel(id) {
+            const unit = bookingListContext.unitMap[String(id)];
+            if (!unit?.label) return `${t('domus', 'Unit')} #${id}`;
+            return bookingListContext.duplicateUnitLabels[String(id)] ? `${unit.label} · #${id}` : unit.label;
+        }
+
+        function getBookingScope(booking) {
+            const unit = bookingListContext.unitMap[String(booking.unitId || '')];
+            const property = bookingListContext.propertyMap[String(booking.propertyId || '')];
+            const unitLabel = booking.unitId
+                ? getBookingUnitLabel(booking.unitId)
+                : '';
+            const propertyLabel = property?.name || unit?.propertyName || (booking.propertyId
+                ? `${t('domus', 'Property')} #${booking.propertyId}`
+                : '');
+            return { unitLabel, propertyLabel };
+        }
+
+        function filterBookingList() {
+            const query = Domus.Utils.normalizeSearchValue(bookingFilters.query);
+            return bookingsCache.filter(booking => {
+                if (bookingFilters.unitId && String(booking.unitId || '') !== bookingFilters.unitId) return false;
+                if (bookingFilters.account && String(booking.account || '') !== bookingFilters.account) return false;
+
+                const dateFrom = bookingFilters.dateMode === 'period' ? (booking.periodFrom || booking.date || '') : (booking.date || '');
+                const dateTo = bookingFilters.dateMode === 'period' ? (booking.periodTo || booking.periodFrom || booking.date || '') : (booking.date || '');
+                if (bookingFilters.from && dateTo < bookingFilters.from) return false;
+                if (bookingFilters.to && dateFrom > bookingFilters.to) return false;
+
+                if (!query) return true;
+                const scope = getBookingScope(booking);
+                const values = [booking.description, scope.unitLabel, scope.propertyLabel, booking.account,
+                    formatAccount(booking), booking.date, booking.periodFrom, booking.periodTo];
+                return Domus.Utils.normalizeSearchValue(values.filter(Boolean).join(' ')).includes(query);
+            });
+        }
+
         function buildBookingsTableMarkup(pageInfo) {
-            const headers = [t('domus', 'Invoice date'), t('domus', 'Account')];
+            const headers = [t('domus', 'Invoice date'), t('domus', 'Account'), t('domus', 'Unit / Property'), t('domus', 'Description')];
             if (bookingListContext.isBuildingMgmt) headers.push(t('domus', 'Distribution'));
-            headers.push(t('domus', 'Amount'));
+            headers.push({ label: t('domus', 'Amount'), alignRight: true });
 
             const rows = pageInfo.items.map(b => {
+                const scope = getBookingScope(b);
+                const scopeLabel = scope.unitLabel || scope.propertyLabel || '—';
+                const propertyDetail = scope.unitLabel && scope.propertyLabel && bookingListContext.isBuildingMgmt
+                    ? '<span class="domus-booking-scope-secondary">' + Domus.Utils.escapeHtml(scope.propertyLabel) + '</span>'
+                    : '';
                 const cells = [
-                    Domus.Utils.escapeHtml(Domus.Utils.formatDate(b.date)),
-                    buildAccountCell(b)
+                    buildBookingEditButton(b),
+                    buildBookingListAccountCell(b),
+                    '<span class="domus-booking-scope-primary">' + Domus.Utils.escapeHtml(scopeLabel) + '</span>' + propertyDetail,
+                    Domus.Utils.escapeHtml(b.description || '—')
                 ];
                 if (bookingListContext.isBuildingMgmt) {
                     const key = `${b.propertyId || ''}:${b.distributionKeyId || ''}`;
@@ -155,16 +219,69 @@
             return { table, pagination };
         }
 
+        function buildBookingFiltersMarkup() {
+            const unitIds = Array.from(new Set(bookingsCache.map(b => String(b.unitId || '')).concat(bookingFilters.unitId).filter(Boolean)));
+            const unitOptions = unitIds.map(id => {
+                const unit = bookingListContext.unitMap[id];
+                const label = getBookingUnitLabel(id);
+                const propertyName = bookingListContext.isBuildingMgmt
+                    ? (bookingListContext.propertyMap[String(unit?.propertyId || '')]?.name || unit?.propertyName || '')
+                    : '';
+                return { id, label: propertyName ? `${label} · ${propertyName}` : label };
+            }).sort((first, second) => first.label.localeCompare(second.label));
+            const accountNumbers = Array.from(new Set(bookingsCache.map(b => String(b.account || '')).concat(bookingFilters.account).filter(Boolean)))
+                .sort((first, second) => first.localeCompare(second, undefined, { numeric: true }));
+            const option = (value, label, selected) => '<option value="' + Domus.Utils.escapeHtml(value) + '"' +
+                (selected ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(label) + '</option>';
+
+            return '<div class="domus-booking-filters" role="group" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Booking filters')) + '">' +
+                '<label class="domus-booking-filter-search">' + Domus.Utils.escapeHtml(t('domus', 'Search bookings')) +
+                '<input id="domus-booking-search" type="search" autocomplete="off" value="' + Domus.Utils.escapeHtml(bookingFilters.query) +
+                '" placeholder="' + Domus.Utils.escapeHtml(t('domus', 'Description, unit or account')) + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select id="domus-booking-unit-filter">' +
+                option('', t('domus', 'All units'), !bookingFilters.unitId) +
+                unitOptions.map(unit => option(unit.id, unit.label, bookingFilters.unitId === unit.id)).join('') + '</select></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Account / category')) + '<select id="domus-booking-account-filter">' +
+                option('', t('domus', 'All accounts'), !bookingFilters.account) +
+                accountNumbers.map(number => option(number, `${number} ${Domus.Accounts.label(number) || ''}`.trim(), bookingFilters.account === number)).join('') +
+                '</select></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'Date type')) + '<select id="domus-booking-date-mode">' +
+                option('invoice', t('domus', 'Invoice date'), bookingFilters.dateMode === 'invoice') +
+                option('period', t('domus', 'Booking period'), bookingFilters.dateMode === 'period') + '</select></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'From')) + '<input id="domus-booking-date-from" type="date" value="' +
+                Domus.Utils.escapeHtml(bookingFilters.from) + '"></label>' +
+                '<label>' + Domus.Utils.escapeHtml(t('domus', 'To')) + '<input id="domus-booking-date-to" type="date" value="' +
+                Domus.Utils.escapeHtml(bookingFilters.to) + '"></label>' +
+                '<button type="button" class="domus-ghost domus-booking-clear-filters" id="domus-booking-clear-filters">' +
+                Domus.Utils.escapeHtml(t('domus', 'Clear filters')) + '</button>' +
+                '</div>';
+        }
+
         function renderBookingsPage(page) {
             const panel = document.getElementById('domus-bookings-table');
             if (!panel) {
                 renderBookingListContent();
                 return;
             }
-            const pageInfo = paginateBookings(bookingsCache, page);
+            const filtered = filterBookingList();
+            const pageInfo = paginateBookings(filtered, page);
             bookingsCurrentPage = pageInfo.page;
-            const markup = buildBookingsTableMarkup(pageInfo);
-            panel.innerHTML = markup.table + markup.pagination;
+            if (bookingsCache.length === 0) {
+                const message = t('domus', 'No bookings yet. Create the first one.');
+                panel.innerHTML = '<div class="domus-empty-state"><button type="button" class="domus-empty-state-action" ' +
+                    'id="domus-bookings-empty-create"><span class="domus-icon domus-icon-booking" aria-hidden="true"></span>' +
+                    '<span class="domus-empty-state-text">' + Domus.Utils.escapeHtml(message) + '</span></button></div>';
+                document.getElementById('domus-bookings-empty-create')?.addEventListener('click', () => openCreateModal());
+            } else if (filtered.length === 0) {
+                panel.innerHTML = '<div class="domus-booking-no-matches">' + Domus.Utils.escapeHtml(t('domus', 'No bookings match these filters.')) + '</div>';
+            } else {
+                const markup = buildBookingsTableMarkup(pageInfo);
+                panel.innerHTML = markup.table + markup.pagination;
+            }
+            const count = document.getElementById('domus-booking-result-count');
+            if (count) {
+                count.textContent = t('domus', 'Bookings: {count} of {total}', { count: filtered.length, total: bookingsCache.length });
+            }
             bindTableNavigation();
         }
 
@@ -176,43 +293,68 @@
                 }) +
                 '</div>';
 
-            const pageInfo = paginateBookings(bookingsCache, bookingsCurrentPage);
-            bookingsCurrentPage = pageInfo.page;
-            const markup = buildBookingsTableMarkup(pageInfo);
-
-            const hasRows = bookingsCache.length > 0;
-            const panel = hasRows
-                ? '<div class="domus-panel domus-panel-table" id="domus-bookings-table">' + markup.table + markup.pagination + '</div>'
-                : '';
-            const emptyState = Domus.UI.buildEmptyStateAction(
-                t('domus', 'There is no {entity} yet. Create the first one', {
-                    entity: t('domus', 'Bookings')
-                }),
-                {
-                    iconClass: 'domus-icon-booking',
-                    actionId: 'domus-bookings-empty-create'
-                }
-            );
-            Domus.UI.renderContent(toolbar + (hasRows ? panel : emptyState) + buildImportPanel());
+            Domus.UI.renderContent(toolbar + buildBookingFiltersMarkup() +
+                '<div class="domus-booking-result-count" id="domus-booking-result-count" role="status" aria-live="polite"></div>' +
+                '<div class="domus-panel domus-panel-table domus-booking-results" id="domus-bookings-table"></div>' +
+                buildImportPanel());
             bindList();
+            renderBookingsPage(bookingsCurrentPage);
+            Domus.Router.restoreContentContext();
         }
 
         function renderList() {
-            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Bookings') }));
-            Domus.Api.getBookings({ includeAll: true })
-                .then(bookings => {
-                    const isBuildingMgmt = Domus.Role.isBuildingMgmtView();
+            const refreshing = !!document.getElementById('domus-bookings-table');
+            const restoreContext = refreshing ? Domus.UI.captureContentContext() : null;
+            const requestId = ++bookingListRequestId;
+            const role = Domus.Role.getCurrentRole();
+            const startingView = Domus.state.currentView;
+            const showLoadError = err => {
+                if (requestId !== bookingListRequestId || Domus.Role.getCurrentRole() !== role || Domus.state.currentView !== startingView) return;
+                document.getElementById('domus-bookings-table')?.removeAttribute('aria-busy');
+                if (refreshing) Domus.UI.showNotification(err.message, 'error');
+                else Domus.UI.showError(err.message);
+            };
+            if (!refreshing) Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Bookings') }));
+            document.getElementById('domus-bookings-table')?.setAttribute('aria-busy', 'true');
+            const isBuildingMgmt = role === 'buildingMgmt';
+            Promise.all([
+                Domus.Api.getBookings({ includeAll: true }),
+                Domus.Api.getUnits(),
+                isBuildingMgmt ? Domus.Api.getProperties() : Promise.resolve([])
+            ])
+                .then(([bookings, units, properties]) => {
+                    if (requestId !== bookingListRequestId || Domus.Role.getCurrentRole() !== role || Domus.state.currentView !== startingView) return;
                     const bookingsList = filterBookingsForRole(bookings || []);
                     const distributionPromise = isBuildingMgmt ? buildDistributionTitleMap(bookingsList) : Promise.resolve({});
 
                     distributionPromise.then(distMap => {
+                        if (requestId !== bookingListRequestId || Domus.Role.getCurrentRole() !== role || Domus.state.currentView !== startingView) return;
+                        if (bookingListContext.role !== role) {
+                            bookingFilters = { query: '', unitId: '', account: '', dateMode: 'invoice', from: '', to: '' };
+                            bookingsCurrentPage = 1;
+                        }
+                        const unitMap = Object.fromEntries((units || []).map(unit => [String(unit.id), unit]));
+                        const propertyMap = Object.fromEntries((properties || []).map(property => [String(property.id), property]));
+                        const unitLabelCounts = {};
+                        (units || []).forEach(unit => {
+                            const label = Domus.Utils.normalizeSearchValue(unit.label);
+                            if (label) unitLabelCounts[label] = (unitLabelCounts[label] || 0) + 1;
+                        });
+                        const duplicateUnitLabels = Object.fromEntries((units || [])
+                            .filter(unit => unitLabelCounts[Domus.Utils.normalizeSearchValue(unit.label)] > 1)
+                            .map(unit => [String(unit.id), true]));
                         bookingsCache = sortBookings(bookingsList);
-                        bookingsCurrentPage = 1;
-                        bookingListContext = { distMap, isBuildingMgmt };
-                        renderBookingListContent();
-                    }).catch(err => Domus.UI.showError(err.message));
+                        bookingListContext = { distMap, unitMap, propertyMap, duplicateUnitLabels, isBuildingMgmt, role };
+                        if (refreshing && document.getElementById('domus-bookings-table')) {
+                            renderBookingsPage(bookingsCurrentPage);
+                            document.getElementById('domus-bookings-table')?.removeAttribute('aria-busy');
+                            restoreContext?.();
+                        } else {
+                            renderBookingListContent();
+                        }
+                    }).catch(showLoadError);
                 })
-                .catch(err => Domus.UI.showError(err.message));
+                .catch(showLoadError);
         }
 
         function buildDistributionTitleMap(bookings) {
@@ -232,17 +374,61 @@
         }
 
         function bindTableNavigation() {
-            Domus.UI.bindPagination(document, {
+            const panel = document.getElementById('domus-bookings-table');
+            Domus.UI.bindPagination(panel, {
                 currentPage: bookingsCurrentPage,
                 onPageChange: nextPage => renderBookingsPage(nextPage)
             });
             Domus.UI.bindRowNavigation();
+            bindBookingEditActions(panel);
+        }
+
+        function bindBookingEditActions(root) {
+            root?.querySelectorAll('[data-domus-booking-edit]').forEach(button => {
+                if (button.dataset.domusBookingEditBound) return;
+                button.dataset.domusBookingEditBound = 'true';
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
+                    const row = button.closest('[data-booking-id]');
+                    const bookingId = row?.getAttribute('data-booking-id');
+                    if (!bookingId) return;
+                    openEditModal(bookingId, {
+                        refreshView: row.getAttribute('data-refresh-view'),
+                        refreshId: row.getAttribute('data-refresh-id')
+                    });
+                });
+            });
+        }
+
+        function bindBookingFilters() {
+            const fields = [
+                ['domus-booking-search', 'query', 'input'],
+                ['domus-booking-unit-filter', 'unitId', 'change'],
+                ['domus-booking-account-filter', 'account', 'change'],
+                ['domus-booking-date-mode', 'dateMode', 'change'],
+                ['domus-booking-date-from', 'from', 'change'],
+                ['domus-booking-date-to', 'to', 'change']
+            ];
+            fields.forEach(([id, key, event]) => {
+                document.getElementById(id)?.addEventListener(event, function() {
+                    bookingFilters[key] = this.value;
+                    renderBookingsPage(1);
+                });
+            });
+            document.getElementById('domus-booking-clear-filters')?.addEventListener('click', () => {
+                bookingFilters = { query: '', unitId: '', account: '', dateMode: 'invoice', from: '', to: '' };
+                fields.forEach(([id, key]) => {
+                    const control = document.getElementById(id);
+                    if (control) control.value = bookingFilters[key];
+                });
+                renderBookingsPage(1);
+                document.getElementById('domus-booking-search')?.focus();
+            });
         }
 
         function bindList() {
             document.getElementById('domus-booking-create')?.addEventListener('click', () => openCreateModal());
-            document.getElementById('domus-bookings-empty-create')?.addEventListener('click', () => openCreateModal());
-            bindTableNavigation();
+            bindBookingFilters();
             bindImportActions();
         }
 
@@ -270,11 +456,12 @@
             const wrapperId = getInlineWrapperId(key);
             inlineBookingsState[key] = {
                 bookings: sortBookings(bookings || []),
-                currentPage: 1,
+                currentPage: inlineBookingsState[key]?.currentPage || 1,
                 options,
                 wrapperId
             };
-            const pageInfo = paginateBookings(inlineBookingsState[key].bookings, 1);
+            const pageInfo = paginateBookings(inlineBookingsState[key].bookings, inlineBookingsState[key].currentPage);
+            inlineBookingsState[key].currentPage = pageInfo.page;
             const markup = buildInlineBookingsMarkup(pageInfo, options);
             return '<div class="domus-inline-bookings" id="' + Domus.Utils.escapeHtml(wrapperId) +
                 '" data-inline-key="' + Domus.Utils.escapeHtml(key) + '">' +
@@ -288,6 +475,7 @@
                 if (!state) {
                     return;
                 }
+                bindBookingEditActions(wrapper);
                 Domus.UI.bindPagination(wrapper, {
                     currentPage: state.currentPage,
                     onPageChange: nextPage => {
@@ -871,7 +1059,11 @@
             const sectionMode = formConfig.sectionMode || buildCreateSectionMode(createContext, Boolean(formConfig.initialDocumentSelection), {
                 initialBookingEnabled: formConfig.initialBookingEnabled
             });
-            const title = formConfig.title || t('domus', 'Add Booking or Document');
+            const title = formConfig.title || (documentEditMode
+                ? t('domus', 'Edit document')
+                : (bookingEditMode
+                    ? t('domus', 'Edit booking')
+                    : (createContext === 'document' ? t('domus', 'Add document') : t('domus', 'Add booking'))));
             const successMessage = formConfig.successMessage || t('domus', '{entity} created.', { entity: t('domus', 'Booking') });
             const multiEntry = formConfig.multiEntry !== undefined ? formConfig.multiEntry : !bookingEditMode;
             const today = new Date();
@@ -901,6 +1093,7 @@
 
                     const modal = Domus.UI.openModal({
                         title,
+                        persistentFooter: true,
                         content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, defaults, {
                             multiEntry,
                             hidePropertyField,
@@ -945,9 +1138,7 @@
                             .then(() => {
                                 Domus.UI.showNotification(resolveCreateSuccessMessage(successMessage, data), 'success');
                                 modal.close();
-                                if (!bookingEditMode) {
-                                    (onCreated || renderList)();
-                                }
+                                (onCreated || renderList)();
                             })
                             .catch(err => Domus.UI.showNotification(err.message, 'error'));
                     }, {
@@ -1029,7 +1220,7 @@
                 return;
             }
             if (view === 'unitDetail' && entityId) {
-                Domus.Units.renderDetail(entityId);
+                Domus.Units.refreshDetail(entityId);
                 return;
             }
             if (view === 'bookings') {
@@ -1051,10 +1242,10 @@
             const sectionState = {
                 bookingEnabled: options.sectionMode
                     ? options.sectionMode.booking?.enabled !== false
-                    : (bookingToggle ? bookingToggle.checked : true),
+                    : (bookingToggle ? bookingToggle.getAttribute('aria-expanded') === 'true' : true),
                 documentEnabled: options.sectionMode
                     ? options.sectionMode.document?.enabled !== false
-                    : (documentToggle ? documentToggle.checked : true)
+                    : (documentToggle ? documentToggle.getAttribute('aria-expanded') === 'true' : true)
             };
             const distributionSelect = modalContext.modalEl.querySelector('#domus-booking-distribution');
             // The initial selection is applied after the options arrive. Loading
@@ -1085,7 +1276,7 @@
                 section.classList.toggle('is-disabled', !enabled);
                 section.dataset.enabled = enabled ? '1' : '0';
                 if (toggle) {
-                    toggle.checked = enabled;
+                    toggle.setAttribute('aria-expanded', String(enabled));
                 }
 
                 section.querySelectorAll('input, select, textarea, button').forEach(control => {
@@ -1167,14 +1358,14 @@
             }
 
             [bookingToggle, documentToggle].forEach(toggle => {
-                toggle?.addEventListener('change', function() {
+                toggle?.addEventListener('click', function() {
+                    const enabled = this.getAttribute('aria-expanded') !== 'true';
                     if (this.dataset.section === 'booking') {
-                        sectionState.bookingEnabled = this.checked;
+                        sectionState.bookingEnabled = enabled;
                     } else {
-                        sectionState.documentEnabled = this.checked;
+                        sectionState.documentEnabled = enabled;
                     }
                     if (!sectionState.bookingEnabled && !sectionState.documentEnabled) {
-                        this.checked = true;
                         if (this.dataset.section === 'booking') {
                             sectionState.bookingEnabled = true;
                         } else {
@@ -1295,8 +1486,10 @@
                     return [account, amount === '' ? '' : Number(amount), !!input?.validity.badInput];
                 }).filter(Boolean)
             }));
+            let saving = false;
             form?.addEventListener('submit', function(e) {
                 e.preventDefault();
+                if (saving) return;
                 const bookingEnabled = sectionState.bookingEnabled;
                 const documentEnabled = sectionState.documentEnabled;
                 const formData = {};
@@ -1360,7 +1553,15 @@
                     bookingEnabled,
                     documentEnabled
                 };
-                onSubmit(payload);
+                saving = true;
+                const submit = modalContext.modalEl.querySelector('button[type="submit"]');
+                if (submit) submit.disabled = true;
+                form.setAttribute('aria-busy', 'true');
+                Promise.resolve(onSubmit(payload)).finally(() => {
+                    saving = false;
+                    if (submit) submit.disabled = false;
+                    form.removeAttribute('aria-busy');
+                });
             });
         }
 
@@ -1401,6 +1602,9 @@
                 '</div>' +
                 '<div class="domus-booking-entries-wrapper">' +
                 '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Amounts')) + '</div>' +
+                (Domus.Role.getCurrentRole() === 'landlord'
+                    ? '<div class="domus-booking-hint">' + Domus.Utils.escapeHtml(t('domus', 'Agreed base rent is calculated from tenancies. This form records expenses, not rent payments received.')) + '</div>'
+                    : '') +
                 '<div id="domus-booking-entries" class="domus-booking-entries" data-multi="' + (multiEntry ? '1' : '0') + '"></div>' +
                 '<div class="domus-booking-hint">' + Domus.Utils.escapeHtml(t('domus', 'Add multiple booking lines. A new row appears automatically when you enter an amount.')) + '</div>' +
                 '</div>' +
@@ -1408,7 +1612,7 @@
                 '<input type="text" name="description" value="' + Domus.Utils.escapeHtml(String(booking?.description || '')) + '"></label>';
             const relationSectionContent = '<div class="domus-booking-relations">' +
                 '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Assignment')) + '</div>' +
-                (hideProperty ? (selectedProperty ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '')
+                (hideProperty ? (selectedProperty ? '<p class="domus-booking-assignment-context">' + Domus.Utils.escapeHtml(t('domus', 'Property')) + ': ' + Domus.Utils.escapeHtml(propertyOptions.find(opt => String(opt.value) === selectedProperty)?.label || selectedProperty) + '</p><input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '')
                     : ('<label>' + Domus.Utils.escapeHtml(t('domus', 'Property')) + '<select name="propertyId"' + (propertyLocked ? ' disabled' : '') + '>' +
                     propertyOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedProperty ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                     '</select>' + (propertyLocked ? '<input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '') + '</label>')) +
@@ -1416,7 +1620,7 @@
                 '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'Select distribution')) + '</option>' +
                 '</select></label>' : '') +
                 (hideUnit
-                    ? '<input type="hidden" name="unitId" value="' + Domus.Utils.escapeHtml(selectedUnit) + '">'
+                    ? '<p class="domus-booking-assignment-context">' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + ': ' + Domus.Utils.escapeHtml(unitOptions.find(opt => String(opt.value) === selectedUnit)?.label || selectedUnit) + '</p><input type="hidden" name="unitId" value="' + Domus.Utils.escapeHtml(selectedUnit) + '">'
                     : ('<div class="domus-booking-unit-field" data-role="unit-field">' +
                         '<label>' + Domus.Utils.escapeHtml(t('domus', 'Unit')) + '<select name="unitId"' + (unitLocked ? ' disabled' : '') + '>' +
                         unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedUnit ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
@@ -1428,11 +1632,9 @@
             const useSectionMode = Boolean(sectionMode);
             const renderSection = (sectionKey, title, enabled, required, content) => '<section class="domus-booking-section' + (enabled ? '' : ' is-disabled') + '" data-section="' + Domus.Utils.escapeHtml(sectionKey) + '" data-required="' + (required ? '1' : '0') + '">' +
                 '<div class="domus-booking-section-header">' +
-                '<label class="domus-booking-section-toggle">' +
-                '<input type="checkbox" data-role="section-toggle" data-section="' + Domus.Utils.escapeHtml(sectionKey) + '"' + (enabled ? ' checked' : '') + (required ? ' disabled' : '') + '>' +
-                '<span class="domus-booking-section-slider" aria-hidden="true"></span>' +
-                '<span class="domus-booking-section-name">' + Domus.Utils.escapeHtml(title) + '</span>' +
-                '</label>' +
+                (required
+                    ? '<h4 class="domus-booking-section-name">' + Domus.Utils.escapeHtml(title) + '</h4>'
+                    : '<button type="button" class="domus-booking-disclosure" data-role="section-toggle" data-section="' + Domus.Utils.escapeHtml(sectionKey) + '" aria-expanded="' + String(enabled) + '">' + Domus.Utils.escapeHtml(sectionKey === 'document' ? t('domus', 'Attach document (optional)') : title) + '</button>') +
                 '</div>' +
                 '<div class="domus-booking-section-body"' + (sectionKey === 'document' ? ' id="domus-booking-documents"' : '') + '>' + content + '</div>' +
                 '</section>';

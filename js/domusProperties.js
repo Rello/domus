@@ -401,8 +401,8 @@
                         })
                     ].filter(Boolean);
                     const actionMenu = Domus.UI.buildActionMenu(menuActions, {
-                        label: t('domus', 'Quick Actions'),
-                        ariaLabel: t('domus', 'Quick Actions')
+                        label: t('domus', 'More actions'),
+                        ariaLabel: t('domus', 'More actions')
                     });
                     const unitCount = Number(property?.unitCount) || (property.units || []).length;
                     const propertyInlineMeta = '<div class="domus-hero-meta-line domus-hero-meta-line-inline">' +

@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+$wizardPicture = static function(string $name) use ($urlGenerator): string {
+    $relativePath = 'pictures/' . $name . '.png';
+    $filePath = dirname(__DIR__, 2) . '/img/' . $relativePath;
+    return $urlGenerator->imagePath('domus', $relativePath) . '?v=' . filemtime($filePath);
+};
+
 $wizardConfig = [
     'brandName' => $l->t('Domus'),
     'brandLogo' => $urlGenerator->imagePath('domus', 'app.svg'),
@@ -50,7 +56,7 @@ $wizardConfig = [
                 $l->t('Keep an eye on open tasks so nothing slips through'),
             ],
             'mediaLabel' => $l->t('Homes and notes'),
-            'mediaSrc' => $urlGenerator->imagePath('domus', 'pictures/unit.png'),
+            'mediaSrc' => $wizardPicture('unit'),
         ],
         [
             'layout' => 'detail',
@@ -62,7 +68,7 @@ $wizardConfig = [
                 $l->t('See the financial story behind each home more clearly'),
             ],
             'mediaLabel' => $l->t('Money and paperwork'),
-            'mediaSrc' => $urlGenerator->imagePath('domus', 'pictures/booking.png'),
+            'mediaSrc' => $wizardPicture('booking'),
         ],
         [
             'layout' => 'detail',
@@ -74,7 +80,7 @@ $wizardConfig = [
                 $l->t('Prepare related reports with less searching and guessing'),
             ],
             'mediaLabel' => $l->t('Tenants and rental periods'),
-            'mediaSrc' => $urlGenerator->imagePath('domus', 'pictures/tenancy.png'),
+            'mediaSrc' => $wizardPicture('tenancy'),
         ],
         [
             'layout' => 'detail',
@@ -86,7 +92,7 @@ $wizardConfig = [
                 $l->t('Spot what needs attention before it turns into a problem'),
             ],
             'mediaLabel' => $l->t('Dashboard'),
-            'mediaSrc' => $urlGenerator->imagePath('domus', 'pictures/dashboard.png'),
+            'mediaSrc' => $wizardPicture('dashboard'),
             'primaryLabel' => $l->t('Let’s go'),
         ],
     ],

@@ -16,6 +16,7 @@ class TaskTemplateStep extends Entity implements JsonSerializable {
     protected $title;
     protected $description;
     protected $defaultDueDaysOffset;
+    protected $allowEarlyCompletion;
     protected $actionType;
     protected $actionUrl;
     protected $createdAt;
@@ -23,6 +24,7 @@ class TaskTemplateStep extends Entity implements JsonSerializable {
 
     public function __construct() {
         $this->addType('id', 'int');
+        $this->addType('allowEarlyCompletion', 'int');
         $this->addType('templateId', 'int');
         $this->addType('sortOrder', 'int');
         $this->addType('defaultDueDaysOffset', 'int');
@@ -38,6 +40,7 @@ class TaskTemplateStep extends Entity implements JsonSerializable {
             'title' => $this->title,
             'description' => $this->description,
             'defaultDueDaysOffset' => $this->defaultDueDaysOffset,
+            'allowEarlyCompletion' => (bool)$this->allowEarlyCompletion,
             'actionType' => $this->actionType,
             'actionUrl' => $this->actionUrl,
             'createdAt' => $this->createdAt,

@@ -123,6 +123,7 @@ return [
         ['name' => 'WorkflowRun#show', 'url' => '/api/workflow-runs/{runId}', 'verb' => 'GET'],
         ['name' => 'WorkflowRun#delete', 'url' => '/api/workflow-runs/{runId}', 'verb' => 'DELETE'],
         ['name' => 'WorkflowRun#closeStep', 'url' => '/api/task-steps/{stepId}/close', 'verb' => 'POST'],
+        ['name' => 'WorkflowRun#closeEarly', 'url' => '/api/task-steps/{stepId}/close-early', 'verb' => 'POST'],
         ['name' => 'WorkflowRun#reopenStep', 'url' => '/api/task-steps/{stepId}/reopen', 'verb' => 'POST'],
 
         // Tasks

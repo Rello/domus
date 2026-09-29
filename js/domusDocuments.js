@@ -12,10 +12,27 @@
         function buildDocumentRow(doc, options = {}) {
             const fileName = doc.fileName || doc.fileUrl || doc.fileId || '';
             const note = String(doc?.note || '').trim();
-            const fileCellContent = note
-                ? '<span class="domus-documents-file-name domus-action-log-title-text">' + Domus.Utils.escapeHtml(fileName) + '</span>' +
-                '<div class="muted">' + Domus.Utils.escapeHtml(note) + '</div>'
-                : '<span class="domus-documents-file-name domus-action-log-title-text">' + Domus.Utils.escapeHtml(fileName) + '</span>';
+            const fileUrl = String(doc.fileUrl || '').trim();
+            // Use the existing destination; only web URLs are file actions.
+            let safeFileUrl = '';
+            try {
+                const url = new URL(fileUrl, window.location.href);
+                if (fileUrl && ['http:', 'https:'].includes(url.protocol)) {
+                    safeFileUrl = fileUrl;
+                }
+            } catch (error) {
+                // Keep details available when a stored destination is invalid.
+            }
+            const fileLabel = Domus.Utils.escapeHtml(fileName);
+            const fileAction = safeFileUrl
+                ? '<a class="domus-documents-file-name domus-action-log-title-text" href="' + Domus.Utils.escapeHtml(safeFileUrl) + '" target="_blank" rel="noopener noreferrer">' + fileLabel + '</a>'
+                : '<span class="domus-documents-file-name domus-action-log-title-text">' + fileLabel + '</span>';
+            const fileCellContent = fileAction +
+                (note ? '<div class="muted">' + Domus.Utils.escapeHtml(note) + '</div>' : '');
+            const editAction = '<button type="button" class="domus-icon-only-button domus-document-edit" data-doc-edit="' + Domus.Utils.escapeHtml(doc.id) + '" aria-label="' +
+                Domus.Utils.escapeHtml(t('domus', 'Edit document {file}', { file: fileName })) + '" title="' +
+                Domus.Utils.escapeHtml(t('domus', 'Edit document')) + '">' +
+                '<span class="domus-icon domus-icon-edit" aria-hidden="true"></span></button>';
             const cells = [
                 {
                     className: 'domus-documents-file-cell',
@@ -30,6 +47,8 @@
                     content: '<span class="domus-action-log-date">' + Domus.Utils.escapeHtml(createdAt || '—') + '</span>'
                 });
             }
+
+            cells.push({ className: 'domus-documents-actions-cell', content: editAction });
 
             return {
                 className: 'domus-documents-row',
@@ -392,31 +411,15 @@
         }
 
         function bindDocumentActions(containerId, onOpenDocument) {
-            document.querySelectorAll('#' + containerId + ' tr[data-doc-info]').forEach(row => {
-                if (row.dataset.domusDocumentBound) {
+            document.querySelectorAll('#' + containerId + ' button[data-doc-edit]').forEach(button => {
+                if (button.dataset.domusDocumentBound) {
                     return;
                 }
-
-                row.dataset.domusDocumentBound = 'true';
-                row.tabIndex = 0;
-                row.setAttribute('role', 'button');
-
-                const handleOpen = event => {
-                    if (event && (event.target.closest('a') || event.target.closest('button') || event.target.closest('input') || event.target.closest('select') || event.target.closest('textarea'))) {
-                        return;
-                    }
+                button.dataset.domusDocumentBound = 'true';
+                button.addEventListener('click', () => {
                     if (typeof onOpenDocument === 'function') {
-                        onOpenDocument(row.getAttribute('data-doc-info'));
+                        onOpenDocument(button.getAttribute('data-doc-edit'));
                     }
-                };
-
-                row.addEventListener('click', handleOpen);
-                row.addEventListener('keydown', event => {
-                    if (event.key !== 'Enter' && event.key !== ' ') {
-                        return;
-                    }
-                    event.preventDefault();
-                    handleOpen(event);
                 });
             });
         }
@@ -587,6 +590,8 @@
 
                     const formConfig = {
                         createContext: 'document',
+                        title: t('domus', 'Edit document'),
+                        multiEntry: false,
                         initialDocumentSelection,
                         lockDocumentSelection: true,
                         initialBookingEnabled: context.bookingId !== null,

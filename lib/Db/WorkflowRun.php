@@ -19,6 +19,8 @@ class WorkflowRun extends Entity implements JsonSerializable {
     protected $status;
     protected $startedAt;
     protected $closedAt;
+    protected $closedBy;
+    protected $completionType;
     protected $createdBy;
     protected $createdAt;
     protected $updatedAt;
@@ -47,6 +49,8 @@ class WorkflowRun extends Entity implements JsonSerializable {
             'status' => $this->status,
             'startedAt' => $this->startedAt,
             'closedAt' => $this->closedAt,
+            'closedBy' => $this->closedBy,
+            'completionType' => $this->completionType,
             'createdBy' => $this->createdBy,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,

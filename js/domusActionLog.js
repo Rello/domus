@@ -95,11 +95,14 @@
             ];
 
             const rows = safeEntries.map(entry => {
+                const titleContent = options.showEntityColumn
+                    ? formatDashboardTitleCell(entry)
+                    : '<div class="domus-action-log-title-text">' + Domus.Utils.escapeHtml(entry.title || '') + '</div>';
+                const openLabel = t('domus', 'Action log entry');
                 const cells = [
                     { content: buildTypeIcon(entry.type), className: 'domus-action-log-cell-icon' },
-                    options.showEntityColumn
-                        ? formatDashboardTitleCell(entry)
-                        : '<div class="domus-action-log-title-text">' + Domus.Utils.escapeHtml(entry.title || '') + '</div>',
+                    '<button type="button" class="domus-table-action-button domus-action-log-open" data-domus-action-log-open aria-label="' +
+                        Domus.Utils.escapeHtml(openLabel + ': ' + (entry.title || '')) + '">' + titleContent + '</button>',
                     { content: '<span class="domus-action-log-date">' + Domus.Utils.escapeHtml(formatDate(entry.createdAt)) + '</span>', className: 'domus-action-log-cell-date' }
                 ];
 
@@ -217,12 +220,12 @@
                 };
 
                 row.addEventListener('click', handleActivate, true);
-                row.addEventListener('keydown', event => {
-                    if (event.key !== 'Enter' && event.key !== ' ') {
-                        return;
+                row.querySelector('[data-domus-action-log-open]')?.addEventListener('click', () => {
+                    const actionLogId = row.dataset.actionLogId || row.getAttribute('data-action-log-id') || row.getAttribute('data-actionLogId');
+                    if (actionLogId) {
+                        Domus.ActionLog.openEntryModal(actionLogId, { onSaved });
                     }
-                    handleActivate(event);
-                }, true);
+                });
             });
         }
 

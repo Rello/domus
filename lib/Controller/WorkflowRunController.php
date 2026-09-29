@@ -84,6 +84,19 @@ class WorkflowRunController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function closeEarly(int $stepId): DataResponse {
+        try {
+            return new DataResponse($this->workflowRunService->closeEarly($stepId, $this->getUserId()));
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_BAD_REQUEST, 'RUNTIME_ERROR');
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e->getMessage(), Http::STATUS_INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR');
+        }
+    }
+
+    #[NoAdminRequired]
     public function reopenStep(int $stepId): DataResponse {
         try {
             return new DataResponse($this->workflowRunService->reopenStep($stepId, $this->getUserId()));

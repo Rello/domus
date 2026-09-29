@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 class DomusMigratorTest extends TestCase {
     public function testCanImportAcceptsCurrentVersion(): void {
         $source = $this->createConfiguredMock(IImportSource::class, [
-            'getMigratorVersion' => 2,
+            'getMigratorVersion' => 3,
         ]);
 
         $this->assertTrue($this->createMigrator()->canImport($source));
@@ -31,7 +31,7 @@ class DomusMigratorTest extends TestCase {
             'getMigratorVersion' => null,
         ]);
         $newerSource = $this->createConfiguredMock(IImportSource::class, [
-            'getMigratorVersion' => 3,
+            'getMigratorVersion' => 4,
         ]);
 
         $this->assertFalse($this->createMigrator()->canImport($missingSource));

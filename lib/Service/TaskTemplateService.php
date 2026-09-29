@@ -212,6 +212,9 @@ class TaskTemplateService {
             $step->setTitle($title);
             $step->setDescription($description);
             $step->setDefaultDueDaysOffset($offset);
+            if (array_key_exists('allowEarlyCompletion', $payload)) {
+                $step->setAllowEarlyCompletion(!empty($payload['allowEarlyCompletion']) ? 1 : 0);
+            }
             $step->setActionType($actionType);
             $step->setActionUrl($actionUrl);
             $step->setUpdatedAt($now);
@@ -230,6 +233,7 @@ class TaskTemplateService {
         $step->setTitle($title);
         $step->setDescription($description);
         $step->setDefaultDueDaysOffset($offset);
+        $step->setAllowEarlyCompletion(!empty($payload['allowEarlyCompletion']) ? 1 : 0);
         $step->setActionType($actionType);
         $step->setActionUrl($actionUrl);
         $step->setCreatedAt($now);

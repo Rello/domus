@@ -22,6 +22,7 @@ class TaskStep extends Entity implements JsonSerializable {
     protected $openedAt;
     protected $closedAt;
     protected $closedBy;
+    protected $allowEarlyCompletion;
     protected $actionType;
     protected $actionUrl;
     protected $createdAt;
@@ -33,6 +34,7 @@ class TaskStep extends Entity implements JsonSerializable {
 
     public function __construct() {
         $this->addType('id', 'int');
+        $this->addType('allowEarlyCompletion', 'int');
         $this->addType('workflowRunId', 'int');
         $this->addType('entityId', 'int');
         $this->addType('sortOrder', 'int');
@@ -56,6 +58,7 @@ class TaskStep extends Entity implements JsonSerializable {
             'openedAt' => $this->openedAt,
             'closedAt' => $this->closedAt,
             'closedBy' => $this->closedBy,
+            'allowEarlyCompletion' => (bool)$this->allowEarlyCompletion,
             'actionType' => $this->actionType,
             'actionUrl' => $this->actionUrl,
             'createdAt' => $this->createdAt,

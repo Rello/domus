@@ -143,8 +143,8 @@
                 const unitValue = item.unitValue || null;
                 const cells = [
                     propertyDetailVariant
-                        ? '<div class="domus-distribution-name-cell">' + Domus.Utils.escapeHtml(item.name || '') + '</div>'
-                        : Domus.Utils.escapeHtml(item.name || ''),
+                        ? '<div class="domus-distribution-name-cell"><button type="button" class="domus-table-action-button domus-distribution-open">' + Domus.Utils.escapeHtml(item.name || '') + '</button></div>'
+                        : '<button type="button" class="domus-table-action-button domus-distribution-open">' + Domus.Utils.escapeHtml(item.name || '') + '</button>',
                     propertyDetailVariant
                         ? buildTypeBadge(item.type)
                         : Domus.Utils.escapeHtml(getTypeLabel(item.type))
@@ -563,7 +563,7 @@
             const container = document.getElementById(containerId);
             if (!container) return;
             container.querySelectorAll('tr.domus-distribution-row').forEach(row => {
-                row.addEventListener('click', () => {
+                const openDistribution = () => {
                     const distId = row.getAttribute('data-distid');
                     const distribution = distributions.find(d => String(d.id) === String(distId));
                     if (options.mode === 'unit') {
@@ -571,7 +571,12 @@
                     } else {
                         options.onPropertyEdit?.(distribution);
                     }
+                };
+                row.addEventListener('click', event => {
+                    if (event.target.closest('a, button, input, select, textarea')) return;
+                    openDistribution();
                 });
+                row.querySelector('.domus-distribution-open')?.addEventListener('click', openDistribution);
             });
         }
 

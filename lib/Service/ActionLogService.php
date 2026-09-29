@@ -259,7 +259,13 @@ class ActionLogService {
 
     private function resolveLinkedEntity(string $userId, ?string $type, ?int $id, bool $allowFallbackLabel = true, ?string $fallbackLabel = null): ?array {
         if ($type === null || $type === '' || $id === null || $id <= 0) {
-            return null;
+            return $allowFallbackLabel && $fallbackLabel !== null ? [
+                'type' => null,
+                'id' => null,
+                'label' => $fallbackLabel,
+                'navigate' => null,
+                'href' => null,
+            ] : null;
         }
 
         try {

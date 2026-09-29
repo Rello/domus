@@ -40,7 +40,7 @@
             Domus.accounts = accounts;
         }
 
-        function toOptions(includePlaceholder = true, filterFn = null) {
+        function toOptions(includePlaceholder = true, filterFn = null, includeDisabled = false) {
             let entries = [];
             if (accountHierarchy && accountHierarchy.length) {
                 entries = flattenHierarchy(accountHierarchy);
@@ -55,7 +55,7 @@
             if (typeof filterFn === 'function') {
                 entries = entries.filter(entry => filterFn(entry.number, entry));
             }
-            entries = entries.filter(entry => entry.status !== 'disabled');
+            entries = entries.filter(entry => includeDisabled || entry.status !== 'disabled');
 
             const opts = entries.map(entry => {
                 const prefix = entry.level ? `${'— '.repeat(entry.level)}` : '';
