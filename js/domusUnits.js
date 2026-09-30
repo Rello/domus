@@ -1908,38 +1908,18 @@
                     ].filter(Boolean).join('');
                     const occupancyBadge = buildOccupancyBadge(getUnitOccupancyStatus(unit));
 
-                    const hero = '<div class="domus-detail-hero">' +
-                        '<div class="domus-hero-content">' +
-                        '<div class="domus-hero-indicator domus-hero-image-card">' +
-                        Domus.UI.buildEntityImage('unit', unit, {
-                            variant: 'hero',
-                            alt: unit.label || t('domus', 'Unit')
-                        }) +
-                        '<button type="button" class="domus-hero-image-edit" id="domus-unit-image-edit" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Edit picture')) + '">' +
-                        '<span class="domus-icon domus-icon-edit" aria-hidden="true"></span>' +
-                        '</button>' +
-                        '</div>' +
-                        '<div class="domus-hero-main">' +
-                        (kicker ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(kicker) + '</div>' : '') +
-                        '<div class="domus-hero-main-top">' +
-                        '<div class="domus-hero-heading-group">' +
-                        '<div class="domus-hero-heading-row">' +
-                        '<h2>' + Domus.Utils.escapeHtml(unit.label || '') + '</h2>' +
-                        occupancyBadge +
-                        (unit.unitType ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(unit.unitType) + '</span>' : '') +
-                        '</div>' +
-                        '<div class="domus-hero-meta-stack">' + unitMetaLines + '</div>' +
-                        '</div>' +
-                        '<div class="domus-hero-actions">' +
-                        '<div class="domus-hero-actions-row domus-hero-actions-standard">' +
-                        actionMenu +
-                        '</div>' +
-                        '<div class="domus-hero-actions-status">' + masterdataIndicator + '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>';
+                    const hero = Domus.UI.buildDetailHero({
+                        indicator: '<div class="domus-hero-indicator domus-hero-image-card">' +
+                            Domus.UI.buildEntityImage('unit', unit, {variant: 'hero', alt: unit.label || t('domus', 'Unit')}) +
+                            '<button type="button" class="domus-hero-image-edit" id="domus-unit-image-edit" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Edit picture')) + '">' +
+                            '<span class="domus-icon domus-icon-edit" aria-hidden="true"></span></button></div>',
+                        kicker,
+                        title: unit.label,
+                        badges: occupancyBadge + (unit.unitType ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(unit.unitType) + '</span>' : ''),
+                        meta: unitMetaLines,
+                        actions: actionMenu,
+                        status: masterdataIndicator
+                    });
 
                     const directActions = '<div class="domus-unit-direct-actions" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Unit actions')) + '">' +
                         (canManageBookings ? Domus.UI.buildQuickActionCard({

@@ -9,6 +9,75 @@
     window.Domus = window.Domus || {};
 
     Domus.Tenancies = (function() {
+        let previewRequest = 0;
+
+        // Owner-only UI simulation: keep using the existing owner-scoped APIs.
+        // Account assignment and renter authorization are deliberately not enabled here.
+        function renderRenterPreview(partnerId = '', tenancyId = '') {
+            const request = ++previewRequest;
+            const isCurrent = () => request === previewRequest && Domus.state.currentView === 'renterPreview';
+            const escape = Domus.Utils.escapeHtml;
+            let header = '<section class="domus-panel domus-renter-preview">' +
+                '<div class="domus-panel-body"><h2>' + escape(t('domus', 'Renter preview')) + '</h2>' +
+                '<p class="muted">' + escape(t('domus', 'Temporary preview using your own data. No renter account access is granted.')) + '</p>' +
+                '<button type="button" id="domus-renter-preview-exit">' + escape(t('domus', 'Exit preview')) + '</button></div></section>';
+            const bindControls = () => {
+                document.getElementById('domus-renter-preview-exit')?.addEventListener('click', () => Domus.Router.navigate('dashboard'));
+                document.getElementById('domus-preview-renter')?.addEventListener('change', event => {
+                    Domus.Router.navigate('renterPreview', [event.target.value]);
+                });
+                document.getElementById('domus-preview-tenancy')?.addEventListener('change', event => {
+                    Domus.Router.navigate('renterPreview', [partnerId, event.target.value]);
+                });
+            };
+            const showMessage = (message, error = false) => {
+                if (!isCurrent()) return;
+                Domus.UI.renderContent(header + '<p class="' + (error ? 'domus-error' : 'domus-empty-state') + '" role="status">' + escape(message) + '</p>');
+                bindControls();
+            };
+            showMessage(t('domus', 'Loading…'));
+            return Promise.all([Domus.Api.getPartners('tenant'), Domus.Api.getTenancies()])
+                .then(([partners, tenancies]) => {
+                    if (!isCurrent()) return;
+                    const renters = (partners || []).filter(partner => partner.partnerType === 'tenant')
+                        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                    const partner = renters.find(item => String(item.id) === String(partnerId));
+                    const assigned = partner ? (tenancies || []).filter(tenancy =>
+                        (tenancy.partnerIds || []).some(id => String(id) === String(partner.id))) : [];
+                    const selected = assigned.find(tenancy => String(tenancy.id) === String(tenancyId)) || assigned[0];
+                    const renterOptions = '<option value="">' + escape(t('domus', 'Select a renter')) + '</option>' +
+                        renters.map(item => '<option value="' + escape(item.id) + '"' + (item === partner ? ' selected' : '') + '>' + escape(item.name) + '</option>').join('');
+                    const tenancyOptions = assigned.map(item => '<option value="' + escape(item.id) + '"' + (item === selected ? ' selected' : '') + '>' +
+                        escape(formatUnitLabel(item) + ' · ' + Domus.Utils.formatDate(item.startDate) + ' – ' +
+                            (item.endDate ? Domus.Utils.formatDate(item.endDate) : t('domus', 'Ongoing'))) + '</option>').join('');
+                    header = '<section class="domus-panel domus-renter-preview"><div class="domus-panel-body">' +
+                        '<h2>' + escape(t('domus', 'Renter preview')) + '</h2>' +
+                        '<p class="muted">' + escape(t('domus', 'Temporary preview using your own data. No renter account access is granted.')) + '</p>' +
+                        '<div class="domus-renter-preview-controls"><div class="domus-renter-preview-field"><label for="domus-preview-renter">' + escape(t('domus', 'Simulate renter')) + '</label>' +
+                        '<select id="domus-preview-renter">' + renterOptions + '</select></div>' +
+                        (assigned.length > 1 ? '<div class="domus-renter-preview-field"><label for="domus-preview-tenancy">' + escape(t('domus', 'My tenancies')) + '</label>' +
+                            '<select id="domus-preview-tenancy">' + tenancyOptions + '</select></div>' : '') +
+                        '<button type="button" id="domus-renter-preview-exit">' + escape(t('domus', 'Exit preview')) + '</button></div></div></section>';
+                    if (!renters.length) return showMessage(t('domus', 'No renter contacts available to preview.'));
+                    if (!partner) return showMessage(t('domus', 'Select a renter to preview their tenancy.'));
+                    if (!selected) return showMessage(t('domus', 'No tenancies are assigned to this renter.'));
+                    return renderDetail(selected.id, { previewPartner: partner, header, isCurrent, onRendered: bindControls });
+                })
+                .catch(error => showMessage(error.message, true));
+        }
+
+        function renderRenterContact(partner) {
+            const escape = Domus.Utils.escapeHtml;
+            const fields = [
+                [t('domus', 'Name'), partner.name],
+                [t('domus', 'Address'), [partner.street, [partner.zip, partner.city].filter(Boolean).join(' '), partner.country].filter(Boolean).join(', ')],
+                [t('domus', 'Email'), partner.email],
+                [t('domus', 'Phone'), partner.phone]
+            ];
+            return '<dl class="domus-renter-contact">' + fields.map(([label, value]) =>
+                '<dt>' + escape(label) + '</dt><dd>' + escape(value || '—') + '</dd>').join('') + '</dl>';
+        }
+
         function formatUnitLabel(tenancy) {
             if (tenancy.unitLabel) {
                 return tenancy.unitLabel;
@@ -381,13 +450,27 @@
             openGuidedCreateWorkflow(prefill, onCreated);
         }
 
-        function renderDetail(id) {
-            Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().singular }));
-            Domus.Api.get('/tenancies/' + id)
+        function renderDetail(id, options = {}) {
+            const previewPartner = options.previewPartner;
+            const route = JSON.stringify([Domus.state.currentView, Domus.state.currentViewArgs]);
+            const isCurrent = options.isCurrent || (() => route === JSON.stringify([Domus.state.currentView, Domus.state.currentViewArgs]));
+            const loadingMessage = t('domus', 'Loading {entity}…', { entity: t('domus', 'Tenancy') });
+            if (options.header) {
+                Domus.UI.renderContent(options.header + '<p role="status">' + Domus.Utils.escapeHtml(loadingMessage) + '</p>');
+                options.onRendered?.();
+            } else {
+                Domus.UI.showLoading(loadingMessage);
+            }
+            return Domus.Api.get('/tenancies/' + id)
                 .then(tenancy => {
-                    const tenancyLabels = Domus.Role.getTenancyLabels();
-                    const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
-                    const menuActions = [
+                    if (!isCurrent()) return;
+                    if (previewPartner && !(tenancy.partnerIds || []).some(partnerId => String(partnerId) === String(previewPartner.id))) {
+                        throw new Error(t('domus', 'No tenancies are assigned to this renter.'));
+                    }
+                    const tenancyLabels = previewPartner ? { singular: t('domus', 'Tenancy') } : Domus.Role.getTenancyLabels();
+                    const canManageTenancies = !previewPartner && Domus.Role.hasCapability('manageTenancies');
+                    const documentActionsEnabled = !previewPartner && Domus.Role.hasCapability('manageDocuments');
+                    const menuActions = canManageTenancies ? [
                         Domus.UI.buildIconLabelButton('domus-icon-details', t('domus', 'Details'), {
                             id: 'domus-tenancy-details',
                             className: 'domus-action-menu-item'
@@ -396,42 +479,28 @@
                             id: 'domus-tenancy-delete',
                             className: 'domus-action-menu-item'
                         })
-                    ];
-                    const actionMenu = Domus.UI.buildActionMenu(menuActions, {
+                    ] : [];
+                    const actionMenu = menuActions.length ? Domus.UI.buildActionMenu(menuActions, {
                         label: t('domus', 'More actions'),
                         ariaLabel: t('domus', 'More actions')
-                    });
+                    }) : '';
                     const statusTag = renderStatusBadge(tenancy.status);
                     const tenancyPeriod = [Domus.Utils.formatDate(tenancy.startDate), tenancy.endDate ? Domus.Utils.formatDate(tenancy.endDate) : t('domus', 'Ongoing')].filter(Boolean).join(' – ');
-                    const partnerSummary = formatPartnerNames(tenancy.partners) || tenancy.partnerName || '';
+                    const partnerSummary = previewPartner ? previewPartner.name : formatPartnerNames(tenancy.partners) || tenancy.partnerName || '';
                     const heroMetaLines = [
                         tenancyPeriod ? Domus.UI.buildHeroMetaLine('domus-icon-booking', tenancyPeriod) : '',
                         Domus.UI.buildHeroMetaLine('domus-icon-partner', partnerSummary || t('domus', 'No tenant assigned'))
                     ].filter(Boolean).join('');
-                    const hero = '<div class="domus-detail-hero">' +
-                        '<div class="domus-hero-content">' +
-                        '<div class="domus-hero-indicator domus-tenancy-hero-indicator">' +
-                        '<span class="domus-icon domus-icon-tenancy" aria-hidden="true"></span>' +
-                        '</div>' +
-                        '<div class="domus-hero-main">' +
-                        '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(`${tenancyLabels.singular} #${id}`) + '</div>' +
-                        '<div class="domus-hero-main-top">' +
-                        '<div class="domus-hero-heading-group">' +
-                        '<div class="domus-hero-heading-row">' +
-                        '<h2>' + Domus.Utils.escapeHtml([partnerSummary, tenancy.unitLabel].filter(Boolean).join(' · ') || tenancyLabels.singular) + '</h2>' +
-                        statusTag +
-                        '</div>' +
-                        '<div class="domus-hero-meta-stack">' + heroMetaLines + '</div>' +
-                        '</div>' +
-                        '<div class="domus-hero-actions">' +
-                        '<div class="domus-hero-actions-row domus-hero-actions-standard">' +
-                        actionMenu +
-                        '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>';
+                    const hero = Domus.UI.buildDetailHero({
+                        indicator: '<div class="domus-hero-indicator domus-tenancy-hero-indicator">' +
+                            '<span class="domus-icon domus-icon-tenancy" aria-hidden="true"></span></div>',
+                        kicker: `${tenancyLabels.singular} #${id}`,
+                        title: tenancy.unitLabel || tenancyLabels.singular,
+                        badges: statusTag,
+                        meta: heroMetaLines,
+                        actions: actionMenu
+                    });
+
                     const kpiTiles = '<div class="domus-kpi-tiles domus-kpi-tiles-tenancy-detail domus-panel-row domus-panel-row-thirds">' +
                         Domus.UI.buildKpiTile({
                             headline: t('domus', 'Base rent'),
@@ -461,12 +530,16 @@
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Document') }),
                         iconClass: 'domus-icon-add'
                     } : null);
-                    const partnersHeader = Domus.UI.buildSectionHeader(t('domus', 'Tenant'));
+                    const partnersHeader = Domus.UI.buildSectionHeader(previewPartner ? t('domus', 'My details') : t('domus', 'Tenant'));
                     const tenantPanel = '<div class="domus-panel domus-tenancy-tenant-panel">' + partnersHeader + '<div class="domus-panel-body">' +
-                        Domus.Partners.renderInline(tenancy.partners || [], { linkNameToDetail: true, includeTypeColumn: false, includeEmailColumn: false, showHeader: false }) + '</div></div>';
+                        (previewPartner ? renderRenterContact(previewPartner) : Domus.Partners.renderInline(tenancy.partners || [], { linkNameToDetail: true, includeTypeColumn: false, includeEmailColumn: false, showHeader: false })) + '</div></div>';
                     const documentsPanel = '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
+                        (previewPartner ? '<p class="muted">' + Domus.Utils.escapeHtml(t('domus', 'This preview shows all documents linked to this tenancy.')) + '</p>' : '') +
                         Domus.Documents.renderLatestList('tenancy', id, {
                             pageSize: 10,
+                            canManageDocuments: documentActionsEnabled,
+                            showNotes: !previewPartner,
+                            isCurrent,
                             containerId: `domus-tenancy-documents-${id}`,
                             emptyActionId: 'domus-tenancy-documents-empty-create',
                             onEmptyAction: () => {
@@ -476,15 +549,15 @@
                             }
                         }) + '</div></div>';
 
-                    const content = '<div class="domus-detail domus-dashboard domus-tenancy-detail">' +
-                        Domus.UI.buildBackButton('tenancies') +
+                    const content = (options.header || '') + '<div class="domus-detail domus-dashboard domus-tenancy-detail">' +
+                        (previewPartner ? '' : Domus.UI.buildBackButton('tenancies')) +
                         hero +
-                        '<div class="domus-tenancy-direct-actions">' +
+                        (canManageTenancies ? '<div class="domus-tenancy-direct-actions">' +
                         Domus.UI.buildQuickActionCard({
                             iconClass: 'domus-icon-edit', title: t('domus', 'Change conditions'),
                             id: 'domus-tenancy-change', compact: true
                         }) +
-                        '</div>' +
+                        '</div>' : '') +
                         kpiTiles +
                         '<div class="domus-panel-row domus-panel-row-thirds domus-tenancy-detail-row">' +
                         conditionsPanel +
@@ -497,9 +570,14 @@
                     Domus.UI.bindRowNavigation();
                     Domus.UI.bindActionMenus();
                     Domus.Partners.bindContactActions();
-                    bindDetailActions(id, tenancy);
+                    if (!previewPartner) bindDetailActions(id, tenancy);
+                    options.onRendered?.();
                 })
-                .catch(err => Domus.UI.showError(err.message));
+                .catch(err => {
+                    if (!isCurrent()) return;
+                    Domus.UI.renderContent((options.header || '') + '<p class="domus-error" role="alert">' + Domus.Utils.escapeHtml(err.message) + '</p>');
+                    options.onRendered?.();
+                });
         }
 
         function bindDetailActions(id, tenancy) {
@@ -752,7 +830,7 @@
                 '</div>';
         }
 
-        return { renderList, renderDetail, renderInline, openCreateModal };
+        return { renderList, renderDetail, renderRenterPreview, renderInline, openCreateModal };
     })();
 
     /**

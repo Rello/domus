@@ -30,3 +30,7 @@ docker run --rm --init --ipc=host --entrypoint node \
 docker run --rm --init --ipc=host --entrypoint node \
     -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
     "$playwrightImage" tests/playwright/contacts.js
+
+docker run --rm --init --ipc=host --entrypoint node \
+    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
+    "$playwrightImage" tests/playwright/renter-preview.js

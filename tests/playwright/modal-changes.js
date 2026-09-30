@@ -427,7 +427,9 @@ async function main() {
                     document: {filePath: '/test/document.pdf', fileName: 'Invoice.pdf', fileUrl: 'https://files.example.test/f/8'},
                     linkedEntities: [{id: 7, entityType, entityId: 1}]
                 });
-                Domus.Api.get = async () => ({id: 1, unitId: 1, propertyId: 1, account: '2000', amount: 100, date: '2026-09-25'});
+                Domus.Api.get = async path => path.endsWith('/tenancies')
+                    ? []
+                    : {id: 1, unitId: 1, propertyId: 1, account: '2000', amount: 100, date: '2026-09-25'};
                 Domus.Api.updateBooking = async () => {};
                 Domus.Api.attachDocumentToTargets = async payload => { window.savedTargets = payload.targets; };
                 Domus.Api.unlinkDocument = async () => {};
@@ -443,6 +445,48 @@ async function main() {
             assert.equal(await page.evaluate(() => window.refreshes), 1);
         });
     }
+
+    await test('unit document editor links an additional tenancy without reuploading or duplicating links', async page => {
+        await page.evaluate(() => {
+            window.savedAttachment = null;
+            window.unlinkedDocument = null;
+            Domus.Api.getDocuments = async () => [{id: 7, fileName: 'Lease.pdf'}];
+            Domus.Api.getDocumentDetail = async () => ({
+                document: {filePath: '/Domus/Unit/Lease.pdf', fileName: 'Lease.pdf'},
+                linkedEntities: [
+                    {id: 7, entityType: 'unit', entityId: 1},
+                    {id: 8, entityType: 'tenancy', entityId: 12}
+                ]
+            });
+            Domus.Api.get = async path => path === '/units/1/tenancies'
+                ? [
+                    {id: 12, unitId: 1, partners: [{name: 'Existing renter'}], startDate: '2024-01-01'},
+                    {id: 13, unitId: 1, partners: [{name: 'New renter'}], startDate: '2026-10-01'}
+                ]
+                : {};
+            Domus.Api.attachDocumentToTargets = async payload => { window.savedAttachment = payload; };
+            Domus.Api.unlinkDocument = async id => { window.unlinkedDocument = id; };
+            document.querySelector('#app-content').innerHTML = Domus.Documents.renderList('unit', 1);
+        });
+        await page.locator('tr[data-doc-info="7"]').hover();
+        await page.getByRole('button', {name: 'Edit document Lease.pdf'}).click();
+        const dialog = page.getByRole('dialog', {name: 'Edit document', exact: true});
+        await dialog.waitFor();
+        const tenancy = dialog.getByRole('combobox', {name: 'Add tenancy assignment'});
+        assert.deepEqual(await tenancy.locator('option').evaluateAll(options => options.map(option => option.value)), ['', '13']);
+        assert.match(await dialog.innerText(), /Already assigned to: Existing renter/);
+        await tenancy.selectOption('13');
+        await dialog.getByRole('button', {name: 'Save', exact: true}).click();
+        await waitClosed(page);
+        const saved = await page.evaluate(() => ({attachment: window.savedAttachment, unlinked: window.unlinkedDocument}));
+        assert.equal(saved.attachment.type, 'link');
+        assert.equal(saved.attachment.filePath, '/Domus/Unit/Lease.pdf');
+        assert.deepEqual(saved.attachment.targets, [
+            {entityType: 'unit', entityId: 1},
+            {entityType: 'tenancy', entityId: '13'}
+        ]);
+        assert.equal(saved.unlinked, 7);
+    });
 
     await test('narrow latest documents retain dates, long filenames, and separate actions', async page => {
         await page.evaluate(() => {

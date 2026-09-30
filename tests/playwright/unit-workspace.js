@@ -114,7 +114,8 @@ async function main() {
             Domus.Api.get = async () => ({id: 1, unitId: 1, unitLabel: 'Apartment with a very long descriptive name', partnerName: 'Tenant with a long name', startDate: '2025-01-01', endDate: '2026-12-31', period: '2025-01-01 - 2026-12-31', status: 'active', partners: []});
             Domus.Tenancies.renderDetail(1);
         });
-        await page.getByRole('heading', {name: 'Tenant with a long name · Apartment with a very long descriptive name'}).waitFor();
+        await page.getByRole('heading', {name: 'Apartment with a very long descriptive name'}).waitFor();
+        assert.match(await page.locator('.domus-hero-meta-stack').innerText(), /Tenant with a long name/);
         assert.equal(await page.locator('.domus-hero-kicker').textContent(), 'Tenancy #1');
         assert.ok(!(await page.locator('.domus-hero-meta-stack').innerText()).includes('2025-01-01'));
         const layout = await page.evaluate(() => ({width: innerWidth, scroll: document.documentElement.scrollWidth}));

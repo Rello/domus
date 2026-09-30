@@ -29,7 +29,7 @@ Notes:
   saves, asynchronous defaults, document selections, nested dialogs, keyboard
   focus, dashboard due-date groups and creation shortcuts, unit section
   navigation, contextual actions, role safeguards, process completion and reopening,
-  inline step descriptions, optional actions, cancellation, reload recovery, and narrow viewports. Live
+  inline step descriptions, optional actions, cancellation, reload recovery, and narrow viewports. Renter preview coverage includes simulated selection, related tenancies, read-only documents, empty and failed loads, stale responses, and landlord controls. Live
   Nextcloud checks remain separate.
 
 ## Welcome wizard screenshots

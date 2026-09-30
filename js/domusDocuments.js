@@ -11,7 +11,7 @@
     Domus.Documents = (function() {
         function buildDocumentRow(doc, options = {}) {
             const fileName = doc.fileName || doc.fileUrl || doc.fileId || '';
-            const note = String(doc?.note || '').trim();
+            const note = options.showNotes === false ? '' : String(doc?.note || '').trim();
             const fileUrl = String(doc.fileUrl || '').trim();
             // Use the existing destination; only web URLs are file actions.
             let safeFileUrl = '';
@@ -48,11 +48,13 @@
                 });
             }
 
-            cells.push({ className: 'domus-documents-actions-cell', content: editAction });
+            if (options.canManageDocuments !== false) {
+                cells.push({ className: 'domus-documents-actions-cell', content: editAction });
+            }
 
             return {
                 className: 'domus-documents-row',
-                dataset: { 'doc-info': doc.id },
+                dataset: options.canManageDocuments === false ? {} : { 'doc-info': doc.id },
                 cells
             };
         }
@@ -68,6 +70,7 @@
             const emptyActionId = options.emptyActionId || `${containerId}-empty-create`;
 
             function updateContainer(html) {
+                if (options.isCurrent && !options.isCurrent()) return;
                 const placeholder = document.getElementById(containerId);
                 if (placeholder) {
                     placeholder.outerHTML = html;
@@ -85,7 +88,7 @@
                             return year === filterYear;
                         })
                         : (docs || []);
-                    const rows = filteredDocs.map(doc => buildDocumentRow(doc));
+                    const rows = filteredDocs.map(doc => buildDocumentRow(doc, { canManageDocuments, showNotes: options.showNotes }));
                     const html = '<div id="' + containerId + '">' +
                         '<div class="domus-documents-table">' +
                         Domus.UI.buildTable([t('domus', 'File')], rows, { wrapPanel: false, showHeader: false }) +
@@ -127,6 +130,7 @@
             let visibleCount = pageSize;
 
             function updateContainer(html) {
+                if (options.isCurrent && !options.isCurrent()) return;
                 const placeholder = document.getElementById(containerId);
                 if (placeholder) {
                     placeholder.outerHTML = html;
@@ -138,10 +142,11 @@
             }
 
             function buildRows(docs) {
-                return docs.slice(0, visibleCount).map(doc => buildDocumentRow(doc, { showDate: true }));
+                return docs.slice(0, visibleCount).map(doc => buildDocumentRow(doc, { showDate: true, canManageDocuments, showNotes: options.showNotes }));
             }
 
             function renderView(docs) {
+                if (options.isCurrent && !options.isCurrent()) return;
                 if (!docs.length) {
                     updateContainer(buildEmptyState());
                     bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
@@ -187,8 +192,9 @@
                     renderView(sortedDocs);
                 })
                 .catch(() => {
-                    updateContainer(buildEmptyState());
-                    bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
+                    if (options.isCurrent && !options.isCurrent()) return;
+                    updateContainer('<div id="' + containerId + '" role="alert">' +
+                        Domus.Utils.escapeHtml(t('domus', 'Documents could not be loaded. Please try again.')) + '</div>');
                 });
         }
 
@@ -571,6 +577,27 @@
             };
         }
 
+        function buildTenancyAssignment(tenancies, linkedEntities) {
+            const linkedIds = new Set((linkedEntities || [])
+                .filter(link => normalizeDocumentTarget(link?.entityType) === 'tenancy')
+                .map(link => String(link.entityId)));
+            const options = (Array.isArray(tenancies) ? tenancies : []).map(tenancy => {
+                const partners = (tenancy.partners || []).map(partner => partner?.name).filter(Boolean).join(', ');
+                const period = [tenancy.startDate, tenancy.endDate]
+                    .filter(Boolean)
+                    .map(date => Domus.Utils.formatDate(date))
+                    .join(' – ');
+                return {
+                    id: tenancy.id,
+                    label: [partners || tenancy.partnerName || `${t('domus', 'Tenancy')} #${tenancy.id}`, period].filter(Boolean).join(' · ')
+                };
+            });
+            return {
+                available: options.filter(option => !linkedIds.has(String(option.id))),
+                existing: options.filter(option => linkedIds.has(String(option.id)))
+            };
+        }
+
         function openDetailModal(documentId, options = {}) {
             Domus.Api.getDocumentDetail(documentId)
                 .then(detail => {
@@ -618,11 +645,21 @@
                                 formConfig.initialEntries = initialEntries;
                             }
                         }
-                        Domus.Bookings.openCreateModal(nextDefaults, () => {
+                        const showEditor = () => Domus.Bookings.openCreateModal(nextDefaults, () => {
                             if (onUpdated) {
                                 onUpdated();
                             }
                         }, formConfig);
+                        if (context.targetType === 'unit') {
+                            Domus.Api.get('/units/' + context.targetId + '/tenancies')
+                                .then(tenancies => {
+                                    formConfig.tenancyAssignment = buildTenancyAssignment(tenancies, detail.linkedEntities);
+                                })
+                                .catch(err => Domus.UI.showNotification(err.message, 'error'))
+                                .finally(showEditor);
+                            return;
+                        }
+                        showEditor();
                     };
 
                     if (context.bookingId === null) {

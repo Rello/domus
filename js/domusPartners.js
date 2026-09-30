@@ -161,7 +161,7 @@
                 return '';
             }
 
-            return '<p class="domus-hero-meta domus-partner-hero-meta">' + contactActions.join('') + '</p>';
+            return contactActions.map(action => '<div class="domus-hero-meta-line">' + action + '</div>').join('');
         }
 
         function bindContactActions(container = document) {
@@ -369,30 +369,15 @@
                         ariaLabel: t('domus', 'More actions')
                     });
                     const contactMeta = buildPartnerHeroMeta(partner);
-                    const hero = '<div class="domus-detail-hero">' +
-                        '<div class="domus-hero-content">' +
-                        '<div class="domus-hero-indicator domus-partner-hero-indicator">' +
-                        '<span class="domus-icon domus-icon-partner" aria-hidden="true"></span>' +
-                        '</div>' +
-                        '<div class="domus-hero-main">' +
-                        '<div class="domus-hero-main-top">' +
-                        '<div class="domus-hero-heading-group">' +
-                        '<div class="domus-hero-heading-row">' +
-                        '<h2>' + Domus.Utils.escapeHtml(partner.name || '') + '</h2>' +
-                        (partnerTypeLabel ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(partnerTypeLabel) + '</span>' : '') +
-                        '</div>' +
-                        contactMeta +
-                        '</div>' +
-                        '<div class="domus-hero-actions">' +
-                        '<div class="domus-hero-actions-row domus-hero-actions-standard">' +
-                        actionMenu +
-                        '</div>' +
-                        '<div class="domus-hero-actions-status">' + masterdataIndicator + '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>';
+                    const hero = Domus.UI.buildDetailHero({
+                        indicator: '<div class="domus-hero-indicator domus-partner-hero-indicator">' +
+                            '<span class="domus-icon domus-icon-partner" aria-hidden="true"></span></div>',
+                        title: partner.name,
+                        badges: partnerTypeLabel ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(partnerTypeLabel) + '</span>' : '',
+                        meta: contactMeta,
+                        actions: actionMenu,
+                        status: masterdataIndicator
+                    });
 
                     const tenanciesHeader = Domus.UI.buildSectionHeader(tenancyLabels.plural);
                     const documentsHeader = Domus.UI.buildSectionHeader(t('domus', 'Documents'), documentActionsEnabled ? {

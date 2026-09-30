@@ -411,39 +411,19 @@
                         '</div>';
                     const stats = '';
 
-                    const hero = '<div class="domus-detail-hero">' +
-                        '<div class="domus-hero-content">' +
-                        '<div class="domus-hero-indicator domus-hero-image-card">' +
-                        Domus.UI.buildEntityImage('property', property, {
-                            variant: 'hero',
-                            alt: property.name || t('domus', 'Property')
-                        }) +
-                        '<button type="button" class="domus-hero-image-edit" id="domus-property-image-edit" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Edit picture')) + '">' +
-                        '<span class="domus-icon domus-icon-edit" aria-hidden="true"></span>' +
-                        '</button>' +
-                        '</div>' +
-                        '<div class="domus-hero-main">' +
-                        (property.description ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(property.description) + '</div>' : '') +
-                        '<div class="domus-hero-main-top">' +
-                        '<div class="domus-hero-heading-group">' +
-                        '<div class="domus-hero-heading-row">' +
-                        '<h2>' + Domus.Utils.escapeHtml(property.name || '') + '</h2>' +
-                        buildPropertyStatusBadge(property) +
-                        (property.type ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(property.type) + '</span>' : '') +
-                        '</div>' +
-                        '<div class="domus-hero-meta-stack">' +
-                        Domus.UI.buildHeroMetaLine('domus-icon-location', detailAddress) +
-                        propertyInlineMeta +
-                        '</div>' +
-                        '</div>' +
-                        '<div class="domus-hero-actions">' +
-                        actionMenu +
-                        '<div class="domus-hero-actions-status">' + masterdataIndicator + '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>';
+                    const hero = Domus.UI.buildDetailHero({
+                        indicator: '<div class="domus-hero-indicator domus-hero-image-card">' +
+                            Domus.UI.buildEntityImage('property', property, {variant: 'hero', alt: property.name || t('domus', 'Property')}) +
+                            '<button type="button" class="domus-hero-image-edit" id="domus-property-image-edit" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Edit picture')) + '">' +
+                            '<span class="domus-icon domus-icon-edit" aria-hidden="true"></span></button></div>',
+                        kicker: property.description,
+                        title: property.name,
+                        badges: buildPropertyStatusBadge(property) +
+                            (property.type ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(property.type) + '</span>' : ''),
+                        meta: Domus.UI.buildHeroMetaLine('domus-icon-location', detailAddress) + propertyInlineMeta,
+                        actions: actionMenu,
+                        status: masterdataIndicator
+                    });
 
                     const unitsHeader = Domus.UI.buildSectionHeader(t('domus', 'Units'), {
                         id: 'domus-add-unit-inline',

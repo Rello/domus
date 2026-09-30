@@ -1099,7 +1099,8 @@
                             hidePropertyField,
                             hideUnitField,
                             sectionMode,
-                            editDocumentLinkId
+                            editDocumentLinkId,
+                            tenancyAssignment: formConfig.tenancyAssignment
                         })
                     });
                     const docWidget = mountBookingDocumentWidget(modal.modalEl, {
@@ -1132,7 +1133,11 @@
                                     return attachDocumentsToEntities(bookingIds, documentMetadata, data.document, formConfig.documentTargets || []);
                                 }
 
-                                return attachDocumentsToEntities(bookingIds, documentMetadata, data.document, formConfig.documentTargets || [])
+                                const targets = (formConfig.documentTargets || []).slice();
+                                if (data.additionalTenancyId) {
+                                    targets.push({entityType: 'tenancy', entityId: data.additionalTenancyId});
+                                }
+                                return attachDocumentsToEntities(bookingIds, documentMetadata, data.document, targets)
                                     .then(() => Domus.Api.unlinkDocument(editDocumentLinkId));
                             })
                             .then(() => {
@@ -1499,6 +1504,8 @@
                     }
                 });
                 Object.keys(formData).forEach(key => { if (formData[key] === '') delete formData[key]; });
+                const additionalTenancyId = formData.additionalTenancyId || null;
+                delete formData.additionalTenancyId;
 
                 let entries = [];
                 if (bookingEnabled) {
@@ -1551,7 +1558,8 @@
                     entries,
                     document: documentSelection,
                     bookingEnabled,
-                    documentEnabled
+                    documentEnabled,
+                    additionalTenancyId
                 };
                 saving = true;
                 const submit = modalContext.modalEl.querySelector('button[type="submit"]');
@@ -1610,6 +1618,22 @@
                 '</div>' +
                 '<label class="domus-booking-description-field">' + Domus.Utils.escapeHtml(t('domus', 'Description')) +
                 '<input type="text" name="description" value="' + Domus.Utils.escapeHtml(String(booking?.description || '')) + '"></label>';
+            const tenancyAssignment = formOptions.tenancyAssignment;
+            const tenancyAssignmentContent = tenancyAssignment
+                ? ((tenancyAssignment.available || []).length
+                    ? '<label>' + Domus.Utils.escapeHtml(t('domus', 'Add tenancy assignment')) +
+                    '<select name="additionalTenancyId">' +
+                    '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'Select tenancy')) + '</option>' +
+                    (tenancyAssignment.available || []).map(option => '<option value="' + Domus.Utils.escapeHtml(option.id) + '">' +
+                        Domus.Utils.escapeHtml(option.label) + '</option>').join('') +
+                    '</select></label>'
+                    : '') +
+                    ((tenancyAssignment.existing || []).length
+                        ? '<p class="domus-booking-assignment-context">' + Domus.Utils.escapeHtml(t('domus', 'Already assigned to: {tenancies}', {
+                            tenancies: tenancyAssignment.existing.map(option => option.label).join(', ')
+                        })) + '</p>'
+                        : '')
+                : '';
             const relationSectionContent = '<div class="domus-booking-relations">' +
                 '<div class="domus-booking-entries-header">' + Domus.Utils.escapeHtml(t('domus', 'Assignment')) + '</div>' +
                 (hideProperty ? (selectedProperty ? '<p class="domus-booking-assignment-context">' + Domus.Utils.escapeHtml(t('domus', 'Property')) + ': ' + Domus.Utils.escapeHtml(propertyOptions.find(opt => String(opt.value) === selectedProperty)?.label || selectedProperty) + '</p><input type="hidden" name="propertyId" value="' + Domus.Utils.escapeHtml(selectedProperty) + '">' : '')
@@ -1626,6 +1650,7 @@
                         unitOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (String(opt.value) === selectedUnit ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
                         '</select>' + (unitLocked ? '<input type="hidden" name="unitId" value="' + Domus.Utils.escapeHtml(selectedUnit) + '">' : '') + '</label>' +
                         '</div>')) +
+                tenancyAssignmentContent +
                 '</div>';
             const documentSectionContent = existingDocuments;
             const sectionMode = formOptions.sectionMode || null;

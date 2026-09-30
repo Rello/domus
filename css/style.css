@@ -232,6 +232,10 @@
     gap: var(--domus-dashboard-section-spacing);
 }
 
+.domus-detail.domus-dashboard > .domus-back-button {
+    margin-bottom: calc(8px - var(--domus-dashboard-section-spacing));
+}
+
 .domus-detail.domus-dashboard .domus-panel {
     margin-bottom: 0;
 }
@@ -2083,14 +2087,14 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: 8px 0 12px;
+    padding: 0 0 12px;
     margin-bottom: 0;
 }
 
 .domus-hero-content {
     display: flex;
     align-items: flex-start;
-    gap: 48px;
+    gap: 18px;
     flex: 1;
 }
 
@@ -2100,8 +2104,8 @@
 }
 
 .domus-hero-indicator {
-    width: 188px;
-    height: 120px;
+    width: 128px;
+    height: 96px;
     border-radius: var(--domus-border-radius);
     background: transparent;
     overflow: hidden;
@@ -2404,8 +2408,11 @@
 
 .domus-hero-meta-stack {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 20px;
+    row-gap: 4px;
     margin-top: 6px;
 }
 
@@ -2415,6 +2422,7 @@
     gap: 8px;
     color: var(--color-text-maxcontrast);
     line-height: 1.4;
+    min-width: 0;
 }
 
 .domus-hero-meta-line .domus-icon {
@@ -5243,5 +5251,38 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
         flex-basis: 100%;
         justify-content: space-between;
         flex-wrap: wrap;
+    }
+}
+
+/* Temporary renter preview, reusing tenancy detail. */
+.domus-renter-preview { margin-bottom: 20px; }
+.domus-renter-preview .domus-panel-body { padding: 12px 16px; }
+.domus-renter-preview h2 { font-size: 1rem; margin: 0; }
+.domus-renter-preview p { margin: 4px 0 8px; }
+.domus-renter-preview-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin-top: 12px; }
+.domus-renter-preview-field { display: flex; flex: 1 1 220px; flex-direction: column; gap: 4px; min-width: 0; }
+.domus-renter-preview-controls select { width: 100%; min-width: 0; min-height: 44px; }
+.domus-renter-preview-controls button { min-height: 44px; }
+.domus-renter-contact { margin: 0; overflow-wrap: anywhere; }
+.domus-renter-contact dt { color: var(--color-text-maxcontrast); margin-top: 12px; }
+.domus-renter-contact dt:first-child { margin-top: 0; }
+.domus-renter-contact dd { margin: 2px 0 0; }
+
+@media (max-width: 640px) {
+    .domus-detail-hero .domus-hero-content {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .domus-detail-hero .domus-hero-indicator {
+        width: 76px;
+        height: 76px;
+        flex: 0 0 76px;
+    }
+    .domus-detail-hero .domus-hero-meta-stack {
+        gap: 2px 10px;
+    }
+    .domus-detail-hero .domus-hero-meta-line {
+        overflow-wrap: anywhere;
     }
 }

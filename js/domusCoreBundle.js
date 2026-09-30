@@ -996,6 +996,19 @@
                 '</div>';
         }
 
+        function buildDetailHero({ indicator, title, kicker = '', badges = '', meta = '', actions = '', status = '' }) {
+            return '<div class="domus-detail-hero"><div class="domus-hero-content">' +
+                indicator + '<div class="domus-hero-main">' +
+                (kicker ? '<div class="domus-hero-kicker">' + Domus.Utils.escapeHtml(kicker) + '</div>' : '') +
+                '<div class="domus-hero-main-top"><div class="domus-hero-heading-group">' +
+                '<div class="domus-hero-heading-row"><h2>' + Domus.Utils.escapeHtml(title || '') + '</h2>' + badges + '</div>' +
+                (meta ? '<div class="domus-hero-meta-stack">' + meta + '</div>' : '') +
+                '</div><div class="domus-hero-actions">' +
+                (actions ? '<div class="domus-hero-actions-row domus-hero-actions-standard">' + actions + '</div>' : '') +
+                (status ? '<div class="domus-hero-actions-status">' + status + '</div>' : '') +
+                '</div></div></div></div></div>';
+        }
+
         function createIconSpan(iconClass) {
             const icon = document.createElement('span');
             icon.className = ['domus-icon', iconClass].filter(Boolean).join(' ');
@@ -2258,6 +2271,7 @@
             buildKpiTile,
             buildInfoList,
             buildHeroMetaLine,
+            buildDetailHero,
             buildFormSection,
             buildFormRow,
             buildFormTable,
@@ -2540,7 +2554,7 @@
             }
 
             const roleOptions = Domus.Role.getRoleOptions();
-            if (roleOptions.length > 1) {
+            if (roleOptions.length > 1 && Domus.state.currentView !== 'renterPreview') {
                 const roleSwitcher = document.createElement('div');
                 roleSwitcher.className = 'domus-role-switcher domus-role-switcher-bottom';
                 const label = document.createElement('label');
@@ -2560,6 +2574,13 @@
                 } else if (container) {
                     container.appendChild(roleSwitcher);
                 }
+            }
+
+            if (Domus.state.currentView !== 'renterPreview') {
+                const previewList = buildNavList([
+                    { view: 'renterPreview', label: t('domus', 'Renter preview'), icon: 'domus-icon-partner' }
+                ], activeView);
+                (bottomNavPrimary || container || topNavContainer)?.appendChild(previewList);
             }
 
             const settingsList = buildNavList(getSettingsItems(), activeView);
@@ -2631,10 +2652,14 @@
         }
 
         function getMenuItems() {
+            if (Domus.state.currentView === 'renterPreview') {
+                return [{ view: 'renterPreview', label: t('domus', 'My tenancies'), icon: 'domus-icon-tenancy', args: Domus.state.currentViewArgs }];
+            }
             return Domus.Role.getNavigationItems();
         }
 
         function getSettingsItems() {
+            if (Domus.state.currentView === 'renterPreview') return [];
             return [
                 { view: 'settings', label: t('domus', 'Settings'), icon: 'domus-icon-settings' }
             ];
@@ -2898,6 +2923,7 @@
             Domus.Router.register('partnerDetail', Domus.Partners.renderDetail);
             Domus.Router.register('tenancies', Domus.Tenancies.renderList);
             Domus.Router.register('tenancyDetail', Domus.Tenancies.renderDetail);
+            Domus.Router.register('renterPreview', Domus.Tenancies.renderRenterPreview);
             Domus.Router.register('bookings', Domus.Bookings.renderList);
             Domus.Router.register('accounts', Domus.Accounts.renderList);
             Domus.Router.register('settings', Domus.Settings.render);

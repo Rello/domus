@@ -5,6 +5,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
+## Unreleased
+### Added
+- Preview a renter’s tenancies, contact details, and linked documents with a temporary renter selector and read-only tenancy view.
+- Assign an existing unit document to a tenancy from the document editor without uploading it again.
+### Changed
+- Use the compact unit-style header and matching back-link spacing across property, unit, tenancy, and contact details; show only the unit name as the tenancy headline.
+
 ## 1.1.0 - 2026-09-29
 ### Added
 - Search contacts by name, contact details, address, and notes, with a combinable type filter.
