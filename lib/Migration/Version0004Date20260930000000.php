@@ -13,7 +13,7 @@ use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
 /**
- * Additive Team ownership. Existing rows remain in the Personal context.
+ * Add Team ownership while keeping existing rows in the Personal context.
  */
 class Version0004Date20260930000000 extends SimpleMigrationStep {
     public const OWNED_TABLES = [
@@ -51,6 +51,10 @@ class Version0004Date20260930000000 extends SimpleMigrationStep {
         $relations = $schema->getTable('domus_partner_rel');
         if (!$relations->hasIndex('domus_prel_team_uniq')) {
             $relations->addUniqueIndex(['team_id', 'type', 'relation_id', 'partner_id'], 'domus_prel_team_uniq');
+        }
+        $partners = $schema->getTable('domus_partners');
+        if (!$partners->hasIndex('domus_partner_ncuser')) {
+            $partners->addIndex(['nc_user_id'], 'domus_partner_ncuser');
         }
         $accounts = $schema->getTable('domus_accounts');
         if (!$accounts->hasColumn('scope_key')) {
@@ -91,6 +95,30 @@ class Version0004Date20260930000000 extends SimpleMigrationStep {
             $table->addColumn('setting_key', 'string', ['length' => 64, 'notnull' => true]);
             $table->addColumn('setting_value', 'text', ['notnull' => true]);
             $table->setPrimaryKey(['team_id', 'setting_key']);
+        }
+
+        foreach (['domus_owner_team', 'domus_renter_access'] as $tableName) {
+            if ($schema->hasTable($tableName)) {
+                $schema->dropTable($tableName);
+            }
+        }
+
+        if (!$schema->hasTable('domus_corrections')) {
+            $table = $schema->createTable('domus_corrections');
+            $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
+            $table->addColumn('team_id', 'string', ['length' => 255, 'notnull' => true]);
+            $table->addColumn('partner_id', 'bigint', ['notnull' => true]);
+            foreach (['requested_by', 'decided_by'] as $name) {
+                $table->addColumn($name, 'string', ['length' => 64, 'notnull' => false]);
+            }
+            foreach (['original_values', 'proposed_values'] as $name) {
+                $table->addColumn($name, 'text', ['notnull' => true]);
+            }
+            $table->addColumn('state', 'string', ['length' => 16, 'notnull' => true]);
+            $table->addColumn('created_at', 'bigint', ['notnull' => true]);
+            $table->addColumn('decided_at', 'bigint', ['notnull' => false]);
+            $table->setPrimaryKey(['id']);
+            $table->addIndex(['team_id', 'partner_id'], 'domus_correction_contact');
         }
 
         return $schema;
