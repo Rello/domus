@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OCP;
 
 interface IURLGenerator {
+    public function linkToRoute(string $route, array $parameters = []): string;
+
     public function getAbsoluteURL(string $url): string;
 
     public function imagePath(string $appName, string $file): string;

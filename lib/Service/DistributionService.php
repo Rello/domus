@@ -6,6 +6,9 @@
  */
 
 namespace OCA\Domus\Service;
+
+use OCA\Domus\Exception\ConflictException;
+use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DistributionKey;
@@ -38,7 +41,7 @@ class DistributionService {
         $booking = $context['booking'];
 
         if ($booking->getStatus() !== 'draft') {
-            throw new \RuntimeException($this->l10n->t('Only draft bookings can be distributed.'));
+            throw new ConflictException($this->l10n->t('Only draft bookings can be distributed.'));
         }
 
         $preview = $this->buildPreview($context);
@@ -88,12 +91,12 @@ class DistributionService {
     public function buildReport(int $propertyId, int $unitId, int $year, string $userId): array {
         $property = $this->propertyMapper->findForUser($propertyId, $userId);
         if (!$property) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
 
         $unit = $this->unitMapper->findForUser($unitId, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
         if ((int)$unit->getPropertyId() !== (int)$propertyId) {
             throw new \InvalidArgumentException($this->l10n->t('Unit does not belong to the selected property.'));
@@ -102,7 +105,7 @@ class DistributionService {
         $bookings = $this->bookingMapper->findByUser($userId, ['year' => $year, 'propertyId' => $propertyId]);
         $units = $this->unitMapper->findByUser($userId, $propertyId);
         if (empty($units)) {
-            throw new \RuntimeException($this->l10n->t('No units found for this property.'));
+            throw new \InvalidArgumentException($this->l10n->t('No units found for this property.'));
         }
 
         $distributionKeys = $this->distributionKeyMapper->findByProperty($propertyId, $userId);
@@ -111,6 +114,13 @@ class DistributionService {
             $distributionMap[$distributionKey->getId()] = $distributionKey;
         }
 
+        $persistedBySource = [];
+        foreach ($bookings as $candidate) {
+            if ($candidate->getSourcePropertyBookingId() !== null && (int)$candidate->getUnitId() === $unitId) {
+                $sourceId = (int)$candidate->getSourcePropertyBookingId();
+                $persistedBySource[$sourceId] = ($persistedBySource[$sourceId] ?? 0.0) + (float)$candidate->getAmount();
+            }
+        }
         $topAccountMap = $this->accountService->getTopAccountNumberMap();
         $rows = [];
         foreach ($bookings as $booking) {
@@ -146,20 +156,29 @@ class DistributionService {
                 continue;
             }
             $distributionKey = $distributionMap[$distributionKeyId] ?? null;
-            if (!$distributionKey) {
-                continue;
+            if ($booking->getStatus() !== 'draft') {
+                // Locked postings are authoritative even if the key, values or units changed.
+                $shareAmount = $persistedBySource[$booking->getId()] ?? 0.0;
+                $shareValue = $shareAmount;
+                $shareBase = (float)$booking->getAmount();
+                $weight = $shareBase != 0.0 ? $shareAmount / $shareBase : 0.0;
+            } else {
+                if (!$distributionKey) {
+                    throw new \InvalidArgumentException($this->l10n->t('Distribution key not found.'));
+                }
+                $period = $this->getBookingPeriod($booking);
+                $this->assertKeyInPeriod($distributionKey, $period);
+                $unitValues = $this->collectUnitValues($distributionKey, $period, $userId, $units);
+                $allocation = $this->calculateAllocation($booking, $distributionKey, $units, $unitValues);
+                $share = $allocation[$unitId] ?? null;
+                if ($share === null) {
+                    throw new \InvalidArgumentException($this->l10n->t('Selected unit is not part of the distribution.'));
+                }
+                $shareValue = $share['shareValue'];
+                $shareBase = $share['shareBase'];
+                $weight = $share['weight'];
+                $shareAmount = $share['amount'];
             }
-            $period = $this->getBookingPeriod($booking);
-            $this->assertKeyInPeriod($distributionKey, $period);
-            $unitValues = $this->collectUnitValues($distributionKey, $period, $userId, $units);
-            $shareDetails = $this->calculateShareDetails($distributionKey, $units, $unitValues);
-            $shareValue = $shareDetails['shares'][$unitId] ?? null;
-            $shareBase = $shareDetails['base'] ?? null;
-            if ($shareValue === null || $shareBase === null || (float)$shareBase <= 0) {
-                throw new \RuntimeException($this->l10n->t('Selected unit is not part of the distribution.'));
-            }
-            $weight = (float)$shareValue / (float)$shareBase;
-            $shareAmount = round((float)$booking->getAmount() * $weight, 2);
 
             $account = $this->accountService->resolveTopAccountNumber((string)$booking->getAccount(), $topAccountMap);
             if (!isset($rows[$account])) {
@@ -168,9 +187,9 @@ class DistributionService {
                     'account' => $account,
                     'accountLabel' => $this->accountService->label($account, $this->l10n),
                     'date' => $booking->getDate(),
-                    'distributionKeyId' => $distributionKey->getId(),
-                    'distributionKeyName' => $distributionKey->getName(),
-                    'distributionKeyType' => $distributionKey->getType(),
+                    'distributionKeyId' => $distributionKeyId,
+                    'distributionKeyName' => $distributionKey?->getName() ?? $this->l10n->t('Unit allocation'),
+                    'distributionKeyType' => $booking->getStatus() === 'draft' ? $distributionKey->getType() : 'unit-allocation',
                     'shareValue' => $shareValue,
                     'shareBase' => $shareBase,
                     'weight' => $weight,
@@ -195,15 +214,15 @@ class DistributionService {
     public function reverse(int $bookingId, string $userId): void {
         $booking = $this->bookingMapper->findForUser($bookingId, $userId);
         if (!$booking) {
-            throw new \RuntimeException($this->l10n->t('Booking not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Booking not found.'));
         }
         if ($booking->getStatus() !== 'distributed') {
-            throw new \RuntimeException($this->l10n->t('Only distributed bookings can be reversed.'));
+            throw new ConflictException($this->l10n->t('Only distributed bookings can be reversed.'));
         }
 
         $unitBookings = $this->bookingMapper->findBySourceProperty($bookingId, $userId);
         if (empty($unitBookings)) {
-            throw new \RuntimeException($this->l10n->t('No unit bookings found for reversal.'));
+            throw new ConflictException($this->l10n->t('No unit bookings found for reversal.'));
         }
 
         $now = time();
@@ -247,24 +266,24 @@ class DistributionService {
     private function buildDistributionContext(int $bookingId, string $userId): array {
         $booking = $this->bookingMapper->findForUser($bookingId, $userId);
         if (!$booking) {
-            throw new \RuntimeException($this->l10n->t('Booking not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Booking not found.'));
         }
         if ($booking->getPropertyId() === null) {
-            throw new \RuntimeException($this->l10n->t('Distribution is only available for property bookings.'));
+            throw new \InvalidArgumentException($this->l10n->t('Distribution is only available for property bookings.'));
         }
 
         $property = $this->propertyMapper->findForUser((int)$booking->getPropertyId(), $userId);
         if (!$property) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
 
         $distributionKeyId = $booking->getDistributionKeyId();
         if ($distributionKeyId === null) {
-            throw new \RuntimeException($this->l10n->t('No distribution key selected.'));
+            throw new \InvalidArgumentException($this->l10n->t('No distribution key selected.'));
         }
         $distributionKey = $this->distributionKeyMapper->findForUser((int)$distributionKeyId, $userId);
         if (!$distributionKey || (int)$distributionKey->getPropertyId() !== (int)$booking->getPropertyId()) {
-            throw new \RuntimeException($this->l10n->t('Distribution key not found for this property.'));
+            throw new ResourceNotFoundException($this->l10n->t('Distribution key not found for this property.'));
         }
 
         $period = $this->getBookingPeriod($booking);
@@ -272,30 +291,26 @@ class DistributionService {
 
         $units = $this->unitMapper->findByUser($userId, (int)$booking->getPropertyId());
         if (empty($units)) {
-            throw new \RuntimeException($this->l10n->t('No units found for this property.'));
+            throw new \InvalidArgumentException($this->l10n->t('No units found for this property.'));
         }
 
         $unitValues = $this->collectUnitValues($distributionKey, $period, $userId, $units);
-        $weights = $this->calculateWeights($distributionKey, $units, $unitValues);
+        $shares = $this->calculateAllocation($booking, $distributionKey, $units, $unitValues);
 
         return [
             'booking' => $booking,
             'distributionKey' => $distributionKey,
-            'units' => $units,
             'period' => $period,
-            'weights' => $weights,
+            'shares' => $shares,
         ];
     }
 
     private function buildPreview(array $context): array {
         $booking = $context['booking'];
         $distributionKey = $context['distributionKey'];
-        $units = $context['units'];
         $period = $context['period'];
-        $weights = $context['weights'];
-
         $amount = (float)$booking->getAmount();
-        $shares = $this->allocateShares($units, $weights, $amount);
+        $shares = $context['shares'];
 
         return [
             'bookingId' => $booking->getId(),
@@ -314,16 +329,24 @@ class DistributionService {
     private function allocateShares(array $units, array $weights, float $amount): array {
         $result = [];
         $runningTotal = 0.0;
-        $unitCount = count($units);
+        // An explicit base can include units outside this portfolio. Only the
+        // represented portion is distributable; the rest is not a rounding remainder.
+        $representedAmount = round($amount * array_sum($weights), 2);
+        $lastWeightedUnit = null;
+        foreach ($units as $unit) {
+            if (($weights[$unit->getId()] ?? 0) > 0) {
+                $lastWeightedUnit = $unit->getId();
+            }
+        }
 
-        foreach ($units as $index => $unit) {
+        foreach ($units as $unit) {
             $unitId = $unit->getId();
             if (!array_key_exists($unitId, $weights)) {
-                throw new \RuntimeException($this->l10n->t('Missing distribution weight for unit %s.', [$unit->getLabel()]));
+                throw new \InvalidArgumentException($this->l10n->t('Missing distribution weight for unit %s.', [$unit->getLabel()]));
             }
             $weight = $weights[$unitId];
-            if ($index === $unitCount - 1) {
-                $shareAmount = round($amount - $runningTotal, 2);
+            if ($unitId === $lastWeightedUnit) {
+                $shareAmount = round($representedAmount - $runningTotal, 2);
             } else {
                 $shareAmount = round($amount * $weight, 2);
                 $runningTotal += $shareAmount;
@@ -376,7 +399,7 @@ class DistributionService {
                 }
                 $livingArea = $unit->getLivingArea();
                 if ($livingArea === null || $livingArea === '') {
-                    throw new \RuntimeException($this->l10n->t('Living area is missing for unit %s.', [$unit->getLabel()]));
+                    throw new \InvalidArgumentException($this->l10n->t('Living area is missing for unit %s.', [$unit->getLabel()]));
                 }
                 $values[$unitId] = ['value' => (float)$livingArea];
             }
@@ -385,31 +408,20 @@ class DistributionService {
         return array_map(fn($entry) => $entry['value'], $values);
     }
 
-    private function calculateWeights(DistributionKey $distributionKey, array $units, array $unitValues): array {
-        return $this->calculateWeightsByType($distributionKey->getType(), $units, $unitValues, $distributionKey);
-    }
-
-    private function calculateWeightsByType(string $type, array $units, array $unitValues, ?DistributionKey $distributionKey = null): array {
-        $type = strtolower($type);
-        if ($type === 'mixed') {
-            if ($distributionKey === null) {
-                throw new \RuntimeException($this->l10n->t('Mixed distribution requires configuration.'));
+    private function calculateAllocation(Booking $booking, DistributionKey $key, array $units, array $unitValues): array {
+        $details = $this->calculateShareDetails($key, $units, $unitValues);
+        foreach ($details['shares'] as $value) {
+            if (!is_finite((float)$value) || $value < 0) {
+                throw new \InvalidArgumentException($this->l10n->t('Invalid distribution value.'));
             }
-            return $this->calculateMixedWeights($distributionKey, $units, $unitValues);
         }
-
-        if (in_array($type, ['area', 'mea', 'unit'], true)) {
-            if ($distributionKey === null) {
-                throw new \RuntimeException($this->l10n->t('Distribution configuration is missing.'));
-            }
-            return $this->calculateBaseWeights($distributionKey, $units, $unitValues);
+        $weights = array_map(static fn($value) => $value / $details['base'], $details['shares']);
+        $shares = $this->allocateShares($units, $weights, (float)$booking->getAmount());
+        foreach ($shares as $unitId => &$share) {
+            $share['shareValue'] = $details['shares'][$unitId];
+            $share['shareBase'] = $details['base'];
         }
-
-        if (in_array($type, ['persons', 'consumption', 'manual'], true)) {
-            return $this->calculateProportionalWeights($units, $unitValues);
-        }
-
-        throw new \RuntimeException($this->l10n->t('Unsupported distribution type.'));
+        return $shares;
     }
 
     private function calculateShareDetails(DistributionKey $distributionKey, array $units, array $unitValues): array {
@@ -418,7 +430,14 @@ class DistributionService {
             return $this->calculateMixedShareDetails($distributionKey, $units, $unitValues);
         }
         if (in_array($type, ['area', 'mea', 'unit'], true)) {
-            $shares = $this->calculateRawValuesByType($type, $units, $unitValues);
+            $shares = [];
+            foreach ($units as $unit) {
+                $unitId = $unit->getId();
+                if (!isset($unitValues[$unitId]) || !is_finite((float)$unitValues[$unitId]) || $unitValues[$unitId] < 0) {
+                    throw new \InvalidArgumentException($this->l10n->t('Invalid distribution value.'));
+                }
+                $shares[$unitId] = (float)$unitValues[$unitId];
+            }
             $base = $this->getDistributionBase($distributionKey);
             return ['shares' => $shares, 'base' => $base];
         }
@@ -426,12 +445,12 @@ class DistributionService {
             $shares = $this->calculateRawValuesByType($type, $units, $unitValues);
             $base = array_sum($shares);
             if ($base <= 0) {
-                throw new \RuntimeException($this->l10n->t('Distribution values must be greater than zero.'));
+                throw new \InvalidArgumentException($this->l10n->t('Distribution values must be greater than zero.'));
             }
             return ['shares' => $shares, 'base' => $base];
         }
 
-        throw new \RuntimeException($this->l10n->t('Unsupported distribution type.'));
+        throw new \InvalidArgumentException($this->l10n->t('Unsupported distribution type.'));
     }
 
     private function calculateMixedShareDetails(DistributionKey $distributionKey, array $units, array $unitValues): array {
@@ -445,7 +464,7 @@ class DistributionService {
         }
 
         if (empty($parts)) {
-            throw new \RuntimeException($this->l10n->t('Mixed distribution requires configuration.'));
+            throw new \InvalidArgumentException($this->l10n->t('Mixed distribution requires configuration.'));
         }
 
         $aggregated = [];
@@ -458,24 +477,28 @@ class DistributionService {
                 continue;
             }
             if ($part['type'] === 'mixed') {
-                throw new \RuntimeException($this->l10n->t('Nested mixed distribution is not supported.'));
+                throw new \InvalidArgumentException($this->l10n->t('Nested mixed distribution is not supported.'));
             }
 
             $rawValues = $this->calculateRawValuesByType($part['type'], $units, $unitValues);
+            $partBase = array_sum($rawValues);
+            if ($partBase <= 0) {
+                throw new \InvalidArgumentException($this->l10n->t('Distribution values must be greater than zero.'));
+            }
             foreach ($units as $unit) {
                 $unitId = $unit->getId();
-                $partValue = $rawValues[$unitId] ?? 0;
+                $partValue = ($rawValues[$unitId] ?? 0) / $partBase;
                 $aggregated[$unitId] = ($aggregated[$unitId] ?? 0) + ($partValue * $partWeight);
             }
         }
 
         if (empty($aggregated)) {
-            throw new \RuntimeException($this->l10n->t('Mixed distribution configuration is invalid.'));
+            throw new \InvalidArgumentException($this->l10n->t('Mixed distribution configuration is invalid.'));
         }
 
         $base = array_sum($aggregated);
         if ($base <= 0) {
-            throw new \RuntimeException($this->l10n->t('Distribution values must be greater than zero.'));
+            throw new \InvalidArgumentException($this->l10n->t('Distribution values must be greater than zero.'));
         }
 
         return ['shares' => $aggregated, 'base' => $base];
@@ -497,7 +520,7 @@ class DistributionService {
                 $unitId = $unit->getId();
                 $livingArea = $unit->getLivingArea();
                 if ($livingArea === null || $livingArea === '') {
-                    throw new \RuntimeException($this->l10n->t('Living area is missing for unit %s.', [$unit->getLabel()]));
+                    throw new \InvalidArgumentException($this->l10n->t('Living area is missing for unit %s.', [$unit->getLabel()]));
                 }
                 $values[$unitId] = (float)$livingArea;
             }
@@ -509,111 +532,25 @@ class DistributionService {
             foreach ($units as $unit) {
                 $unitId = $unit->getId();
                 if (!array_key_exists($unitId, $unitValues)) {
-                    throw new \RuntimeException($this->l10n->t('Missing distribution value for unit %s.', [$unit->getLabel()]));
+                    throw new \InvalidArgumentException($this->l10n->t('Missing distribution value for unit %s.', [$unit->getLabel()]));
                 }
                 $values[$unitId] = (float)$unitValues[$unitId];
             }
             return $values;
         }
 
-        throw new \RuntimeException($this->l10n->t('Unsupported distribution type.'));
-    }
-
-    private function calculateMixedWeights(DistributionKey $distributionKey, array $units, array $unitValues): array {
-        $config = $distributionKey->getConfigJson();
-        $parts = [];
-        if ($config !== null) {
-            $decoded = json_decode((string)$config, true);
-            if (is_array($decoded)) {
-                $parts = $decoded;
-            }
-        }
-
-        if (empty($parts)) {
-            throw new \RuntimeException($this->l10n->t('Mixed distribution requires configuration.'));
-        }
-
-        $aggregated = [];
-        foreach ($parts as $part) {
-            if (!is_array($part) || !isset($part['type'], $part['weight'])) {
-                continue;
-            }
-            $partWeight = (float)$part['weight'];
-            if ($partWeight <= 0) {
-                continue;
-            }
-            if ($part['type'] === 'mixed') {
-                throw new \RuntimeException($this->l10n->t('Nested mixed distribution is not supported.'));
-            }
-            $partDistribution = $this->calculateWeightsByType($part['type'], $units, $unitValues);
-            foreach ($units as $unit) {
-                $unitId = $unit->getId();
-                $partValue = $partDistribution[$unitId] ?? 0;
-                $aggregated[$unitId] = ($aggregated[$unitId] ?? 0) + ($partValue * $partWeight);
-            }
-        }
-
-        if (empty($aggregated)) {
-            throw new \RuntimeException($this->l10n->t('Mixed distribution configuration is invalid.'));
-        }
-
-        $sum = array_sum($aggregated);
-        if ($sum <= 0) {
-            throw new \RuntimeException($this->l10n->t('Distribution values must be greater than zero.'));
-        }
-
-        foreach ($aggregated as $unitId => $value) {
-            $aggregated[$unitId] = $value / $sum;
-        }
-
-        return $aggregated;
-    }
-
-    private function calculateProportionalWeights(array $units, array $unitValues): array {
-        $weights = [];
-        foreach ($units as $unit) {
-            $unitId = $unit->getId();
-            if (!array_key_exists($unitId, $unitValues)) {
-                throw new \RuntimeException($this->l10n->t('Missing distribution value for unit %s.', [$unit->getLabel()]));
-            }
-            $weights[$unitId] = (float)$unitValues[$unitId];
-        }
-
-        $sum = array_sum($weights);
-        if ($sum <= 0) {
-            throw new \RuntimeException($this->l10n->t('Distribution values must be greater than zero.'));
-        }
-
-        foreach ($weights as $unitId => $value) {
-            $weights[$unitId] = $value / $sum;
-        }
-
-        return $weights;
-    }
-
-    private function calculateBaseWeights(DistributionKey $distributionKey, array $units, array $unitValues): array {
-        $base = $this->getDistributionBase($distributionKey);
-        $weights = [];
-        foreach ($units as $unit) {
-            $unitId = $unit->getId();
-            if (!array_key_exists($unitId, $unitValues)) {
-                throw new \RuntimeException($this->l10n->t('Missing distribution value for unit %s.', [$unit->getLabel()]));
-            }
-            $weights[$unitId] = (float)$unitValues[$unitId] / $base;
-        }
-
-        return $weights;
+        throw new \InvalidArgumentException($this->l10n->t('Unsupported distribution type.'));
     }
 
     private function getDistributionBase(DistributionKey $distributionKey): float {
         $config = $distributionKey->getConfigJson();
         if ($config === null || trim((string)$config) === '') {
-            throw new \RuntimeException($this->l10n->t('Distribution base is missing.'));
+            throw new \InvalidArgumentException($this->l10n->t('Distribution base is missing.'));
         }
         $decoded = json_decode((string)$config, true);
         $base = is_array($decoded) && isset($decoded['base']) ? (float)$decoded['base'] : 0.0;
         if ($base <= 0) {
-            throw new \RuntimeException($this->l10n->t('Distribution base must be greater than zero.'));
+            throw new \InvalidArgumentException($this->l10n->t('Distribution base must be greater than zero.'));
         }
 
         return $base;
@@ -621,10 +558,10 @@ class DistributionService {
 
     private function assertKeyInPeriod(DistributionKey $distributionKey, array $period): void {
         if ($distributionKey->getValidFrom() > $period['to']) {
-            throw new \RuntimeException($this->l10n->t('Distribution key is not valid for the booking period.'));
+            throw new \InvalidArgumentException($this->l10n->t('Distribution key is not valid for the booking period.'));
         }
         if ($distributionKey->getValidTo() !== null && $distributionKey->getValidTo() < $period['from']) {
-            throw new \RuntimeException($this->l10n->t('Distribution key is not valid for the booking period.'));
+            throw new \InvalidArgumentException($this->l10n->t('Distribution key is not valid for the booking period.'));
         }
     }
 
@@ -632,9 +569,7 @@ class DistributionService {
         $from = $booking->getPeriodFrom() ?? $booking->getDate();
         $to = $booking->getPeriodTo() ?? $from;
 
-        if ($from > $to) {
-            throw new \RuntimeException($this->l10n->t('Booking period is invalid.'));
-        }
+        InputValidation::assertPeriod($from, $to, $this->l10n->t('Booking period is invalid.'));
 
         return ['from' => $from, 'to' => $to];
     }

@@ -7,6 +7,10 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ConflictException;
+
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\Db\TaskStep;
 use OCA\Domus\Db\TaskStepMapper;
 use OCA\Domus\Db\TaskTemplateMapper;
@@ -50,7 +54,7 @@ class WorkflowRunService {
 
         $template = $this->templateMapper->findById($templateId);
         if (!$template || (int)$template->getIsActive() !== 1) {
-            throw new \RuntimeException($this->l10n->t('Task template is not active.'));
+            throw new ConflictException($this->l10n->t('Task template is not active.'));
         }
         if ($template->getAppliesTo() !== $entityType) {
             throw new \InvalidArgumentException($this->l10n->t('Template does not match the selected entity type.'));
@@ -58,7 +62,7 @@ class WorkflowRunService {
 
         $steps = $this->templateStepMapper->findByTemplate($templateId);
         if (empty($steps)) {
-            throw new \RuntimeException($this->l10n->t('Template has no steps.'));
+            throw new ConflictException($this->l10n->t('Template has no steps.'));
         }
 
         $now = time();
@@ -132,7 +136,7 @@ class WorkflowRunService {
     public function getWorkflowRun(int $runId, string $userId): WorkflowRun {
         $run = $this->workflowRunMapper->findById($runId);
         if (!$run) {
-            throw new \RuntimeException($this->l10n->t('Workflow run not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Workflow run not found.'));
         }
         $this->assertEntityExists((string)$run->getEntityType(), (int)$run->getEntityId(), $userId);
         $steps = $this->taskStepMapper->findByRun($run->getId());
@@ -147,7 +151,7 @@ class WorkflowRunService {
     public function closeStep(int $stepId, string $userId): TaskStep {
         $step = $this->taskStepMapper->findById($stepId);
         if (!$step) {
-            throw new \RuntimeException($this->l10n->t('Task step not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task step not found.'));
         }
 
         $this->assertEntityExists((string)$step->getEntityType(), (int)$step->getEntityId(), $userId);
@@ -207,7 +211,7 @@ class WorkflowRunService {
     public function closeEarly(int $stepId, string $userId): WorkflowRun {
         $step = $this->taskStepMapper->findById($stepId);
         if (!$step) {
-            throw new \RuntimeException($this->l10n->t('Task step not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task step not found.'));
         }
         $this->assertEntityExists((string)$step->getEntityType(), (int)$step->getEntityId(), $userId);
         $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
@@ -246,7 +250,7 @@ class WorkflowRunService {
     public function reopenStep(int $stepId, string $userId): TaskStep {
         $step = $this->taskStepMapper->findById($stepId);
         if (!$step) {
-            throw new \RuntimeException($this->l10n->t('Task step not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task step not found.'));
         }
 
         $this->assertEntityExists((string)$step->getEntityType(), (int)$step->getEntityId(), $userId);
@@ -320,7 +324,7 @@ class WorkflowRunService {
     public function deleteRun(int $runId, string $userId): void {
         $run = $this->workflowRunMapper->findById($runId);
         if (!$run) {
-            throw new \RuntimeException($this->l10n->t('Workflow run not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Workflow run not found.'));
         }
 
         $this->assertEntityExists((string)$run->getEntityType(), (int)$run->getEntityId(), $userId);
@@ -419,21 +423,21 @@ class WorkflowRunService {
 
     private function assertEntityExists(string $entityType, int $entityId, string $userId): void {
         if ($entityId <= 0) {
-            throw new \RuntimeException($this->l10n->t('Invalid entity.'));
+            throw new \InvalidArgumentException($this->l10n->t('Invalid entity.'));
         }
         if ($entityType === 'unit') {
             if (!$this->unitMapper->findForUser($entityId, $userId)) {
-                throw new \RuntimeException($this->l10n->t('Unit not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
             }
             return;
         }
         if ($entityType === 'property') {
             if (!$this->propertyMapper->findForUser($entityId, $userId)) {
-                throw new \RuntimeException($this->l10n->t('Property not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
             }
             return;
         }
-        throw new \RuntimeException($this->l10n->t('Unsupported entity type.'));
+        throw new \InvalidArgumentException($this->l10n->t('Unsupported entity type.'));
     }
 
     private function buildDueDate(int $offset, int $timestamp): string {

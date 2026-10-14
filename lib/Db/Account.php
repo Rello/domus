@@ -11,6 +11,9 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Account extends Entity implements JsonSerializable {
+    protected $teamId;
+    protected $scopeKey;
+    protected $sourceCatalogueId;
     protected $number;
     protected $labelDe;
     protected $labelEn;

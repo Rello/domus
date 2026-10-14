@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\Controller;
 
+use OCA\Domus\Service\ManagementAccessContext;
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\BookingService;
 use OCP\AppFramework\Controller;
@@ -14,15 +15,12 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http;
 use OCP\IRequest;
-use OCP\IL10N;
-use OCP\IUserSession;
 
 class BookingController extends Controller {
     public function __construct(
         IRequest $request,
-        private IUserSession $userSession,
+        private ManagementAccessContext $managementContext,
         private BookingService $bookingService,
-        private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -39,11 +37,7 @@ class BookingController extends Controller {
 
     #[NoAdminRequired]
     public function show(int $id): DataResponse {
-        try {
-            return new DataResponse($this->bookingService->getBookingForUser($id, $this->getUserId()));
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->bookingService->getBookingForUser($id, $this->getUserId()));
     }
 
     #[NoAdminRequired]
@@ -60,14 +54,8 @@ class BookingController extends Controller {
         ?string $periodTo = null,
     ): DataResponse {
         $data = compact('account', 'date', 'deliveryDate', 'amount', 'propertyId', 'unitId', 'description', 'distributionKeyId', 'periodFrom', 'periodTo');
-        try {
-            $booking = $this->bookingService->createBooking($data, $this->getUserId());
-            return new DataResponse($booking, Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $booking = $this->bookingService->createBooking($data, $this->getUserId());
+        return new DataResponse($booking, Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
@@ -96,44 +84,16 @@ class BookingController extends Controller {
             'periodFrom' => $periodFrom,
             'periodTo' => $periodTo,
         ], fn($value) => $value !== null);
-        try {
-            return new DataResponse($this->bookingService->updateBooking($id, $data, $this->getUserId()));
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->bookingService->updateBooking($id, $data, $this->getUserId()));
     }
 
     #[NoAdminRequired]
     public function destroy(int $id): DataResponse {
-        try {
-            $this->bookingService->deleteBooking($id, $this->getUserId());
-            return new DataResponse([], Http::STATUS_NO_CONTENT);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $this->bookingService->deleteBooking($id, $this->getUserId());
+        return new DataResponse([], Http::STATUS_NO_CONTENT);
     }
 
     private function getUserId(): string {
-        return $this->userSession->getUser()?->getUID() ?? '';
-    }
-
-    private function notFound(): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $this->l10n->t('Resource not found.'),
-            'code' => 'NOT_FOUND',
-        ], Http::STATUS_NOT_FOUND);
-    }
-
-    private function validationError(string $message): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $message,
-            'code' => 'VALIDATION_ERROR',
-        ], Http::STATUS_BAD_REQUEST);
+        return $this->managementContext->managementUserId();
     }
 }

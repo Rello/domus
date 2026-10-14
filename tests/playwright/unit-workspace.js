@@ -26,11 +26,11 @@ const statistics = {
     revenue: {
         columns: [
             {key: 'year', label: 'Year', format: 'year'},
-            {key: 'rent', label: 'Base rent', format: 'currency'}
+            {key: 'baseRent', label: 'Base rent', format: 'currency'}
         ],
         rows: [
-            {year: 2026, rent: 11400, netRentab: 5.6, isProvisional: true},
-            {year: 2025, rent: 11400, netRentab: 5.6}
+            {year: 2026, baseRent: 11400, netRentability: 5.6, isProvisional: true},
+            {year: 2025, baseRent: 11400, netRentability: 5.6}
         ]
     },
     cost: {

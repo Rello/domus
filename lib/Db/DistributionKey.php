@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class DistributionKey extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $userId;
     protected $propertyId;
     protected $type;

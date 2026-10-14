@@ -16,6 +16,7 @@ async function main() {
         await page.addStyleTag({ path: 'css/style.css' });
         await page.evaluate(() => {
             window.t = (app, text, params = {}) => text.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? key);
+            window.n = (app, singular, plural, count, params) => window.t(app, (count === 1 ? singular : plural).replace(/%n/g, count), params);
             window.OC = { generateUrl: path => path };
         });
         for (const name of ['CoreBundle', 'Tasks']) {

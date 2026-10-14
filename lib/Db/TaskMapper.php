@@ -7,13 +7,14 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class TaskMapper extends QBMapper {
+class TaskMapper extends TeamScopedMapper {
     private const SELECT_COLUMNS = [
         'id',
+        'team_id',
         'entity_type',
         'entity_id',
         'title',
@@ -27,8 +28,8 @@ class TaskMapper extends QBMapper {
         'updated_at',
     ];
 
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_tasks', Task::class);
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_tasks', Task::class, $access);
     }
 
     private function applyTaskSelect($qb): void {
@@ -50,6 +51,7 @@ class TaskMapper extends QBMapper {
             $qb->andWhere($qb->expr()->eq('status', $qb->createNamedParameter($status)));
         }
 
+        $this->applyScope($qb);
         return $this->findEntities($qb);
     }
 
@@ -63,6 +65,7 @@ class TaskMapper extends QBMapper {
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
             ->setMaxResults(1);
 
+        $this->applyScope($qb);
         return $this->findEntity($qb);
     }
 
@@ -96,6 +99,7 @@ class TaskMapper extends QBMapper {
             ->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('open')))
             ->orderBy('due_date', 'ASC');
 
+        $this->applyScope($qb);
         return $this->findEntities($qb);
     }
 
@@ -109,6 +113,7 @@ class TaskMapper extends QBMapper {
             ->where($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
 
+        $this->applyScope($qb);
         return (int)$qb->executeQuery()->fetchOne();
     }
 
@@ -121,6 +126,7 @@ class TaskMapper extends QBMapper {
             ->where($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
 
+        $this->applyScope($qb);
         $qb->executeStatement();
     }
 }

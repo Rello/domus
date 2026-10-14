@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\Controller;
 
+use OCA\Domus\Service\ManagementAccessContext;
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\TenancyService;
 use OCA\Domus\Service\PermissionService;
@@ -15,16 +16,13 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http;
 use OCP\IRequest;
-use OCP\IL10N;
-use OCP\IUserSession;
 
 class TenancyController extends Controller {
     public function __construct(
         IRequest $request,
-        private IUserSession $userSession,
+        private ManagementAccessContext $managementContext,
         private TenancyService $tenancyService,
         private PermissionService $permissionService,
-        private IL10N $l10n,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -46,37 +44,21 @@ class TenancyController extends Controller {
 
     #[NoAdminRequired]
     public function show(int $id): DataResponse {
-        try {
-            return new DataResponse($this->tenancyService->getTenancyForUser($id, $this->getUserId()));
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->tenancyService->getTenancyForUser($id, $this->getUserId()));
     }
 
     #[NoAdminRequired]
     public function create(int $unitId, string $startDate, ?string $baseRent = null, ?string $endDate = null, ?string $serviceCharge = null, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
         $data = compact('unitId', 'startDate', 'endDate', 'baseRent', 'serviceCharge', 'deposit', 'conditions', 'partnerIds');
-        try {
-            $tenancy = $this->tenancyService->createTenancy($data, $this->getUserId(), $this->getRole());
-            return new DataResponse($tenancy, Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $tenancy = $this->tenancyService->createTenancy($data, $this->getUserId(), $this->getRole());
+        return new DataResponse($tenancy, Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
     public function changeConditions(int $id, string $startDate, ?string $baseRent = null, ?string $endDate = null, ?string $serviceCharge = null, ?string $deposit = null, ?string $conditions = null, array $partnerIds = []): DataResponse {
         $data = compact('startDate', 'endDate', 'baseRent', 'serviceCharge', 'deposit', 'conditions', 'partnerIds');
-        try {
-            $tenancy = $this->tenancyService->changeConditions($id, $data, $this->getUserId(), $this->getRole());
-            return new DataResponse($tenancy, Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $tenancy = $this->tenancyService->changeConditions($id, $data, $this->getUserId(), $this->getRole());
+        return new DataResponse($tenancy, Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
@@ -91,46 +73,20 @@ class TenancyController extends Controller {
             'conditions' => $conditions,
             'partnerIds' => $partnerIds,
         ], fn($value) => $value !== null);
-        try {
-            return new DataResponse($this->tenancyService->updateTenancy($id, $data, $this->getUserId(), $this->getRole()));
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->tenancyService->updateTenancy($id, $data, $this->getUserId(), $this->getRole()));
     }
 
     #[NoAdminRequired]
     public function destroy(int $id): DataResponse {
-        try {
-            $this->tenancyService->deleteTenancy($id, $this->getUserId());
-            return new DataResponse([], Http::STATUS_NO_CONTENT);
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $this->tenancyService->deleteTenancy($id, $this->getUserId());
+        return new DataResponse([], Http::STATUS_NO_CONTENT);
     }
 
     private function getUserId(): string {
-        return $this->userSession->getUser()?->getUID() ?? '';
+        return $this->managementContext->managementUserId();
     }
 
     private function getRole(): string {
         return $this->permissionService->getRoleFromRequest($this->request);
-    }
-
-    private function notFound(): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $this->l10n->t('Resource not found.'),
-            'code' => 'NOT_FOUND',
-        ], Http::STATUS_NOT_FOUND);
-    }
-
-    private function validationError(string $message): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $message,
-            'code' => 'VALIDATION_ERROR',
-        ], Http::STATUS_BAD_REQUEST);
     }
 }

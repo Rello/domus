@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Partner extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $userId;
     protected $partnerType;
     protected $name;

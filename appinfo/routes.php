@@ -9,6 +9,20 @@ return [
     'routes' => [
         ['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 
+        // Renter access follows Partner.ncUserId and its existing tenancy relationships.
+        ['name' => 'RenterAccess#status', 'url' => '/api/teams/{teamId}/partners/{partnerId}/account', 'verb' => 'GET'],
+        ['name' => 'RenterAccess#link', 'url' => '/api/teams/{teamId}/partners/{partnerId}/account', 'verb' => 'POST'],
+        ['name' => 'RenterAccess#identity', 'url' => '/api/renter/me', 'verb' => 'GET'],
+
+        ['name' => 'RenterPortal#detail', 'url' => '/api/renter/teams/{teamId}/tenancies/{tenancyId}', 'verb' => 'GET'],
+        ['name' => 'RenterPortal#documents', 'url' => '/api/renter/teams/{teamId}/tenancies/{tenancyId}/documents', 'verb' => 'GET'],
+        ['name' => 'RenterPortal#content', 'url' => '/api/renter/documents/{id}/content', 'verb' => 'GET'],
+        ['name' => 'RenterPortal#requestCorrection', 'url' => '/api/renter/teams/{teamId}/partners/{partnerId}/corrections', 'verb' => 'POST'],
+        ['name' => 'RenterPortal#preview', 'url' => '/api/teams/{teamId}/tenancies/{tenancyId}/renter-preview/{partnerId}', 'verb' => 'GET'],
+        ['name' => 'RenterPortal#previewContent', 'url' => '/api/teams/{teamId}/tenancies/{tenancyId}/renter-preview/documents/{id}/content', 'verb' => 'GET'],
+        ['name' => 'RenterPortal#corrections', 'url' => '/api/teams/{teamId}/partners/{partnerId}/corrections', 'verb' => 'GET'],
+        ['name' => 'RenterPortal#decide', 'url' => '/api/teams/{teamId}/corrections/{id}', 'verb' => 'POST'],
+
         // Property
         ['name' => 'Property#index', 'url' => '/properties', 'verb' => 'GET'],
         ['name' => 'Property#show', 'url' => '/properties/{id}', 'verb' => 'GET'],
@@ -17,6 +31,7 @@ return [
         ['name' => 'Property#destroy', 'url' => '/properties/{id}', 'verb' => 'DELETE'],
         ['name' => 'Property#deletionSummary', 'url' => '/properties/{id}/deletion-summary', 'verb' => 'GET'],
         ['name' => 'Property#uploadImage', 'url' => '/properties/{id}/image', 'verb' => 'POST'],
+        ['name' => 'Property#imageContent', 'url' => '/properties/{id}/image/content', 'verb' => 'GET'],
         ['name' => 'Property#removeImage', 'url' => '/properties/{id}/image', 'verb' => 'DELETE'],
         ['name' => 'Distribution#listByProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'GET'],
         ['name' => 'Distribution#createForProperty', 'url' => '/properties/{propertyId}/distributions', 'verb' => 'POST'],
@@ -32,6 +47,7 @@ return [
         ['name' => 'Unit#destroy', 'url' => '/units/{id}', 'verb' => 'DELETE'],
         ['name' => 'Unit#deletionSummary', 'url' => '/units/{id}/deletion-summary', 'verb' => 'GET'],
         ['name' => 'Unit#uploadImage', 'url' => '/units/{id}/image', 'verb' => 'POST'],
+        ['name' => 'Unit#imageContent', 'url' => '/units/{id}/image/content', 'verb' => 'GET'],
         ['name' => 'Unit#removeImage', 'url' => '/units/{id}/image', 'verb' => 'DELETE'],
         ['name' => 'Unit#listSettlements', 'url' => '/units/{id}/settlements', 'verb' => 'GET'],
         ['name' => 'Unit#createSettlement', 'url' => '/units/{id}/settlements', 'verb' => 'POST'],
@@ -75,7 +91,8 @@ return [
         ['name' => 'Distribution#updateForProperty', 'url' => '/properties/{propertyId}/distributions/{distributionId}', 'verb' => 'PUT'],
         ['name' => 'Distribution#report', 'url' => '/distribution-report', 'verb' => 'GET'],
 
-        // Documents
+        // Documents: the literal content route must precede the two-parameter listing route.
+        ['name' => 'Document#content', 'url' => '/documents/{id}/content', 'verb' => 'GET'],
         ['name' => 'Document#index', 'url' => '/documents/{entityType}/{entityId}', 'verb' => 'GET'],
         ['name' => 'Document#show', 'url' => '/documents/{id}', 'verb' => 'GET'],
         ['name' => 'Document#link', 'url' => '/documents/{entityType}/{entityId}', 'verb' => 'POST'],
@@ -97,6 +114,13 @@ return [
         ['name' => 'Settings#show', 'url' => '/settings', 'verb' => 'GET'],
         ['name' => 'Settings#update', 'url' => '/settings', 'verb' => 'PUT'],
         ['name' => 'Settings#createDemoContent', 'url' => '/settings/demo-content', 'verb' => 'POST'],
+
+        // Nextcloud Teams and Guests integration
+        ['name' => 'TeamIntegration#index', 'url' => '/api/teams', 'verb' => 'GET'],
+        ['name' => 'TeamIntegration#folder', 'url' => '/api/teams/{teamId}/folder', 'verb' => 'GET'],
+        ['name' => 'TeamIntegration#guestCreation', 'url' => '/api/teams/{teamId}/guest-creation', 'verb' => 'GET'],
+        ['name' => 'TeamIntegration#activate', 'url' => '/api/teams/{teamId}/activate', 'verb' => 'POST'],
+        ['name' => 'TeamIntegration#deactivate', 'url' => '/api/teams/deactivate', 'verb' => 'POST'],
 
         // Accounts
         ['name' => 'Account#index', 'url' => '/accounts', 'verb' => 'GET'],

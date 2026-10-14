@@ -2,6 +2,7 @@
 namespace OCP\AppFramework\Http;
 
 class DataResponse {
+	public function addHeader(string $name, string $value): void {}
 	/** @var mixed */
 	private $data;
 

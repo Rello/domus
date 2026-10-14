@@ -7,6 +7,8 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\Db\BookingYear;
 use OCA\Domus\Db\BookingYearMapper;
 use OCA\Domus\Db\PropertyMapper;
@@ -113,13 +115,13 @@ class BookingYearService {
 
         if ($propertyId !== null) {
             if (!$this->propertyMapper->findForUser($propertyId, $userId)) {
-                throw new \RuntimeException($this->l10n->t('Property not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
             }
         }
 
         if ($unitId !== null) {
             if (!$this->unitMapper->findForUser($unitId, $userId)) {
-                throw new \RuntimeException($this->l10n->t('Unit not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
             }
         }
 

@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Task extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $entityType;
     protected $entityId;
     protected $title;

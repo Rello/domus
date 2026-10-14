@@ -8,6 +8,9 @@
 namespace OCA\Domus\AppInfo;
 
 use OCA\Domus\UserMigration\DomusMigrator;
+use OCA\Domus\Listener\UserDeletedListener;
+use OCA\Domus\Middleware\ApiErrorMiddleware;
+use OCP\User\Events\UserDeletedEvent;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IBootContext;
@@ -21,7 +24,9 @@ class Application extends App implements IBootstrap {
     }
 
     public function register(IRegistrationContext $context): void {
+        $context->registerMiddleware(ApiErrorMiddleware::class);
         $context->registerUserMigrator(DomusMigrator::class);
+        $context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
     }
 
     public function boot(IBootContext $context): void {

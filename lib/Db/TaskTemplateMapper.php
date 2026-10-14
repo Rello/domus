@@ -7,18 +7,20 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class TaskTemplateMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_task_templates', TaskTemplate::class);
+class TaskTemplateMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_task_templates', TaskTemplate::class, $access);
     }
 
     private function selectColumns(): array {
         return [
             'id',
+            'team_id',
+            'scope_key',
             'key',
             'name',
             'description',
@@ -45,6 +47,7 @@ class TaskTemplateMapper extends QBMapper {
             $qb->andWhere($qb->expr()->eq('applies_to', $qb->createNamedParameter($appliesTo)));
         }
 
+        $this->applyCatalogueScope($qb, false);
         return $this->findEntities($qb);
     }
 
@@ -58,6 +61,7 @@ class TaskTemplateMapper extends QBMapper {
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
             ->setMaxResults(1);
 
+        $this->applyCatalogueScope($qb, false);
         return $this->findEntity($qb);
     }
 
@@ -71,6 +75,7 @@ class TaskTemplateMapper extends QBMapper {
             ->where($qb->expr()->eq('key', $qb->createNamedParameter($key)))
             ->setMaxResults(1);
 
+        $this->applyCatalogueScope($qb, false);
         return $this->findEntity($qb);
     }
 }

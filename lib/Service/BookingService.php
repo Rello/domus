@@ -6,6 +6,9 @@
  */
 
 namespace OCA\Domus\Service;
+
+use OCA\Domus\Exception\ConflictException;
+use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\ActionLogMapper;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
@@ -48,7 +51,7 @@ class BookingService {
     public function getBookingForUser(int $id, string $userId): Booking {
         $booking = $this->bookingMapper->findForUser($id, $userId);
         if (!$booking) {
-            throw new \RuntimeException($this->l10n->t('Booking not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Booking not found.'));
         }
         return $booking;
     }
@@ -80,7 +83,7 @@ class BookingService {
     public function updateBooking(int $id, array $data, string $userId): Booking {
         $booking = $this->getBookingForUser($id, $userId);
         if ($booking->getStatus() !== null && $booking->getStatus() !== 'draft') {
-            throw new \RuntimeException($this->l10n->t('Only draft bookings can be updated.'));
+            throw new ConflictException($this->l10n->t('Only draft bookings can be updated.'));
         }
         $this->assertYearOpenForBooking($booking);
         $merged = array_merge($booking->jsonSerialize(), $data);
@@ -157,15 +160,9 @@ class BookingService {
     }
 
     private function assertBookingInput(array $data, string $userId): void {
-        if (!isset($data['date']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$data['date'])) {
-            throw new \InvalidArgumentException($this->l10n->t('Invoice date is required.'));
-        }
-        if (!isset($data['deliveryDate']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$data['deliveryDate'])) {
-            throw new \InvalidArgumentException($this->l10n->t('Delivery date is required.'));
-        }
-        if (!isset($data['amount']) || (float)$data['amount'] < 0) {
-            throw new \InvalidArgumentException($this->l10n->t('Amount must be at least 0.'));
-        }
+        InputValidation::assertDate($data['date'] ?? null, $this->l10n->t('Invoice date is required.'));
+        InputValidation::assertDate($data['deliveryDate'] ?? null, $this->l10n->t('Delivery date is required.'));
+        InputValidation::assertMoney($data['amount'] ?? null, $this->l10n->t('Amount must be a non-negative monetary value.'));
         if (!isset($data['account'])) {
             throw new \InvalidArgumentException($this->l10n->t('Account is required.'));
         }
@@ -175,28 +172,21 @@ class BookingService {
             throw new \InvalidArgumentException($this->l10n->t('At least one relation is required.'));
         }
         if (isset($data['propertyId']) && !$this->propertyMapper->findForUser((int)$data['propertyId'], $userId)) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
         if (isset($data['unitId']) && !$this->unitMapper->findForUser((int)$data['unitId'], $userId)) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
         $periodFrom = $data['periodFrom'] ?? $data['date'];
         $periodTo = $data['periodTo'] ?? $data['date'];
-        foreach (['periodFrom' => $periodFrom, 'periodTo' => $periodTo] as $label => $value) {
-            if ($value !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$value)) {
-                throw new \InvalidArgumentException($this->l10n->t('Invalid period definition.'));
-            }
-        }
-        if ($periodFrom !== null && $periodTo !== null && $periodFrom > $periodTo) {
-            throw new \InvalidArgumentException($this->l10n->t('Period start must be before period end.'));
-        }
+        InputValidation::assertPeriod($periodFrom, $periodTo, $this->l10n->t('Invalid period definition.'));
         if (isset($data['distributionKeyId'])) {
             if (!isset($data['propertyId'])) {
                 throw new \InvalidArgumentException($this->l10n->t('Distribution keys require a property.'));
             }
             $distributionKey = $this->distributionKeyMapper->findForUser((int)$data['distributionKeyId'], $userId);
             if (!$distributionKey) {
-                throw new \RuntimeException($this->l10n->t('Distribution key not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Distribution key not found.'));
             }
             if ((int)$distributionKey->getPropertyId() !== (int)$data['propertyId']) {
                 throw new \InvalidArgumentException($this->l10n->t('Distribution key does not belong to the property.'));

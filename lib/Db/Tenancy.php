@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Tenancy extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $userId;
     protected $unitId;
     protected $startDate;
@@ -26,6 +27,7 @@ class Tenancy extends Entity implements JsonSerializable {
     protected array $partnerIds = [];
     protected array $partners = [];
     protected ?string $unitLabel = null;
+    protected ?string $unitLivingArea = null;
     protected ?string $period = null;
     protected ?string $partnerName = null;
     protected array $bookings = [];
@@ -54,6 +56,7 @@ class Tenancy extends Entity implements JsonSerializable {
             'partnerIds' => $this->partnerIds,
             'partners' => $this->partners,
             'unitLabel' => $this->unitLabel,
+            'unitLivingArea' => $this->unitLivingArea,
             'period' => $this->period,
             'partnerName' => $this->partnerName,
             'bookings' => $this->bookings,
@@ -90,6 +93,14 @@ class Tenancy extends Entity implements JsonSerializable {
 
     public function getUnitLabel(): ?string {
         return $this->unitLabel;
+    }
+
+    public function setUnitLivingArea(?string $unitLivingArea): void {
+        $this->unitLivingArea = $unitLivingArea;
+    }
+
+    public function getUnitLivingArea(): ?string {
+        return $this->unitLivingArea;
     }
 
     public function setPeriod(?string $period): void {

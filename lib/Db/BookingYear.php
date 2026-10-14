@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class BookingYear extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $propertyId;
     protected $unitId;
     protected $year;

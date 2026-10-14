@@ -9,7 +9,7 @@
     Domus.Analytics = (function() {
         let chartInstance = null;
         let requestId = 0;
-        let renderId = 0;
+        let view = null;
         let data = null;
         let filtersReady = false;
         let options = [];
@@ -34,18 +34,19 @@
                 state = { preset: 'annual', year: '', unitId: '', propertyId: '', accounts: [], search: '' };
                 stateRole = role;
             }
-            const generation = ++renderId;
+            view = Domus.Router.beginView();
             ++requestId;
             destroyChart();
             data = null;
             // Include disabled accounts: historical bookings remain relevant.
             options = Domus.Accounts.toOptions(false, null, true);
             Domus.UI.renderContent(buildLayout());
+            Domus.UI.onContentDispose(destroyChart);
             element('preset').value = state.preset;
             element('search').value = state.search;
             bindControls();
             showCustomAccounts();
-            loadFilters(generation);
+            loadFilters(view);
         }
 
         function buildLayout() {
@@ -93,7 +94,7 @@
                 state.search = event.target.value;
                 searchAccounts();
             });
-            element('retry').addEventListener('click', () => loadFilters(renderId));
+            element('retry').addEventListener('click', () => loadFilters(view));
         }
 
         function showCustomAccounts() {
@@ -123,7 +124,7 @@
             select.value = state.unitId;
         }
 
-        function loadFilters(generation) {
+        function loadFilters(requestView) {
             filtersReady = false;
             element('retry').hidden = true;
             element('status').textContent = t('domus', 'Loading…');
@@ -131,7 +132,7 @@
             if (element('property')) element('property').disabled = true;
             Promise.all([Domus.Api.getUnits(), Domus.Role.isBuildingMgmtView() ? Domus.Api.getProperties() : Promise.resolve([])])
                 .then(([unitList, propertyList]) => {
-                    if (generation !== renderId || !element('unit')) return;
+                    if (!requestView.isCurrent() || !element('unit')) return;
                     units = unitList || [];
                     properties = propertyList || [];
                     const select = element('property');
@@ -147,7 +148,7 @@
                     updateChart();
                 })
                 .catch(() => {
-                    if (generation !== renderId || !element('status')) return;
+                    if (!requestView.isCurrent() || !element('status')) return;
                     ++requestId;
                     data = null;
                     clearResults();
@@ -165,7 +166,7 @@
         function updateChart() {
             if (!filtersReady) return;
             const currentRequest = ++requestId;
-            const generation = renderId;
+            const requestView = view;
             data = null;
             clearResults();
             updateContext();
@@ -179,13 +180,13 @@
             element('status').textContent = t('domus', 'Loading…');
             Domus.Api.getAccountTotals(accounts.map(a => a.number), { unitId: state.unitId, propertyId: state.propertyId })
                 .then(result => {
-                    if (generation !== renderId || currentRequest !== requestId || !element('status')) return;
+                    if (!requestView.isCurrent() || currentRequest !== requestId || !element('status')) return;
                     if (!Array.isArray(result?.years) || !result.series || typeof result.series !== 'object') throw new Error('Invalid statistics response');
                     data = result;
                     draw();
                 })
                 .catch(() => {
-                    if (generation !== renderId || currentRequest !== requestId || !element('status')) return;
+                    if (!requestView.isCurrent() || currentRequest !== requestId || !element('status')) return;
                     clearResults();
                     element('status').textContent = t('domus', 'Could not load recorded bookings. Please retry.');
                     element('retry').hidden = false;

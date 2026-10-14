@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class DocumentLink extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $userId;
     protected $entityType;
     protected $entityId;

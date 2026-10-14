@@ -49,10 +49,10 @@
         const options = Object.assign({
             brandName: '',
             brandLogo: '',
-            closeLabel: 'Close',
-            previousLabel: 'Previous',
-            nextLabel: 'Next',
-            finishLabel: 'Finish',
+            closeLabel: t('domus', 'Close'),
+            previousLabel: t('domus', 'Previous'),
+            nextLabel: t('domus', 'Next'),
+            finishLabel: t('domus', 'Finish'),
             slides: [],
             onClose: null,
             onFinish: null
@@ -439,6 +439,9 @@
 
         function init() {
             window.setTimeout(function() {
+                if (Domus.state.managementContext?.mode !== 'legacy') {
+                    return;
+                }
                 show();
             }, 400);
         }

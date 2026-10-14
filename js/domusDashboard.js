@@ -19,23 +19,31 @@
         }
 
         function render() {
+            const view = Domus.Router.beginView();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Dashboard') }));
 
             const summaryPromise = Domus.Api.getDashboardSummary();
 
             Promise.resolve(summaryPromise)
                 .then((data) => {
+                    if (!view.isCurrent()) return;
                     const html = buildContent(data || {});
                     Domus.UI.renderContent(html);
                     bindDashboard(data || {});
+                    Domus.UI.onContentDispose(destroyOccupancyChart);
                     Domus.Router.restoreContentContext();
                 })
-                .catch(err => Domus.UI.showError(err.message));
+                .catch(err => { if (view.isCurrent()) Domus.UI.showError(err.message); });
         }
 
         function bindDashboard(data) {
             destroyOccupancyChart();
+            Domus.UI.bindRowNavigation();
             if (!Domus.Role.isTenantView()) {
+                Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
+                bindQuickActionTrigger('domus-dashboard-empty-task-create', () => {
+                    Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
+                });
                 bindQuickActions(data);
             }
             if (!Domus.Role.isBuildingMgmtView() && !Domus.Role.isTenantView()) {
@@ -281,19 +289,17 @@
                 {
                     label: t('domus', 'Monthly base rents'),
                     value: data.monthlyBaseRentSum || 0,
-                    formatter: value => `€ ${Domus.Utils.formatNumber(Math.round(Number(value) || 0), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                    type: 'money',
                     subline: t('domus', 'Agreed in active tenancies')
                 },
-                { label: t('domus', 'Overall rentability'), value: data.overallRentability, formatter: value => value === null || value === undefined ? '—' : Domus.Utils.formatPercentage(value), subline: t('domus', 'Current year') },
+                { label: t('domus', 'Overall rentability'), value: data.overallRentability, type: 'percentage', subline: t('domus', 'Current year') },
                 { label: t('domus', 'Units'), value: data.unitCount || 0, subline: t('domus', 'Active'), link: '#/units' }
             ];
 
             const cardHtml = cards.map(card => {
-                const renderedValue = card.formatter ? card.formatter(card.value) : card.value;
-                const safeValue = renderedValue === undefined || renderedValue === null ? '' : renderedValue.toString();
-                return Domus.UI.buildKpiTile({
+                return Domus.UI.buildTypedKpiTile(card.type || 'count', {
                     headline: card.label,
-                    value: safeValue,
+                    value: card.value,
                     subline: card.subline || '',
                     linkHref: card.link || '',
                     linkLabel: t('domus', 'More'),
@@ -313,18 +319,6 @@
                     firstGroupInPanelHeader: true
                 })
                 : '';
-
-            setTimeout(() => {
-                Domus.UI.bindRowNavigation();
-                if (hasUnits) {
-                    Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
-                }
-                if (hasUnits) {
-                    bindQuickActionTrigger('domus-dashboard-empty-task-create', () => {
-                        Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
-                    });
-                }
-            }, 0);
 
             const occupancy = data.occupancy || {};
             const occupiedUnits = Number(occupancy.occupied) || 0;
@@ -433,9 +427,9 @@
             ];
 
             const cardHtml = cards.map(card => {
-                return Domus.UI.buildKpiTile({
+                return Domus.UI.buildTypedKpiTile('count', {
                     headline: card.label,
-                    value: card.value.toString(),
+                    value: card.value,
                     linkHref: card.link || '',
                     linkLabel: t('domus', 'More'),
                     linkIconClass: 'domus-icon-arrow-right',
@@ -454,18 +448,6 @@
                     firstGroupInPanelHeader: true
                 })
                 : '';
-
-            setTimeout(() => {
-                Domus.UI.bindRowNavigation();
-                if (hasProperties) {
-                    Domus.Tasks.bindOpenTaskActions({ onRefresh: () => Domus.Router.navigate('dashboard') });
-                }
-                if (hasProperties) {
-                    bindQuickActionTrigger('domus-dashboard-empty-task-create', () => {
-                        Domus.Tasks.openCreateTaskModalWithUnitSelect(() => Domus.Router.navigate('dashboard'));
-                    });
-                }
-            }, 0);
 
             const panels = [
                 hasProperties ? buildAttentionPanel(openTasksTable) : '',
@@ -492,8 +474,6 @@
                 Domus.Utils.escapeHtml((rp.year || Domus.state.currentYear).toString()),
                 '<a class="domus-link" href="' + Domus.Utils.escapeHtml(rp.downloadUrl || '#') + '">' + Domus.Utils.escapeHtml(t('domus', 'Download')) + '</a>'
             ]);
-
-            setTimeout(Domus.UI.bindRowNavigation, 0);
 
             return '<h2>' + Domus.Utils.escapeHtml(t('domus', 'My tenancies')) + '</h2>' +
                 Domus.UI.buildTable([t('domus', 'Unit'), t('domus', 'Period'), t('domus', 'Status')], tenancyRows) +

@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class WorkflowRunMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_workflow_runs', WorkflowRun::class);
+class WorkflowRunMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_workflow_runs', WorkflowRun::class, $access);
     }
 
     /**
@@ -27,6 +27,7 @@ class WorkflowRunMapper extends QBMapper {
             ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)))
             ->orderBy('started_at', 'DESC');
 
+        $this->applyScope($qb);
         return $this->findEntities($qb);
     }
 
@@ -40,6 +41,7 @@ class WorkflowRunMapper extends QBMapper {
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
             ->setMaxResults(1);
 
+        $this->applyScope($qb);
         return $this->findEntity($qb);
     }
 
@@ -57,6 +59,7 @@ class WorkflowRunMapper extends QBMapper {
             ->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('open')))
             ->setMaxResults(1);
 
+        $this->applyScope($qb);
         $entities = $this->findEntities($qb);
         return $entities[0] ?? null;
     }

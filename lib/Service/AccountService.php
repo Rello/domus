@@ -7,6 +7,10 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ConflictException;
+
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\Db\Account;
 use OCA\Domus\Db\AccountMapper;
 use OCA\Domus\Db\BookingMapper;
@@ -143,7 +147,7 @@ class AccountService {
         $this->assertAccountMutable($account, $userId);
         $children = $this->accountMapper->findChildren($account->getId());
         if (count($children) > 0) {
-            throw new \RuntimeException($this->l10n->t('Account has child entries and cannot be deleted.'));
+            throw new ConflictException($this->l10n->t('Account has child entries and cannot be deleted.'));
         }
         $this->accountMapper->delete($account);
     }
@@ -203,23 +207,23 @@ class AccountService {
     private function getAccount(int $id): Account {
         $account = $this->accountMapper->findById($id);
         if (!$account) {
-            throw new \RuntimeException($this->l10n->t('Account not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Account not found.'));
         }
         return $account;
     }
 
     private function assertAccountMutable(Account $account, string $userId): void {
         if ((int)$account->getIsSystem() === 1) {
-            throw new \RuntimeException($this->l10n->t('System accounts cannot be modified.'));
+            throw new ConflictException($this->l10n->t('System accounts cannot be modified.'));
         }
         if ($this->bookingMapper->countByAccount($userId, (string)$account->getNumber()) > 0) {
-            throw new \RuntimeException($this->l10n->t('Account is used in bookings and cannot be modified.'));
+            throw new ConflictException($this->l10n->t('Account is used in bookings and cannot be modified.'));
         }
     }
 
     private function assertAccountToggleAllowed(Account $account): void {
         if ((int)$account->getIsSystem() === 1) {
-            throw new \RuntimeException($this->l10n->t('System accounts cannot be modified.'));
+            throw new ConflictException($this->l10n->t('System accounts cannot be modified.'));
         }
     }
 

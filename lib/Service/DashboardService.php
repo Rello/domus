@@ -7,14 +7,13 @@
 
 namespace OCA\Domus\Service;
 
-use OCA\Domus\AppInfo\Application;
+use OCA\Domus\Accounting\StatisticCalculations;
 use OCA\Domus\Db\Booking;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\Tenancy;
 use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
-use OCP\IConfig;
 use OCP\IL10N;
 
 class DashboardService {
@@ -28,8 +27,8 @@ class DashboardService {
         private WorkflowRunService $workflowRunService,
         private PermissionService $permissionService,
         private EntityImageService $entityImageService,
-        private IConfig $config,
         private IL10N $l10n,
+        private PortfolioSettingsService $portfolioSettings,
     ) {
     }
 
@@ -40,6 +39,13 @@ class DashboardService {
         $propertyIds = array_map(fn($property) => $property->getId(), $properties);
 
         $units = $this->unitMapper->findByUser($userId);
+        $unitCountsByProperty = [];
+        foreach ($units as $unit) {
+            $propertyId = $unit->getPropertyId();
+            if ($propertyId !== null) {
+                $unitCountsByProperty[$propertyId] = ($unitCountsByProperty[$propertyId] ?? 0) + 1;
+            }
+        }
         $units = array_filter($units, function ($unit) use ($isBuildingManagement) {
             $hasProperty = $unit->getPropertyId() !== null;
             return $isBuildingManagement ? $hasProperty : !$hasProperty;
@@ -68,7 +74,7 @@ class DashboardService {
         foreach ($activeTenancies as $tenancy) {
             $rentSum += (float)$tenancy->getBaseRent();
         }
-        $overallRentability = $this->calculateOverallRentability($userId, $year, $units, $bookings);
+        $overallRentability = $this->calculateOverallRentability($userId, $year, $units, $bookings, $tenancies);
 
         $income = 0.0;
         $expense = 0.0;
@@ -81,9 +87,9 @@ class DashboardService {
             }
         }
 
-        $propertyOverview = array_map(function ($property) use ($userId) {
+        $propertyOverview = array_map(function ($property) use ($unitCountsByProperty) {
             $this->entityImageService->enrichProperty($property);
-            $unitCount = $this->unitMapper->countByProperty($property->getId(), $userId);
+            $unitCount = $unitCountsByProperty[$property->getId()] ?? 0;
             return [
                 'id' => $property->getId(),
                 'name' => $property->getName(),
@@ -206,7 +212,7 @@ class DashboardService {
     /**
      * Aggregate the same net rentability inputs used for unit statistics across the visible units.
      */
-    private function calculateOverallRentability(string $userId, int $year, array $units, array $bookings): ?float {
+    private function calculateOverallRentability(string $userId, int $year, array $units, array $bookings, array $tenancies): ?float {
         if ($units === []) {
             return null;
         }
@@ -226,10 +232,10 @@ class DashboardService {
             }
 
             $totalCosts += (float)($unit->getTotalCosts() ?? 0.0);
-            foreach ($this->tenancyService->sumTenancyForYear($userId, $unitId, $year) as $account => $value) {
-                $topAccount = $this->accountService->resolveTopAccountNumber((string)$account, $topAccountMap);
-                $sums[$topAccount] = ($sums[$topAccount] ?? 0.0) + (float)$value;
-            }
+        }
+        foreach ($this->tenancyService->sumTenanciesForYear($tenancies, $year) as $account => $value) {
+            $topAccount = $this->accountService->resolveTopAccountNumber((string)$account, $topAccountMap);
+            $sums[$topAccount] = ($sums[$topAccount] ?? 0.0) + (float)$value;
         }
 
         foreach ($bookings as $booking) {
@@ -241,20 +247,13 @@ class DashboardService {
             return null;
         }
 
-        $rent = (float)($sums['1000'] ?? 0.0);
-        $nonAllocableCosts = (float)($sums['2100'] ?? 0.0) + (float)($sums['2300'] ?? 0.0);
-        $loanInterest = (float)($sums['2500'] ?? 0.0);
-        $grossProfit = $rent - $nonAllocableCosts - $loanInterest;
-        $depreciationAndOthers = (float)($sums['2600'] ?? 0.0) + (float)($sums['2700'] ?? 0.0);
-        $taxRate = $this->getTaxRateSetting($userId);
-        $taxes = ($grossProfit - $depreciationAndOthers) * $taxRate;
-        $netProfit = $grossProfit - $taxes;
-
-        return $netProfit / $totalCosts;
+        $sums['3000'] = $totalCosts;
+        $sums['taxRate'] = $this->getTaxRateSetting($userId);
+        return StatisticCalculations::calculateValues(StatisticCalculations::unitRevenue(), $sums, $topAccountMap)['netRentability'];
     }
 
     private function getTaxRateSetting(string $userId): float {
-        $value = $this->config->getUserValue($userId, Application::APP_ID, 'taxRate', '0');
+        $value = $this->portfolioSettings->getValue($userId, 'taxRate', '0');
         return is_numeric($value) ? (float)$value : 0.0;
     }
 }

@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Unit extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $userId;
     protected $propertyId;
     protected $label;
@@ -35,6 +36,8 @@ class Unit extends Entity implements JsonSerializable {
     protected $updatedAt;
 
     private array $activeTenancies = [];
+    private array $futureTenancies = [];
+    private ?Tenancy $currentTenancy = null;
     private array $historicTenancies = [];
     private ?string $rentPerSquareMeter = null;
     private ?string $propertyName = null;
@@ -77,14 +80,28 @@ class Unit extends Entity implements JsonSerializable {
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
             'activeTenancies' => $this->activeTenancies,
+            'futureTenancies' => $this->futureTenancies,
+            'currentTenancy' => $this->currentTenancy,
             'historicTenancies' => $this->historicTenancies,
             'rentPerSquareMeter' => $this->rentPerSquareMeter,
             'propertyName' => $this->propertyName,
         ];
     }
 
+    public function getActiveTenancies(): array {
+        return $this->activeTenancies;
+    }
+
     public function setActiveTenancies(array $activeTenancies): void {
         $this->activeTenancies = $activeTenancies;
+    }
+
+    public function setFutureTenancies(array $tenancies): void {
+        $this->futureTenancies = $tenancies;
+    }
+
+    public function setCurrentTenancy(?Tenancy $tenancy): void {
+        $this->currentTenancy = $tenancy;
     }
 
     public function setHistoricTenancies(array $historicTenancies): void {

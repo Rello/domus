@@ -12,7 +12,7 @@ class StatisticCalculations {
         return [
             ['key' => 'year', 'label' => 'Year', 'type' => 'year'],
             [
-                'key' => 'rent',
+                'key' => 'baseRent',
                 'label' => 'Base rent',
                 'account' => '1000',
                 'help' => [
@@ -24,34 +24,33 @@ class StatisticCalculations {
                 ],
             ],
             [
-                'key' => 'hgnu',
+                'key' => 'nonAllocableCosts',
                 'label' => 'Non-allocable costs',
                 'rule' => [
-                    ['op' => 'add', 'args' => ['2100', '2300']],
+                    ['operation' => 'add', 'operands' => ['2100', '2300']],
                 ],
             ],
-            ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2500'],
+            ['key' => 'loanInterest', 'label' => 'Loan interest', 'account' => '2500'],
             [
-                'key' => 'gwb',
+                'key' => 'grossProfit',
                 'label' => 'Gross profit',
                 'rule' => [
-                    ['op' => 'sub', 'args' => ['rent', 'hgnu']],
-                    ['op' => 'sub', 'args' => ['prev', 'zinsen']],
+                    ['operation' => 'subtract', 'operands' => ['baseRent', 'nonAllocableCosts', 'loanInterest']],
                 ],
             ],
             [
-                'key' => 'abschr',
+                'key' => 'depreciationAndOthers',
                 'label' => 'Depreciation & others',
                 'rule' => [
-                    ['op' => 'add', 'args' => ['2600', '2700']],
+                    ['operation' => 'add', 'operands' => ['2600', '2700']],
                 ],
             ],
             [
-                'key' => 'steuer',
+                'key' => 'estimatedTaxes',
                 'label' => 'Estimated taxes',
                 'rule' => [
-                    ['op' => 'sub', 'args' => ['gwb', 'abschr']],
-                    ['op' => 'mul', 'args' => ['prev', 'taxRate']],
+                    ['operation' => 'subtract', 'operands' => ['grossProfit', 'depreciationAndOthers']],
+                    ['operation' => 'multiply', 'operands' => ['previousResult', 'taxRate']],
                 ],
                 'help' => [
                     'title' => 'Estimated taxes',
@@ -60,10 +59,10 @@ class StatisticCalculations {
                 ],
             ],
             [
-                'key' => 'gwn',
+                'key' => 'netProfit',
                 'label' => 'Estimated net profit',
                 'rule' => [
-                    ['op' => 'sub', 'args' => ['gwb', 'steuer']],
+                    ['operation' => 'subtract', 'operands' => ['grossProfit', 'estimatedTaxes']],
                 ],
                 'help' => [
                     'title' => 'Estimated net profit',
@@ -72,10 +71,10 @@ class StatisticCalculations {
                 ],
             ],
             [
-                'key' => 'netRentab',
+                'key' => 'netRentability',
                 'label' => 'Estimated rentability (net)',
                 'rule' => [
-                    ['op' => 'div', 'args' => ['gwn', '3000']],
+                    ['operation' => 'divide', 'operands' => ['netProfit', '3000']],
                 ],
                 'format' => 'percentage',
                 'help' => [
@@ -90,90 +89,77 @@ class StatisticCalculations {
     public static function unitCost(): array {
         return [
             ['key' => 'year', 'label' => 'Year', 'type' => 'year'],
-            ['key' => 'tenancyUtility', 'label' => 'Utility costs', 'account' => '1001'],
+            ['key' => 'serviceCharge', 'label' => 'Utility costs', 'account' => '1001'],
             [
-                'key' => 'maintFee',
+                'key' => 'allocableCosts',
                 'label' => 'Maint. fee (allocable) & property tax',
                 'rule' => [
-                    ['op' => 'add', 'args' => ['2000', '2400']],
+                    ['operation' => 'add', 'operands' => [Accounts::ALLOCABLE_MAINTENANCE, Accounts::PROPERTY_TAX]],
                 ],
             ],
             [
-                'key' => 'saldo',
+                'key' => 'tenantBalance',
                 'label' => 'Saldo tenant',
                 'rule' => [
-                    ['op' => 'sub', 'args' => ['1001', '2000', '2400']],
+                    ['operation' => 'subtract', 'operands' => ['1001', Accounts::ALLOCABLE_MAINTENANCE, Accounts::PROPERTY_TAX]],
                 ],
             ],
         ];
     }
 
     public static function unitOverview(): array {
-        return [
+        $columns = [
             ['key' => 'unitId', 'label' => 'Unit ID', 'source' => 'unit', 'field' => 'id', 'visible' => false],
             ['key' => 'label', 'label' => 'Unit', 'source' => 'unit', 'field' => 'label'],
-            ['key' => 'size', 'label' => 'Size', 'source' => 'unit', 'field' => 'livingArea', 'format' => 'number', 'unit' => 'm²'],
-            ['key' => 'year', 'label' => 'Year', 'type' => 'year'],
-
-            ['key' => 'rent', 'label' => 'Base rent', 'account' => '1000'],
-			[
-				'key' => 'rentPerSqm',
-				'label' => 'Rent/m²',
-				'rule' => [
-					['op' => 'div', 'args' => ['rent', 'size']],
-				],
-				'format' => 'number',
-				'unit' => '€/m²',
-			],            [
-                'key' => 'hgnu',
-                'label' => 'Non-allocable',
-                'rule' => [
-                    ['op' => 'add', 'args' => ['2100', '2300']],
-                ],
-                'visible' => false,
-            ],
-            ['key' => 'zinsen', 'label' => 'Loan interest', 'account' => '2500', 'visible' => false],
-            [
-                'key' => 'gwb',
-                'label' => 'Gross profit',
-                'rule' => [
-                    ['op' => 'sub', 'args' => ['rent', 'hgnu']],
-                    ['op' => 'sub', 'args' => ['prev', 'zinsen']],
-                ],
-            ],
-            [
-                'key' => 'abschr',
-                'label' => 'Abschr. & sonstige',
-                'rule' => [
-                    ['op' => 'add', 'args' => ['2600', '2700']],
-                ],
-                'visible' => false,
-            ],
-            [
-                'key' => 'steuer',
-                'label' => 'Estimated taxes',
-                'rule' => [
-                    ['op' => 'sub', 'args' => ['gwb', 'abschr']],
-                    ['op' => 'mul', 'args' => ['prev', 'taxRate']],
-                ],
-                'visible' => false,
-            ],
-			[
-				'key' => 'gwn',
-				'label' => 'Gewinn Netto',
-				'rule' => [
-					['op' => 'sub', 'args' => ['gwb', 'steuer']],
-				],
-				'visible' => false,
-			],
-            [
-                'key' => 'netRentab',
-                'label' => 'Estimated rentability (net)',
-                'rule' => [
-                    ['op' => 'div', 'args' => ['gwn', '3000']],
-                ],
-                'format' => 'percentage',
-            ],
+            ['key' => 'livingArea', 'label' => 'Size', 'source' => 'unit', 'field' => 'livingArea', 'format' => 'number', 'unit' => 'm²'],
         ];
+        foreach (self::unitRevenue() as $column) {
+            $column['visible'] = in_array($column['key'], ['year', 'baseRent', 'grossProfit', 'netRentability'], true);
+            $columns[] = $column;
+            if ($column['key'] === 'baseRent') {
+                $columns[] = [
+                    'key' => 'baseRentPerSquareMeter', 'label' => 'Rent/m²',
+                    'rule' => [['operation' => 'divide', 'operands' => ['baseRent', 'livingArea']]],
+                    'format' => 'number', 'unit' => '€/m²',
+                ];
+            }
+        }
+        return $columns;
+    }
+
+    /** Evaluate the definitions without rounding intermediate results. */
+    public static function calculateValues(array $definitions, array $accountSums, array $topAccountMap = []): array {
+        $calculated = [];
+        foreach ($definitions as $column) {
+            if (isset($column['account']) || isset($column['rule'])) {
+                $calculated[$column['key']] = self::calculateColumn($column, $accountSums, $calculated, $topAccountMap);
+            }
+        }
+        return $calculated;
+    }
+
+    /** Generic interpreter; business formulas belong beside each column's key and label. */
+    public static function calculateColumn(array $column, array $accountSums, array $calculated = [], array $topAccountMap = []): float {
+        $accountValue = static fn(string $account): float => (float)($accountSums[$topAccountMap[$account] ?? $account] ?? 0.0);
+        if (isset($column['account'])) {
+            return $accountValue($column['account']);
+        }
+        $previousResult = 0.0;
+        foreach ($column['rule'] as $step) {
+            $values = array_map(static function (string $operand) use ($previousResult, $calculated, $accountValue): float {
+                if ($operand === 'previousResult') return $previousResult;
+                return array_key_exists($operand, $calculated) ? (float)$calculated[$operand] : $accountValue($operand);
+            }, $step['operands']);
+            $firstValue = $values[0] ?? 0.0;
+            $divisor = $values[1] ?? 0.0;
+            $previousResult = match ($step['operation']) {
+                'add' => array_sum($values),
+                'subtract' => $firstValue - array_sum(array_slice($values, 1)),
+                'multiply' => $values === [] ? 0.0 : array_product($values),
+                'divide' => $divisor == 0.0 ? 0.0 : $firstValue / $divisor,
+                default => throw new \LogicException('Unsupported statistics operation: ' . $step['operation']),
+            };
+        }
+        return $previousResult;
     }
 }

@@ -73,7 +73,7 @@ class DomusMigratorTest extends TestCase {
         };
         $db = $this->createMock(IDBConnection::class);
         $db->method('getQueryBuilder')->willReturn($query);
-        $migrator = new DomusMigrator($db, $this->createMock(IConfig::class), $this->createMock(IL10N::class), $this->createMock(\OCA\Domus\UserMigration\DocumentFiles::class));
+        $migrator = new DomusMigrator($db, $this->createMock(IConfig::class), $this->l10n(), $this->createMock(\OCA\Domus\UserMigration\DocumentFiles::class));
         $method = new \ReflectionMethod(DomusMigrator::class, 'importDocumentLinks');
         $method->setAccessible(true);
         $method->invoke($migrator, 'bob', [
@@ -96,7 +96,7 @@ class DomusMigratorTest extends TestCase {
         $folder->expects(self::once())->method('delete');
         $files = $this->createMock(\OCA\Domus\UserMigration\DocumentFiles::class);
         $files->method('import')->willReturn(['files' => [12 => 999], 'folder' => $folder]);
-        $migrator = new DomusMigrator($db, $this->createMock(IConfig::class), $this->createMock(IL10N::class), $files);
+        $migrator = new DomusMigrator($db, $this->createMock(IConfig::class), $this->l10n(), $files);
         $source = $this->createMock(IImportSource::class);
         $source->method('pathExists')->willReturn(true);
         $source->method('getFileContents')->willReturn(json_encode(['properties' => [['id' => 1]], 'documentFiles' => [12 => 'contract.pdf']]));
@@ -111,7 +111,7 @@ class DomusMigratorTest extends TestCase {
         $db->expects(self::never())->method('beginTransaction');
         $files = $this->createMock(\OCA\Domus\UserMigration\DocumentFiles::class);
         $files->expects(self::never())->method('import');
-        $migrator = new DomusMigrator($db, $this->createMock(IConfig::class), $this->createMock(IL10N::class), $files);
+        $migrator = new DomusMigrator($db, $this->createMock(IConfig::class), $this->l10n(), $files);
         $source = $this->createMock(IImportSource::class);
         $source->method('pathExists')->willReturn(true);
         $source->method('getFileContents')->willReturn(json_encode(['documentLinks' => [['file_id' => 12]]]));
@@ -120,6 +120,12 @@ class DomusMigratorTest extends TestCase {
         $this->expectException(UserMigrationException::class);
         $this->expectExceptionMessage('Export it again');
         $migrator->import($user, $source, $this->createMock(\Symfony\Component\Console\Output\OutputInterface::class));
+    }
+
+    private function l10n(): IL10N {
+        $l10n = $this->createMock(IL10N::class);
+        $l10n->method('t')->willReturnCallback(static fn(string $text, array $parameters = []) => vsprintf($text, $parameters));
+        return $l10n;
     }
 
     private function createMigrator(): DomusMigrator {

@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class DistributionKeyUnitMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_dist_key_units', DistributionKeyUnit::class);
+class DistributionKeyUnitMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_dist_key_units', DistributionKeyUnit::class, $access);
     }
 
     /**
@@ -24,7 +24,7 @@ class DistributionKeyUnitMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('distribution_key_id', $qb->createNamedParameter($distributionKeyId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->lte('valid_from', $qb->createNamedParameter($periodTo)))
             ->andWhere($qb->expr()->orX(
                 $qb->expr()->isNull('valid_to'),
@@ -44,7 +44,7 @@ class DistributionKeyUnitMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('distribution_key_id', $qb->createNamedParameter($distributionKeyId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($this->ownerExpression($qb, $userId))
             ->orderBy('valid_from', 'DESC')
             ->setMaxResults(1);
 
@@ -59,7 +59,7 @@ class DistributionKeyUnitMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
 
         return (int)$qb->executeQuery()->fetchOne();
@@ -71,7 +71,7 @@ class DistributionKeyUnitMapper extends QBMapper {
     public function deleteByUnit(string $userId, int $unitId): void {
         $qb = $this->db->getQueryBuilder();
         $qb->delete($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
 
         $qb->executeStatement();
@@ -89,7 +89,7 @@ class DistributionKeyUnitMapper extends QBMapper {
         $qb->select($qb->func()->count('*'))
             ->from($this->getTableName())
             ->where($qb->expr()->in('distribution_key_id', $qb->createNamedParameter($distributionKeyIds, $qb::PARAM_INT_ARRAY)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return (int)$qb->executeQuery()->fetchOne();
     }
@@ -105,7 +105,7 @@ class DistributionKeyUnitMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->delete($this->getTableName())
             ->where($qb->expr()->in('distribution_key_id', $qb->createNamedParameter($distributionKeyIds, $qb::PARAM_INT_ARRAY)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         $qb->executeStatement();
     }

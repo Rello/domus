@@ -8,29 +8,13 @@ playwrightImage="${PLAYWRIGHT_IMAGE:-domus-playwright:local}"
 if ! docker image inspect "$playwrightImage" >/dev/null 2>&1; then
     docker build -t "$playwrightImage" "$rootDir/tests/playwright"
 fi
-docker run --rm --init --ipc=host --entrypoint node \
-    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
-    "$playwrightImage" tests/playwright/modal-changes.js
-docker run --rm --init --ipc=host --entrypoint node \
-    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
-    "$playwrightImage" tests/playwright/dashboard.js
-docker run --rm --init --ipc=host --entrypoint node \
-    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
-    "$playwrightImage" tests/playwright/unit-workspace.js
-docker run --rm --init --ipc=host --entrypoint node \
-    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
-    "$playwrightImage" tests/playwright/process-detail.js
-docker run --rm --init --ipc=host --entrypoint node \
-    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
-    "$playwrightImage" tests/playwright/task-creation.js
-
-docker run --rm --init --ipc=host --entrypoint node \
-    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
-    "$playwrightImage" tests/playwright/analytics.js
-docker run --rm --init --ipc=host --entrypoint node \
-    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
-    "$playwrightImage" tests/playwright/contacts.js
-
-docker run --rm --init --ipc=host --entrypoint node \
-    -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
-    "$playwrightImage" tests/playwright/renter-preview.js
+suites=(modal-changes dashboard unit-workspace process-detail task-creation analytics contacts renter-preview team-context renter-access renter-portal view-lifecycle ui-reuse)
+if [[ -n "${PLAYWRIGHT_TEST:-}" ]]; then
+    [[ "$PLAYWRIGHT_TEST" =~ ^[a-z-]+$ ]] || exit 2
+    suites=("$PLAYWRIGHT_TEST")
+fi
+for suite in "${suites[@]}"; do
+    docker run --rm --init --ipc=host --entrypoint node \
+        -v "$rootDir:/work:ro" -w /work -e NODE_PATH=/app/node_modules \
+        "$playwrightImage" "tests/playwright/$suite.js"
+done

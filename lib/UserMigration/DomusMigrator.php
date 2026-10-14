@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Domus\UserMigration;
 
 use OCA\Domus\AppInfo\Application;
+use OCA\Domus\Service\PersonalArchiveValidation;
 use OCP\DB\Exception;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IConfig;
@@ -28,6 +29,102 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
     private const VERSION = 3;
     private const SETTINGS = ['taxRate', 'wizard', 'initialDemoContentCreated'];
 
+    // Native migration accepts only canonical database columns. Update this
+    // contract deliberately when adding exported fields; never trust archive keys as SQL.
+    private const IMPORT_TABLES = [
+        'properties' => 'domus_properties',
+        'units' => 'domus_units',
+        'partners' => 'domus_partners',
+        'tenancies' => 'domus_tenancies',
+        'distributionKeys' => 'domus_dist_keys',
+        'distributionKeyUnits' => 'domus_dist_key_units',
+        'bookings' => 'domus_bookings',
+        'partnerRelations' => 'domus_partner_rel',
+        'documentLinks' => 'domus_docLinks',
+        'bookingYears' => 'domus_booking_years',
+        'actionLogs' => 'domus_action_logs',
+        'workflowRuns' => 'domus_workflow_runs',
+        'taskSteps' => 'domus_task_steps',
+        'tasks' => 'domus_tasks',
+        'taskTemplates' => 'domus_task_templates',
+        'taskTemplateSteps' => 'domus_task_tpl_steps',
+    ];
+
+    private const IMPORT_COLUMNS = [
+        'domus_properties' => [
+            'id', 'user_id', 'usage_role', 'name', 'street', 'zip',
+            'city', 'country', 'type', 'description', 'document_path', 'image_file_id',
+            'image_file_name', 'created_at', 'updated_at', 'team_id',
+        ],
+        'domus_units' => [
+            'id', 'user_id', 'property_id', 'label', 'street', 'zip',
+            'city', 'country', 'unit_number', 'land_register', 'living_area', 'unit_type',
+            'notes', 'buy_date', 'total_costs', 'tax_id', 'iban', 'bic',
+            'document_path', 'image_file_id', 'image_file_name', 'created_at', 'updated_at', 'team_id',
+        ],
+        'domus_partners' => [
+            'id', 'user_id', 'partner_type', 'name', 'street', 'zip',
+            'city', 'country', 'email', 'phone', 'customer_ref', 'notes',
+            'nc_user_id', 'created_at', 'updated_at', 'team_id',
+        ],
+        'domus_partner_rel' => [
+            'id', 'user_id', 'type', 'relation_id', 'partner_id', 'team_id',
+        ],
+        'domus_tenancies' => [
+            'id', 'user_id', 'unit_id', 'start_date', 'end_date', 'base_rent',
+            'service_charge', 'deposit', 'conditions', 'created_at', 'updated_at', 'team_id',
+        ],
+        'domus_bookings' => [
+            'id', 'user_id', 'account', 'date', 'delivery_date', 'amount',
+            'year', 'property_id', 'unit_id', 'distribution_key_id', 'status', 'period_from',
+            'period_to', 'source_property_booking_id', 'description', 'created_at', 'updated_at', 'team_id',
+        ],
+        'domus_docLinks' => [
+            'id', 'user_id', 'entity_type', 'entity_id', 'file_id', 'file_name',
+            'note', 'created_at', 'team_id',
+        ],
+        'domus_dist_keys' => [
+            'id', 'user_id', 'property_id', 'type', 'name', 'config_json',
+            'valid_from', 'valid_to', 'created_at', 'updated_at', 'team_id',
+        ],
+        'domus_dist_key_units' => [
+            'id', 'user_id', 'distribution_key_id', 'unit_id', 'value', 'valid_from',
+            'valid_to', 'created_at', 'updated_at', 'team_id',
+        ],
+        'domus_task_templates' => [
+            'id', 'key', 'name', 'description', 'applies_to', 'is_active',
+            'created_at', 'updated_at', 'team_id', 'scope_key', 'source_catalogue_id',
+        ],
+        'domus_task_tpl_steps' => [
+            'id', 'template_id', 'sort_order', 'title', 'description', 'action_type',
+            'action_url', 'default_due_days_offset', 'created_at', 'updated_at', 'team_id', 'allow_early_completion',
+        ],
+        'domus_workflow_runs' => [
+            'id', 'entity_type', 'entity_id', 'template_id', 'name', 'year',
+            'status', 'started_at', 'closed_at', 'created_by', 'created_at', 'updated_at',
+            'team_id', 'completion_type', 'closed_by',
+        ],
+        'domus_task_steps' => [
+            'id', 'workflow_run_id', 'entity_type', 'entity_id', 'sort_order', 'title',
+            'description', 'action_type', 'action_url', 'status', 'due_date', 'opened_at',
+            'closed_at', 'closed_by', 'created_at', 'updated_at', 'team_id', 'allow_early_completion',
+        ],
+        'domus_tasks' => [
+            'id', 'entity_type', 'entity_id', 'title', 'description', 'status',
+            'due_date', 'closed_at', 'closed_by', 'created_by', 'created_at', 'updated_at',
+            'team_id',
+        ],
+        'domus_booking_years' => [
+            'id', 'property_id', 'unit_id', 'year', 'closed_at', 'team_id',
+        ],
+        'domus_action_logs' => [
+            'id', 'user_id', 'entity_type', 'entity_id', 'type', 'title',
+            'data', 'source', 'linked_entity_type', 'linked_entity_id', 'linked_label', 'created_by',
+            'created_at', 'updated_at', 'team_id',
+        ],
+    ];
+
+
     public function __construct(
         private IDBConnection $db,
         private IConfig $config,
@@ -38,6 +135,9 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
 
     public function getEstimatedExportSize(IUser $user): int|float {
         $uid = $user->getUID();
+        if ($this->isMappedOwner($uid)) {
+            return 0;
+        }
         $rows = 0;
 
         foreach ([
@@ -63,6 +163,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
 
     public function export(IUser $user, IExportDestination $exportDestination, OutputInterface $output): void {
         $uid = $user->getUID();
+        $this->assertUnmappedOwner($uid);
         $output->writeln('<info>Exporting Domus data</info>');
 
         try {
@@ -98,11 +199,12 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 'taskTemplateSteps' => $this->fetchAllByIds('domus_task_tpl_steps', 'template_id', $templateIds),
             ];
 
+            PersonalArchiveValidation::assertPersonal($payload);
             $payload['documentFiles'] = $this->documentFiles->export($uid, $payload['documentLinks'], $exportDestination);
 
             $exportDestination->addFileContents(self::EXPORT_FILE, json_encode($payload, JSON_THROW_ON_ERROR));
         } catch (\Throwable $e) {
-            throw new UserMigrationException('Unable to export Domus data', 0, $e);
+            throw new UserMigrationException($this->l10n->t('Unable to export Domus data'), 0, $e);
         }
     }
 
@@ -115,11 +217,18 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         try {
             $payload = json_decode($importSource->getFileContents(self::EXPORT_FILE), true, 512, JSON_THROW_ON_ERROR);
         } catch (\Throwable $e) {
-            throw new UserMigrationException('Invalid Domus migration payload', 0, $e);
+            throw new UserMigrationException($this->l10n->t('Invalid Domus migration payload'), 0, $e);
         }
 
         if (!is_array($payload)) {
-            throw new UserMigrationException('Invalid Domus migration payload');
+            throw new UserMigrationException($this->l10n->t('Invalid Domus migration payload'));
+        }
+
+        try {
+            PersonalArchiveValidation::assertPersonal($payload);
+            $this->validateImportRows($payload);
+        } catch (\Throwable $e) {
+            throw new UserMigrationException($this->l10n->t('Unable to import Domus data'), 0, $e);
         }
 
         $uid = $user->getUID();
@@ -136,7 +245,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         $documentManifest = $payload['documentFiles'] ?? [];
         foreach ($payload['documentLinks'] ?? [] as $link) {
             if (!isset($documentManifest[(int)($link['file_id'] ?? 0)])) {
-                throw new UserMigrationException('The archive has document links without files. Export it again with the current Domus version.');
+                throw new UserMigrationException($this->l10n->t('The archive has document links without files. Export it again with the current Domus version.'));
             }
         }
         $documents = $this->documentFiles->import($uid, $documentManifest, $importSource);
@@ -145,6 +254,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         try {
             $this->db->beginTransaction();
             $transactionStarted = true;
+            $this->assertUnmappedOwner($uid);
             $templateMap = $this->importTemplates($payload['taskTemplates'] ?? [], $payload['taskTemplateSteps'] ?? null);
             $this->importSettings($uid, $payload['settings'] ?? []);
             $maps['property'] = $this->importProperties($uid, $payload['properties'] ?? []);
@@ -168,7 +278,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 $this->db->rollBack();
             }
             $documents['folder']?->delete();
-            throw new UserMigrationException('Unable to import Domus data', 0, $e);
+            throw new UserMigrationException($this->l10n->t('Unable to import Domus data'), 0, $e);
         }
     }
 
@@ -196,6 +306,40 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         }
 
         return $version !== null && $version <= self::VERSION;
+    }
+
+    private function assertUnmappedOwner(string $uid): void {
+        if ($this->isMappedOwner($uid)) {
+            throw new UserMigrationException($this->l10n->t('This Domus portfolio belongs to a Team and cannot be moved through user migration.'));
+        }
+    }
+
+    private function isMappedOwner(string $uid): bool {
+        $ownedTables = [
+            'domus_properties' => 'user_id',
+            'domus_units' => 'user_id',
+            'domus_partners' => 'user_id',
+            'domus_partner_rel' => 'user_id',
+            'domus_tenancies' => 'user_id',
+            'domus_bookings' => 'user_id',
+            'domus_docLinks' => 'user_id',
+            'domus_dist_keys' => 'user_id',
+            'domus_dist_key_units' => 'user_id',
+            'domus_action_logs' => 'user_id',
+            'domus_tasks' => 'created_by',
+            'domus_workflow_runs' => 'created_by',
+        ];
+        foreach ($ownedTables as $table => $actorColumn) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('id')->from($table)
+                ->where($qb->expr()->eq($actorColumn, $qb->createNamedParameter($uid)))
+                ->andWhere($qb->expr()->isNotNull('team_id'))
+                ->setMaxResults(1);
+            if ($qb->executeQuery()->fetchOne() !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -241,7 +385,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_units', $row);
             $values['user_id'] = $uid;
             $values['property_id'] = $this->remapNullableEntityId('property', $row['property_id'] ?? null, $maps);
             $idMap[(int)$row['id']] = $this->insertAndReturnId('domus_units', $values);
@@ -262,11 +406,10 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_partners', $row);
             $values['user_id'] = $uid;
-            if (($values['nc_user_id'] ?? null) === $row['user_id']) {
-                $values['nc_user_id'] = $uid;
-            }
+            // Account identities are local to the destination and require explicit relinking.
+            $values['nc_user_id'] = null;
             $idMap[(int)$row['id']] = $this->insertAndReturnId('domus_partners', $values);
         }
 
@@ -286,7 +429,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_tenancies', $row);
             $values['user_id'] = $uid;
             $values['unit_id'] = $unitId;
             $idMap[(int)$row['id']] = $this->insertAndReturnId('domus_tenancies', $values);
@@ -308,7 +451,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_dist_keys', $row);
             $values['user_id'] = $uid;
             $values['property_id'] = $propertyId;
             $idMap[(int)$row['id']] = $this->insertAndReturnId('domus_dist_keys', $values);
@@ -329,7 +472,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_dist_key_units', $row);
             $values['user_id'] = $uid;
             $values['distribution_key_id'] = $distributionKeyId;
             $values['unit_id'] = $unitId;
@@ -349,7 +492,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_bookings', $row);
             $values['user_id'] = $uid;
             $values['property_id'] = $this->remapNullableEntityId('property', $row['property_id'] ?? null, $maps);
             $values['unit_id'] = $this->remapNullableEntityId('unit', $row['unit_id'] ?? null, $maps);
@@ -396,7 +539,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_partner_rel', $row);
             $values['user_id'] = $uid;
             $values['relation_id'] = $relationId;
             $values['partner_id'] = $partnerId;
@@ -418,11 +561,11 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_docLinks', $row);
             $values['user_id'] = $uid;
             $values['entity_id'] = $entityId;
             $values['file_id'] = $maps['file'][(int)$row['file_id']]
-                ?? throw new UserMigrationException('Missing imported Domus document');
+                ?? throw new UserMigrationException($this->l10n->t('Missing imported Domus document'));
             $id = $this->insertAndReturnId('domus_docLinks', $values);
             if (isset($row['id'])) {
                 $idMap[(int)$row['id']] = $id;
@@ -443,7 +586,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_booking_years', $row);
             $values['property_id'] = $propertyId;
             $values['unit_id'] = $unitId;
             $this->insertAndReturnId('domus_booking_years', $values);
@@ -462,7 +605,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_action_logs', $row);
             $values['user_id'] = $uid;
             $values['entity_id'] = $entityId;
             $values['created_by'] = $uid;
@@ -487,10 +630,10 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
             }
 
             $oldTemplateId = (int)($row['template_id'] ?? 0);
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_workflow_runs', $row);
             $values['entity_id'] = $entityId;
             $values['template_id'] = $templateMap[$oldTemplateId]
-                ?? throw new UserMigrationException('Missing imported Domus process template');
+                ?? throw new UserMigrationException($this->l10n->t('Missing imported Domus process template'));
             $values['created_by'] = $uid;
             $values['closed_by'] = $this->remapUserValue($values['closed_by'] ?? null, $uid);
             $idMap[(int)$row['id']] = $this->insertAndReturnId('domus_workflow_runs', $values);
@@ -512,7 +655,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_task_steps', $row);
             $values['workflow_run_id'] = $workflowRunId;
             $values['entity_id'] = $entityId;
             $values['closed_by'] = $this->remapUserValue($values['closed_by'] ?? null, $uid);
@@ -532,7 +675,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId('domus_tasks', $row);
             $values['entity_id'] = $entityId;
             $values['created_by'] = $uid;
             $values['closed_by'] = $this->remapUserValue($values['closed_by'] ?? null, $uid);
@@ -552,7 +695,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId($row);
+            $values = $this->valuesWithoutId($table, $row);
             $values['user_id'] = $uid;
             $idMap[(int)$row['id']] = $this->insertAndReturnId($table, $values);
         }
@@ -597,15 +740,15 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
             if ($steps === null) {
-                throw new UserMigrationException('The archive is missing Domus process template steps. Export it again with the current Domus version.');
+                throw new UserMigrationException($this->l10n->t('The archive is missing Domus process template steps. Export it again with the current Domus version.'));
             }
-            $templateId = $this->insertAndReturnId('domus_task_templates', $this->valuesWithoutId($row));
+            $templateId = $this->insertAndReturnId('domus_task_templates', $this->valuesWithoutId('domus_task_templates', $row));
             $map[(int)$row['id']] = $templateId;
             foreach ($steps as $step) {
                 if ((int)($step['template_id'] ?? 0) !== (int)$row['id']) {
                     continue;
                 }
-                $values = $this->valuesWithoutId($step);
+                $values = $this->valuesWithoutId('domus_task_tpl_steps', $step);
                 $values['template_id'] = $templateId;
                 $this->insertAndReturnId('domus_task_tpl_steps', $values);
             }
@@ -614,12 +757,54 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         return $map;
     }
 
-    /**
-     * @return array<string,mixed>
-     */
-    private function valuesWithoutId(array $row): array {
-        unset($row['id']);
-        return $row;
+    private function validateImportRows(array $payload): void {
+        foreach (self::IMPORT_TABLES as $section => $table) {
+            if (!array_key_exists($section, $payload)) {
+                continue;
+            }
+            if (!is_array($payload[$section])) {
+                throw new UserMigrationException($this->l10n->t('Invalid Domus migration rows: %s', [$section]));
+            }
+            foreach ($payload[$section] as $row) {
+                if (!is_array($row)) {
+                    throw new UserMigrationException($this->l10n->t('Invalid Domus migration row: %s', [$section]));
+                }
+                $this->validateRow($table, $row);
+            }
+        }
+    }
+
+    private function validateRow(string $table, array $row): void {
+        foreach ($row as $column => $value) {
+            if (!in_array($column, self::IMPORT_COLUMNS[$table], true)
+                || (!is_scalar($value) && $value !== null)) {
+                throw new UserMigrationException($this->l10n->t('Invalid Domus migration column: %s', [$table . '.' . $column]));
+            }
+        }
+        if (($row['team_id'] ?? null) !== null
+            || (array_key_exists('scope_key', $row) && $row['scope_key'] !== 'global')
+            || ($row['source_catalogue_id'] ?? null) !== null) {
+            throw new UserMigrationException($this->l10n->t('Team records cannot be imported through personal user migration.'));
+        }
+    }
+
+    /** @return array<string,mixed> */
+    private function valuesWithoutId(string $table, array $row): array {
+        $this->validateRow($table, $row);
+        $values = array_intersect_key($row, array_flip(self::IMPORT_COLUMNS[$table]));
+        unset($values['id']);
+        $values['team_id'] = null;
+        if (in_array($table, ['domus_properties', 'domus_units'], true)) {
+            // Images are not bundled in this archive. Source-instance file IDs
+            // must never resolve to unrelated files on the destination.
+            $values['image_file_id'] = null;
+            $values['image_file_name'] = null;
+        }
+        if ($table === 'domus_task_templates') {
+            $values['scope_key'] = 'global';
+            $values['source_catalogue_id'] = null;
+        }
+        return $values;
     }
 
     private function remapNullableEntityId(string $entityType, mixed $entityId, array $maps): ?int {
@@ -769,6 +954,9 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
             ->from($table)
             ->where($qb->expr()->eq($column, $qb->createNamedParameter($value)))
             ->setMaxResults(1);
+        if ($table === 'domus_task_templates') {
+            $qb->andWhere($qb->expr()->eq('scope_key', $qb->createNamedParameter('global')));
+        }
 
         $result = $qb->executeQuery()->fetchOne();
         if ($result === false || $result === null) {

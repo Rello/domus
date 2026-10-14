@@ -1515,6 +1515,30 @@
 
 .domus-settings-section-header {
     cursor: pointer;
+    margin-bottom: 0;
+}
+
+.domus-settings-section-header h3 {
+    font-size: 1rem;
+}
+
+#domus-task-templates-panel .domus-settings-section-header > .domus-icon-only-button {
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    margin: 0;
+    padding: 4px;
+    box-sizing: border-box;
+}
+
+.domus-settings .domus-settings-section {
+    padding: 8px 12px;
+    margin-bottom: 12px;
+}
+
+.domus-settings .domus-settings-section-body {
+    margin-top: 8px;
 }
 
 .domus-settings-section-header::after {
@@ -5263,10 +5287,10 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
 .domus-renter-preview-field { display: flex; flex: 1 1 220px; flex-direction: column; gap: 4px; min-width: 0; }
 .domus-renter-preview-controls select { width: 100%; min-width: 0; min-height: 44px; }
 .domus-renter-preview-controls button { min-height: 44px; }
-.domus-renter-contact { margin: 0; overflow-wrap: anywhere; }
-.domus-renter-contact dt { color: var(--color-text-maxcontrast); margin-top: 12px; }
-.domus-renter-contact dt:first-child { margin-top: 0; }
-.domus-renter-contact dd { margin: 2px 0 0; }
+.domus-panel .domus-renter-contact { padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); margin: 0; overflow-wrap: anywhere; }
+.domus-panel .domus-renter-contact dt { padding: 0; text-align: start; display: block; width: auto; float: none; color: var(--color-text-maxcontrast); margin-top: 12px; }
+.domus-panel .domus-renter-contact dt:first-child { margin-top: 0; }
+.domus-panel .domus-renter-contact dd { padding: 0; text-align: start; display: block; width: auto; float: none; margin: 2px 0 0; }
 
 @media (max-width: 640px) {
     .domus-detail-hero .domus-hero-content {
@@ -5285,4 +5309,145 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
     .domus-detail-hero .domus-hero-meta-line {
         overflow-wrap: anywhere;
     }
+}
+
+.domus-online-account { overflow-wrap: anywhere; }
+.domus-modal-online-access { width: 560px; max-width: 100%; }
+.domus-modal-online-access .domus-modal-header h3 { text-align: start; }
+.domus-online-access-modal-body { display: flex; flex-direction: column; gap: 20px; }
+.domus-online-access-modal-body p { margin: 0; line-height: 1.5; }
+.domus-online-access-intro { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.domus-online-access-intro p { color: var(--color-text-maxcontrast); }
+.domus-online-access-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px;
+    border: var(--domus-border);
+    border-radius: var(--domus-border-radius);
+    background: var(--color-background-hover);
+}
+.domus-online-access-section h4 { margin: 0; font-size: 14px; font-weight: 600; }
+.domus-online-access-modal-body .domus-online-access-hint { color: var(--color-text-maxcontrast); }
+.domus-online-access-modal-body button { margin: 0; min-height: 36px; height: auto; white-space: normal; }
+.domus-online-access-existing { border: var(--domus-border); border-radius: var(--domus-border-radius); }
+.domus-online-access-existing summary { padding: 16px 18px; cursor: pointer; font-weight: 600; line-height: 1.5; }
+.domus-online-access-existing summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.domus-online-access-existing form { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+.domus-online-access-existing label { display: flex; flex-direction: column; gap: 6px; }
+.domus-online-access-existing input { width: 100%; box-sizing: border-box; margin: 0; min-height: 36px; }
+.domus-online-access-actions { display: flex; justify-content: flex-end; }
+.domus-online-access-modal-body [data-account-notice]:empty { display: none; }
+.domus-online-access-modal-body [data-account-notice]:not(:empty) { color: var(--color-error-text, var(--color-error)); }
+
+.domus-renter-correction-field {
+    display: block;
+    margin-block: 12px;
+}
+.domus-renter-correction-field input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+.domus-correction-request {
+    padding-block: 12px;
+    overflow-wrap: anywhere;
+}
+.domus-renter-tenancy-list, .domus-renter-document-list {
+    margin: 16px;
+    overflow-wrap: anywhere;
+}
+.domus-renter-tenancy-list li, .domus-renter-document-list li {
+    padding-block: 8px;
+}
+
+/* Keep the app-wide scope next to the app name. */
+#header .domus-context-selector--header {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    margin-inline-start: 8px;
+    padding-inline-start: 12px;
+    border-inline-start: 1px solid color-mix(in srgb, var(--color-primary-text) 30%, transparent);
+    color: var(--color-primary-text);
+}
+#header .domus-context-selector--header select {
+    appearance: none;
+    width: auto;
+    max-width: min(220px, 24vw);
+    min-width: 0;
+    height: 34px;
+    min-height: 34px;
+    margin: 0;
+    padding-block: 0;
+    padding-inline: 10px 28px;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-large);
+    background: color-mix(in srgb, var(--color-primary-text) 10%, transparent);
+    color: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+#header .domus-context-selector--header::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    margin-inline: -19px 13px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg) translateY(-2px);
+    pointer-events: none;
+}
+#header .domus-context-selector--header select:hover {
+    background: color-mix(in srgb, var(--color-primary-text) 20%, transparent);
+}
+#header .domus-context-selector--header select:focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+#header .domus-context-selector--header select:disabled { opacity: .6; }
+#header .domus-context-selector--header option {
+    color: var(--color-main-text);
+    background: var(--color-main-background);
+}
+@media (max-width: 600px) {
+    #header .domus-context-selector--header {
+        margin-inline-start: 2px;
+        padding-inline-start: 6px;
+    }
+    #header .domus-context-selector--header select {
+        max-width: 26vw;
+        font-size: 13px;
+    }
+}
+
+.domus-required-apps {
+    list-style: none;
+    margin: 12px 0;
+    padding: 0;
+}
+
+.domus-required-app {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.domus-required-app-status {
+    width: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.domus-required-app-enabled {
+    color: var(--color-success, #2d7b2d);
+}
+
+.domus-required-app-unavailable {
+    color: var(--color-error, #c62828);
 }

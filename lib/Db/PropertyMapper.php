@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\IDBConnection;
 use OCP\DB\Exception;
 
-class PropertyMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_properties', Property::class);
+class PropertyMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_properties', Property::class, $access);
     }
 
     /**
@@ -23,7 +23,7 @@ class PropertyMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->where($this->ownerExpression($qb, $userId));
 
         if ($usageRole !== null && $usageRole !== '') {
             $qb->andWhere($qb->expr()->eq('usage_role', $qb->createNamedParameter($usageRole)));
@@ -40,7 +40,7 @@ class PropertyMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntity($qb);
     }

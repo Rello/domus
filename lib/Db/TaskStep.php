@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class TaskStep extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $workflowRunId;
     protected $entityType;
     protected $entityId;

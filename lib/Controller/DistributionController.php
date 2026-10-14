@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\Controller;
 
+use OCA\Domus\Service\ManagementAccessContext;
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\DistributionKeyService;
 use OCA\Domus\Service\DistributionService;
@@ -17,12 +18,11 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IL10N;
-use OCP\IUserSession;
 
 class DistributionController extends Controller {
     public function __construct(
         IRequest $request,
-        private IUserSession $userSession,
+        private ManagementAccessContext $managementContext,
         private DistributionKeyService $distributionKeyService,
         private DistributionService $distributionService,
         private PermissionService $permissionService,
@@ -66,33 +66,17 @@ class DistributionController extends Controller {
     public function report(int $propertyId, int $unitId, int $year): DataResponse {
         $role = $this->getRole();
         if (!$this->permissionService->isBuildingManagement($role)) {
-            return $this->validationError($this->l10n->t('Distribution report is only available for building management.'));
+            throw new \InvalidArgumentException($this->l10n->t('Distribution report is only available for building management.'));
         }
-             $report = $this->distributionService->buildReport($propertyId, $unitId, $year, $this->getUserId());
-            return new DataResponse($report);
+        $report = $this->distributionService->buildReport($propertyId, $unitId, $year, $this->getUserId());
+        return new DataResponse($report);
     }
 
     private function getUserId(): string {
-        return $this->userSession->getUser()?->getUID() ?? '';
+        return $this->managementContext->managementUserId();
     }
 
     private function getRole(): string {
         return $this->permissionService->getRoleFromRequest($this->request);
-    }
-
-    private function notFound(): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $this->l10n->t('Resource not found.'),
-            'code' => 'NOT_FOUND',
-        ], Http::STATUS_NOT_FOUND);
-    }
-
-    private function validationError(string $message): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $message,
-            'code' => 'VALIDATION_ERROR',
-        ], Http::STATUS_BAD_REQUEST);
     }
 }

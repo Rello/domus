@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\ActionLogMapper;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\BookingYearMapper;
@@ -49,11 +50,16 @@ class UnitService {
         $isBuildingManagement = $this->permissionService->isBuildingManagement($role);
         $propertyFilter = $isBuildingManagement ? $propertyId : null;
         $units = $this->unitMapper->findByUser($userId, $propertyFilter, !$isBuildingManagement);
-        $propertyNames = $this->loadPropertyNames($userId);
+        $propertiesById = [];
+        foreach ($this->propertyMapper->findByUser($userId) as $property) {
+            $propertiesById[$property->getId()] = $property;
+        }
+        $tenanciesByUnit = $units === [] ? [] : $this->tenancyService->listTenanciesByUnit($userId);
         foreach ($units as $unit) {
-            $this->entityImageService->enrichUnit($unit);
-            $this->enrichWithTenancies($unit, $userId);
-            $unit->setPropertyName($propertyNames[(int)$unit->getPropertyId()] ?? null);
+            $property = $propertiesById[$unit->getPropertyId()] ?? null;
+            $this->entityImageService->enrichUnit($unit, $property, $property !== null);
+            $this->tenancyService->enrichUnitTenancies($unit, $tenanciesByUnit[$unit->getId()] ?? []);
+            $unit->setPropertyName($property?->getName());
         }
         return $units;
     }
@@ -61,7 +67,7 @@ class UnitService {
     public function getUnitForUser(int $id, string $userId): Unit {
         $unit = $this->unitMapper->findForUser($id, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
         $this->entityImageService->enrichUnit($unit);
         $this->enrichWithTenancies($unit, $userId);
@@ -77,7 +83,7 @@ class UnitService {
         if ($propertyId !== null) {
             $property = $this->propertyMapper->findForUser((int)$propertyId, $userId);
             if (!$property) {
-                throw new \RuntimeException($this->l10n->t('Property not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
             }
             $propertyName = $property->getName();
         }
@@ -130,7 +136,7 @@ class UnitService {
             $this->permissionService->assertPropertyRequirement($role, (int)$data['propertyId']);
             $property = $this->propertyMapper->findForUser((int)$data['propertyId'], $userId);
             if (!$property) {
-                throw new \RuntimeException($this->l10n->t('Property not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
             }
             $unit->setPropertyId((int)$data['propertyId']);
         }
@@ -195,30 +201,7 @@ class UnitService {
 
     private function enrichWithTenancies(Unit $unit, string $userId): void {
         $tenancies = $this->tenancyService->listTenancies($userId, $unit->getId());
-        $active = [];
-        $historic = [];
-        $today = new \DateTimeImmutable('today');
-        foreach ($tenancies as $tenancy) {
-            $status = $tenancy->getStatus() ?? $this->tenancyService->getStatus($tenancy, $today);
-            if ($status === 'historical') {
-                $historic[] = $tenancy;
-            } else {
-                $active[] = $tenancy;
-            }
-        }
-        $unit->setActiveTenancies($active);
-        $unit->setHistoricTenancies($historic);
+        $this->tenancyService->enrichUnitTenancies($unit, $tenancies);
     }
 
-    private function loadPropertyNames(string $userId): array {
-        $properties = $this->propertyMapper->findByUser($userId);
-        $propertyNames = [];
-        foreach ($properties as $property) {
-            if ($property->getId() === null) {
-                continue;
-            }
-            $propertyNames[(int)$property->getId()] = $property->getName();
-        }
-        return $propertyNames;
-    }
 }

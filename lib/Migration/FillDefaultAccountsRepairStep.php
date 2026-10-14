@@ -7,6 +7,8 @@
 
 namespace OCA\Domus\Migration;
 
+use OCA\Domus\Accounting\Accounts;
+
 use OCP\IDBConnection;
 use OCP\Migration\IOutput;
 use OCP\Migration\IRepairStep;
@@ -44,11 +46,11 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
 
     private function seedAccounts(): void {
         $defaults = [
-            ['2000', 'Maintenance fee (allocable)', 'Nebenkosten (umlagefähig)'],
+            [Accounts::ALLOCABLE_MAINTENANCE, 'Maintenance fee (allocable)', 'Nebenkosten (umlagefähig)'],
             ['2100', 'Maintenance fee (non-allocable)', 'Nebenkosten (nicht umlagefähig)'],
             ['2200', 'Reserve fund allocation', 'Zuführung Rücklage'],
             ['2300', 'Other costs', 'Sonstige Kosten'],
-            ['2400', 'Property tax', 'Grundsteuer'],
+            [Accounts::PROPERTY_TAX, 'Property tax', 'Grundsteuer'],
             ['2500', 'Loan interest', 'Darlehenszinsen'],
             ['2600', 'Depreciation', 'Abschreibung'],
             ['2700', 'Other tax deductions', 'Sonstige Steuerabzüge'],

@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class Booking extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $userId;
     protected $account;
     protected $date;

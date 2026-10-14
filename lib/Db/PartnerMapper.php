@@ -7,14 +7,14 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 
-class PartnerMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_partners', Partner::class);
+class PartnerMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_partners', Partner::class, $access);
     }
 
     /**
@@ -24,7 +24,7 @@ class PartnerMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->where($this->ownerExpression($qb, $userId));
 
         if ($type !== null) {
             $qb->andWhere($qb->expr()->eq('partner_type', $qb->createNamedParameter($type)));
@@ -41,7 +41,7 @@ class PartnerMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntity($qb);
     }
@@ -63,7 +63,7 @@ class PartnerMapper extends QBMapper {
         foreach (array_chunk($ids, 500) as $chunk) {
             $qb = $this->db->getQueryBuilder();
             $qb->select('*')->from($this->getTableName())
-                ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+                ->where($this->ownerExpression($qb, $userId))
                 ->andWhere($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
             array_push($partners, ...$this->findEntities($qb));
         }

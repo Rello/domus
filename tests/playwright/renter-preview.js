@@ -19,7 +19,7 @@ async function main() {
             window.t = (app, value, params = {}) => value.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? key);
             window.OC = { generateUrl: path => path };
         });
-        for (const module of ['domusCoreBundle', 'domusPartners', 'domusDocuments', 'domusTenancies']) {
+        for (const module of ['domusCoreBundle', 'domusActionLog', 'domusPartners', 'domusDocuments', 'domusTenancies']) {
             await page.addScriptTag({ path: `js/${module}.js` });
         }
         await page.evaluate(() => {

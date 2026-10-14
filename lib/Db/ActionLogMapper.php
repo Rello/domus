@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class ActionLogMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_action_logs', ActionLog::class);
+class ActionLogMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_action_logs', ActionLog::class, $access);
     }
 
     /**
@@ -23,7 +23,7 @@ class ActionLogMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)))
             ->orderBy('created_at', 'DESC')
@@ -69,7 +69,7 @@ class ActionLogMapper extends QBMapper {
 
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere(call_user_func_array([$qb->expr(), 'orX'], $conditions))
             ->orderBy('created_at', 'DESC')
             ->addOrderBy('id', 'DESC');
@@ -92,7 +92,7 @@ class ActionLogMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($this->ownerExpression($qb, $userId))
             ->setMaxResults(1);
 
         return $this->findEntity($qb);
@@ -104,7 +104,7 @@ class ActionLogMapper extends QBMapper {
     public function deleteForEntity(string $userId, string $entityType, int $entityId): void {
         $qb = $this->db->getQueryBuilder();
         $qb->delete($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
 
@@ -117,7 +117,7 @@ class ActionLogMapper extends QBMapper {
     public function deleteForLinkedEntity(string $userId, string $entityType, int $entityId): void {
         $qb = $this->db->getQueryBuilder();
         $qb->delete($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('linked_entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->eq('linked_entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
 
@@ -131,7 +131,7 @@ class ActionLogMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->selectAlias($qb->createFunction('COUNT(DISTINCT id)'), 'amount')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere(
                 $qb->expr()->orX(
                     $qb->expr()->andX(

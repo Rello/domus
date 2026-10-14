@@ -11,6 +11,9 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class TaskTemplate extends Entity implements JsonSerializable {
+    protected $teamId;
+    protected $scopeKey;
+    protected $sourceCatalogueId;
     protected $key;
     protected $name;
     protected $description;

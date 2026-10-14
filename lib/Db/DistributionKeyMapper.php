@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class DistributionKeyMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_dist_keys', DistributionKey::class);
+class DistributionKeyMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_dist_keys', DistributionKey::class, $access);
     }
 
     /**
@@ -24,7 +24,7 @@ class DistributionKeyMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntity($qb);
     }
@@ -37,7 +37,7 @@ class DistributionKeyMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($this->ownerExpression($qb, $userId))
             ->orderBy('valid_from', 'DESC');
 
         return $this->findEntities($qb);
@@ -52,7 +52,7 @@ class DistributionKeyMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('type', $qb->createNamedParameter($type)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($this->ownerExpression($qb, $userId))
             ->orderBy('valid_from', 'ASC');
 
         if ($excludeId !== null) {

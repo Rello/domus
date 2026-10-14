@@ -7,11 +7,10 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Accounting\StatisticCalculations;
-use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
-use OCP\IConfig;
 use OCP\IL10N;
 use Psr\Log\LoggerInterface;
 
@@ -24,9 +23,9 @@ class StatisticsService {
                 private PermissionService $permissionService,
                 private EntityImageService $entityImageService,
                 private AccountService $accountService,
-                private IConfig $config,
                 private IL10N $l10n,
                 private LoggerInterface $logger,
+                private PortfolioSettingsService $portfolioSettings,
         ) {
         }
 
@@ -42,15 +41,11 @@ class StatisticsService {
                         'cost' => $this->normalizeColumns(StatisticCalculations::unitCost()),
                 ];
 
-                return $this->buildStatisticsTables($definitions, function (array $tableDefinitions) use ($unitId, $unit, $userId, $year, $topAccountMap, $closedUnitYears, $closedPropertyYears, $propertyId) {
-                        $row = $this->buildStatisticsRowForUnitYear(
-                                $unitId,
-                                $unit,
-                                $userId,
-                                $year,
-                                $tableDefinitions,
-                                $topAccountMap,
-                        );
+                $tenancies = $this->tenancyService->getTenanciesForUnit($unitId, $userId);
+                $grouped = $this->bookingService->sumByAccountGrouped($userId, $year, 'unit', $unitId);
+                $sums = $this->buildUnitYearSums($unit, $this->getTaxRateSetting($userId), $year, $topAccountMap, $tenancies, $grouped);
+                return $this->buildStatisticsTables($definitions, function (array $tableDefinitions) use ($unitId, $unit, $year, $sums, $topAccountMap, $closedUnitYears, $closedPropertyYears, $propertyId) {
+                        $row = $this->buildRowForYear($year, $tableDefinitions, $sums, ['unit' => $unit], $topAccountMap);
                         $row['isProvisional'] = !$this->isYearClosed($year, $unitId, $propertyId, $closedUnitYears, $closedPropertyYears);
                         return $row;
                 });
@@ -70,17 +65,19 @@ class StatisticsService {
 
                 $grouped = $this->bookingService->sumByAccountGrouped($userId, null, 'unit', $unitId);
                 $perYearSums = $this->mapSumsByYear($grouped, $topAccountMap);
-                $years = $this->collectYears($perYearSums, $this->tenancyService->getTenanciesForUnit($unitId, $userId));
+                $tenancies = $this->tenancyService->getTenanciesForUnit($unitId, $userId);
+                $years = $this->collectYears($perYearSums, $tenancies);
 
                 $tables = $this->initializeStatisticsTables($definitions);
+                $taxRate = $this->getTaxRateSetting($userId);
                 foreach ($years as $year) {
                         $tenancySums = $this->mapSumsToTopAccounts(
-                                $this->tenancyService->sumTenancyForYear($userId, $unitId, $year),
+                                $this->tenancyService->sumTenanciesForYear($tenancies, $year),
                                 $topAccountMap,
                         );
                         $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
                         $sums = $this->mergeSums($perYearSums[$year] ?? [], $tenancySums, $unitSums);
-                        $sums = $this->applyUserTaxRate($sums, $userId);
+                        $sums = $this->applyTaxRate($sums, $taxRate);
 
                         foreach ($definitions as $tableName => $tableDefinitions) {
                                 $tables[$tableName]['rows'][] = $this->buildRowForYear(
@@ -123,21 +120,23 @@ class StatisticsService {
                 $closedUnitYears = $this->bookingYearService->getClosedYearsForUnits($unitIds);
                 $closedPropertyYears = $this->bookingYearService->getClosedYearsForProperties($propertyIds);
                 $rows = [];
+                $tenanciesByUnit = $units === [] ? [] : $this->tenancyService->listTenanciesByUnit($userId);
+                $bookingsByUnitYear = [];
+                if ($units !== []) {
+                        foreach ($this->bookingService->sumByAccountGrouped($userId, null, 'unit') as $bookingSum) {
+                                $bookingsByUnitYear[(int)$bookingSum['unit_id']][(int)$bookingSum['year']][] = $bookingSum;
+                        }
+                }
 
+                $taxRate = null;
                 foreach ($units as $unit) {
                         $this->entityImageService->enrichUnit($unit);
                         $unitId = $unit->getId();
                         $unitPropertyId = $unit->getPropertyId();
                         $latestClosedYear = $this->getLatestClosedYearForUnit($unitId, $unitPropertyId, $closedUnitYears, $closedPropertyYears);
                         if ($latestClosedYear !== null) {
-                                $row = $this->buildStatisticsRowForUnitYear(
-                                        $unitId,
-                                        $unit,
-                                        $userId,
-                                        $latestClosedYear,
-                                        $definitions,
-                                        $topAccountMap,
-                                );
+                                $sums = $this->buildUnitYearSums($unit, $taxRate ??= $this->getTaxRateSetting($userId), $latestClosedYear, $topAccountMap, $tenanciesByUnit[$unitId] ?? [], $bookingsByUnitYear[$unitId][$latestClosedYear] ?? []);
+                                $row = $this->buildRowForYear($latestClosedYear, $definitions, $sums, ['unit' => $unit], $topAccountMap);
                                 $row['isProvisional'] = false;
                         } else {
                                 $row = $this->buildEmptyStatisticsRowForUnit($unit, $definitions);
@@ -145,7 +144,7 @@ class StatisticsService {
                         }
 
                         if ($this->permissionService->isLandlord($role)) {
-                                $row['occupancyStatus'] = $this->hasCurrentTenancyForUnit($unitId, $userId) ? 'occupied' : 'vacant';
+                                $row['occupancyStatus'] = $this->hasCurrentTenancy($tenanciesByUnit[$unitId] ?? []) ? 'occupied' : 'vacant';
                         }
                         $row['resolvedImageUrl'] = $unit->getResolvedImageUrl();
 
@@ -233,7 +232,7 @@ class StatisticsService {
                         if (!isset($column['visible'])) {
                                 $column['visible'] = true;
                         }
-                        if (!isset($column['format']) && isset($column['rule']) && $this->containsOperation($column['rule'], 'div')) {
+                        if (!isset($column['format']) && isset($column['rule']) && $this->containsOperation($column['rule'], 'divide')) {
                                 $column['format'] = 'percentage';
                         }
                         return $column;
@@ -252,7 +251,7 @@ class StatisticsService {
 
         private function containsOperation(array $rule, string $operation): bool {
                 foreach ($rule as $step) {
-                        if (($step['op'] ?? null) === $operation) {
+                        if (($step['operation'] ?? null) === $operation) {
                                 return true;
                         }
                 }
@@ -303,18 +302,10 @@ class StatisticsService {
                 $currentYear = (int)date('Y');
 
                 foreach ($tenancies as $tenancy) {
-                        try {
-                                $start = new \DateTimeImmutable($tenancy->getStartDate());
-                        } catch (\Exception $e) {
+                        $start = InputValidation::date($tenancy->getStartDate());
+                        $end = InputValidation::date($tenancy->getEndDate());
+                        if ($start === null) {
                                 continue;
-                        }
-
-                        $end = null;
-                        if ($tenancy->getEndDate()) {
-                                try {
-                                        $end = new \DateTimeImmutable($tenancy->getEndDate());
-                                } catch (\Exception $e) {
-                                }
                         }
 
                         $startYear = (int)$start->format('Y');
@@ -333,9 +324,13 @@ class StatisticsService {
 
         private function buildRowForYear(int $year, array $definitions, array $sums, array $context = [], array $topAccountMap = []): array {
                 $row = [];
+                $calculated = [];
                 foreach ($definitions as $column) {
                         $key = $column['key'];
-                        $row[$key] = $this->resolveColumnValue($column, $year, $sums, $context, $row, $topAccountMap);
+                        $value = $this->resolveColumnValue($column, $year, $sums, $context, $calculated, $topAccountMap);
+                        $calculated[$key] = $value;
+                        $row[$key] = isset($column['account']) || isset($column['rule'])
+                                ? $this->formatColumnValue($column, $value) : $value;
                 }
                 return $row;
         }
@@ -351,66 +346,11 @@ class StatisticsService {
                         return $this->resolveUnitField($context['unit'], $column['field'] ?? $key);
                 }
 
-                if (isset($column['account'])) {
-                        $account = $this->resolveTopAccountNumber((string)$column['account'], $topAccountMap);
-                        $value = $this->get($sums, $account);
-                        return $this->formatColumnValue($column, $value);
-                }
-                if (isset($column['rule'])) {
-                        $value = $this->evalRule($sums, $column['rule'], $computed, $topAccountMap);
-                        return $this->formatColumnValue($column, $value);
+                if (isset($column['account']) || isset($column['rule'])) {
+                        return StatisticCalculations::calculateColumn($column, $sums, $computed, $topAccountMap);
                 }
 
                 return null;
-        }
-
-        private function evalRule(array $sums, array $rule, array $computed = [], array $topAccountMap = []): float {
-                $prev = 0.0;
-
-                foreach ($rule as $step) {
-                        $op = $step['op'] ?? '';
-                        $args = $step['args'] ?? [];
-
-                        // Resolve args with precedence:
-                        // 1) 'prev' special token -> last step result
-                        // 2) previously computed column key present in $computed
-                        // 3) account lookup in $sums
-                        $values = array_map(function ($arg) use (&$prev, $sums, $computed, $topAccountMap) {
-                                if ($arg === 'prev') {
-                                        return $prev;
-                                }
-                                // If arg refers to a previously computed column key, use its value
-                                if (is_string($arg) && array_key_exists($arg, $computed)) {
-                                        return (float)($computed[$arg] ?? 0.0);
-                                }
-                                // Fallback: treat as account number / sum key
-                                $account = $this->resolveTopAccountNumber((string)$arg, $topAccountMap);
-                                return $this->get($sums, $account);
-                        }, $args);
-
-                        switch ($op) {
-                                case 'add':
-                                        // Step 1: addition
-                                        $prev = $this->addValues(...$values);
-                                        break;
-                                case 'sub':
-                                        // Step 2: subtraction (left-to-right)
-                                        $prev = $this->subValues(...$values);
-                                        break;
-                                case 'mul':
-                                        // Step 3: multiplication
-                                        $prev = $this->mulValues(...$values);
-                                        break;
-                                case 'div':
-                                        // existing division behavior
-                                        $prev = $this->divValues($values[0] ?? 0.0, $values[1] ?? 0.0);
-                                        break;
-                                default:
-                                        throw new \InvalidArgumentException($this->l10n->t('Unsupported operation.'));
-                        }
-                }
-
-                return $prev;
         }
 
         private function formatColumnValue(array $column, float $value): float {
@@ -418,10 +358,6 @@ class StatisticsService {
                         return round($value, 4);
                 }
                 return round($value, 2);
-        }
-
-        private function get(array $sums, string $nr): float {
-                return (float)($sums[$nr] ?? 0.0);
         }
 
         private function mergeSums(array ...$sums): array {
@@ -492,34 +428,20 @@ class StatisticsService {
                 return $tables;
         }
 
-        private function buildStatisticsRowForUnitYear(int $unitId, ?Unit $unit, string $userId, int $year, array $definitions, array $topAccountMap = []): array {
-                $grouped = $this->bookingService->sumByAccountGrouped($userId, $year, 'unit', $unitId);
-                $sums = $this->mapSums($grouped, $topAccountMap);
-
-                $tenancySums = $this->mapSumsToTopAccounts(
-                        $this->tenancyService->sumTenancyForYear($userId, $unitId, $year),
-                        $topAccountMap,
-                );
-                $unitSums = $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap);
-                $mergedSums = $this->mergeSums($sums, $tenancySums, $unitSums);
-                $mergedSums = $this->applyUserTaxRate($mergedSums, $userId);
-
-                $row = $this->buildRowForYear($year, $definitions, $mergedSums, ['unit' => $unit], $topAccountMap);
-
-                return $row;
+        private function buildUnitYearSums(?Unit $unit, float $taxRate, int $year, array $topAccountMap, array $tenancies, array $bookings): array {
+                return $this->applyTaxRate($this->mergeSums(
+                        $this->mapSums($bookings, $topAccountMap),
+                        $this->mapSumsToTopAccounts($this->tenancyService->sumTenanciesForYear($tenancies, $year), $topAccountMap),
+                        $this->mapSumsToTopAccounts($this->buildUnitSums($unit), $topAccountMap),
+                ), $taxRate);
         }
 
-        private function loadUnit(int $unitId, string $userId): ?Unit {
-            try {
-                        return $this->unitMapper->findForUser($unitId, $userId);
-                } catch (\Throwable $e) {
-                        $this->logger->error('StatisticsService: failed to load unit while building sums', [
-                                'unitId' => $unitId,
-                                'exception' => $e,
-                        ]);
+        private function loadUnit(int $unitId, string $userId): Unit {
+                $unit = $this->unitMapper->findForUser($unitId, $userId);
+                if ($unit === null) {
+                        throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
                 }
-
-                return null;
+                return $unit;
         }
 
         private function buildEmptyStatisticsRowForUnit(?Unit $unit, array $definitions): array {
@@ -552,8 +474,8 @@ class StatisticsService {
                 return max(array_map('intval', $years));
         }
 
-        private function hasCurrentTenancyForUnit(int $unitId, string $userId): bool {
-                foreach ($this->tenancyService->getTenanciesForUnit($unitId, $userId) as $tenancy) {
+        private function hasCurrentTenancy(array $tenancies): bool {
+                foreach ($tenancies as $tenancy) {
                         if ($tenancy->getStatus() === 'active') {
                                 return true;
                         }
@@ -588,8 +510,8 @@ class StatisticsService {
                 return $mapped;
         }
 
-        private function applyUserTaxRate(array $sums, string $userId): array {
-                $sums['taxRate'] = $this->getTaxRateSetting($userId);
+        private function applyTaxRate(array $sums, float $taxRate): array {
+                $sums['taxRate'] = $taxRate;
                 return $sums;
         }
 
@@ -606,46 +528,11 @@ class StatisticsService {
         }
 
         private function getTaxRateSetting(string $userId): float {
-                $value = $this->config->getUserValue($userId, Application::APP_ID, 'taxRate', '0');
+                $value = $this->portfolioSettings->getValue($userId, 'taxRate', '0');
                 if (!is_numeric($value)) {
                         return 0.0;
                 }
                 return (float)$value;
         }
 
-        private function addValues(float ...$values): float {
-                return array_sum($values);
-        }
-
-        private function subValues(float ...$values): float {
-                // If no values provided, return 0.0 to remain consistent with other helpers
-                if (count($values) === 0) {
-                        return 0.0;
-                }
-                // Subtract subsequent values from the first value (left-to-right)
-                $result = array_shift($values);
-                foreach ($values as $v) {
-                        $result -= $v;
-                }
-                return $result;
-        }
-
-        private function mulValues(float ...$values): float {
-                // If no values provided, return 0.0 (consistent with add/div behaviour for empty input)
-                if (count($values) === 0) {
-                        return 0.0;
-                }
-                $product = 1.0;
-                foreach ($values as $v) {
-                        $product *= $v;
-                }
-                return $product;
-        }
-
-        private function divValues(float $a, float $b): float {
-                if ($b == 0.0) {
-                        return 0.0;
-                }
-                return $a / $b;
-        }
 }

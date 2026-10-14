@@ -69,7 +69,6 @@
         let bookingsCache = [];
         let bookingsCurrentPage = 1;
         let bookingListContext = { distMap: {}, unitMap: {}, propertyMap: {}, duplicateUnitLabels: {}, isBuildingMgmt: false, role: null };
-        let bookingListRequestId = 0;
         let bookingFilters = { query: '', unitId: '', account: '', dateMode: 'invoice', from: '', to: '' };
         const inlineBookingsState = {};
 
@@ -305,11 +304,10 @@
         function renderList() {
             const refreshing = !!document.getElementById('domus-bookings-table');
             const restoreContext = refreshing ? Domus.UI.captureContentContext() : null;
-            const requestId = ++bookingListRequestId;
+            const view = Domus.Router.beginView({ preserveContent: refreshing });
             const role = Domus.Role.getCurrentRole();
-            const startingView = Domus.state.currentView;
             const showLoadError = err => {
-                if (requestId !== bookingListRequestId || Domus.Role.getCurrentRole() !== role || Domus.state.currentView !== startingView) return;
+                if (!view.isCurrent()) return;
                 document.getElementById('domus-bookings-table')?.removeAttribute('aria-busy');
                 if (refreshing) Domus.UI.showNotification(err.message, 'error');
                 else Domus.UI.showError(err.message);
@@ -323,12 +321,13 @@
                 isBuildingMgmt ? Domus.Api.getProperties() : Promise.resolve([])
             ])
                 .then(([bookings, units, properties]) => {
-                    if (requestId !== bookingListRequestId || Domus.Role.getCurrentRole() !== role || Domus.state.currentView !== startingView) return;
+                    if (!view.isCurrent()) return;
                     const bookingsList = filterBookingsForRole(bookings || []);
                     const distributionPromise = isBuildingMgmt ? buildDistributionTitleMap(bookingsList) : Promise.resolve({});
 
                     distributionPromise.then(distMap => {
-                        if (requestId !== bookingListRequestId || Domus.Role.getCurrentRole() !== role || Domus.state.currentView !== startingView) return;
+                        if (!view.isCurrent()) return;
+                        view.commit();
                         if (bookingListContext.role !== role) {
                             bookingFilters = { query: '', unitId: '', account: '', dateMode: 'invoice', from: '', to: '' };
                             bookingsCurrentPage = 1;
@@ -519,14 +518,14 @@
                 const units = masterdata.units || [];
                 const distributionKeys = masterdata.distributionKeys || {};
                 if (properties.length) {
-                    lines.push('# Properties (id - name)');
+                    lines.push('# ' + t('domus', 'Properties (id - name)'));
                     properties.forEach(property => {
                         lines.push(`# ${property.id} - ${property.name || t('domus', 'Property') + ' #' + property.id}`);
                     });
                     lines.push('#');
                 }
                 if (units.length) {
-                    lines.push('# Units (id - label - propertyId)');
+                    lines.push('# ' + t('domus', 'Units (id - label - propertyId)'));
                     units.forEach(unit => {
                         lines.push(`# ${unit.id} - ${unit.label || t('domus', 'Unit') + ' #' + unit.id} - ${unit.propertyId || ''}`);
                     });
@@ -534,7 +533,7 @@
                 }
                 const distributionKeysEntries = Object.entries(distributionKeys);
                 if (distributionKeysEntries.length) {
-                    lines.push('# Distribution keys (propertyId: id - name)');
+                    lines.push('# ' + t('domus', 'Distribution keys (propertyId: id - name)'));
                     distributionKeysEntries.forEach(([propertyId, keys]) => {
                         (keys || []).forEach(key => {
                             lines.push(`# ${propertyId}: ${key.id} - ${key.name || t('domus', 'Distribution') + ' #' + key.id}`);
@@ -544,7 +543,7 @@
                 }
             }
             lines.push(bookingCsvColumns.join(','));
-            lines.push('4000,2024-01-15,2024-01-15,120.50,1,10,3,2024-01-01,2024-01-31,Sample booking');
+            lines.push('4000,2024-01-15,2024-01-15,120.50,1,10,3,2024-01-01,2024-01-31,"' + t('domus', 'Sample booking').replace(/"/g, '""') + '"');
             return lines.join('\n') + '\n';
         }
 
@@ -785,7 +784,7 @@
                 return;
             }
 
-            updateImportStatus(t('domus', 'Importing {count} bookings…', { count: result.entries.length }));
+            updateImportStatus(n('domus', 'Importing %n booking…', 'Importing %n bookings…', result.entries.length));
             const requests = result.entries.map(entry => (
                 Domus.Api.createBooking(entry.payload)
                     .then(() => ({ ok: true, rowNumber: entry.rowNumber }))
@@ -797,7 +796,7 @@
                 const successCount = results.length - failures.length;
 
                 if (successCount > 0) {
-                    Domus.UI.showNotification(t('domus', 'Imported {count} bookings.', { count: successCount }), 'success');
+                    Domus.UI.showNotification(n('domus', 'Imported %n booking.', 'Imported %n bookings.', successCount), 'success');
                     if (input) {
                         input.value = '';
                     }
@@ -872,6 +871,7 @@
                 type: selection.type,
                 file: selection.file,
                 filePath: selection.filePath,
+                sourceLinkId: selection.sourceLinkId,
                 title: selection.title,
                 note: selection.note,
                 year: derivedYear,
@@ -959,6 +959,7 @@
                         type: 'link',
                         filePath: String(lockedSelection.filePath || ''),
                         fileId: lockedSelection.fileId || undefined,
+                        sourceLinkId: lockedSelection.sourceLinkId || undefined,
                         fileUrl: lockedSelection.fileUrl || undefined,
                         title: String(lockedSelection.title || '').trim() || undefined,
                         year: lockedSelection.year,
@@ -1192,6 +1193,7 @@
                             type: 'link',
                             filePath: String(primaryDocument.filePath),
                             fileId: primaryDocument.fileId || undefined,
+                            sourceLinkId: primaryDocument.id || undefined,
                             fileUrl: primaryDocument.fileUrl || undefined,
                             title: primaryDocument.fileName || undefined,
                             note: primaryDocument.note || undefined,

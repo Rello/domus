@@ -1246,9 +1246,8 @@
                                     return;
                                 }
                                 const description = translateTemplateText(template.description || '') ||
-                                    t('domus', '{name} has {count} steps, from {first} to {last}.', {
+                                    n('domus', '{name} has %n step: {first}.', '{name} has %n steps, from {first} to {last}.', steps.length, {
                                         name: translateTemplateText(template.name) || template.name || '',
-                                        count: steps.length,
                                         first: translateTemplateText(steps[0].title) || steps[0].title || '',
                                         last: translateTemplateText(steps[steps.length - 1].title) || steps[steps.length - 1].title || ''
                                     });
@@ -1256,12 +1255,7 @@
                                 previewEl.innerHTML = '<p>' + Domus.Utils.escapeHtml(description) + '</p>' +
                                     '<p class="muted">' + Domus.Utils.escapeHtml(schedule) + '</p>' +
                                     '<ol>' + steps.map(step => {
-                                        const offset = Number(step.defaultDueDaysOffset) || 0;
-                                        const dueRule = offset === 0
-                                            ? t('domus', 'Due on opening day')
-                                            : offset > 0
-                                                ? t('domus', 'Due {days} days after opening', { days: offset })
-                                                : t('domus', 'Due {days} days before opening', { days: -offset });
+                                        const dueRule = Domus.Utils.formatStepDueOffset(step.defaultDueDaysOffset);
                                         return '<li><strong>' + Domus.Utils.escapeHtml(translateTemplateText(step.title) || step.title || '') + '</strong>' +
                                             '<span class="muted">' + Domus.Utils.escapeHtml(dueRule) + '</span></li>';
                                     }).join('') + '</ol>';
@@ -1767,6 +1761,7 @@
         }
 
         function loadUnitTasks(unitId, options = {}) {
+            const view = Domus.Router.captureView('unit-tasks:' + unitId);
             const body = document.getElementById('domus-unit-tasks-body');
             if (!body && typeof options.onOpenCount !== 'function') {
                 return;
@@ -1780,6 +1775,7 @@
                 Domus.Api.get('/units/' + unitId).catch(() => null)
             ])
                 .then(([runs, tasks, unit]) => {
+                    if (!view.isCurrent() || (body && !body.isConnected)) return;
                     const unitData = {
                         runs,
                         tasks,
@@ -1807,6 +1803,7 @@
                     }
                 })
                 .catch(err => {
+                    if (!view.isCurrent() || (body && !body.isConnected)) return;
                     if (body) {
                         body.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
                     }
@@ -1921,11 +1918,13 @@
         }
 
         function loadTemplates() {
+            const view = Domus.Router.captureView('task-templates');
             const container = document.getElementById('domus-task-templates-body');
             if (!container) return;
             container.innerHTML = Domus.Utils.escapeHtml(t('domus', 'Loading templates…'));
             Domus.Api.getTaskTemplates(false)
                 .then(templates => {
+                    if (!view.isCurrent() || !container.isConnected) return;
                     const rows = (templates || []).map(buildTemplateRow);
                     container.innerHTML = Domus.UI.buildTable([
                         t('domus', 'Name'),
@@ -1936,6 +1935,7 @@
                     bindTemplateActions();
                 })
                 .catch(err => {
+                    if (!view.isCurrent() || !container.isConnected) return;
                     container.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
                 });
         }
@@ -2141,7 +2141,7 @@
                 '<div class="muted">' + Domus.Utils.escapeHtml(translateTemplateText(step.description) || step.description || '') + '</div>' +
                 '</div>' +
                 '<div class="domus-task-step-meta">' +
-                Domus.Utils.escapeHtml(t('domus', 'Due +{days} days', { days: step.defaultDueDaysOffset || 0 })) +
+                Domus.Utils.escapeHtml(Domus.Utils.formatStepDueOffset(step.defaultDueDaysOffset)) +
                 '</div>' +
                 '<div class="domus-task-step-actions">' +
                 Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), {

@@ -7,6 +7,8 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\Db\AccountMapper;
 use OCA\Domus\Db\ActionLog;
 use OCA\Domus\Db\ActionLogMapper;
@@ -56,13 +58,15 @@ class UnitTransferService {
         private IDBConnection $connection,
         private IL10N $l10n,
         private ActionLogMapper $actionLogMapper,
+        private ManagementAccessContext $managementContext,
     ) {
     }
 
     public function exportUnitDataset(int $unitId, string $userId): array {
+        $this->assertLegacyUnmapped($userId);
         $unit = $this->unitMapper->findForUser($unitId, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
 
         $tenancies = $this->tenancyMapper->findByUser($userId, $unitId);
@@ -113,7 +117,7 @@ class UnitTransferService {
         $unitPayload['city'] = $this->normalizeOptionalText($unitPayload['city'] ?? null);
         $unitPayload['country'] = $this->normalizeOptionalText($unitPayload['country'] ?? null);
 
-        return [
+        $payload = [
             'version' => 1,
             'exportedAt' => time(),
             'unit' => $unitPayload,
@@ -127,9 +131,13 @@ class UnitTransferService {
             'workflowRuns' => $workflowRunsPayload,
             'taskTemplates' => array_map(fn(TaskTemplate $template) => $template->jsonSerialize(), $taskTemplates),
         ];
+        PersonalArchiveValidation::assertPersonal($payload);
+        return $payload;
     }
 
     public function importUnitDataset(array $payload, string $userId, string $role, ?int $propertyId = null): array {
+        $this->assertLegacyUnmapped($userId);
+        PersonalArchiveValidation::assertPersonal($payload);
         if (!isset($payload['unit']) || !is_array($payload['unit'])) {
             throw new \InvalidArgumentException($this->l10n->t('Import data is missing.'));
         }
@@ -139,7 +147,7 @@ class UnitTransferService {
         if ($propertyId !== null) {
             $property = $this->propertyMapper->findForUser($propertyId, $userId);
             if (!$property) {
-                throw new \RuntimeException($this->l10n->t('Property not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
             }
             $propertyName = $property->getName();
         }
@@ -254,7 +262,7 @@ class UnitTransferService {
             $partner->setPhone($partnerData['phone'] ?? null);
             $partner->setCustomerRef($partnerData['customerRef'] ?? null);
             $partner->setNotes($partnerData['notes'] ?? null);
-            $partner->setNcUserId($partnerData['ncUserId'] ?? null);
+            $partner->setNcUserId(null);
             $partner->setCreatedAt($this->normalizeTimestamp($partnerData['createdAt'] ?? null, $now));
             $partner->setUpdatedAt($this->normalizeTimestamp($partnerData['updatedAt'] ?? null, $now));
 
@@ -270,8 +278,9 @@ class UnitTransferService {
         $tenancyMap = [];
         foreach ($tenancies as $tenancyData) {
             $startDate = $tenancyData['startDate'] ?? null;
-            if (!$startDate) {
-                throw new \InvalidArgumentException($this->l10n->t('Start date is required.'));
+            InputValidation::assertDate($startDate, $this->l10n->t('Start date is required.'));
+            if (isset($tenancyData['endDate']) && $tenancyData['endDate'] !== '') {
+                InputValidation::assertPeriod($startDate, $tenancyData['endDate'], $this->l10n->t('Invalid period definition.'));
             }
 
             $hasFinancials = !empty($tenancyData['baseRent']) || !empty($tenancyData['serviceCharge']) || !empty($tenancyData['deposit']);
@@ -289,6 +298,11 @@ class UnitTransferService {
                 ];
             }
             $financialPayload = $this->permissionService->guardTenancyFinancialFields($role, $financialPayload);
+            foreach ($financialPayload as $amount) {
+                if ($amount !== null && $amount !== '') {
+                    InputValidation::assertMoney($amount, $this->l10n->t('Invalid tenancy amount.'));
+                }
+            }
 
             $tenancy = new Tenancy();
             $tenancy->setUserId($userId);
@@ -362,6 +376,11 @@ class UnitTransferService {
         $hasSourceBooking = false;
 
         foreach ($bookings as $bookingData) {
+            InputValidation::assertDate($bookingData['date'] ?? null, $this->l10n->t('Invoice date is required.'));
+            InputValidation::assertDate($bookingData['deliveryDate'] ?? $bookingData['date'], $this->l10n->t('Delivery date is required.'));
+            InputValidation::assertPeriod($bookingData['periodFrom'] ?? $bookingData['date'], $bookingData['periodTo'] ?? $bookingData['date'], $this->l10n->t('Invalid period definition.'));
+            // Exported ledgers include negative reversal postings.
+            InputValidation::assertMoney($bookingData['amount'] ?? null, $this->l10n->t('Invalid booking amount.'), true);
             $booking = new Booking();
             $booking->setUserId($userId);
             $booking->setAccount((int)($bookingData['account'] ?? 0));
@@ -587,5 +606,11 @@ class UnitTransferService {
         }
         $text = trim((string)$value);
         return $text === '' ? null : $text;
+    }
+
+    private function assertLegacyUnmapped(string $userId): void {
+        if ($this->managementContext->activeTeamId() !== null) {
+            throw new \DomainException($this->l10n->t('Team units cannot use the personal unit transfer.'));
+        }
     }
 }

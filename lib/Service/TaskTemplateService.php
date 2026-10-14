@@ -7,6 +7,8 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\Db\TaskTemplate;
 use OCA\Domus\Db\TaskTemplateMapper;
 use OCA\Domus\Db\TaskTemplateStep;
@@ -47,7 +49,7 @@ class TaskTemplateService {
     public function getTemplateWithSteps(int $templateId): TaskTemplate {
         $template = $this->templateMapper->findById($templateId);
         if (!$template) {
-            throw new \RuntimeException($this->l10n->t('Task template not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task template not found.'));
         }
         $steps = $this->stepMapper->findByTemplate($templateId);
         $template->setSteps($steps);
@@ -95,7 +97,7 @@ class TaskTemplateService {
     public function updateTemplate(int $templateId, array $payload): TaskTemplate {
         $template = $this->templateMapper->findById($templateId);
         if (!$template) {
-            throw new \RuntimeException($this->l10n->t('Task template not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task template not found.'));
         }
 
         if (array_key_exists('key', $payload)) {
@@ -144,7 +146,7 @@ class TaskTemplateService {
     public function deleteTemplate(int $templateId): void {
         $template = $this->templateMapper->findById($templateId);
         if (!$template) {
-            throw new \RuntimeException($this->l10n->t('Task template not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task template not found.'));
         }
         $this->templateMapper->delete($template);
     }
@@ -207,7 +209,7 @@ class TaskTemplateService {
         if (!empty($payload['id'])) {
             $step = $this->stepMapper->findById((int)$payload['id']);
             if (!$step || $step->getTemplateId() !== $templateId) {
-                throw new \RuntimeException($this->l10n->t('Task step not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Task step not found.'));
             }
             $step->setTitle($title);
             $step->setDescription($description);
@@ -248,7 +250,7 @@ class TaskTemplateService {
     public function deleteStep(int $stepId): void {
         $step = $this->stepMapper->findById($stepId);
         if (!$step) {
-            throw new \RuntimeException($this->l10n->t('Task step not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task step not found.'));
         }
         $this->stepMapper->delete($step);
     }

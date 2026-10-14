@@ -18,6 +18,38 @@ class UnitTransferServiceTest extends TestCase {
     private array $dependencies;
     private array $entries;
 
+    public function testSelectedTeamCannotUsePersonalUnitTransfer(): void {
+        $service = $this->service(mapped: true);
+        $this->expectException(\DomainException::class);
+        $service->exportUnitDataset(5, 'source');
+    }
+
+    public function testPersonalImportRejectsTeamMarkersBeforeStartingTransaction(): void {
+        foreach ([
+            ['unit' => ['label' => 'Unit', 'teamId' => 'a']],
+            ['unit' => ['label' => 'Unit'], 'partners' => [['team_id' => 'b']]],
+            ['unit' => ['label' => 'Unit'], 'workflowRuns' => [['steps' => [['teamId' => 'b']]]]],
+            ['unit' => ['label' => 'Unit'], 'taskTemplates' => [['scopeKey' => 'team:b']]],
+        ] as $payload) {
+            $service = $this->service();
+            $this->dependencies['connection']->expects($this->never())->method('beginTransaction');
+            try {
+                $service->importUnitDataset($payload, 'target', 'landlord');
+                $this->fail('Foreign Team records must not be imported.');
+            } catch (\InvalidArgumentException $e) {
+                $this->assertStringContainsString('Team', $e->getMessage());
+            }
+        }
+    }
+
+    public function testPartnerImportDoesNotRestoreAccountAccess(): void {
+        $service = $this->service();
+        $this->dependencies['partnerMapper']->expects($this->once())->method('insert')
+            ->with($this->callback(fn ($partner) => $partner->getNcUserId() === null));
+        $service->importUnitDataset(['unit' => ['label' => 'Unit'],
+            'partners' => [['id' => 1, 'name' => 'Tenant', 'ncUserId' => 'renter']]], 'target', 'landlord');
+    }
+
     public function testRoundTripPreservesActivityAndRemapsAllIncludedObjects(): void {
         $service = $this->service();
         $unit = new Unit();
@@ -37,6 +69,8 @@ class UnitTransferServiceTest extends TestCase {
         $booking->setId(11);
         $booking->setAccount(0);
         $booking->setDate('2026-01-01');
+        $booking->setAmount('-12.34');
+        $this->dependencies['bookingMapper']->expects($this->once())->method('insert')->with($this->callback(fn($imported) => $imported->getAmount() === '-12.34'));
         $this->dependencies['bookingMapper']->method('findByUser')->willReturn([$booking]);
         $logs = [];
         foreach (['unit' => 5, 'partner' => 7, 'tenancy' => 9, 'booking' => 11] as $type => $id) {
@@ -112,6 +146,17 @@ class UnitTransferServiceTest extends TestCase {
         ], 'target', 'landlord');
     }
 
+    public function testImportRejectsMalformedAmountAndRollsBack(): void {
+        $service = $this->service();
+        $this->dependencies['bookingMapper']->expects($this->never())->method('insert');
+        $this->dependencies['connection']->expects($this->once())->method('rollBack');
+        $this->expectException(\InvalidArgumentException::class);
+        $service->importUnitDataset([
+            'unit' => ['label' => 'Unit'],
+            'bookings' => [['date' => '2026-01-01', 'account' => 0, 'amount' => 'abc']],
+        ], 'target', 'landlord');
+    }
+
     private function entry(?string $type, ?int $id): ActionLog {
         $entry = new ActionLog();
         $entry->setUserId('source');
@@ -130,7 +175,7 @@ class UnitTransferServiceTest extends TestCase {
         return $entry;
     }
 
-    private function service(bool $captureEntries = true): UnitTransferService {
+    private function service(bool $captureEntries = true, bool $mapped = false): UnitTransferService {
         $this->dependencies = [];
         $this->entries = [];
         foreach ((new \ReflectionClass(UnitTransferService::class))->getConstructor()->getParameters() as $parameter) {
@@ -140,6 +185,7 @@ class UnitTransferServiceTest extends TestCase {
             $this->dependencies[$name]->method('insert')->willReturnCallback(function ($entity) use ($id) { $entity->setId($id); return $entity; });
         }
         $this->dependencies['l10n']->method('t')->willReturnCallback(fn($message) => $message);
+        $this->dependencies['managementContext']->method('activeTeamId')->willReturn($mapped ? 'team-a' : null);
         $this->dependencies['accountMapper']->method('findByNumber')->willReturn(new Account());
         if ($captureEntries) {
             $this->dependencies['actionLogMapper']->method('insert')->willReturnCallback(function ($entry) { $this->entries[] = $entry; return $entry; });

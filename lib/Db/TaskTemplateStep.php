@@ -11,6 +11,7 @@ use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 
 class TaskTemplateStep extends Entity implements JsonSerializable {
+    protected $teamId;
     protected $templateId;
     protected $sortOrder;
     protected $title;

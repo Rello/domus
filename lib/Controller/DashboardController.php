@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\Controller;
 
+use OCA\Domus\Service\ManagementAccessContext;
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\DashboardService;
 use OCA\Domus\Service\PermissionService;
@@ -14,12 +15,11 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
-use OCP\IUserSession;
 
 class DashboardController extends Controller {
     public function __construct(
         IRequest $request,
-        private IUserSession $userSession,
+        private ManagementAccessContext $managementContext,
         private DashboardService $dashboardService,
         private PermissionService $permissionService,
     ) {
@@ -32,7 +32,7 @@ class DashboardController extends Controller {
     }
 
     private function getUserId(): string {
-        return $this->userSession->getUser()?->getUID() ?? '';
+        return $this->managementContext->managementUserId();
     }
 
     private function getRole(): string {

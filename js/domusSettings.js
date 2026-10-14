@@ -138,6 +138,30 @@
             });
         }
 
+        function buildTeamSection(requiredApps) {
+            const apps = [
+                { id: 'circles', name: t('domus', 'Teams'), appUrl: '/apps/circles/teams/', storeUrl: '/settings/apps/organization/circles?q=teams' },
+                { id: 'groupfolders', name: t('domus', 'Team Folders'), appUrl: '/settings/admin/groupfolders', storeUrl: '/settings/apps/search/groupfolders?q=groupfolders' },
+                { id: 'guests', name: t('domus', 'Guests'), appUrl: '/settings/admin/guests', storeUrl: '/settings/apps/search/guests?q=guests' }
+            ];
+            const rows = apps.map(app => {
+                const enabled = requiredApps?.[app.id] === true;
+                const status = enabled ? t('domus', 'Enabled') : t('domus', 'Not installed or disabled');
+                const linkLabel = enabled ? t('domus', 'Open app') : t('domus', 'Open App Store');
+                return '<li class="domus-required-app">' +
+                    '<span class="domus-required-app-status' + (enabled ? ' domus-required-app-enabled' : ' domus-required-app-unavailable') + '" aria-label="' + Domus.Utils.escapeHtml(status) + '" title="' + Domus.Utils.escapeHtml(status) + '">' + (enabled ? '✓' : 'X') + '</span>' +
+                    '<a href="' + Domus.Utils.escapeHtml(OC.generateUrl(enabled ? app.appUrl : app.storeUrl)) + '" target="_blank" rel="noopener noreferrer" title="' + Domus.Utils.escapeHtml(linkLabel) + '">' + Domus.Utils.escapeHtml(app.name) + '</a>' +
+                    '<span class="domus-muted">' + Domus.Utils.escapeHtml(status) + '</span></li>';
+            }).join('');
+            return buildSettingsSection({
+                id: 'domus-team-settings-panel',
+                title: t('domus', 'Management Team'),
+                body: '<div class="domus-form">' +
+                    '<p>' + Domus.Utils.escapeHtml(t('domus', 'Manage Team membership in Nextcloud Teams.')) + '</p>' +
+                    '<ul class="domus-required-apps">' + rows + '</ul></div>'
+            });
+        }
+
         function bindForm() {
             const form = document.getElementById('domus-settings-form');
             if (!form) {
@@ -233,13 +257,16 @@
         }
 
         function render() {
+            const view = Domus.Router.beginView();
             Domus.UI.showLoading(t('domus', 'Loading…'));
             Domus.Api.getSettings()
                 .then(response => {
+                    if (!view.isCurrent()) return;
                     const settings = response?.settings || {};
                     const currentRole = Domus.Role?.getCurrentRole?.() || Domus.state.role || 'landlord';
                     const content = '<div class="domus-settings">' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
+                        buildTeamSection(response?.requiredApps) +
                         buildForm(settings) +
                         buildIntroSection() +
                         Domus.TaskTemplates.renderSection() +
@@ -254,7 +281,7 @@
                     Domus.TaskTemplates.loadTemplates();
                     Domus.Accounts.loadSettingsSection();
                 })
-                .catch(err => Domus.UI.showError(err.message || t('domus', 'An error occurred')));
+                .catch(err => { if (view.isCurrent()) Domus.UI.showError(err.message || t('domus', 'An error occurred')); });
         }
 
         return {

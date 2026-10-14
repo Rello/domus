@@ -24,7 +24,8 @@
         selectedPartnerId: null,
         selectedTenancyId: null,
         unitDetailTarget: '',
-        primaryNavSearch: null
+        primaryNavSearch: null,
+        managementContext: null
     };
 
     /**
@@ -86,6 +87,14 @@
 
         function normalizeSearchValue(value) {
             return String(value || '').trim().toLowerCase();
+        }
+
+        function formatStepDueOffset(value) {
+            const offset = Number(value) || 0;
+            if (offset === 0) return t('domus', 'Due on opening day');
+            return offset > 0
+                ? n('domus', 'Due %n day after opening', 'Due %n days after opening', offset)
+                : n('domus', 'Due %n day before opening', 'Due %n days before opening', -offset);
         }
 
         function isValueFilled(value) {
@@ -272,6 +281,7 @@
             formatYear,
             formatDate,
             normalizeSearchValue,
+            formatStepDueOffset,
             isValueFilled,
             collectStatisticsYears,
             collectProvisionalMap,
@@ -371,6 +381,38 @@
             return response.text();
         }
 
+        async function createGuestAccount(teamId, details) {
+            const encodedTeamId = encodeURIComponent(teamId);
+            const readiness = await request('GET', `/api/teams/${encodedTeamId}/guest-creation`);
+            if (!readiness.canCreate) {
+                throw new Error(readiness.message || t('domus', 'Guest invitations are unavailable.'));
+            }
+
+            const response = await fetch(`${OC.webroot || ''}/ocs/v2.php/apps/guests/api/v1/users?format=json`, {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: baseJsonHeaders,
+                body: JSON.stringify({
+                    email: details.email,
+                    displayName: details.displayName || '',
+                    language: details.language || '',
+                    groups: [],
+                    sendInvite: true
+                })
+            });
+            const result = await response.json();
+            const username = result?.ocs?.data?.username;
+            if (response.status !== 201 || typeof username !== 'string' || username === '') {
+                const errors = result?.ocs?.data?.errorMessages;
+                const message = errors && typeof errors === 'object'
+                    ? Object.values(errors).flat().join(' ')
+                    : result?.ocs?.meta?.message;
+                throw new Error(message || t('domus', 'Unable to create guest account.'));
+            }
+
+            return username;
+        }
+
         function buildYearUrl(path, params = new URLSearchParams()) {
             return buildUrl(path, withYear(params));
         }
@@ -382,6 +424,8 @@
             delete: path => request('DELETE', path),
             getDashboardSummary: () => request('GET', '/dashboard/summary'),
             getSettings: () => request('GET', '/settings'),
+            getGuestCreationContext: teamId => request('GET', `/api/teams/${encodeURIComponent(teamId)}/guest-creation`),
+            createGuestAccount,
             updateSettings: data => request('PUT', '/settings', data),
             createDemoContent: data => request('POST', '/settings/demo-content', data),
             getProperties: () => request('GET', buildYearUrl('/properties')),
@@ -535,6 +579,9 @@
                 if (payload.type === 'link' && payload.filePath) {
                     formData.append('filePath', payload.filePath);
                 }
+                if (payload.type === 'link' && payload.sourceLinkId) {
+                    formData.append('sourceLinkId', payload.sourceLinkId);
+                }
                 const opts = {
                     method: 'POST',
                     headers: {
@@ -630,7 +677,25 @@
             };
         }
 
+        const contentDisposers = new Set();
+
+        // Register resources that outlive detached DOM nodes (charts, observers,
+        // document listeners). Each replacement or navigation releases them once.
+        function onContentDispose(dispose) {
+            contentDisposers.add(dispose);
+            return () => contentDisposers.delete(dispose);
+        }
+
+        function disposeContent() {
+            const disposers = Array.from(contentDisposers);
+            contentDisposers.clear();
+            disposers.forEach(dispose => {
+                try { dispose(); } catch (error) { console.error('Could not dispose view resource', error); }
+            });
+        }
+
         function renderContent(html) {
+            disposeContent();
             const appContent = document.getElementById('app-content');
             if (appContent) {
                 appContent.classList.add('app-domus');
@@ -1999,6 +2064,189 @@
             return '<div class="domus-stat-grid">' + items + '</div>';
         }
 
+        const kpiTypes = {
+            money: { format: value => Domus.Utils.formatCurrency(value) },
+            percentage: { format: value => Domus.Utils.formatPercentage(value) },
+            count: { format: value => Domus.Utils.formatNumber(value, {minimumFractionDigits: 0, maximumFractionDigits: 0}) },
+            contact: { showChart: false, buildValue: buildContactKpiValue },
+            documents: { showChart: false, buildValue: buildDocumentsKpiValue }
+        };
+
+        function buildContactKpiValue(options) {
+            if (options.contactNameHtml === undefined) return undefined;
+            return '<div class="domus-unit-tenancy-kpi-value">' +
+                '<div class="domus-unit-tenancy-kpi-name"><span class="domus-partner-name">' +
+                (options.contactNameHtml || '—') + '</span></div>' +
+                (options.caption ? '<div class="domus-unit-tenancy-kpi-caption">' + Domus.Utils.escapeHtml(options.caption) + '</div>' : '') +
+                Domus.Partners.renderPartnerContact(options.contactPartner, {hideName: true, className: 'domus-unit-tenancy-kpi-actions'}) +
+                '</div>';
+        }
+
+        function buildDocumentsKpiValue(options) {
+            if (options.folderPath === undefined) return undefined;
+            const url = options.folderPath ? Domus.Utils.buildFilesFolderUrl(options.folderPath) : '';
+            const label = Domus.Utils.escapeHtml(t('domus', 'Open all documents'));
+            const tag = url ? 'a' : 'div';
+            const link = url ? ' target="_blank" rel="noopener" href="' + Domus.Utils.escapeHtml(url) + '"' : '';
+            return '<div class="domus-kpi-documents"><div class="domus-kpi-documents-row">' +
+                '<' + tag + ' class="domus-kpi-documents-open"' + link + ' title="' + label + '">' +
+                '<span class="domus-icon domus-icon-folder" aria-hidden="true"></span>' +
+                '<span class="domus-visually-hidden">' + label + '</span></' + tag + '></div></div>';
+        }
+
+        function renderKpiTrendChart(canvasId, labels, values, options = {}) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || !window.Chart) {
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return;
+            }
+
+            const rootStyles = getComputedStyle(document.documentElement);
+            const lineColor = options.color
+                || rootStyles.getPropertyValue('--domus-theme').trim()
+                || '#12426E';
+            const gradientFill = ctx.createLinearGradient(0, 0, 0, canvas.height || 120);
+            gradientFill.addColorStop(0, 'rgba(18, 66, 110, 0.28)');
+            gradientFill.addColorStop(1, 'rgba(18, 66, 110, 0)');
+
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            data: values,
+                            borderColor: lineColor,
+                            backgroundColor: gradientFill,
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: 'origin',
+                            pointRadius: 0,
+                            pointHoverRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {display: false},
+                        tooltip: {enabled: false}
+                    },
+                    scales: {
+                        x: {display: false, grid: {display: false}},
+                        y: {
+                            display: true,
+                            ticks: {display: false},
+                            border: {display: false},
+                            grid: {
+                                drawTicks: false,
+                                color: (context) => (context.tick?.value === 0 ? 'rgba(0, 0, 0, 0.2)' : 'transparent')
+                            },
+                        }
+                    }
+                }
+            });
+
+            return chart;
+        }
+
+        function buildTypedKpiTile(type, options = {}) {
+            const definition = kpiTypes[type];
+            if (!definition) throw new Error('Unknown KPI type: ' + type);
+            const {format, buildValue, ...defaults} = definition;
+            const value = options.value;
+            const missing = value === undefined || value === null || value === ''
+                || (format && !Number.isFinite(Number(value)));
+            return buildKpiTile({
+                linkIconClass: 'domus-icon-arrow-right',
+                ...defaults,
+                ...options,
+                valueHtml: buildValue ? buildValue(options) ?? options.valueHtml : options.valueHtml,
+                value: missing ? null : (format ? format(value) : value)
+            });
+        }
+
+        function openEntityImageModal(entityType, entity, onSaved) {
+            const view = Domus.Router.captureView();
+            const imageApis = {
+                unit: {upload: Domus.Api.uploadUnitImage, remove: Domus.Api.removeUnitImage},
+                property: {upload: Domus.Api.uploadPropertyImage, remove: Domus.Api.removePropertyImage}
+            };
+            const api = imageApis[entityType];
+            if (!api) throw new Error('Unsupported image entity: ' + entityType);
+            const formId = 'domus-' + entityType + '-image-form';
+            const cancelId = 'domus-' + entityType + '-image-cancel';
+            const modal = openModal({
+                title: t('domus', 'Edit picture'),
+                content: '<div class="domus-form"><form id="' + formId + '">' +
+                    buildFormTable([buildFormRow({
+                        label: t('domus', 'Preview'),
+                        content: '<div class="domus-image-field"><div class="domus-image-field-preview">' +
+                            buildEntityImage(entityType, entity, {variant: 'form', alt: entity.label || entity.name || ''}) +
+                            '</div><div class="domus-image-field-actions">' +
+                            '<input type="hidden" name="imageAction" value="keep">' +
+                            '<input type="file" name="imageFile" accept="image/*">' +
+                            '<button type="button" class="domus-ghost" data-image-remove>' +
+                            Domus.Utils.escapeHtml(t('domus', 'Use default image')) + '</button></div></div>'
+                    })]) + '<div class="domus-form-actions"><button type="button" id="' + cancelId + '">' +
+                    Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button><button type="submit" class="primary">' +
+                    Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button></div></form></div>'
+            });
+            const form = modal.modalEl.querySelector('form');
+            const fileInput = form.elements.imageFile;
+            const actionInput = form.elements.imageAction;
+            const preview = form.querySelector('.domus-image-field-preview img');
+            const currentUrl = preview.getAttribute('src');
+            let previewGeneration = 0;
+            let saving = false;
+            fileInput.addEventListener('change', () => {
+                const generation = ++previewGeneration;
+                const file = fileInput.files[0];
+                actionInput.value = file ? 'upload' : 'keep';
+                if (!file) {
+                    preview.src = currentUrl;
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = event => {
+                    if (generation === previewGeneration && preview.isConnected) preview.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+            form.querySelector('[data-image-remove]').addEventListener('click', () => {
+                ++previewGeneration;
+                fileInput.value = '';
+                actionInput.value = 'remove';
+                preview.src = getEntityImageUrl(entityType, {});
+            });
+            modal.protectChanges();
+            modal.modalEl.querySelector('#' + cancelId).addEventListener('click', modal.requestClose);
+            form.addEventListener('submit', async event => {
+                event.preventDefault();
+                if (saving) return;
+                saving = true;
+                const submit = form.querySelector('[type="submit"]');
+                submit.disabled = true;
+                try {
+                    if (actionInput.value === 'remove') await api.remove(entity.id);
+                    else if (actionInput.value === 'upload' && fileInput.files[0]) await api.upload(entity.id, fileInput.files[0]);
+                    modal.close();
+                    if (onSaved && view.isCurrent()) onSaved();
+                } catch (error) {
+                    showNotification(error.message, 'error');
+                } finally {
+                    saving = false;
+                    submit.disabled = false;
+                }
+            });
+            return modal;
+        }
+
         function buildKpiTile(options = {}) {
             if (!options.headline && options.headline !== 0) {
                 return '';
@@ -2250,6 +2498,8 @@
 
         return {
             renderContent,
+            onContentDispose,
+            disposeContent,
             captureContentContext,
             renderSidebar,
             showLoading,
@@ -2269,6 +2519,9 @@
             bindCollapsibles,
             buildStatCards,
             buildKpiTile,
+            buildTypedKpiTile,
+            renderKpiTrendChart,
+            openEntityImageModal,
             buildInfoList,
             buildHeroMetaLine,
             buildDetailHero,
@@ -2301,6 +2554,40 @@
      */
     Domus.Router = (function() {
         const routes = {};
+        let viewGeneration = 0;
+        let contentGeneration = 0;
+        let contentRequests = new Map();
+
+        // A key identifies an embedded content slot. Reopening or refreshing
+        // that slot invalidates its previous request without replacing the view.
+        function captureView(requestKey) {
+            const generation = contentGeneration;
+            const role = Domus.Role.getCurrentRole();
+            const requests = contentRequests;
+            const request = {};
+            if (requestKey !== undefined) requests.set(requestKey, request);
+            return { isCurrent: () => generation === contentGeneration && role === Domus.Role.getCurrentRole()
+                && (requestKey === undefined || requests.get(requestKey) === request) };
+        }
+
+        // Also called by render entry points: refreshing the same route must
+        // invalidate pending responses just like navigating to another route.
+        // In-place refreshes retain working content until a successful commit.
+        // Commit before building replacement HTML: embedded loaders capture its
+        // lifetime while that HTML is being assembled.
+        function beginView({ preserveContent = false } = {}) {
+            const generation = ++viewGeneration;
+            const role = Domus.Role.getCurrentRole();
+            const isCurrent = () => generation === viewGeneration && role === Domus.Role.getCurrentRole();
+            const commit = () => {
+                if (!isCurrent() || contentGeneration === generation) return;
+                contentGeneration = generation;
+                contentRequests = new Map();
+                Domus.UI.disposeContent();
+            };
+            if (!preserveContent) commit();
+            return { isCurrent, commit };
+        }
         let skipNextHashChange = false;
         const maxHistoryEntries = 50;
         const contentContexts = new Map();
@@ -2381,6 +2668,7 @@
         }
 
         function updateCurrentRouteState(name, args) {
+            beginView();
             Domus.state.currentView = name;
             Domus.state.currentViewArgs = normalizeArgs(args);
         }
@@ -2390,6 +2678,10 @@
         }
 
         function navigate(name, args, options = {}) {
+            if (['external'].includes(Domus.state.managementContext?.mode) && name !== 'renter') {
+                name = 'renter';
+                args = [];
+            }
             const normalizedArgs = normalizeArgs(args);
             const currentView = Domus.state.currentView;
             const currentArgs = getCurrentArgsSnapshot();
@@ -2433,12 +2725,16 @@
                 return;
             }
             const parsed = parseHash();
-            if (parsed && routes[parsed.name]) {
+            // Several programmatic navigations can queue hashchange events in
+            // one turn. Their final route has already rendered synchronously.
+            if (parsed && parsed.name === Domus.state.currentView
+                && areArgsEqual(normalizeArgs(parsed.args), normalizeArgs(Domus.state.currentViewArgs))) return;
+            if (parsed && routes[parsed.name] && !(['external'].includes(Domus.state.managementContext?.mode) && parsed.name !== 'renter')) {
                 const parsedArgs = normalizeArgs(parsed.args);
                 const history = Domus.state.navigationHistory || [];
                 const previousEntry = history[history.length - 1];
                 let effectiveArgs = parsedArgs;
-                if (previousEntry?.name === parsed.name && areArgsCompatible(previousEntry.args, parsedArgs)) {
+                if (parsed.name !== 'renter' && previousEntry?.name === parsed.name && areArgsCompatible(previousEntry.args, parsedArgs)) {
                     history.pop();
                     Domus.state.navigationHistory = history;
                     effectiveArgs = previousEntry.args;
@@ -2484,7 +2780,7 @@
 
         function navigateFromHash() {
             const parsed = parseHash();
-            if (parsed && routes[parsed.name]) {
+            if (parsed && routes[parsed.name] && !(['external'].includes(Domus.state.managementContext?.mode) && parsed.name !== 'renter')) {
                 const parsedArgs = normalizeArgs(parsed.args);
                 updateCurrentRouteState(parsed.name, parsedArgs);
                 routes[parsed.name].apply(null, parsedArgs);
@@ -2494,12 +2790,55 @@
             return false;
         }
 
-        return { register, navigate, navigateFromHash, back, setCurrentArgs, restoreContentContext };
+        return { register, navigate, navigateFromHash, back, setCurrentArgs, restoreContentContext, beginView, captureView };
     })();
 
     /**
      * Navigation builder
      */
+    /** App-wide data scope, independent of the content navigation. */
+    Domus.Teams = (function() {
+        function mountSelector() {
+            if (['renter', 'renterPreview'].includes(Domus.state.currentView) || Domus.state.managementContext?.mode === 'external') {
+                document.querySelector('.domus-context-selector')?.remove();
+                return;
+            }
+            const header = document.querySelector('#header .header-start, #header .header-left');
+            if (!header || document.getElementById('domus-context-select')) return;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'domus-context-selector domus-context-selector--header';
+            const select = document.createElement('select');
+            select.id = 'domus-context-select';
+            select.setAttribute('aria-label', t('domus', 'Data context'));
+            select.add(new Option(t('domus', 'Personal'), ''));
+            select.disabled = true;
+            wrapper.appendChild(select);
+            header.appendChild(wrapper);
+            Domus.Api.get('/api/teams').then(result => {
+                const teams = Array.isArray(result?.teams) ? result.teams : [];
+                teams.forEach(team => select.add(new Option(team.displayName, team.teamId)));
+                select.value = Domus.state.managementContext?.activeTeamId || '';
+                select.title = t('domus', 'Data context') + ': ' + (select.selectedOptions[0]?.textContent || '');
+                select.disabled = false;
+            }).catch(error => {
+                select.title = error.message || t('domus', 'Unable to update Team selection.');
+            });
+            select.addEventListener('change', async () => {
+                select.disabled = true;
+                try {
+                    await Domus.Api.post(select.value ? '/api/teams/' + encodeURIComponent(select.value) + '/activate' : '/api/teams/deactivate');
+                    window.location.hash = '#/dashboard';
+                    window.location.reload();
+                } catch (error) {
+                    select.disabled = false;
+                    select.value = Domus.state.managementContext?.activeTeamId || '';
+                    OC.Notification.showTemporary(error.message || t('domus', 'Unable to update Team selection.'));
+                }
+            });
+        }
+        return { mountSelector };
+    })();
+
     Domus.Navigation = (function() {
         function setPrimarySearch(config) {
             Domus.state.primaryNavSearch = config || null;
@@ -2521,6 +2860,7 @@
             const bottomNavSecondary = document.getElementById('domus-bottom-nav-secondary');
             if (!container && !topNavContainer) return;
 
+            Domus.Teams.mountSelector();
             const activeView = getActiveView();
 
             let usedContainerForPrimary = false;
@@ -2554,7 +2894,7 @@
             }
 
             const roleOptions = Domus.Role.getRoleOptions();
-            if (roleOptions.length > 1 && Domus.state.currentView !== 'renterPreview') {
+            if (roleOptions.length > 1 && !['renterPreview', 'renter'].includes(Domus.state.currentView) && !['external'].includes(Domus.state.managementContext?.mode)) {
                 const roleSwitcher = document.createElement('div');
                 roleSwitcher.className = 'domus-role-switcher domus-role-switcher-bottom';
                 const label = document.createElement('label');
@@ -2576,13 +2916,23 @@
                 }
             }
 
-            if (Domus.state.currentView !== 'renterPreview') {
+            if (!['renterPreview', 'renter'].includes(Domus.state.currentView) && !['external'].includes(Domus.state.managementContext?.mode)) {
                 const previewList = buildNavList([
                     { view: 'renterPreview', label: t('domus', 'Renter preview'), icon: 'domus-icon-partner' }
                 ], activeView);
                 (bottomNavPrimary || container || topNavContainer)?.appendChild(previewList);
             }
 
+            const renter = Domus.state.currentView === 'renter';
+            if (renter && Domus.state.managementContext?.canManage) {
+                (bottomNavPrimary || container || topNavContainer)?.appendChild(buildNavList([
+                    { view: 'dashboard', label: t('domus', 'Management'), icon: 'domus-icon-dashboard' }
+                ], activeView));
+            } else if (!renter && Domus.state.renterIdentity?.partners?.length) {
+                (bottomNavPrimary || container || topNavContainer)?.appendChild(buildNavList([
+                    { view: 'renter', label: t('domus', 'My tenancies'), icon: 'domus-icon-tenancy' }
+                ], activeView));
+            }
             const settingsList = buildNavList(getSettingsItems(), activeView);
             settingsList.classList.add('domus-nav-settings');
             (topNavContainer || container)?.appendChild(settingsList);
@@ -2652,6 +3002,9 @@
         }
 
         function getMenuItems() {
+            if (Domus.state.currentView === 'renter' || ['external'].includes(Domus.state.managementContext?.mode)) {
+                return [{ view: 'renter', label: t('domus', 'My tenancies'), icon: 'domus-icon-tenancy' }];
+            }
             if (Domus.state.currentView === 'renterPreview') {
                 return [{ view: 'renterPreview', label: t('domus', 'My tenancies'), icon: 'domus-icon-tenancy', args: Domus.state.currentViewArgs }];
             }
@@ -2659,7 +3012,7 @@
         }
 
         function getSettingsItems() {
-            if (Domus.state.currentView === 'renterPreview') return [];
+            if (['renterPreview', 'renter'].includes(Domus.state.currentView) || ['external'].includes(Domus.state.managementContext?.mode)) return [];
             return [
                 { view: 'settings', label: t('domus', 'Settings'), icon: 'domus-icon-settings' }
             ];
@@ -2904,11 +3257,13 @@
         }
 
         function init() {
+            Domus.state.managementContext = Domus.Utils.getInitialState('managementContext') || { mode: 'personal' };
+            Domus.state.renterIdentity = Domus.Utils.getInitialState('renterIdentity') || null;
             Domus.Role.setRoleInfo(readRoleInfoFromBootstrap());
 
             registerRoutes();
             if (!Domus.Router.navigateFromHash()) {
-                Domus.Router.navigate('dashboard');
+                Domus.Router.navigate(Domus.Utils.getInitialState('renterEntry') || Domus.state.managementContext.mode === 'external' ? 'renter' : 'dashboard');
             }
         }
 
@@ -2923,6 +3278,7 @@
             Domus.Router.register('partnerDetail', Domus.Partners.renderDetail);
             Domus.Router.register('tenancies', Domus.Tenancies.renderList);
             Domus.Router.register('tenancyDetail', Domus.Tenancies.renderDetail);
+            Domus.Router.register('renter', Domus.Tenancies.renderRenter);
             Domus.Router.register('renterPreview', Domus.Tenancies.renderRenterPreview);
             Domus.Router.register('bookings', Domus.Bookings.renderList);
             Domus.Router.register('accounts', Domus.Accounts.renderList);

@@ -7,14 +7,14 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
-class PartnerRelMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_partner_rel', PartnerRel::class);
+class PartnerRelMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_partner_rel', PartnerRel::class, $access);
     }
 
     /** @param int[] $ids */
@@ -23,7 +23,7 @@ class PartnerRelMapper extends QBMapper {
         foreach (array_chunk(array_values(array_unique(array_map('intval', $ids))), 500) as $chunk) {
             $qb = $this->db->getQueryBuilder();
             $qb->select('*')->from($this->getTableName())
-                ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+                ->where($this->ownerExpression($qb, $userId))
                 ->andWhere($qb->expr()->eq('type', $qb->createNamedParameter('tenancy')))
                 ->andWhere($qb->expr()->in('relation_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
             array_push($entities, ...$this->findEntities($qb));
@@ -40,7 +40,7 @@ class PartnerRelMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('relation_id', $qb->createNamedParameter($tenancyId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('type', $qb->createNamedParameter('tenancy')))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntities($qb);
     }
@@ -54,7 +54,7 @@ class PartnerRelMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('relation_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('type', $qb->createNamedParameter('unit')))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntities($qb);
     }
@@ -68,7 +68,7 @@ class PartnerRelMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('relation_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('type', $qb->createNamedParameter('property')))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntities($qb);
     }
@@ -81,7 +81,7 @@ class PartnerRelMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('partner_id', $qb->createNamedParameter($partnerId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntities($qb);
     }
@@ -93,7 +93,7 @@ class PartnerRelMapper extends QBMapper {
             ->where($qb->expr()->eq('type', $qb->createNamedParameter($type)))
             ->andWhere($qb->expr()->eq('relation_id', $qb->createNamedParameter($relationId, $qb::PARAM_INT)))
             ->andWhere($qb->expr()->eq('partner_id', $qb->createNamedParameter($partnerId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return (int)$qb->executeQuery()->fetchOne() > 0;
     }
@@ -106,7 +106,7 @@ class PartnerRelMapper extends QBMapper {
         $qb->delete($this->getTableName())
             ->where($qb->expr()->eq('type', $qb->createNamedParameter($type)))
             ->andWhere($qb->expr()->eq('relation_id', $qb->createNamedParameter($relationId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         $qb->executeStatement();
     }

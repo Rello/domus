@@ -80,7 +80,7 @@
 
         function renderPartnerContact(partner, options = {}) {
             const name = Domus.Utils.escapeHtml(partner?.name || options.fallbackName || '');
-            if (!name) {
+            if (!name && !options.hideName) {
                 return '';
             }
             const email = partner?.email || '';
@@ -116,8 +116,10 @@
             const nameHtml = (options.linkNameToDetail && partnerId)
                 ? '<a class="domus-link domus-partner-name domus-partner-name-link" href="#/partnerDetail/' + encodeURIComponent(String(partnerId)) + '" data-partner-id="' + Domus.Utils.escapeHtml(String(partnerId)) + '">' + name + '</a>'
                 : '<span class="domus-partner-name">' + name + '</span>';
-            return '<span class="domus-partner-contact">' +
-                nameHtml +
+            if (options.hideName && !actions.length) return '';
+            const className = options.className ? ' ' + Domus.Utils.escapeHtml(options.className) : '';
+            return '<span class="domus-partner-contact' + className + '">' +
+                (options.hideName ? '' : nameHtml) +
                 actionsHtml +
                 phoneLabel +
                 '</span>';
@@ -228,11 +230,13 @@
         }
 
         function renderList() {
+            const view = Domus.Router.beginView();
             updateNavSearch();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Contacts') }));
             const typeOptions = [{ value: '', label: t('domus', 'All types') }].concat(getPartnerTypeOptions());
             Domus.Api.getPartners(listState.type)
                 .then(partners => {
+                    if (!view.isCurrent()) return;
                     listState.partners = partners || [];
                     const toolbar = '<div class="domus-toolbar">' +
                         Domus.UI.buildScopeAddButton('domus-icon-partner', t('domus', 'Add contact'), {
@@ -247,23 +251,26 @@
                         '</div>';
                     Domus.UI.renderContent(toolbar + '<div id="domus-partners-results"></div>');
                     document.getElementById('domus-partner-filter').value = listState.type;
-                    bindList();
+                    bindList(view);
                     renderPartnersTable();
                 })
-                .catch(err => Domus.UI.showError(err.message));
+                .catch(err => { if (view.isCurrent()) Domus.UI.showError(err.message); });
         }
 
-        function bindList() {
+        function bindList(view) {
+            let filterRequest = 0;
             document.getElementById('domus-partner-create')?.addEventListener('click', openCreateModal);
             bindEmptyCreateAction();
             document.getElementById('domus-partner-filter')?.addEventListener('change', function() {
+                const request = ++filterRequest;
                 listState.type = this.value;
                 Domus.Api.getPartners(listState.type)
                     .then(partners => {
+                        if (!view.isCurrent() || request !== filterRequest) return;
                         listState.partners = partners || [];
                         renderPartnersTable();
                     })
-                    .catch(err => Domus.UI.showError(err.message));
+                    .catch(err => { if (view.isCurrent() && request === filterRequest) Domus.UI.showError(err.message); });
             });
             Domus.UI.bindRowNavigation();
         }
@@ -345,10 +352,12 @@
         }
 
         function renderDetail(id) {
+            const view = Domus.Router.beginView();
             Domus.Navigation.clearPrimarySearch();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Contact') }));
             Domus.Api.get('/partners/' + id)
                 .then(partner => {
+                    if (!view.isCurrent()) return;
                     const tenancies = partner.tenancies || [];
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const documentActionsEnabled = Domus.Role.hasCapability('manageDocuments');
@@ -369,11 +378,15 @@
                         ariaLabel: t('domus', 'More actions')
                     });
                     const contactMeta = buildPartnerHeroMeta(partner);
+                    const renterAccessBadge = partner.partnerType === 'tenant' && Domus.state.managementContext?.mode === 'team'
+                        ? '<span id="domus-partner-renter-access-badge" class="domus-badge domus-badge-warning">' +
+                            Domus.Utils.escapeHtml(t('domus', 'Renter Access pending')) + '</span>'
+                        : '';
                     const hero = Domus.UI.buildDetailHero({
                         indicator: '<div class="domus-hero-indicator domus-partner-hero-indicator">' +
                             '<span class="domus-icon domus-icon-partner" aria-hidden="true"></span></div>',
                         title: partner.name,
-                        badges: partnerTypeLabel ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(partnerTypeLabel) + '</span>' : '',
+                        badges: (partnerTypeLabel ? '<span class="domus-badge">' + Domus.Utils.escapeHtml(partnerTypeLabel) + '</span>' : '') + renterAccessBadge,
                         meta: contactMeta,
                         actions: actionMenu,
                         status: masterdataIndicator
@@ -421,13 +434,115 @@
                         documentsPanel +
                         '</div>' +
                         tenancyPanel +
+                        (partner.partnerType === 'tenant' && Domus.state.managementContext?.mode === 'team'
+                            ? '<section class="domus-panel"><div class="domus-panel-header"><h3>' + Domus.Utils.escapeHtml(t('domus', 'Pending review')) + '</h3></div><div class="domus-panel-body" id="domus-partner-corrections" role="status"></div></section>'
+                            : '') +
+                        '<section class="domus-panel">' + Domus.UI.buildSectionHeader(t('domus', 'Activity'), {
+                            id: 'domus-partner-activity-create', title: t('domus', 'Add {entity}', { entity: t('domus', 'Action log entry') }), iconClass: 'domus-icon-add'
+                        }) + '<div class="domus-panel-body">' + Domus.ActionLog.renderList('partner', id, {
+                            entityLabel: partner.name, emptyActionId: 'domus-partner-activity-empty-create'
+                        }) + '</div></section>' +
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
                     Domus.UI.bindActionMenus();
                     bindDetailActions(id);
+                    Domus.ActionLog.bindCreateButtons(['domus-partner-activity-create'], {
+                        entityType: 'partner', entityId: id, entityLabel: partner.name, onSaved: () => renderDetail(id)
+                    });
+                    const accessBadge = document.getElementById('domus-partner-renter-access-badge');
+                    if (accessBadge) renderRenterAccessBadge(partner, accessBadge, Domus.state.managementContext.activeTeamId);
+                    const correctionPanel = document.getElementById('domus-partner-corrections');
+                    if (correctionPanel) Domus.Tenancies.renderCorrectionReview(id, correctionPanel, Domus.state.managementContext.activeTeamId);
                 })
-                .catch(err => Domus.UI.showError(err.message));
+                .catch(err => { if (view.isCurrent()) Domus.UI.showError(err.message); });
+        }
+
+        async function renderRenterAccessBadge(partner, badge, teamId) {
+            if (!badge?.isConnected) return;
+            const path = `/api/teams/${encodeURIComponent(teamId)}/partners/${partner.id}/account`;
+            try {
+                const account = await Domus.Api.get(path);
+                if (!badge.isConnected) return;
+                const linked = Boolean(account.ncUserId);
+                const available = linked && account.accountEnabled === true;
+                const label = linked
+                    ? (available ? t('domus', 'Renter Access available') : t('domus', 'Renter Access pending'))
+                    : t('domus', 'No account linked');
+                const badgeClass = available ? 'domus-badge-success' : 'domus-badge-warning';
+                const href = linked ? OC.generateUrl('/settings/users') : '#';
+                const attributes = linked
+                    ? ' target="_blank" rel="noopener" title="' + Domus.Utils.escapeHtml(t('domus', 'Linked account: {userId}', { userId: account.ncUserId })) + '"'
+                    : ' aria-haspopup="dialog"';
+                badge.outerHTML = '<a id="domus-partner-renter-access-badge" class="domus-badge ' + badgeClass + '" href="' +
+                    Domus.Utils.escapeHtml(href) + '"' + attributes + '>' + Domus.Utils.escapeHtml(label) + '</a>';
+                if (linked) return;
+                document.getElementById('domus-partner-renter-access-badge')?.addEventListener('click', event => {
+                    event.preventDefault();
+                    const modal = Domus.UI.openModal({
+                        title: t('domus', 'Online access'),
+                        size: 'online-access',
+                        content: '<div class="domus-online-access-modal-body" role="status"></div>'
+                    });
+                    const panel = modal.modalEl.querySelector('.domus-online-access-modal-body');
+                    renderOnlineAccess(partner, panel, teamId, '', () => renderRenterAccessBadge(partner,
+                        document.getElementById('domus-partner-renter-access-badge'), teamId));
+                });
+            } catch (error) {
+                if (badge.isConnected) {
+                    badge.textContent = t('domus', 'Renter Access pending');
+                    badge.className = 'domus-badge domus-badge-warning';
+                    badge.title = error.message;
+                }
+            }
+        }
+
+        async function renderOnlineAccess(partner, panel, teamId, notice = '', onChanged = () => {}) {
+            const path = `/api/teams/${encodeURIComponent(teamId)}/partners/${partner.id}/account`;
+            const escape = Domus.Utils.escapeHtml;
+            try {
+                const account = await Domus.Api.get(path);
+                if (!panel.isConnected) return;
+                if (account.ncUserId) {
+                    const status = account.accountEnabled === null ? t('domus', 'Account unavailable')
+                        : account.accountEnabled ? t('domus', 'Account enabled') : t('domus', 'Account disabled');
+                    panel.innerHTML = '<div class="domus-online-access-section"><h4>' + escape(t('domus', 'Linked account')) +
+                        '</h4><p class="domus-online-account">' + escape(account.ncUserId) + '</p><p>' + escape(status) + '</p></div>';
+                    return;
+                }
+                panel.innerHTML = '<div class="domus-online-access-intro"><span class="domus-badge domus-badge-warning">' + escape(t('domus', 'No account linked')) + '</span>' +
+                    '<p>' + escape(t('domus', 'A linked account can access this contact and all linked tenancies.')) + '</p></div>' +
+                    '<section class="domus-online-access-section"><h4>' + escape(t('domus', 'Email')) + '</h4>' +
+                    '<p class="domus-online-account' + (!partner.email ? ' domus-online-access-hint' : '') + '">' + escape(partner.email || t('domus', 'Add an email address to this contact first.')) + '</p>' +
+                    '<button type="button" class="primary" data-account-create' + (!partner.email ? ' disabled' : '') + '>' + escape(t('domus', 'Create or link account by email')) + '</button></section>' +
+                    '<details class="domus-online-access-existing"><summary>' + escape(t('domus', 'Link an existing account by user ID')) + '</summary><form data-account-form>' +
+                    '<label>' + escape(t('domus', 'Nextcloud user ID')) + '<input name="ncUserId" required maxlength="255" autocomplete="off"></label>' +
+                    '<div class="domus-online-access-actions"><button type="submit">' + escape(t('domus', 'Link account')) + '</button></div></form></details>' +
+                    '<p data-account-notice role="status">' + escape(notice) + '</p>';
+                const link = async data => {
+                    panel.querySelectorAll('button').forEach(button => { button.disabled = true; });
+                    let message = '';
+                    try {
+                        const result = await Domus.Api.post(path, data);
+                        if (result.needsGuest) {
+                            const ncUserId = await Domus.Api.createGuestAccount(teamId, result);
+                            await Domus.Api.post(path, { ncUserId });
+                        }
+                    } catch (error) {
+                        message = error.message;
+                    }
+                    if (panel.isConnected) await renderOnlineAccess(partner, panel, teamId, message, onChanged);
+                    if (!message) onChanged();
+                };
+                panel.querySelector('[data-account-create]').addEventListener('click', () => link({}));
+                panel.querySelector('[data-account-form]').addEventListener('submit', event => {
+                    event.preventDefault();
+                    const ncUserId = event.currentTarget.elements.ncUserId.value.trim();
+                    if (ncUserId) link({ ncUserId });
+                });
+            } catch (error) {
+                if (panel.isConnected) panel.textContent = error.message;
+            }
         }
 
         function bindDetailActions(id) {

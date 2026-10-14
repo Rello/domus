@@ -23,7 +23,7 @@ async function setup(page) {
         window.t = (app, text, params = {}) => text.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? key);
         window.OC = { generateUrl: path => path, dialogs: { filepicker: (title, callback) => callback('/test/document.pdf') } };
     });
-    for (const module of ['CoreBundle', 'Accounts', 'Distributions', 'Units', 'Partners', 'Tenancies', 'Tasks', 'Bookings', 'Documents']) {
+    for (const module of ['CoreBundle', 'ActionLog', 'Accounts', 'Distributions', 'Units', 'Partners', 'Tenancies', 'Tasks', 'Bookings', 'Documents']) {
         await page.addScriptTag({ path: `js/domus${module}.js` });
     }
     await page.evaluate(() => {
@@ -31,6 +31,7 @@ async function setup(page) {
         Domus.Api.getUnits = async () => [{ id: 1, label: 'Test unit', propertyId: 1 }];
         Domus.Api.getPartners = async () => [{ id: 1, name: 'Test tenant', partnerType: 'tenant' }];
         Domus.Api.getTaskTemplates = async () => [];
+        Domus.Api.getActionLogs = async () => [];
         Domus.Api.getDistributions = async () => [{ id: 2, name: 'Area', type: 'area' }];
         Domus.Api.createBooking = async () => ({ id: 1 });
         Domus.Accounts.toOptions = () => [{ value: '', label: 'Select account' }, { value: '2000', label: 'Test account' }];

@@ -9,6 +9,7 @@ namespace OCA\Domus\Controller;
 
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\TaskTemplateService;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -21,114 +22,78 @@ class TaskTemplateController extends Controller {
         IRequest $request,
         private TaskTemplateService $taskTemplateService,
         private IL10N $l10n,
+        private ManagementAccessContext $managementContext,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
 
     #[NoAdminRequired]
     public function index(?int $activeOnly = 1, ?string $appliesTo = null): DataResponse {
-        try {
-            return new DataResponse($this->taskTemplateService->listTemplates((bool)$activeOnly, $appliesTo));
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        }
+        $this->managementContext->managementUserId();
+        return new DataResponse($this->taskTemplateService->listTemplates((bool)$activeOnly, $appliesTo));
     }
 
     #[NoAdminRequired]
     public function show(int $id): DataResponse {
-        try {
-            return new DataResponse($this->taskTemplateService->getTemplateWithSteps($id));
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $this->managementContext->managementUserId();
+        return new DataResponse($this->taskTemplateService->getTemplateWithSteps($id));
     }
 
     #[NoAdminRequired]
     public function create(): DataResponse {
+        $this->managementContext->managementUserId();
         $payload = $this->request->getParams();
-        try {
-            $template = $this->taskTemplateService->createTemplate($payload);
-            return new DataResponse($template, Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        }
+        $template = $this->taskTemplateService->createTemplate($payload);
+        return new DataResponse($template, Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
     public function update(int $id): DataResponse {
+        $this->managementContext->managementUserId();
         $payload = $this->request->getParams();
 		return new DataResponse($this->taskTemplateService->updateTemplate($id, $payload));
     }
 
     #[NoAdminRequired]
     public function destroy(int $id): DataResponse {
-        try {
-            $this->taskTemplateService->deleteTemplate($id);
-            return new DataResponse([], Http::STATUS_NO_CONTENT);
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $this->managementContext->managementUserId();
+        $this->taskTemplateService->deleteTemplate($id);
+        return new DataResponse([], Http::STATUS_NO_CONTENT);
     }
 
     #[NoAdminRequired]
     public function reorderSteps(int $id): DataResponse {
+        $this->managementContext->managementUserId();
         $payload = $this->request->getParams();
         $orderedStepIds = $payload['orderedStepIds'] ?? [];
-        try {
-            return new DataResponse([
-                'steps' => $this->taskTemplateService->reorderSteps($id, $orderedStepIds),
-            ]);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        }
+        return new DataResponse([
+            'steps' => $this->taskTemplateService->reorderSteps($id, $orderedStepIds),
+        ]);
     }
 
     #[NoAdminRequired]
     public function addStep(int $id): DataResponse {
+        $this->managementContext->managementUserId();
         $payload = $this->request->getParams();
-        try {
-            return new DataResponse($this->taskTemplateService->addOrUpdateStep($id, $payload), Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->taskTemplateService->addOrUpdateStep($id, $payload), Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
     public function updateStep(int $stepId): DataResponse {
+        $this->managementContext->managementUserId();
         $payload = $this->request->getParams();
         $payload['id'] = $stepId;
         $templateId = isset($payload['templateId']) ? (int)$payload['templateId'] : 0;
         if ($templateId <= 0) {
-            return $this->validationError($this->l10n->t('Template is required.'));
+            throw new \InvalidArgumentException($this->l10n->t('Template is required.'));
         }
 		return new DataResponse($this->taskTemplateService->addOrUpdateStep($templateId, $payload));
     }
 
     #[NoAdminRequired]
     public function deleteStep(int $stepId): DataResponse {
-        try {
-            $this->taskTemplateService->deleteStep($stepId);
-            return new DataResponse([], Http::STATUS_NO_CONTENT);
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
-    }
-
-    private function notFound(): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $this->l10n->t('Resource not found.'),
-            'code' => 'NOT_FOUND',
-        ], Http::STATUS_NOT_FOUND);
-    }
-
-    private function validationError(string $message): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $message,
-            'code' => 'VALIDATION_ERROR',
-        ], Http::STATUS_BAD_REQUEST);
+        $this->managementContext->managementUserId();
+        $this->taskTemplateService->deleteStep($stepId);
+        return new DataResponse([], Http::STATUS_NO_CONTENT);
     }
 }

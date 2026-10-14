@@ -33,19 +33,23 @@
 
         function loadEntityList(entityType, entityId, options = {}) {
             const containerId = options.containerId || `domus-action-log-${entityType}-${entityId}`;
+            const view = Domus.Router.captureView('action-log:' + containerId);
             const refreshList = () => loadEntityList(entityType, entityId, options);
             const handleSaved = typeof options.onSaved === 'function'
                 ? options.onSaved
                 : refreshList;
-            Domus.Api.getActionLogs(entityType, entityId)
+            (Array.isArray(options.entries) ? Promise.resolve(options.entries) : Domus.Api.getActionLogs(entityType, entityId))
                 .then(entries => {
+                    if (!view.isCurrent()) return;
                     updateContainer(containerId, buildListMarkup(entries || [], {
                         containerId,
                         showEntityColumn: false,
                         emptyActionId: options.emptyActionId
                     }));
                     bindEntryRows(containerId, {
-                        onSaved: handleSaved
+                        onSaved: handleSaved,
+                        entries: options.entries,
+                        readOnly: options.readOnly
                     });
                     bindCreateButtons([options.emptyActionId], {
                         entityType,
@@ -55,6 +59,7 @@
                     });
                 })
                 .catch(() => {
+                    if (!view.isCurrent()) return;
                     updateContainer(containerId, buildListMarkup([], {
                         containerId,
                         showEntityColumn: false,
@@ -197,6 +202,8 @@
             }
 
             const onSaved = typeof options.onSaved === 'function' ? options.onSaved : null;
+            const entryOptions = id => ({ onSaved, readOnly: options.readOnly,
+                entry: options.entries?.find(entry => String(entry.id) === String(id)) });
             container.querySelectorAll('table.domus-table tr[data-action-log-id], table.domus-table tr[data-actionLogId]').forEach(row => {
                 if (row.dataset.domusActionLogBound) {
                     return;
@@ -214,16 +221,14 @@
 
                     event?.preventDefault?.();
                     event?.stopImmediatePropagation?.();
-                    Domus.ActionLog.openEntryModal(actionLogId, {
-                        onSaved
-                    });
+                    Domus.ActionLog.openEntryModal(actionLogId, entryOptions(actionLogId));
                 };
 
                 row.addEventListener('click', handleActivate, true);
                 row.querySelector('[data-domus-action-log-open]')?.addEventListener('click', () => {
                     const actionLogId = row.dataset.actionLogId || row.getAttribute('data-action-log-id') || row.getAttribute('data-actionLogId');
                     if (actionLogId) {
-                        Domus.ActionLog.openEntryModal(actionLogId, { onSaved });
+                        Domus.ActionLog.openEntryModal(actionLogId, entryOptions(actionLogId));
                     }
                 });
             });
@@ -248,11 +253,14 @@
         }
 
         function openEntryModal(entryId, options = {}, mode = 'view') {
-            Domus.Api.getActionLogEntry(entryId)
+            const view = Domus.Router.captureView('action-log-entry');
+            if (options.readOnly) mode = 'view';
+            (options.entry ? Promise.resolve(options.entry) : Domus.Api.getActionLogEntry(entryId))
                 .then(entry => {
+                    if (!view.isCurrent()) return;
                     let modal;
                     const headerActions = [];
-                    const isEditable = entry?.source === 'manual';
+                    const isEditable = !options.readOnly && entry?.source === 'manual';
 
                     if (mode === 'view' && isEditable) {
                         headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {

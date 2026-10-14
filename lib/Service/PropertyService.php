@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\ActionLogMapper;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DistributionKeyMapper;
@@ -17,12 +18,9 @@ use OCA\Domus\Db\Property;
 use OCA\Domus\Db\PropertyMapper;
 use OCA\Domus\Db\TaskMapper;
 use OCA\Domus\Db\TaskStepMapper;
-use OCA\Domus\Db\TenancyMapper;
-use OCA\Domus\Db\Unit;
 use OCA\Domus\Db\UnitMapper;
 use OCA\Domus\Db\WorkflowRunMapper;
 use OCP\IL10N;
-use Psr\Log\LoggerInterface;
 
 class PropertyService {
     public function __construct(
@@ -36,7 +34,6 @@ class PropertyService {
         private ActionLogMapper $actionLogMapper,
         private TaskMapper $taskMapper,
         private TaskStepMapper $taskStepMapper,
-        private TenancyMapper $tenancyMapper,
         private WorkflowRunMapper $workflowRunMapper,
         private TenancyService $tenancyService,
         private DocumentPathService $documentPathService,
@@ -44,7 +41,6 @@ class PropertyService {
         private PermissionService $permissionService,
         private EntityImageService $entityImageService,
         private IL10N $l10n,
-        private LoggerInterface $logger,
     ) {
     }
 
@@ -55,8 +51,17 @@ class PropertyService {
         }
 
         $properties = $this->propertyMapper->findByUser($userId, $usageRoleFilter);
+        $unitsByProperty = [];
+        foreach ($this->unitMapper->findByUser($userId) as $unit) {
+            $unitsByProperty[$unit->getPropertyId()][] = $unit;
+        }
+        $tenanciesByUnit = $properties === [] ? [] : $this->tenancyService->listTenanciesByUnit($userId);
+        $bookingsByProperty = [];
+        foreach ($properties === [] ? [] : $this->loadBookings($userId) as $booking) {
+            $bookingsByProperty[$booking->getPropertyId()][] = $booking;
+        }
         foreach ($properties as $property) {
-            $this->enrichProperty($property);
+            $this->enrichProperty($property, $unitsByProperty[$property->getId()] ?? [], $tenanciesByUnit, $bookingsByProperty[$property->getId()] ?? []);
         }
         return $properties;
     }
@@ -64,7 +69,7 @@ class PropertyService {
     public function getPropertyForUser(int $id, string $userId): Property {
         $property = $this->propertyMapper->findForUser($id, $userId);
         if (!$property) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
         $this->enrichProperty($property);
         return $property;
@@ -178,41 +183,41 @@ class PropertyService {
         ];
     }
 
-    private function enrichProperty(Property $property): void {
-        try {
-            $this->entityImageService->enrichProperty($property);
-            $units = $this->unitMapper->findByUser($property->getUserId(), $property->getId());
-            $unitIds = [];
-            foreach ($units as $unit) {
-                $this->enrichPropertyUnit($unit, $property);
-                if ($unit->getId() !== null) {
-                    $unitIds[] = (int)$unit->getId();
-                }
-            }
-            $property->setUnits($units);
-            $property->setUnitCount(count($units));
-            $this->buildOccupancySummary($property, $unitIds);
-
-            $bookings = $this->bookingMapper->findByUser($property->getUserId(), ['propertyId' => $property->getId()]);
-            $bookingIds = array_values(array_filter(array_map(fn($booking) => $booking->getId(), $bookings)));
-            if ($bookingIds !== []) {
-                $documentedIds = $this->documentLinkMapper->findEntityIdsWithDocuments($property->getUserId(), 'booking', $bookingIds);
-                $documentedLookup = array_fill_keys($documentedIds, true);
-                foreach ($bookings as $booking) {
-                    $booking->setHasDocuments(isset($documentedLookup[$booking->getId()]));
-                }
-            }
-            $property->setBookings($bookings);
-            $annualResult = 0.0;
-            foreach ($bookings as $booking) {
-                $amount = (float)$booking->getAmount();
-                $annualResult += $amount;
-            }
-            $property->setAnnualResult(number_format($annualResult, 2, '.', ''));
-            $property->setAnnualRentSum($this->calculateRentSum($property));
-        } catch (\Throwable $e) {
-            $this->logger->warning('Failed enriching property', ['message' => $e->getMessage()]);
+    private function enrichProperty(Property $property, ?array $units = null, ?array $tenanciesByUnit = null, ?array $bookings = null): void {
+        $this->entityImageService->enrichProperty($property);
+        $units ??= $this->unitMapper->findByUser($property->getUserId(), $property->getId());
+        $tenanciesByUnit ??= $this->tenancyService->listTenanciesByUnit($property->getUserId());
+        foreach ($units as $unit) {
+            $this->entityImageService->enrichUnit($unit, $property, false);
+            $unit->setPropertyName($property->getName());
+            $this->tenancyService->enrichUnitTenancies($unit, $tenanciesByUnit[$unit->getId()] ?? []);
         }
+        $property->setUnits($units);
+        $property->setUnitCount(count($units));
+        $this->buildOccupancySummary($property, $units);
+
+        $bookings ??= $this->loadBookings($property->getUserId(), $property->getId());
+        $property->setBookings($bookings);
+        $annualResult = 0.0;
+        foreach ($bookings as $booking) {
+            $amount = (float)$booking->getAmount();
+            $annualResult += $amount;
+        }
+        $property->setAnnualResult(number_format($annualResult, 2, '.', ''));
+        $property->setAnnualRentSum($this->calculateRentSum($units));
+    }
+
+    private function loadBookings(string $userId, ?int $propertyId = null): array {
+        $bookings = $this->bookingMapper->findByUser($userId, $propertyId === null ? [] : ['propertyId' => $propertyId]);
+        $bookingIds = array_values(array_filter(array_map(fn($booking) => $booking->getId(), $bookings)));
+        if ($bookingIds !== []) {
+            $documentedIds = $this->documentLinkMapper->findEntityIdsWithDocuments($userId, 'booking', $bookingIds);
+            $documentedLookup = array_fill_keys($documentedIds, true);
+            foreach ($bookings as $booking) {
+                $booking->setHasDocuments(isset($documentedLookup[$booking->getId()]));
+            }
+        }
+        return $bookings;
     }
 
     private function resolveUsageRoleFilter(string $role): string|bool|null {
@@ -227,76 +232,27 @@ class PropertyService {
         return null;
     }
 
-    private function calculateRentSum(Property $property): ?string {
-        try {
-            $units = $this->unitMapper->findByUser($property->getUserId(), $property->getId());
-            $unitIds = array_values(array_filter(array_map(static fn(Unit $unit) => $unit->getId(), $units)));
-            if ($unitIds === []) {
-                return number_format(0, 2, '.', '');
+    /** Annualized current rent, excluding expired and future conditions. */
+    private function calculateRentSum(array $units): string {
+        $monthlyRent = 0.0;
+        foreach ($units as $unit) {
+            foreach ($unit->getActiveTenancies() as $tenancy) {
+                $monthlyRent += (float)$tenancy->getBaseRent();
             }
-
-            $tenancies = $this->tenancyMapper->findByUser($property->getUserId());
-            $tenancies = array_filter($tenancies, static fn($tenancy) => in_array((int)$tenancy->getUnitId(), $unitIds, true));
-            $sum = 0.0;
-            foreach ($tenancies as $tenancy) {
-                $sum += (float)$tenancy->getBaseRent();
-            }
-            return number_format($sum * 12, 2, '.', '');
-        } catch (\Throwable $e) {
-            $this->logger->warning('Failed calculating rent sum', ['message' => $e->getMessage()]);
-            return null;
         }
+        return number_format($monthlyRent * 12, 2, '.', '');
     }
 
-    /**
-     * @param int[] $unitIds
-     */
-    private function buildOccupancySummary(Property $property, array $unitIds): void {
-        $today = new \DateTimeImmutable('today');
-        $occupiedUnitIds = [];
+    private function buildOccupancySummary(Property $property, array $units): void {
+        $occupiedCount = 0;
         $activeTenancyCount = 0;
-
-        if ($unitIds !== []) {
-            $tenancies = $this->tenancyMapper->findByUser($property->getUserId());
-            foreach ($tenancies as $tenancy) {
-                $unitId = (int)$tenancy->getUnitId();
-                if (!in_array($unitId, $unitIds, true)) {
-                    continue;
-                }
-                if ($this->tenancyService->getStatus($tenancy, $today) !== 'active') {
-                    continue;
-                }
-                $occupiedUnitIds[$unitId] = true;
-                $activeTenancyCount += 1;
-            }
+        foreach ($units as $unit) {
+            $activeCount = count($unit->getActiveTenancies());
+            $occupiedCount += $activeCount > 0 ? 1 : 0;
+            $activeTenancyCount += $activeCount;
         }
-
-        $occupiedCount = count($occupiedUnitIds);
-        $totalCount = count($unitIds);
         $property->setOccupiedUnitCount($occupiedCount);
-        $property->setVacantUnitCount(max(0, $totalCount - $occupiedCount));
+        $property->setVacantUnitCount(count($units) - $occupiedCount);
         $property->setActiveTenancyCount($activeTenancyCount);
-    }
-
-    private function enrichPropertyUnit(Unit $unit, Property $property): void {
-        $this->entityImageService->enrichUnit($unit, $property, false);
-        $unit->setPropertyName($property->getName());
-
-        $tenancies = $this->tenancyService->listTenancies($property->getUserId(), (int)$unit->getId());
-        $active = [];
-        $historic = [];
-        $today = new \DateTimeImmutable('today');
-
-        foreach ($tenancies as $tenancy) {
-            $status = $tenancy->getStatus() ?? $this->tenancyService->getStatus($tenancy, $today);
-            if ($status === 'historical') {
-                $historic[] = $tenancy;
-            } else {
-                $active[] = $tenancy;
-            }
-        }
-
-        $unit->setActiveTenancies($active);
-        $unit->setHistoricTenancies($historic);
     }
 }

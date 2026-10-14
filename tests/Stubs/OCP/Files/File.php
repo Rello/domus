@@ -16,6 +16,10 @@ class File {
     ) {
     }
 
+    public function getMimeType(): string { return 'application/octet-stream'; }
+
+    public function isReadable(): bool { return true; }
+
     public function getSize(): int|float { return 0; }
 
     public function fopen(string $mode) { return false; }

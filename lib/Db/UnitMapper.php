@@ -7,14 +7,14 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
-class UnitMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_units', Unit::class);
+class UnitMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_units', Unit::class, $access);
     }
 
     /** @param int[] $ids */
@@ -23,7 +23,7 @@ class UnitMapper extends QBMapper {
         foreach (array_chunk(array_values(array_unique(array_map('intval', $ids))), 500) as $chunk) {
             $qb = $this->db->getQueryBuilder();
             $qb->select('*')->from($this->getTableName())
-                ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+                ->where($this->ownerExpression($qb, $userId))
                 ->andWhere($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
             array_push($entities, ...$this->findEntities($qb));
         }
@@ -37,7 +37,7 @@ class UnitMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->where($this->ownerExpression($qb, $userId));
 
         if ($propertyId !== null) {
             $qb->andWhere($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
@@ -56,7 +56,7 @@ class UnitMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntity($qb);
     }
@@ -69,7 +69,7 @@ class UnitMapper extends QBMapper {
         $qb->select($qb->func()->count('*'))
             ->from($this->getTableName())
             ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return (int)$qb->executeQuery()->fetchOne();
     }

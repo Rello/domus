@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class AccountMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_accounts', Account::class);
+class AccountMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_accounts', Account::class, $access);
     }
 
     /**
@@ -26,6 +26,7 @@ class AccountMapper extends QBMapper {
             ->orderBy('sort_order', 'ASC')
             ->addOrderBy('number', 'ASC');
 
+        $this->applyCatalogueScope($qb, true);
         return $this->findEntities($qb);
     }
 
@@ -39,6 +40,7 @@ class AccountMapper extends QBMapper {
             ->where($qb->expr()->eq('number', $qb->createNamedParameter($number)))
             ->setMaxResults(1);
 
+        $this->applyCatalogueScope($qb, true);
         $entities = $this->findEntities($qb);
 
         return $entities[0] ?? null;
@@ -54,6 +56,7 @@ class AccountMapper extends QBMapper {
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
             ->setMaxResults(1);
 
+        $this->applyCatalogueScope($qb, true);
         return $this->findEntity($qb);
     }
 
@@ -66,6 +69,7 @@ class AccountMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('parent_id', $qb->createNamedParameter($parentId, $qb::PARAM_INT)));
 
+        $this->applyCatalogueScope($qb, true);
         return $this->findEntities($qb);
     }
 
@@ -77,6 +81,7 @@ class AccountMapper extends QBMapper {
         $qb->selectAlias($qb->createFunction('MAX(sort_order)'), 'max_sort')
             ->from($this->getTableName());
 
+        $this->applyCatalogueScope($qb, true);
         $value = $qb->executeQuery()->fetchOne();
         return $value !== null ? (int)$value : 0;
     }

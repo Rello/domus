@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class DocumentLinkMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_docLinks', DocumentLink::class);
+class DocumentLinkMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_docLinks', DocumentLink::class, $access);
     }
 
     /**
@@ -23,7 +23,7 @@ class DocumentLinkMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
 
@@ -38,7 +38,7 @@ class DocumentLinkMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntity($qb);
     }
@@ -50,7 +50,7 @@ class DocumentLinkMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, $qb::PARAM_INT)));
 
         return $this->findEntities($qb);
@@ -67,7 +67,7 @@ class DocumentLinkMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('entity_id')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->in('entity_id', $qb->createNamedParameter($entityIds, $qb::PARAM_INT_ARRAY)))
             ->groupBy('entity_id');
@@ -89,7 +89,7 @@ class DocumentLinkMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
 
@@ -107,7 +107,7 @@ class DocumentLinkMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->in('entity_id', $qb->createNamedParameter($entityIds, $qb::PARAM_INT_ARRAY)));
 
@@ -120,7 +120,7 @@ class DocumentLinkMapper extends QBMapper {
     public function deleteForEntity(string $userId, string $entityType, int $entityId): void {
         $qb = $this->db->getQueryBuilder();
         $qb->delete($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT)));
 
@@ -137,7 +137,7 @@ class DocumentLinkMapper extends QBMapper {
 
         $qb = $this->db->getQueryBuilder();
         $qb->delete($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)))
             ->andWhere($qb->expr()->in('entity_id', $qb->createNamedParameter($entityIds, $qb::PARAM_INT_ARRAY)));
 

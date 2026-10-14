@@ -34,7 +34,7 @@ class DashboardServiceTest extends TestCase {
             }
         }
         $dependencies['tenancyService']->method('listTenancies')->willReturn($tenancies);
-        $dependencies['tenancyService']->method('sumTenancyForYear')->willReturn(['1000' => 12000.0]);
+        $dependencies['tenancyService']->method('sumTenanciesForYear')->willReturn(['1000' => 12000.0]);
         $bookings = [];
         foreach ([[1, null, 1000], [2, 10, 2000], [null, 10, 3000]] as [$unitId, $propertyId, $amount]) {
             $booking = new Booking(); $booking->setUnitId($unitId); $booking->setPropertyId($propertyId); $booking->setAmount($amount); $booking->setAccount('2100'); $bookings[] = $booking;
@@ -42,7 +42,6 @@ class DashboardServiceTest extends TestCase {
         $dependencies['bookingMapper']->method('findByUser')->willReturn($bookings);
         $dependencies['accountService']->method('getTopAccountNumberMap')->willReturn([]);
         $dependencies['accountService']->method('resolveTopAccountNumber')->willReturnCallback(fn($number) => $number);
-        $dependencies['config']->method('getUserValue')->willReturn('0');
         $service = new DashboardService(...array_values($dependencies));
         $summary = $service->getSummary('alice', 2026, $role);
         self::assertSame($empty ? '0.00' : '1000.00', $summary['monthlyBaseRentSum']);

@@ -369,7 +369,7 @@
                         const isDisabled = account.status === 'disabled';
                         const label = isDisabled ? t('domus', 'Enable') : t('domus', 'Disable');
                         Domus.UI.confirmAction({
-                            message: t('domus', '{action} {entity}?', { action: label, entity: t('domus', 'Account') }),
+                            message: isDisabled ? t('domus', 'Enable account?') : t('domus', 'Disable account?'),
                             confirmLabel: label
                         }).then(confirmed => {
                             if (!confirmed) {
@@ -404,9 +404,11 @@
         }
 
         function renderList() {
+            const view = Domus.Router.beginView();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Accounts') }));
             Domus.Api.getAccounts()
                 .then(nodes => {
+                    if (!view.isCurrent()) return;
                     const toolbar = '<div class="domus-toolbar">' +
                         Domus.UI.buildScopeAddButton('domus-icon-account', t('domus', 'Add {entity}', { entity: t('domus', 'Account') }), {
                             id: 'domus-account-create-btn',
@@ -417,7 +419,7 @@
                     updateAccountsFromHierarchy(nodes || []);
                     bindAccountActions(nodes || []);
                 })
-                .catch(err => Domus.UI.showError(err.message));
+                .catch(err => { if (view.isCurrent()) Domus.UI.showError(err.message); });
         }
 
         function renderSettingsSection() {
@@ -432,6 +434,7 @@
         }
 
         function loadSettingsSection() {
+            const view = Domus.Router.captureView('settings-accounts');
             const container = document.getElementById('domus-settings-accounts-body');
             if (!container) {
                 return;
@@ -439,6 +442,7 @@
             container.innerHTML = Domus.Utils.escapeHtml(t('domus', 'Loading {entity}…', { entity: t('domus', 'Accounts') }));
             Domus.Api.getAccounts()
                 .then(nodes => {
+                    if (!view.isCurrent() || !container.isConnected) return;
                     const toolbar = '<div class="domus-toolbar">' +
                         Domus.UI.buildScopeAddButton('domus-icon-account', t('domus', 'Add {entity}', { entity: t('domus', 'Account') }), {
                             id: 'domus-account-create-btn',
@@ -450,6 +454,7 @@
                     bindAccountActions(nodes || []);
                 })
                 .catch(err => {
+                    if (!view.isCurrent() || !container.isConnected) return;
                     container.innerHTML = '<div class="muted">' + Domus.Utils.escapeHtml(err.message || '') + '</div>';
                 });
         }

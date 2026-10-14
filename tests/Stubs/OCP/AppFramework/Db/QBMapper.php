@@ -35,14 +35,15 @@ abstract class QBMapper {
         return $entities[0] ?? null;
     }
 
-    public function insert(mixed $entity): mixed {
+    public function insert(Entity $entity): Entity {
         return $entity;
     }
 
-    public function update(mixed $entity): mixed {
+    public function update(Entity $entity): Entity {
         return $entity;
     }
 
-    public function delete(mixed $entity): void {
+    public function delete(Entity $entity): Entity {
+        return $entity;
     }
 }

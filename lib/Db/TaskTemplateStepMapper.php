@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class TaskTemplateStepMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_task_tpl_steps', TaskTemplateStep::class);
+class TaskTemplateStepMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_task_tpl_steps', TaskTemplateStep::class, $access);
     }
 
     /**
@@ -26,6 +26,7 @@ class TaskTemplateStepMapper extends QBMapper {
             ->where($qb->expr()->eq('template_id', $qb->createNamedParameter($templateId, $qb::PARAM_INT)))
             ->orderBy('sort_order', 'ASC');
 
+        $this->applyScope($qb);
         return $this->findEntities($qb);
     }
 
@@ -39,6 +40,7 @@ class TaskTemplateStepMapper extends QBMapper {
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
             ->setMaxResults(1);
 
+        $this->applyScope($qb);
         return $this->findEntity($qb);
     }
 
@@ -53,6 +55,7 @@ class TaskTemplateStepMapper extends QBMapper {
             ->andWhere($qb->expr()->eq('sort_order', $qb->createNamedParameter($sortOrder, $qb::PARAM_INT)))
             ->setMaxResults(1);
 
+        $this->applyScope($qb);
         $entities = $this->findEntities($qb);
         return $entities[0] ?? null;
     }
@@ -72,6 +75,7 @@ class TaskTemplateStepMapper extends QBMapper {
             ->where($qb->expr()->in('template_id', $qb->createNamedParameter($templateIds, $qb::PARAM_INT_ARRAY)))
             ->groupBy('template_id');
 
+        $this->applyScope($qb);
         $result = $qb->executeQuery();
         $counts = [];
         while ($row = $result->fetch()) {

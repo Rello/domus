@@ -7,6 +7,10 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ConflictException;
+
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\Db\ActionLog;
 use OCA\Domus\Db\ActionLogMapper;
 use OCA\Domus\Db\DocumentLinkMapper;
@@ -21,7 +25,7 @@ use OCP\IURLGenerator;
 use Psr\Log\LoggerInterface;
 
 class ActionLogService {
-    private const OWNER_ENTITY_TYPES = ['property', 'unit'];
+    private const OWNER_ENTITY_TYPES = ['property', 'unit', 'partner'];
     private const LINKED_ENTITY_TYPES = ['property', 'unit', 'partner'];
     private const TYPE_ALIASES = [
         'call',
@@ -41,7 +45,6 @@ class ActionLogService {
         private TenancyMapper $tenancyMapper,
         private BookingService $bookingService,
         private DocumentLinkMapper $documentLinkMapper,
-        private PermissionService $permissionService,
         private IRootFolder $rootFolder,
         private IURLGenerator $urlGenerator,
         private IL10N $l10n,
@@ -67,7 +70,7 @@ class ActionLogService {
     public function getEntry(string $userId, int $id): ActionLog {
         $entry = $this->actionLogMapper->findForUser($id, $userId);
         if (!$entry) {
-            throw new \RuntimeException($this->l10n->t('Action log entry not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Action log entry not found.'));
         }
 
         return $this->hydrateEntry($userId, $entry);
@@ -76,11 +79,11 @@ class ActionLogService {
     public function updateEntry(string $userId, int $id, array $payload): ActionLog {
         $entry = $this->actionLogMapper->findForUser($id, $userId);
         if (!$entry) {
-            throw new \RuntimeException($this->l10n->t('Action log entry not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Action log entry not found.'));
         }
 
         if ($entry->getSource() !== 'manual') {
-            throw new \RuntimeException($this->l10n->t('Only manual action log entries can be edited.'));
+            throw new ConflictException($this->l10n->t('Only manual action log entries can be edited.'));
         }
 
         $entityType = (string)$entry->getEntityType();
@@ -117,11 +120,11 @@ class ActionLogService {
     public function deleteEntry(string $userId, int $id): void {
         $entry = $this->actionLogMapper->findForUser($id, $userId);
         if (!$entry) {
-            throw new \RuntimeException($this->l10n->t('Action log entry not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Action log entry not found.'));
         }
 
         if ($entry->getSource() !== 'manual') {
-            throw new \RuntimeException($this->l10n->t('Only manual action log entries can be deleted.'));
+            throw new ConflictException($this->l10n->t('Only manual action log entries can be deleted.'));
         }
 
         $entityType = (string)$entry->getEntityType();
@@ -216,15 +219,18 @@ class ActionLogService {
 
     private function assertOwnerEntity(string $userId, string $entityType, int $entityId): void {
         if ($entityId <= 0 || !in_array($entityType, self::OWNER_ENTITY_TYPES, true)) {
-            throw new \RuntimeException($this->l10n->t('Unsupported action log owner.'));
+            throw new \InvalidArgumentException($this->l10n->t('Unsupported action log owner.'));
         }
 
         if ($entityType === 'property' && !$this->propertyMapper->findForUser($entityId, $userId)) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
 
         if ($entityType === 'unit' && !$this->unitMapper->findForUser($entityId, $userId)) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
+        }
+        if ($entityType === 'partner' && !$this->partnerMapper->findForUser($entityId, $userId)) {
+            throw new ResourceNotFoundException($this->l10n->t('Partner not found.'));
         }
     }
 
@@ -244,6 +250,9 @@ class ActionLogService {
     }
 
     private function resolveOwnerLabel(string $userId, string $entityType, int $entityId): string {
+        if ($entityType === 'partner') {
+            return $this->partnerMapper->findForUser($entityId, $userId)?->getName() ?: $this->l10n->t('Partner #%s', [$entityId]);
+        }
         if ($entityType === 'property') {
             $property = $this->propertyMapper->findForUser($entityId, $userId);
             return $property?->getName() ?: $this->l10n->t('Property #%s', [$entityId]);
@@ -316,7 +325,7 @@ class ActionLogService {
         }
 
         $fileId = $document->getFileId();
-        $href = $fileId !== null ? $this->urlGenerator->getAbsoluteURL('/f/' . $fileId) : null;
+        $href = $fileId !== null ? $this->urlGenerator->linkToRouteAbsolute('domus.Document.content', ['id' => $id]) : null;
         $label = $document->getFileName() ?: ($fallbackLabel ?: $this->l10n->t('Document #%s', [$id]));
 
         if (!$document->getFileName() && $fileId !== null) {

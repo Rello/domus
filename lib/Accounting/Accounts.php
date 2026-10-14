@@ -11,6 +11,9 @@ use OCA\Domus\Service\AccountService;
 use OCP\IL10N;
 
 class Accounts {
+    public const ALLOCABLE_MAINTENANCE = '2000';
+    public const PROPERTY_TAX = '2400';
+
     public function __construct(private AccountService $accountService) {
     }
 

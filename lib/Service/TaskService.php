@@ -7,6 +7,8 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\Db\Task;
 use OCA\Domus\Db\TaskMapper;
 use OCA\Domus\Db\PropertyMapper;
@@ -101,7 +103,7 @@ class TaskService {
     public function updateTask(int $taskId, string $title, ?string $description, ?string $dueDate, string $userId): Task {
         $task = $this->taskMapper->findById($taskId);
         if (!$task) {
-            throw new \RuntimeException($this->l10n->t('Task not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task not found.'));
         }
         $this->assertTaskAccess($task, $userId);
         $title = trim($title);
@@ -123,7 +125,7 @@ class TaskService {
     public function closeTask(int $taskId, string $userId): Task {
         $task = $this->taskMapper->findById($taskId);
         if (!$task) {
-            throw new \RuntimeException($this->l10n->t('Task not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task not found.'));
         }
         $this->assertTaskAccess($task, $userId);
         if (!in_array($task->getStatus(), [self::STATUS_OPEN, self::STATUS_NEW], true)) {
@@ -144,7 +146,7 @@ class TaskService {
     public function reopenTask(int $taskId, string $userId): Task {
         $task = $this->taskMapper->findById($taskId);
         if (!$task) {
-            throw new \RuntimeException($this->l10n->t('Task not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task not found.'));
         }
         $this->assertTaskAccess($task, $userId);
         if ($task->getStatus() !== self::STATUS_CLOSED) {
@@ -165,7 +167,7 @@ class TaskService {
     public function deleteTask(int $taskId, string $userId): void {
         $task = $this->taskMapper->findById($taskId);
         if (!$task) {
-            throw new \RuntimeException($this->l10n->t('Task not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task not found.'));
         }
         $this->assertTaskAccess($task, $userId);
 
@@ -181,28 +183,28 @@ class TaskService {
         }
 
         if ((string)$task->getCreatedBy() !== $userId) {
-            throw new \RuntimeException($this->l10n->t('Task not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Task not found.'));
         }
     }
 
     private function assertEntityExists(string $entityType, int $entityId, string $userId): void {
         if ($entityId <= 0) {
-            throw new \RuntimeException($this->l10n->t('Invalid entity.'));
+            throw new \InvalidArgumentException($this->l10n->t('Invalid entity.'));
         }
         if ($entityType === 'unit') {
             $unit = $this->unitMapper->findForUser($entityId, $userId);
             if (!$unit) {
-                throw new \RuntimeException($this->l10n->t('Unit not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
             }
             return;
         }
         if ($entityType === 'property') {
             $property = $this->propertyMapper->findForUser($entityId, $userId);
             if (!$property) {
-                throw new \RuntimeException($this->l10n->t('Property not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
             }
             return;
         }
-        throw new \RuntimeException($this->l10n->t('Unsupported entity type.'));
+        throw new \InvalidArgumentException($this->l10n->t('Unsupported entity type.'));
     }
 }

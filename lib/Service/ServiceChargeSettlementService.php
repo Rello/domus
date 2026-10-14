@@ -7,15 +7,15 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Accounting\Accounts;
+use OCA\Domus\Accounting\TenancyPeriod;
+use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\PartnerMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCP\IL10N;
 
 class ServiceChargeSettlementService {
-    private const HOUSE_FEE_ACCOUNT = '2000';
-    private const PROPERTY_TAX_ACCOUNT = '2005';
-
     public function __construct(
         private TenancyService $tenancyService,
         private BookingMapper $bookingMapper,
@@ -33,7 +33,7 @@ class ServiceChargeSettlementService {
         $unitCharges = $this->sumBookingsForUnit($userId, $unitId, $year);
 
         foreach ($tenancies as $tenancy) {
-            $months = $this->calculateMonthsWithinYear($tenancy->getStartDate(), $tenancy->getEndDate(), $year);
+            $months = TenancyPeriod::monthsWithinYear($tenancy->getStartDate(), $tenancy->getEndDate(), $year);
             if ($months <= 0) {
                 continue;
             }
@@ -76,7 +76,7 @@ class ServiceChargeSettlementService {
     public function createReport(string $userId, int $unitId, int $year, int $partnerId): array {
         $unit = $this->unitMapper->findForUser($unitId, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
 
         $entries = $this->listForUnit($userId, $unitId, $year);
@@ -94,7 +94,7 @@ class ServiceChargeSettlementService {
 
         $partner = $this->partnerMapper->findForUser($partnerId, $userId);
         if (!$partner) {
-            throw new \RuntimeException($this->l10n->t('Partner not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Partner not found.'));
         }
 
         $content = $this->buildReportMarkdown($partner->getName(), $partner->getStreet(), $partner->getZip(), $partner->getCity(), $partner->getCountry(), $year, $entry);
@@ -134,44 +134,13 @@ class ServiceChargeSettlementService {
         ];
     }
 
-    private function calculateMonthsWithinYear(?string $startDate, ?string $endDate, int $year): int {
-        $startOfYear = new \DateTimeImmutable(sprintf('%d-01-01', $year));
-        $endOfYear = new \DateTimeImmutable(sprintf('%d-12-31', $year));
-
-        try {
-            $start = $startDate ? new \DateTimeImmutable($startDate) : null;
-        } catch (\Throwable) {
-            return 0;
-        }
-
-        try {
-            $end = $endDate ? new \DateTimeImmutable($endDate) : null;
-        } catch (\Throwable) {
-            $end = null;
-        }
-
-        if ($start === null) {
-            return 0;
-        }
-
-        $periodStart = $start > $startOfYear ? $start : $startOfYear;
-        $periodEnd = ($end ?? $endOfYear) < $endOfYear ? ($end ?? $endOfYear) : $endOfYear;
-
-        if ($periodEnd < $periodStart) {
-            return 0;
-        }
-
-        return ($periodEnd->format('Y') - $periodStart->format('Y')) * 12
-            + ($periodEnd->format('n') - $periodStart->format('n')) + 1;
-    }
-
     private function sumBookingsForUnit(string $userId, int $unitId, int $year): array {
         $bookings = $this->bookingMapper->findByUser($userId, ['unitId' => $unitId, 'year' => $year]);
         $houseFee = 0.0;
         $propertyTax = 0.0;
         $topAccountMap = $this->accountService->getTopAccountNumberMap();
-        $houseFeeAccount = $this->accountService->resolveTopAccountNumber(self::HOUSE_FEE_ACCOUNT, $topAccountMap);
-        $propertyTaxAccount = $this->accountService->resolveTopAccountNumber(self::PROPERTY_TAX_ACCOUNT, $topAccountMap);
+        $houseFeeAccount = $this->accountService->resolveTopAccountNumber(Accounts::ALLOCABLE_MAINTENANCE, $topAccountMap);
+        $propertyTaxAccount = $this->accountService->resolveTopAccountNumber(Accounts::PROPERTY_TAX, $topAccountMap);
 
         foreach ($bookings as $booking) {
             $account = $this->accountService->resolveTopAccountNumber((string)$booking->getAccount(), $topAccountMap);
@@ -206,7 +175,7 @@ class ServiceChargeSettlementService {
         }
 
         $lines[] = '';
-        $lines[] = sprintf('%s %d %s', $this->l10n->t('Zeitraum'), (int)($entry['months'] ?? 0), $this->l10n->t('Monate'));
+        $lines[] = $this->l10n->t('Period: %s months', [number_format((float)($entry['months'] ?? 0), 2, '.', '')]);
         $lines[] = '';
         $lines[] = '| ' . $this->l10n->t('Position') . ' | ' . $this->l10n->t('Amount') . ' |';
         $lines[] = '| --- | ---: |';

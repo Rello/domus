@@ -7,17 +7,20 @@
 
 namespace OCA\Domus\Controller;
 
+use OCA\Domus\Service\ManagementAccessContext;
+use OCA\Domus\Service\PortfolioSettingsService;
 use OCA\Domus\AppInfo\Application;
+use OCP\App\IAppManager;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
-use OCP\IConfig;
 use OCP\IL10N;
 use OCP\IRequest;
 use OCP\IUserSession;
 use OCA\Domus\Service\DemoContentService;
 use OCA\Domus\Service\PermissionService;
+use OCP\IGroupManager;
 
 class SettingsController extends Controller {
     private const CONFIG_TAX_RATE = 'taxRate';
@@ -26,10 +29,13 @@ class SettingsController extends Controller {
     public function __construct(
         IRequest $request,
         private IUserSession $userSession,
-        private IConfig $config,
+        private ManagementAccessContext $managementContext,
         private DemoContentService $demoContentService,
         private PermissionService $permissionService,
         private IL10N $l10n,
+        private IGroupManager $groupManager,
+        private PortfolioSettingsService $portfolioSettings,
+        private IAppManager $appManager,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -38,6 +44,11 @@ class SettingsController extends Controller {
     public function show(): DataResponse {
         return new DataResponse([
             'settings' => $this->getSettings($this->getUserId()),
+            'requiredApps' => [
+                'circles' => $this->appManager->isEnabledForUser('circles', $this->userSession->getUser()),
+                'groupfolders' => $this->appManager->isEnabledForUser('groupfolders', $this->userSession->getUser()),
+                'guests' => $this->appManager->isEnabledForUser('guests', $this->userSession->getUser()),
+            ],
         ]);
     }
 
@@ -55,10 +66,10 @@ class SettingsController extends Controller {
 
             $normalized = $this->normalizeSettingValue($key, $params[$key]);
             if ($normalized === null) {
-                return $this->validationError($this->l10n->t('Enter a valid amount.'));
+                throw new \InvalidArgumentException($this->l10n->t('Enter a valid amount.'));
             }
 
-            $this->config->setUserValue($userId, Application::APP_ID, $key, $normalized);
+            $this->portfolioSettings->setValue($userId, $key, $normalized);
             $updated[$key] = $normalized;
         }
 
@@ -70,28 +81,16 @@ class SettingsController extends Controller {
 
     #[NoAdminRequired]
     public function createDemoContent(): DataResponse {
-        $role = $this->permissionService->getRoleFromRequest($this->request);
-        try {
-            $data = $this->demoContentService->createDemoContent($this->getUserId(), $role);
-            return new DataResponse([
-                'status' => 'success',
-                'data' => $data,
-            ], Http::STATUS_CREATED);
-        } catch (\RuntimeException $e) {
-            return new DataResponse([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'code' => 'CONFLICT',
-            ], Http::STATUS_CONFLICT);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return new DataResponse([
-                'status' => 'error',
-                'message' => $this->l10n->t('An error occurred'),
-                'code' => 'ERROR',
-            ], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $actor = $this->userSession->getUser();
+        if ($actor === null || !$actor->isEnabled() || $this->groupManager->isInGroup($actor->getUID(), 'guest_app')) {
+            throw new \DomainException($this->l10n->t('A staff account is required for management access.'));
         }
+        $role = $this->permissionService->getRoleFromRequest($this->request);
+        $data = $this->demoContentService->createDemoContent($this->managementContext->legacyOwnerUserId(), $role);
+        return new DataResponse([
+            'status' => 'success',
+            'data' => $data,
+        ], Http::STATUS_CREATED);
     }
 
     private function getSettingsDefinition(): array {
@@ -108,12 +107,7 @@ class SettingsController extends Controller {
     private function getSettings(string $userId): array {
         $settings = [];
         foreach ($this->getSettingsDefinition() as $key => $definition) {
-            $value = $this->config->getUserValue(
-                $userId,
-                Application::APP_ID,
-                $key,
-                $definition['default'] ?? '',
-            );
+            $value = $this->portfolioSettings->getValue($userId, $key, $definition['default'] ?? '');
             $settings[$key] = $this->formatSettingValue($key, $value);
         }
 
@@ -166,14 +160,6 @@ class SettingsController extends Controller {
     }
 
     private function getUserId(): string {
-        return $this->userSession->getUser()?->getUID() ?? '';
-    }
-
-    private function validationError(string $message): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $message,
-            'code' => 'VALIDATION_ERROR',
-        ], Http::STATUS_BAD_REQUEST);
+        return $this->managementContext->managementUserId();
     }
 }

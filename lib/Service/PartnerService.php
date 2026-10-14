@@ -7,6 +7,10 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ConflictException;
+
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\Db\Partner;
 use OCA\Domus\Db\PartnerMapper;
 use OCA\Domus\Db\PartnerRelMapper;
@@ -30,7 +34,7 @@ class PartnerService {
     public function getPartnerForUser(int $id, string $userId): Partner {
         $partner = $this->partnerMapper->findForUser($id, $userId);
         if (!$partner) {
-            throw new \RuntimeException($this->l10n->t('Partner not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Partner not found.'));
         }
         $partner->setTenancies($this->tenancyService->getTenanciesForPartner($partner->getId(), $userId));
         return $partner;
@@ -84,7 +88,7 @@ class PartnerService {
         $partner = $this->getPartnerForUser($id, $userId);
         $relations = $this->partnerRelMapper->findForPartner($partner->getId(), $userId);
         if (count($relations) > 0) {
-            throw new \RuntimeException($this->l10n->t('Partner is linked and cannot be deleted.'));
+            throw new ConflictException($this->l10n->t('Partner is linked and cannot be deleted.'));
         }
         $this->partnerMapper->delete($partner);
     }

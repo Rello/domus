@@ -7,22 +7,26 @@
 
 namespace OCA\Domus\Controller;
 
+use OCA\Domus\Http\FileResponse;
+
+use OCA\Domus\Service\ManagementAccessContext;
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\EntityImageService;
 use OCA\Domus\Service\PermissionService;
 use OCA\Domus\Service\PropertyService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\AppFramework\Http\FileDisplayResponse;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\IRequest;
 use OCP\IL10N;
-use OCP\IUserSession;
 
 class PropertyController extends Controller {
     public function __construct(
         IRequest $request,
-        private IUserSession $userSession,
+        private ManagementAccessContext $managementContext,
         private PropertyService $propertyService,
         private PermissionService $permissionService,
         private EntityImageService $entityImageService,
@@ -41,22 +45,20 @@ class PropertyController extends Controller {
 
     #[NoAdminRequired]
     public function show(int $id): DataResponse {
-        try {
-            $property = $this->propertyService->getPropertyForUser($id, $this->getUserId());
-            return new DataResponse($property);
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $property = $this->propertyService->getPropertyForUser($id, $this->getUserId());
+        return new DataResponse($property);
+    }
+
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function imageContent(int $id): FileDisplayResponse|DataResponse {
+        return FileResponse::image($this->entityImageService->getPropertyImage($id, $this->getUserId()));
     }
 
     #[NoAdminRequired]
     public function create(string $name, string $usageRole, ?string $street = null, ?string $zip = null, ?string $city = null, ?string $country = null, ?string $type = null, ?string $description = null): DataResponse {
-        try {
-            $property = $this->propertyService->createProperty(compact('name', 'usageRole', 'street', 'zip', 'city', 'country', 'type', 'description'), $this->getUserId());
-            return new DataResponse($property, Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        }
+        $property = $this->propertyService->createProperty(compact('name', 'usageRole', 'street', 'zip', 'city', 'country', 'type', 'description'), $this->getUserId());
+        return new DataResponse($property, Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
@@ -72,83 +74,37 @@ class PropertyController extends Controller {
             'description' => $description,
             'documentPath' => $documentPath,
         ], fn($value) => $value !== null);
-        try {
-            $property = $this->propertyService->updateProperty($id, $data, $this->getUserId());
-            return new DataResponse($property);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $property = $this->propertyService->updateProperty($id, $data, $this->getUserId());
+        return new DataResponse($property);
     }
 
     #[NoAdminRequired]
     public function destroy(int $id): DataResponse {
-        try {
-            $this->propertyService->deleteProperty($id, $this->getUserId());
-            return new DataResponse([], Http::STATUS_NO_CONTENT);
-        } catch (\RuntimeException $e) {
-            return new DataResponse([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'code' => 'CONFLICT',
-            ], Http::STATUS_CONFLICT);
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $this->propertyService->deleteProperty($id, $this->getUserId());
+        return new DataResponse([], Http::STATUS_NO_CONTENT);
     }
 
     #[NoAdminRequired]
     public function deletionSummary(int $id): DataResponse {
-        try {
-            return new DataResponse($this->propertyService->getDeletionSummary($id, $this->getUserId()));
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->propertyService->getDeletionSummary($id, $this->getUserId()));
     }
 
     #[NoAdminRequired]
     public function uploadImage(int $id): DataResponse {
         $file = $this->request->getUploadedFile('image') ?: $this->request->getUploadedFile('file');
         if (!$file) {
-            return $this->validationError($this->l10n->t('Image file is required.'));
+            throw new \InvalidArgumentException($this->l10n->t('Image file is required.'));
         }
 
-        try {
-            return new DataResponse($this->entityImageService->uploadPropertyImage($id, $file, $this->getUserId()));
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->entityImageService->uploadPropertyImage($id, $file, $this->getUserId()));
     }
 
     #[NoAdminRequired]
     public function removeImage(int $id): DataResponse {
-        try {
-            return new DataResponse($this->entityImageService->removePropertyImage($id, $this->getUserId()));
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->entityImageService->removePropertyImage($id, $this->getUserId()));
     }
 
     private function getUserId(): string {
-        return $this->userSession->getUser()?->getUID() ?? '';
-    }
-
-    private function notFound(): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $this->l10n->t('Resource not found.'),
-            'code' => 'NOT_FOUND',
-        ], Http::STATUS_NOT_FOUND);
-    }
-
-    private function validationError(string $message): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $message,
-            'code' => 'VALIDATION_ERROR',
-        ], Http::STATUS_BAD_REQUEST);
+        return $this->managementContext->managementUserId();
     }
 }

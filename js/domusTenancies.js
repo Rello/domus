@@ -9,17 +9,133 @@
     window.Domus = window.Domus || {};
 
     Domus.Tenancies = (function() {
-        let previewRequest = 0;
+        const contactLabels = () => ({ name: t('domus', 'Name'), email: t('domus', 'Email'), phone: t('domus', 'Phone'),
+            street: t('domus', 'Street'), zip: t('domus', 'ZIP'), city: t('domus', 'City'), country: t('domus', 'Country') });
+        const correctionState = state => ({ pending: t('domus', 'Pending review'), approved: t('domus', 'Approved'),
+            rejected: t('domus', 'Rejected'), conflict: t('domus', 'Contact details changed; request not applied') })[state] || '';
+
+        function renderRenter(teamId = '', tenancyId = '') {
+            const { isCurrent } = Domus.Router.beginView();
+            const escape = Domus.Utils.escapeHtml;
+            const reload = () => Domus.Router.navigate('renter', [teamId, tenancyId]);
+            const bind = () => document.getElementById('domus-renter-retry')?.addEventListener('click', reload);
+            const header = '<section class="domus-panel"><div class="domus-panel-body"><h2>' + escape(t('domus', 'My tenancies')) + '</h2>' +
+                '<button type="button" id="domus-renter-retry">' + escape(t('domus', 'Refresh')) + '</button></div></section>';
+            const show = (message, error = false) => {
+                if (!isCurrent()) return;
+                Domus.UI.renderContent(header + '<p role="' + (error ? 'alert' : 'status') + '">' + escape(message) + '</p>');
+                bind();
+            };
+            show(t('domus', 'Loading…'));
+            return Domus.Api.get('/api/renter/me').then(identity => {
+                if (!isCurrent()) return;
+                Domus.state.renterIdentity = identity;
+                const tenancies = identity.tenancies || [];
+                if (!tenancies.length) return show(t('domus', 'No tenancies are linked to your account. Contact your property manager.'));
+                const selected = tenancies.find(item => item.teamId === teamId && String(item.id) === String(tenancyId));
+                if (!selected && tenancies.length > 1) {
+                    Domus.UI.renderContent(header + '<ul class="domus-renter-tenancy-list">' + tenancies.map(item =>
+                        '<li><a href="#/renter/' + encodeURIComponent(item.teamId) + '/' + item.id + '">' + escape(item.unitLabel) +
+                        ' · ' + escape(Domus.Utils.formatDate(item.startDate)) + ' – ' + escape(item.endDate ? Domus.Utils.formatDate(item.endDate) : t('domus', 'Ongoing')) + '</a></li>').join('') + '</ul>');
+                    bind();
+                    return;
+                }
+                if (!selected && teamId) return show(t('domus', 'This tenancy is no longer available to you.'));
+                const tenancy = selected || tenancies[0];
+                return Domus.Api.get('/api/renter/teams/' + encodeURIComponent(tenancy.teamId) + '/tenancies/' + tenancy.id).then(payload => {
+                    if (!isCurrent()) return;
+                    const detailHeader = header + (tenancies.length > 1 ? Domus.UI.buildBackButton('renter') : '');
+                    return renderDetail(tenancy.id, { renterPayload: payload, teamId: tenancy.teamId, header: detailHeader, isCurrent, onRendered: bind });
+                });
+            }).catch(error => show(error.message, true));
+        }
+
+        function renderRenterDocuments(documents) {
+            const escape = Domus.Utils.escapeHtml;
+            if (!documents.length) return '<p>' + escape(t('domus', 'No documents linked to this tenancy.')) + '</p>';
+            return '<ul class="domus-renter-document-list">' + documents.map(doc => '<li><a href="' + escape(doc.fileUrl) + '">' +
+                escape(doc.fileName) + '</a></li>').join('') + '</ul>';
+        }
+
+        function renderPendingCorrections(requests) {
+            const escape = Domus.Utils.escapeHtml;
+            const labels = contactLabels();
+            return requests.filter(request => request.state === 'pending').map(request => '<div class="domus-correction-request"><p>' + escape(correctionState(request.state)) + ' · ' +
+                escape(Domus.Utils.formatDate(request.createdAt * 1000)) + '</p><dl class="domus-renter-contact">' +
+                Object.entries(request.proposed).map(([field, value]) => '<dt>' + escape(labels[field] || field) + '</dt><dd>' +
+                    escape(request.original[field] || '—') + ' → ' + escape(value || '—') + '</dd>').join('') + '</dl></div>').join('');
+        }
+
+        function renderRenterContacts(payload, preview = false) {
+            const escape = Domus.Utils.escapeHtml;
+            return payload.contacts.map(contact => '<div>' + renderRenterContact(contact) +
+                (!preview ? '<button type="button" data-renter-correct="' + contact.id + '">' + escape(t('domus', 'Request a correction')) + '</button>' : '') +
+                renderPendingCorrections((payload.corrections || []).filter(request => request.partnerId === contact.id)) + '</div>').join('');
+        }
+
+        function bindCorrectionRequests(payload, teamId, isCurrent) {
+            document.querySelectorAll('[data-renter-correct]').forEach(button => button.addEventListener('click', () => {
+                const contact = payload.contacts.find(item => String(item.id) === button.dataset.renterCorrect);
+                const escape = Domus.Utils.escapeHtml;
+                const labels = contactLabels();
+                const content = '<form id="domus-renter-correction-form"><p>' + escape(t('domus', 'Your property manager will review these changes before updating your contact details.')) + '</p>' +
+                    Object.entries(labels).map(([field, label]) => '<label class="domus-renter-correction-field">' + escape(label) +
+                        '<input name="' + field + '" value="' + escape(contact[field] || '') + '" maxlength="' + (field === 'zip' ? 32 : 190) + '"' + (field === 'email' ? ' type="email"' : '') + (field === 'name' ? ' required' : '') + '></label>').join('') +
+                    '<p data-correction-error role="alert"></p><button type="submit" class="primary">' + escape(t('domus', 'Submit for review')) + '</button></form>';
+                const modal = Domus.UI.openModal({ title: t('domus', 'Request a correction'), content });
+                const form = modal.modalEl.querySelector('#domus-renter-correction-form');
+                modal.protectChanges();
+                form.addEventListener('submit', async event => {
+                    event.preventDefault();
+                    const proposed = Object.fromEntries(new FormData(form));
+                    const submit = form.querySelector('button[type="submit"]');
+                    submit.disabled = true;
+                    try {
+                        await Domus.Api.post('/api/renter/teams/' + encodeURIComponent(teamId) + '/partners/' + contact.id + '/corrections', { proposed });
+                        modal.close();
+                        if (isCurrent()) Domus.Router.navigate('renter', [teamId, payload.tenancy.id]);
+                    } catch (error) {
+                        if (form.isConnected) { form.querySelector('[data-correction-error]').textContent = error.message; submit.disabled = false; }
+                    }
+                });
+            }));
+        }
+
+        async function renderCorrectionReview(partnerId, panel, teamId) {
+            const escape = Domus.Utils.escapeHtml;
+            try {
+                const requests = (await Domus.Api.get('/api/teams/' + encodeURIComponent(teamId) + '/partners/' + partnerId + '/corrections'))
+                    .filter(request => request.state === 'pending');
+                if (!panel.isConnected) return;
+                panel.closest('section').classList.toggle('domus-hidden', !requests.length);
+                panel.innerHTML = requests.length ? requests.map(request => '<div class="domus-correction-request">' + renderPendingCorrections([request]) +
+                    (request.state === 'pending' ? '<button type="button" data-correction-approve="' + request.id + '">' + escape(t('domus', 'Approve')) + '</button> ' +
+                        '<button type="button" data-correction-reject="' + request.id + '">' + escape(t('domus', 'Reject')) + '</button>' : '') + '</div>').join('') :
+                    '<p>' + escape(t('domus', 'No correction requests.')) + '</p>';
+                panel.querySelectorAll('[data-correction-approve], [data-correction-reject]').forEach(button => button.addEventListener('click', async () => {
+                    const approve = Boolean(button.dataset.correctionApprove);
+                    const id = button.dataset.correctionApprove || button.dataset.correctionReject;
+                    panel.querySelectorAll('button').forEach(item => { item.disabled = true; });
+                    try {
+                        const result = await Domus.Api.post('/api/teams/' + encodeURIComponent(teamId) + '/corrections/' + id, { approve });
+                        if (!panel.isConnected) return;
+                        Domus.UI.showNotification(correctionState(result.state));
+                        Domus.Router.navigate('partnerDetail', [partnerId]);
+                    } catch (error) {
+                        if (panel.isConnected) { panel.textContent = error.message; }
+                    }
+                }));
+            } catch (error) { if (panel.isConnected) panel.textContent = error.message; }
+        }
 
         // Owner-only UI simulation: keep using the existing owner-scoped APIs.
-        // Account assignment and renter authorization are deliberately not enabled here.
+        // Personal preview stays a management simulation; Team preview uses the renter serializer.
         function renderRenterPreview(partnerId = '', tenancyId = '') {
-            const request = ++previewRequest;
-            const isCurrent = () => request === previewRequest && Domus.state.currentView === 'renterPreview';
+            const { isCurrent } = Domus.Router.beginView();
             const escape = Domus.Utils.escapeHtml;
             let header = '<section class="domus-panel domus-renter-preview">' +
                 '<div class="domus-panel-body"><h2>' + escape(t('domus', 'Renter preview')) + '</h2>' +
-                '<p class="muted">' + escape(t('domus', 'Temporary preview using your own data. No renter account access is granted.')) + '</p>' +
+                '<p class="muted">' + escape(t('domus', 'Management preview. Renter access follows the contact’s linked Nextcloud account.')) + '</p>' +
                 '<button type="button" id="domus-renter-preview-exit">' + escape(t('domus', 'Exit preview')) + '</button></div></section>';
             const bindControls = () => {
                 document.getElementById('domus-renter-preview-exit')?.addEventListener('click', () => Domus.Router.navigate('dashboard'));
@@ -52,7 +168,7 @@
                             (item.endDate ? Domus.Utils.formatDate(item.endDate) : t('domus', 'Ongoing'))) + '</option>').join('');
                     header = '<section class="domus-panel domus-renter-preview"><div class="domus-panel-body">' +
                         '<h2>' + escape(t('domus', 'Renter preview')) + '</h2>' +
-                        '<p class="muted">' + escape(t('domus', 'Temporary preview using your own data. No renter account access is granted.')) + '</p>' +
+                        '<p class="muted">' + escape(t('domus', 'Management preview. Renter access follows the contact’s linked Nextcloud account.')) + '</p>' +
                         '<div class="domus-renter-preview-controls"><div class="domus-renter-preview-field"><label for="domus-preview-renter">' + escape(t('domus', 'Simulate renter')) + '</label>' +
                         '<select id="domus-preview-renter">' + renterOptions + '</select></div>' +
                         (assigned.length > 1 ? '<div class="domus-renter-preview-field"><label for="domus-preview-tenancy">' + escape(t('domus', 'My tenancies')) + '</label>' +
@@ -61,6 +177,11 @@
                     if (!renters.length) return showMessage(t('domus', 'No renter contacts available to preview.'));
                     if (!partner) return showMessage(t('domus', 'Select a renter to preview their tenancy.'));
                     if (!selected) return showMessage(t('domus', 'No tenancies are assigned to this renter.'));
+                    const teamId = Domus.state.managementContext?.activeTeamId;
+                    if (teamId) {
+                        return Domus.Api.get('/api/teams/' + encodeURIComponent(teamId) + '/tenancies/' + selected.id + '/renter-preview/' + partner.id)
+                            .then(payload => { if (isCurrent()) return renderDetail(selected.id, { renterPayload: payload, previewPartner: partner, header, isCurrent, onRendered: bindControls }); });
+                    }
                     return renderDetail(selected.id, { previewPartner: partner, header, isCurrent, onRendered: bindControls });
                 })
                 .catch(error => showMessage(error.message, true));
@@ -113,6 +234,14 @@
                 .join(', ');
         }
 
+        function formatRentPerSquareMeter(tenancy) {
+            if (tenancy?.baseRent === null || tenancy?.baseRent === undefined || tenancy?.baseRent === '') return '—';
+            const rent = Number(tenancy?.baseRent);
+            const livingArea = Number(tenancy?.unitLivingArea);
+            if (!Number.isFinite(rent) || !Number.isFinite(livingArea) || livingArea <= 0) return '—';
+            return Domus.Utils.formatCurrency(rent / livingArea) + ' / m²';
+        }
+
         function buildTenancyLink(tenancy, content) {
             if (!tenancy.id) {
                 return content;
@@ -124,9 +253,11 @@
         }
 
         function renderList() {
+            const view = Domus.Router.beginView();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().plural }));
             Domus.Api.getTenancies()
                 .then(tenancies => {
+                    if (!view.isCurrent()) return;
                     const tenancyLabels = Domus.Role.getTenancyLabels();
                     const canManageTenancies = Domus.Role.hasCapability('manageTenancies');
                     const toolbar = '<div class="domus-toolbar">' +
@@ -141,6 +272,8 @@
                             cells: [
                                 buildTenancyLink(tn, Domus.Utils.escapeHtml(formatUnitLabel(tn))),
                                 partnerLabel || Domus.Utils.escapeHtml(''),
+                                Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(tn.baseRent) || '—'),
+                                Domus.Utils.escapeHtml(formatRentPerSquareMeter(tn)),
                                 Domus.Utils.escapeHtml(formatStatusLabel(tn.status))
                             ],
                             dataset: { navigate: 'tenancyDetail', args: tn.id }
@@ -148,7 +281,7 @@
                     });
                     const hasRows = rows.length > 0;
                     const table = Domus.UI.buildTable([
-                        t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Status')
+                        t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Base rent'), t('domus', 'Base rent per m²'), t('domus', 'Status')
                     ], rows);
                     const emptyState = Domus.UI.buildEmptyStateAction(
                         t('domus', 'There is no {entity} yet. Create the first one', {
@@ -163,7 +296,7 @@
                     bindList();
                     Domus.Partners.bindContactActions();
                 })
-                .catch(err => Domus.UI.showError(err.message));
+                .catch(err => { if (view.isCurrent()) Domus.UI.showError(err.message); });
         }
 
         function bindList() {
@@ -183,7 +316,7 @@
             if (!hidePartnersColumn) {
                 headers.push(t('domus', 'Partners'));
             }
-            headers.push(t('domus', 'Status'), t('domus', 'Period'));
+            headers.push(t('domus', 'Base rent'), t('domus', 'Base rent per m²'), t('domus', 'Status'), t('domus', 'Period'));
 
             const rows = (tenancies || []).map(tn => {
                 const cells = [];
@@ -202,6 +335,8 @@
                     ? renderStatusBadge(tn.status)
                     : Domus.Utils.escapeHtml(formatStatusLabel(tn.status));
                 cells.push(
+                    Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(tn.baseRent) || '—'),
+                    Domus.Utils.escapeHtml(formatRentPerSquareMeter(tn)),
                     hideUnitColumn && hidePartnersColumn ? buildTenancyLink(tn, statusContent) : statusContent,
                     Domus.Utils.escapeHtml([Domus.Utils.formatDate(tn.startDate), tn.endDate ? Domus.Utils.formatDate(tn.endDate) : t('domus', 'Ongoing')].filter(Boolean).join(' – '))
                 );
@@ -451,9 +586,9 @@
         }
 
         function renderDetail(id, options = {}) {
-            const previewPartner = options.previewPartner;
-            const route = JSON.stringify([Domus.state.currentView, Domus.state.currentViewArgs]);
-            const isCurrent = options.isCurrent || (() => route === JSON.stringify([Domus.state.currentView, Domus.state.currentViewArgs]));
+            const renterPayload = options.renterPayload;
+            const previewPartner = options.previewPartner || renterPayload?.contacts?.[0];
+            const isCurrent = options.isCurrent || Domus.Router.beginView().isCurrent;
             const loadingMessage = t('domus', 'Loading {entity}…', { entity: t('domus', 'Tenancy') });
             if (options.header) {
                 Domus.UI.renderContent(options.header + '<p role="status">' + Domus.Utils.escapeHtml(loadingMessage) + '</p>');
@@ -461,7 +596,7 @@
             } else {
                 Domus.UI.showLoading(loadingMessage);
             }
-            return Domus.Api.get('/tenancies/' + id)
+            return (renterPayload ? Promise.resolve(renterPayload.tenancy) : Domus.Api.get('/tenancies/' + id))
                 .then(tenancy => {
                     if (!isCurrent()) return;
                     if (previewPartner && !(tenancy.partnerIds || []).some(partnerId => String(partnerId) === String(previewPartner.id))) {
@@ -502,19 +637,19 @@
                     });
 
                     const kpiTiles = '<div class="domus-kpi-tiles domus-kpi-tiles-tenancy-detail domus-panel-row domus-panel-row-thirds">' +
-                        Domus.UI.buildKpiTile({
+                        Domus.UI.buildTypedKpiTile('money', {
                             headline: t('domus', 'Base rent'),
-                            value: Domus.Utils.formatCurrency(tenancy.baseRent) || '—',
-                            subline: t('domus', 'Monthly base rent')
+                            value: tenancy.baseRent,
+                            subline: `${t('domus', 'Monthly base rent')} · ${t('domus', 'Base rent per m²')}: ${formatRentPerSquareMeter(tenancy)}`
                         }) +
-                        Domus.UI.buildKpiTile({
+                        Domus.UI.buildTypedKpiTile('money', {
                             headline: t('domus', 'Service charge'),
-                            value: Domus.Utils.formatCurrency(tenancy.serviceCharge) || '—',
+                            value: tenancy.serviceCharge,
                             subline: t('domus', 'Monthly service charge')
                         }) +
-                        Domus.UI.buildKpiTile({
+                        Domus.UI.buildTypedKpiTile('money', {
                             headline: t('domus', 'Deposit'),
-                            value: Domus.Utils.formatCurrency(tenancy.deposit) || '—',
+                            value: tenancy.deposit,
                             subline: t('domus', 'Security deposit')
                         }) +
                         '</div>';
@@ -532,10 +667,10 @@
                     } : null);
                     const partnersHeader = Domus.UI.buildSectionHeader(previewPartner ? t('domus', 'My details') : t('domus', 'Tenant'));
                     const tenantPanel = '<div class="domus-panel domus-tenancy-tenant-panel">' + partnersHeader + '<div class="domus-panel-body">' +
-                        (previewPartner ? renderRenterContact(previewPartner) : Domus.Partners.renderInline(tenancy.partners || [], { linkNameToDetail: true, includeTypeColumn: false, includeEmailColumn: false, showHeader: false })) + '</div></div>';
+                        (renterPayload ? renderRenterContacts(renterPayload, Boolean(options.previewPartner)) : previewPartner ? renderRenterContact(previewPartner) : Domus.Partners.renderInline(tenancy.partners || [], { linkNameToDetail: true, includeTypeColumn: false, includeEmailColumn: false, showHeader: false })) + '</div></div>';
                     const documentsPanel = '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
-                        (previewPartner ? '<p class="muted">' + Domus.Utils.escapeHtml(t('domus', 'This preview shows all documents linked to this tenancy.')) + '</p>' : '') +
-                        Domus.Documents.renderLatestList('tenancy', id, {
+                        (options.previewPartner ? '<p class="muted">' + Domus.Utils.escapeHtml(t('domus', 'This preview shows all documents linked to this tenancy.')) + '</p>' : '') +
+                        (renterPayload ? renderRenterDocuments(renterPayload.documents || []) : Domus.Documents.renderLatestList('tenancy', id, {
                             pageSize: 10,
                             canManageDocuments: documentActionsEnabled,
                             showNotes: !previewPartner,
@@ -547,7 +682,7 @@
                                     unitId: tenancy?.unitId
                                 });
                             }
-                        }) + '</div></div>';
+                        })) + '</div></div>';
 
                     const content = (options.header || '') + '<div class="domus-detail domus-dashboard domus-tenancy-detail">' +
                         (previewPartner ? '' : Domus.UI.buildBackButton('tenancies')) +
@@ -564,6 +699,10 @@
                         tenantPanel +
                         documentsPanel +
                         '</div>' +
+                        (renterPayload ? '<section class="domus-panel">' + Domus.UI.buildSectionHeader(t('domus', 'Activity')) +
+                            '<div class="domus-panel-body">' + Domus.ActionLog.renderList('partner', previewPartner.id, {
+                                containerId: 'domus-renter-activity', entries: renterPayload.activities || [], readOnly: true
+                            }) + '</div></section>' : '') +
                         '</div>';
                     Domus.UI.renderContent(content);
                     Domus.UI.bindBackButtons();
@@ -571,6 +710,7 @@
                     Domus.UI.bindActionMenus();
                     Domus.Partners.bindContactActions();
                     if (!previewPartner) bindDetailActions(id, tenancy);
+                    if (renterPayload && !options.previewPartner) bindCorrectionRequests(renterPayload, options.teamId, isCurrent);
                     options.onRendered?.();
                 })
                 .catch(err => {
@@ -830,7 +970,7 @@
                 '</div>';
         }
 
-        return { renderList, renderDetail, renderRenterPreview, renderInline, openCreateModal };
+        return { renderList, renderDetail, renderRenterPreview, renderRenter, renderCorrectionReview, renderInline, openCreateModal };
     })();
 
     /**

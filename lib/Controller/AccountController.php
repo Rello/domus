@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\Controller;
 
+use OCA\Domus\Service\ManagementAccessContext;
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Service\AccountService;
 use OCP\AppFramework\Controller;
@@ -15,12 +16,11 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IL10N;
-use OCP\IUserSession;
 
 class AccountController extends Controller {
     public function __construct(
         IRequest $request,
-        private IUserSession $userSession,
+        private ManagementAccessContext $managementContext,
         private AccountService $accountService,
         private IL10N $l10n,
     ) {
@@ -35,12 +35,8 @@ class AccountController extends Controller {
     #[NoAdminRequired]
     public function create(string $number, ?string $labelDe = null, ?string $labelEn = null, ?int $parentId = null, ?int $sortOrder = null): DataResponse {
         $data = compact('number', 'labelDe', 'labelEn', 'parentId', 'sortOrder');
-        try {
-            $account = $this->accountService->createAccount($data);
-            return new DataResponse($account, Http::STATUS_CREATED);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        }
+        $account = $this->accountService->createAccount($data);
+        return new DataResponse($account, Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]
@@ -52,82 +48,26 @@ class AccountController extends Controller {
             'parentId' => $parentId,
             'sortOrder' => $sortOrder,
         ], fn($value) => $value !== null);
-        try {
-            return new DataResponse($this->accountService->updateAccount($id, $data));
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->accountService->updateAccount($id, $data));
     }
 
     #[NoAdminRequired]
     public function disable(int $id): DataResponse {
-        try {
-            return new DataResponse($this->accountService->setStatus($id, 'disabled', $this->getUserId()));
-        } catch (\RuntimeException $e) {
-            return new DataResponse([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'code' => 'CONFLICT',
-            ], Http::STATUS_CONFLICT);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->accountService->setStatus($id, 'disabled', $this->getUserId()));
     }
 
     #[NoAdminRequired]
     public function enable(int $id): DataResponse {
-        try {
-            return new DataResponse($this->accountService->setStatus($id, 'active', $this->getUserId()));
-        } catch (\RuntimeException $e) {
-            return new DataResponse([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'code' => 'CONFLICT',
-            ], Http::STATUS_CONFLICT);
-        } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        return new DataResponse($this->accountService->setStatus($id, 'active', $this->getUserId()));
     }
 
     #[NoAdminRequired]
     public function destroy(int $id): DataResponse {
-        try {
-            $this->accountService->deleteAccount($id, $this->getUserId());
-            return new DataResponse([], Http::STATUS_NO_CONTENT);
-        } catch (\RuntimeException $e) {
-            return new DataResponse([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'code' => 'CONFLICT',
-            ], Http::STATUS_CONFLICT);
-        } catch (\Throwable $e) {
-            return $this->notFound();
-        }
+        $this->accountService->deleteAccount($id, $this->getUserId());
+        return new DataResponse([], Http::STATUS_NO_CONTENT);
     }
 
     private function getUserId(): string {
-        return $this->userSession->getUser()?->getUID() ?? '';
-    }
-
-    private function notFound(): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $this->l10n->t('Resource not found.'),
-            'code' => 'NOT_FOUND',
-        ], Http::STATUS_NOT_FOUND);
-    }
-
-    private function validationError(string $message): DataResponse {
-        return new DataResponse([
-            'status' => 'error',
-            'message' => $message,
-            'code' => 'VALIDATION_ERROR',
-        ], Http::STATUS_BAD_REQUEST);
+        return $this->managementContext->managementUserId();
     }
 }

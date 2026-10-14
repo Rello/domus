@@ -10,5 +10,9 @@ declare(strict_types=1);
 namespace OCP\AppFramework\Bootstrap;
 
 interface IRegistrationContext {
+    public function registerMiddleware(string $class, bool $global = false): void;
+
+    public function registerEventListener(string $event, string $listener): void;
+
     public function registerUserMigrator(string $migratorClass): void;
 }

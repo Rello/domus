@@ -7,6 +7,8 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\Db\Partner;
 use OCA\Domus\Db\PartnerMapper;
 use OCA\Domus\Db\PartnerRel;
@@ -31,7 +33,7 @@ class PartnerRelationService {
     public function listPartnersForUnit(int $unitId, string $userId): array {
         $unit = $this->unitMapper->findForUser($unitId, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
         return $this->loadPartnersForRelation('unit', $unitId, $userId);
     }
@@ -39,7 +41,7 @@ class PartnerRelationService {
     public function listPartnersForProperty(int $propertyId, string $userId): array {
         $property = $this->propertyMapper->findForUser($propertyId, $userId);
         if (!$property) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
         return $this->loadPartnersForRelation('property', $propertyId, $userId);
     }
@@ -51,12 +53,12 @@ class PartnerRelationService {
         if ($entityType === 'unit') {
             $unit = $this->unitMapper->findForUser($entityId, $userId);
             if (!$unit) {
-                throw new \RuntimeException($this->l10n->t('Unit not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
             }
         } else {
             $property = $this->propertyMapper->findForUser($entityId, $userId);
             if (!$property) {
-                throw new \RuntimeException($this->l10n->t('Property not found.'));
+                throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
             }
         }
 
@@ -67,7 +69,7 @@ class PartnerRelationService {
             if ($partnerId !== null) {
                 $partner = $this->partnerMapper->findForUser((int)$partnerId, $userId);
                 if (!$partner) {
-                    throw new \RuntimeException($this->l10n->t('Partner not found.'));
+                    throw new ResourceNotFoundException($this->l10n->t('Partner not found.'));
                 }
             } else {
                 $partner = $this->partnerService->createPartner($data, $userId, $role);

@@ -47,7 +47,7 @@
                     unit?.country,
                     unit?.notes
                 );
-                (unit?.activeTenancies || []).forEach(tenancy => values.push(...collectTenancySearchValues(tenancy)));
+                (unit?.activeTenancies || []).concat(unit?.futureTenancies || []).forEach(tenancy => values.push(...collectTenancySearchValues(tenancy)));
                 (unit?.historicTenancies || []).forEach(tenancy => values.push(...collectTenancySearchValues(tenancy)));
             });
 
@@ -158,14 +158,16 @@
         }
 
         function renderList() {
+            const view = Domus.Router.beginView();
             updateNavSearch();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Properties') }));
             Domus.Api.getProperties()
                 .then(properties => {
+                    if (!view.isCurrent()) return;
                     listState.properties = properties || [];
                     renderListContent();
                 })
-                .catch(err => Domus.UI.showError(err.message));
+                .catch(err => { if (view.isCurrent()) Domus.UI.showError(err.message); });
         }
 
         function renderListContent() {
@@ -350,6 +352,7 @@
         }
 
         function renderDetail(id) {
+            const view = Domus.Router.beginView();
             Domus.Navigation.clearPrimarySearch();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: t('domus', 'Property') }));
             Promise.all([
@@ -363,6 +366,7 @@
                     Domus.Api.getPropertyPartners(id).catch(() => [])
                 ]))
                 .then(([property, dashboardSummary, distributions, partners]) => {
+                    if (!view.isCurrent()) return;
 
                     const visibleDistributions = Domus.Distributions.filterList(distributions, { excludeSystemDefaults: false });
                     const cityLine = [property.zip, property.city].filter(Boolean).join(' ');
@@ -516,7 +520,7 @@
                     Domus.PartnerRelations.bindSection({ entityType: 'property', entityId: id, onRefresh: () => renderDetail(id) });
                     bindDetailActions(id, property);
                 })
-                .catch(err => Domus.UI.showError(err.message));
+                .catch(err => { if (view.isCurrent()) Domus.UI.showError(err.message); });
         }
 
         function bindDetailActions(id, property) {
@@ -842,103 +846,10 @@
             renderListInline: (units) => Domus.Units.renderListInline(units)
         };
 
-        function bindPropertyImageField(root) {
-            const fileInput = root.querySelector('input[name="imageFile"]');
-            const actionInput = root.querySelector('input[name="imageAction"]');
-            const removeButton = root.querySelector('[data-image-remove]');
-            const imageElement = root.querySelector('.domus-image-field-preview img');
-            if (!fileInput || !actionInput || !imageElement) {
-                return null;
-            }
-
-            const defaultUrl = imageElement.getAttribute('src') || '';
-            const currentUrl = defaultUrl;
-            const setPreview = (url) => {
-                imageElement.setAttribute('src', url || defaultUrl);
-            };
-
-            fileInput.addEventListener('change', () => {
-                const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-                if (!file) {
-                    actionInput.value = 'keep';
-                    setPreview(currentUrl);
-                    return;
-                }
-                actionInput.value = 'upload';
-                const reader = new FileReader();
-                reader.onload = event => setPreview(event.target?.result || currentUrl);
-                reader.readAsDataURL(file);
-            });
-
-            removeButton?.addEventListener('click', () => {
-                fileInput.value = '';
-                actionInput.value = 'remove';
-                setPreview(Domus.UI.getEntityImageUrl('property', {}));
-            });
-
-            return {
-                getValue: () => ({
-                    action: actionInput.value || 'keep',
-                    file: fileInput.files && fileInput.files[0] ? fileInput.files[0] : null
-                })
-            };
-        }
-
-        function applyPropertyImageChange(id, imageChange) {
-            if (!imageChange || imageChange.action === 'keep') {
-                return Promise.resolve();
-            }
-            if (imageChange.action === 'remove') {
-                return Domus.Api.removePropertyImage(id).then(() => undefined);
-            }
-            if (imageChange.action === 'upload' && imageChange.file) {
-                return Domus.Api.uploadPropertyImage(id, imageChange.file).then(() => undefined);
-            }
-            return Promise.resolve();
-        }
-
         function openPropertyImageModal(property) {
-            const modal = Domus.UI.openModal({
-                title: t('domus', 'Edit picture'),
-                content: '<div class="domus-form">' +
-                    '<form id="domus-property-image-form">' +
-                    Domus.UI.buildFormTable([
-                        Domus.UI.buildFormRow({
-                            label: t('domus', 'Preview'),
-                            content: '<div class="domus-image-field">' +
-                                '<div class="domus-image-field-preview">' +
-                                Domus.UI.buildEntityImage('property', property, {
-                                    variant: 'form',
-                                    alt: property.name || t('domus', 'Property')
-                                }) +
-                                '</div>' +
-                                '<div class="domus-image-field-actions">' +
-                                    '<input type="hidden" name="imageAction" value="keep">' +
-                                    '<input type="file" name="imageFile" accept="image/*">' +
-                                    '<button type="button" class="domus-ghost" data-image-remove>' + Domus.Utils.escapeHtml(t('domus', 'Use default image')) + '</button>' +
-                                '</div>' +
-                            '</div>'
-                        })
-                    ]) +
-                    '<div class="domus-form-actions">' +
-                        '<button type="button" id="domus-property-image-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                        '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
-                    '</div>' +
-                    '</form>' +
-                    '</div>'
-            });
-            const imageState = bindPropertyImageField(modal.modalEl);
-            modal.modalEl.querySelector('#domus-property-image-cancel')?.addEventListener('click', modal.close);
-            modal.modalEl.querySelector('#domus-property-image-form')?.addEventListener('submit', event => {
-                event.preventDefault();
-                applyPropertyImageChange(property.id, imageState?.getValue())
-                    .then(() => {
-                        modal.close();
-                        renderDetail(property.id);
-                    })
-                    .catch(err => Domus.UI.showNotification(err.message, 'error'));
-            });
+            Domus.UI.openEntityImageModal('property', property, () => renderDetail(property.id));
         }
+
     })();
 
     /**

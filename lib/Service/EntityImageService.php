@@ -7,6 +7,10 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ConflictException;
+
+use OCA\Domus\Exception\ResourceNotFoundException;
+
 use OCA\Domus\AppInfo\Application;
 use OCA\Domus\Db\Property;
 use OCA\Domus\Db\PropertyMapper;
@@ -46,12 +50,12 @@ class EntityImageService {
     }
 
     public function enrichProperty(Property $property): void {
-        $property->setImageUrl($this->buildStoredImageUrl($property->getImageFileId()));
+        $property->setImageUrl($this->buildStoredImageUrl($property->getImageFileId(), 'property', $property->getId()));
         $property->setResolvedImageUrl($property->getImageUrl() ?: $this->getDefaultImageUrl('property'));
     }
 
     public function enrichUnit(Unit $unit, ?Property $property = null, bool $resolvePropertyImage = true): void {
-        $unit->setImageUrl($this->buildStoredImageUrl($unit->getImageFileId()));
+        $unit->setImageUrl($this->buildStoredImageUrl($unit->getImageFileId(), 'unit', $unit->getId()));
 
         $resolved = $unit->getImageUrl();
         if (!$resolved && $resolvePropertyImage && $unit->getPropertyId()) {
@@ -68,7 +72,7 @@ class EntityImageService {
     public function uploadPropertyImage(int $id, array $uploadedFile, string $userId): Property {
         $property = $this->propertyMapper->findForUser($id, $userId);
         if (!$property) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
 
         $file = $this->storeUploadedImage($userId, $property->getDocumentPath(), self::PROPERTY_FILE_BASENAME, $uploadedFile, $property->getImageFileId());
@@ -84,7 +88,7 @@ class EntityImageService {
     public function removePropertyImage(int $id, string $userId): Property {
         $property = $this->propertyMapper->findForUser($id, $userId);
         if (!$property) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
 
         $this->deleteStoredImage($property->getImageFileId());
@@ -100,7 +104,7 @@ class EntityImageService {
     public function uploadUnitImage(int $id, array $uploadedFile, string $userId): Unit {
         $unit = $this->unitMapper->findForUser($id, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
 
         $file = $this->storeUploadedImage($userId, $unit->getDocumentPath(), self::UNIT_FILE_BASENAME, $uploadedFile, $unit->getImageFileId());
@@ -116,7 +120,7 @@ class EntityImageService {
     public function applyBundledUnitImage(int $id, string $userId, string $assetRelativePath): Unit {
         $unit = $this->unitMapper->findForUser($id, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
 
         $appPath = rtrim($this->appManager->getAppPath(Application::APP_ID), '/');
@@ -153,7 +157,7 @@ class EntityImageService {
     public function removeUnitImage(int $id, string $userId): Unit {
         $unit = $this->unitMapper->findForUser($id, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
 
         $this->deleteStoredImage($unit->getImageFileId());
@@ -186,12 +190,29 @@ class EntityImageService {
         return $property;
     }
 
-    private function buildStoredImageUrl(?int $fileId): ?string {
-        if (!$fileId) {
+    public function getPropertyImage(int $id, string $userId): File {
+        $property = $this->propertyMapper->findForUser($id, $userId);
+        return $this->getStoredImage($property?->getImageFileId());
+    }
+
+    public function getUnitImage(int $id, string $userId): File {
+        $unit = $this->unitMapper->findForUser($id, $userId);
+        return $this->getStoredImage($unit?->getImageFileId());
+    }
+
+    private function getStoredImage(?int $fileId): File {
+        $node = $fileId === null ? null : ($this->rootFolder->getById($fileId)[0] ?? null);
+        if (!$node instanceof File) {
+            throw new ResourceNotFoundException($this->l10n->t('Image file not found.'));
+        }
+        return $node;
+    }
+
+    private function buildStoredImageUrl(?int $fileId, string $kind, ?int $entityId): ?string {
+        if (!$fileId || !$entityId) {
             return null;
         }
-
-        return $this->urlGenerator->getAbsoluteURL('/core/preview?fileId=' . $fileId . '&x=1200&y=800&a=1');
+        return $this->urlGenerator->linkToRouteAbsolute('domus.' . ucfirst($kind) . '.imageContent', ['id' => $entityId]);
     }
 
     private function storeUploadedImage(string $userId, ?string $basePath, string $baseName, array $uploadedFile, ?int $previousFileId): File {
@@ -254,7 +275,7 @@ class EntityImageService {
     private function ensureMediaFolder(string $userId, ?string $basePath): Folder {
         $normalizedPath = trim((string)$basePath, '/');
         if ($normalizedPath === '') {
-            throw new \RuntimeException($this->l10n->t('Document location is required.'));
+            throw new \InvalidArgumentException($this->l10n->t('Document location is required.'));
         }
 
         $userFolder = $this->rootFolder->getUserFolder($userId);
@@ -279,7 +300,7 @@ class EntityImageService {
             if ($node instanceof Folder) {
                 return $node;
             }
-            throw new \RuntimeException($this->l10n->t('A file with the required folder name already exists.'));
+            throw new ConflictException($this->l10n->t('A file with the required folder name already exists.'));
         }
 
         try {

@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\DistributionKey;
 use OCA\Domus\Db\DistributionKeyMapper;
 use OCA\Domus\Db\DistributionKeyUnitMapper;
@@ -34,7 +35,7 @@ class DistributionKeyService {
     public function listForProperty(string $userId, int $propertyId, string $role, ?int $unitId = null): array {
         $property = $this->propertyMapper->findForUser($propertyId, $userId);
         if (!$property) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
 
         $this->ensureDefaultKeys($propertyId, $userId);
@@ -43,7 +44,7 @@ class DistributionKeyService {
         if ($unitId !== null) {
             $unit = $this->unitMapper->findForUser($unitId, $userId);
             if (!$unit || (int)$unit->getPropertyId() !== $propertyId) {
-                throw new \RuntimeException($this->l10n->t('Unit not found for this property.'));
+                throw new ResourceNotFoundException($this->l10n->t('Unit not found for this property.'));
             }
         }
 
@@ -70,7 +71,7 @@ class DistributionKeyService {
         $this->permissionService->assertPropertyRequirement($role, $propertyId);
         $property = $this->propertyMapper->findForUser($propertyId, $userId);
         if (!$property) {
-            throw new \RuntimeException($this->l10n->t('Property not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
 
         $type = strtolower(trim((string)($data['type'] ?? '')));
@@ -84,7 +85,7 @@ class DistributionKeyService {
         }
 
         $validFrom = trim((string)($data['validFrom'] ?? ''));
-        $validTo = $data['validTo'] !== null ? trim((string)$data['validTo']) : null;
+        $validTo = ($data['validTo'] ?? null) !== null ? trim((string)$data['validTo']) : null;
         $this->assertDateRange($validFrom, $validTo);
 
         $configJson = $this->normalizeConfigJson($data['configJson'] ?? null);
@@ -128,7 +129,7 @@ class DistributionKeyService {
 
         $unit = $this->unitMapper->findForUser($unitId, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
 
         $this->ensureDefaultKeys((int)$unit->getPropertyId(), $userId);
@@ -140,7 +141,7 @@ class DistributionKeyService {
 
         $key = $this->distributionKeyMapper->findForUser($distributionKeyId, $userId);
         if (!$key) {
-            throw new \RuntimeException($this->l10n->t('Distribution key not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Distribution key not found.'));
         }
 
         if ((int)$key->getPropertyId() !== (int)$unit->getPropertyId()) {
@@ -148,7 +149,7 @@ class DistributionKeyService {
         }
 
         $validFrom = trim((string)($data['validFrom'] ?? ''));
-        $validTo = $data['validTo'] !== null ? trim((string)$data['validTo']) : null;
+        $validTo = ($data['validTo'] ?? null) !== null ? trim((string)$data['validTo']) : null;
         $this->assertDateRange($validFrom, $validTo);
 
         if (!isset($data['value']) || $data['value'] === '') {
@@ -156,7 +157,7 @@ class DistributionKeyService {
         }
 
         $value = (float)$data['value'];
-        if ($value <= 0) {
+        if (!is_numeric($data['value']) || !is_finite($value) || $value <= 0) {
             throw new \InvalidArgumentException($this->l10n->t('Value must be greater than zero.'));
         }
 
@@ -185,7 +186,7 @@ class DistributionKeyService {
 
         $distributionKey = $this->distributionKeyMapper->findForUser($distributionKeyId, $userId);
         if (!$distributionKey || (int)$distributionKey->getPropertyId() !== $propertyId) {
-            throw new \RuntimeException($this->l10n->t('Distribution key not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Distribution key not found.'));
         }
 
         $name = trim((string)($data['name'] ?? $distributionKey->getName() ?? ''));
@@ -195,7 +196,7 @@ class DistributionKeyService {
 
         $validFrom = trim((string)($data['validFrom'] ?? ($distributionKey->getValidFrom() ?? '')));
         $validTo = array_key_exists('validTo', $data)
-            ? ($data['validTo'] !== null ? trim((string)$data['validTo']) : null)
+            ? (($data['validTo'] ?? null) !== null ? trim((string)$data['validTo']) : null)
             : $distributionKey->getValidTo();
         $this->assertDateRange($validFrom, $validTo);
 
@@ -232,26 +233,17 @@ class DistributionKeyService {
     public function listForUnit(int $unitId, string $userId, string $role): array {
         $unit = $this->unitMapper->findForUser($unitId, $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
 
         return $this->listForProperty($userId, (int)$unit->getPropertyId(), $role, $unitId);
     }
 
     private function assertDateRange(string $validFrom, ?string $validTo): void {
-        if (!$this->isValidDate($validFrom)) {
-            throw new \InvalidArgumentException($this->l10n->t('Invalid start date.'));
+        InputValidation::assertDate($validFrom, $this->l10n->t('Invalid start date.'));
+        if ($validTo !== null && $validTo !== '') {
+            InputValidation::assertPeriod($validFrom, $validTo, $this->l10n->t('Invalid period definition.'));
         }
-        if ($validTo !== null && $validTo !== '' && !$this->isValidDate($validTo)) {
-            throw new \InvalidArgumentException($this->l10n->t('Invalid end date.'));
-        }
-        if ($validTo !== null && $validTo !== '' && $validFrom > $validTo) {
-            throw new \InvalidArgumentException($this->l10n->t('Start date must not be after end date.'));
-        }
-    }
-
-    private function isValidDate(?string $date): bool {
-        return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1;
     }
 
     private function normalizeConfigJson($rawConfig): ?string {

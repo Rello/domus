@@ -7,6 +7,9 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Db\Unit;
+use OCA\Domus\Accounting\TenancyPeriod;
+use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\PartnerMapper;
 use OCA\Domus\Db\PartnerRel;
 use OCA\Domus\Db\PartnerRelMapper;
@@ -59,7 +62,9 @@ class TenancyService {
             }
             $tenancy->setPartners($partners);
             $tenancy->setStatus($this->getStatus($tenancy, $today));
-            $tenancy->setUnitLabel(($unitsById[$tenancy->getUnitId()] ?? null)?->getLabel());
+            $unit = $unitsById[$tenancy->getUnitId()] ?? null;
+            $tenancy->setUnitLabel($unit?->getLabel());
+            $tenancy->setUnitLivingArea($unit?->getLivingArea());
             $this->hydrateDerivedFields($tenancy);
         }
 
@@ -73,7 +78,7 @@ class TenancyService {
     public function getTenancyForUser(int $id, string $userId): Tenancy {
         $tenancy = $this->tenancyMapper->findForUser($id, $userId);
         if (!$tenancy) {
-            throw new \RuntimeException($this->l10n->t('Tenancy not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Tenancy not found.'));
         }
         $this->hydratePartners($tenancy, $userId);
         $tenancy->setStatus($this->getStatus($tenancy, new \DateTimeImmutable('today')));
@@ -141,7 +146,7 @@ class TenancyService {
     public function updateTenancy(int $id, array $data, string $userId, string $role): Tenancy {
         $tenancy = $this->getTenancyForUser($id, $userId);
         $data = $this->permissionService->guardTenancyFinancialFields($role, $data);
-        $this->assertTenancyInput($data + ['unitId' => $tenancy->getUnitId(), 'partnerIds' => $data['partnerIds'] ?? []], $userId, $role);
+        $this->assertTenancyInput(array_merge($tenancy->jsonSerialize(), $data), $userId, $role);
         foreach (['unitId', 'startDate', 'endDate', 'baseRent', 'serviceCharge', 'deposit', 'conditions'] as $field) {
             if (array_key_exists($field, $data)) {
                 $setter = 'set' . ucfirst($field);
@@ -177,15 +182,29 @@ class TenancyService {
     }
 
     private function parseDate(?string $value): ?\DateTimeImmutable {
-        if (!$value) {
-            return null;
-        }
+        return InputValidation::date($value);
+    }
 
-        try {
-            return new \DateTimeImmutable($value);
-        } catch (\Exception $e) {
-            return null;
+    /** Hydrate once and index for collection consumers. */
+    public function listTenanciesByUnit(string $userId): array {
+        $byUnit = [];
+        foreach ($this->listTenancies($userId) as $tenancy) {
+            $byUnit[$tenancy->getUnitId()][] = $tenancy;
         }
+        return $byUnit;
+    }
+
+    public function enrichUnitTenancies(Unit $unit, array $tenancies): void {
+        $groups = ['active' => [], 'future' => [], 'historical' => []];
+        $today = new \DateTimeImmutable('today');
+        foreach ($tenancies as $tenancy) {
+            $groups[$this->getStatus($tenancy, $today)][] = $tenancy;
+        }
+        usort($groups['active'], static fn(Tenancy $a, Tenancy $b) => strcmp($b->getStartDate(), $a->getStartDate()));
+        $unit->setActiveTenancies($groups['active']);
+        $unit->setFutureTenancies($groups['future']);
+        $unit->setHistoricTenancies($groups['historical']);
+        $unit->setCurrentTenancy($groups['active'][0] ?? null);
     }
 
     public function getTenanciesForUnit(int $unitId, string $userId): array {
@@ -197,38 +216,16 @@ class TenancyService {
     }
 
     public function sumTenancyForYear(string $userId, int $unitId, int $year): array {
-        $tenancies = $this->tenancyMapper->findByUser($userId, $unitId);
-        $startOfYear = new \DateTimeImmutable(sprintf('%d-01-01', $year));
-        $endOfYear = new \DateTimeImmutable(sprintf('%d-12-31', $year));
+        return $this->sumTenanciesForYear($this->tenancyMapper->findByUser($userId, $unitId), $year);
+    }
+
+    public function sumTenanciesForYear(array $tenancies, int $year): array {
         $sums = ['1000' => 0.0, '1001' => 0.0];
-
         foreach ($tenancies as $tenancy) {
-            $startDate = $this->parseDate($tenancy->getStartDate());
-            if ($startDate === null) {
-                continue;
-            }
-
-            $endDate = $this->parseDate($tenancy->getEndDate()) ?? $endOfYear;
-
-            $periodStart = $startDate > $startOfYear ? $startDate : $startOfYear;
-            $periodEnd = $endDate < $endOfYear ? $endDate : $endOfYear;
-
-            if ($periodEnd < $periodStart) {
-                continue;
-            }
-
-            // Prorate each partial month by its actual calendar days, inclusive of both dates.
-            $months = 0.0;
-            for ($month = $periodStart->modify('first day of this month'); $month <= $periodEnd; $month = $month->modify('+1 month')) {
-                $from = max($periodStart, $month);
-                $to = min($periodEnd, $month->modify('last day of this month'));
-                $months += ($from->diff($to)->days + 1) / (int)$month->format('t');
-            }
-
+            $months = TenancyPeriod::monthsWithinYear($tenancy->getStartDate(), $tenancy->getEndDate(), $year);
             $sums['1000'] += $months * (float)$tenancy->getBaseRent();
             $sums['1001'] += $months * (float)($tenancy->getServiceCharge() ?? 0.0);
         }
-
         return $sums;
     }
 
@@ -236,15 +233,19 @@ class TenancyService {
         if (!isset($data['unitId'])) {
             throw new \InvalidArgumentException($this->l10n->t('Unit is required.'));
         }
-        if (!isset($data['startDate']) || !preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', (string)$data['startDate'])) {
-            throw new \InvalidArgumentException($this->l10n->t('Start date is required.'));
+        InputValidation::assertDate($data['startDate'] ?? null, $this->l10n->t('Start date is required.'));
+        if (isset($data['endDate']) && $data['endDate'] !== '') {
+            InputValidation::assertPeriod($data['startDate'], $data['endDate'], $this->l10n->t('Invalid period definition.'));
         }
-        if (!isset($data['baseRent']) && !$this->permissionService->isBuildingManagement($role)) {
-            throw new \InvalidArgumentException($this->l10n->t('Base rent is required.'));
+        foreach (['baseRent', 'serviceCharge', 'deposit'] as $field) {
+            $required = $field === 'baseRent' && !$this->permissionService->isBuildingManagement($role);
+            if ($required || (isset($data[$field]) && $data[$field] !== '')) {
+                InputValidation::assertMoney($data[$field] ?? null, $this->l10n->t('Amount must be a non-negative monetary value.'));
+            }
         }
         $unit = $this->unitMapper->findForUser((int)$data['unitId'], $userId);
         if (!$unit) {
-            throw new \RuntimeException($this->l10n->t('Unit not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
         if ($this->permissionService->isBuildingManagement($role) && $unit->getPropertyId() === null) {
             throw new \InvalidArgumentException($this->l10n->t('Property is required for building management tenancies.'));
@@ -253,7 +254,7 @@ class TenancyService {
             foreach ($data['partnerIds'] as $partnerId) {
                 $partner = $this->partnerMapper->findForUser((int)$partnerId, $userId);
                 if (!$partner) {
-                    throw new \RuntimeException($this->l10n->t('Partner not found.'));
+                    throw new ResourceNotFoundException($this->l10n->t('Partner not found.'));
                 }
                 $this->permissionService->assertPartnerMatchesRole($role, $partner->getPartnerType());
             }
@@ -301,6 +302,7 @@ class TenancyService {
         $unit = $this->unitMapper->findForUser($tenancy->getUnitId(), $userId);
         if ($unit) {
             $tenancy->setUnitLabel($unit->getLabel());
+            $tenancy->setUnitLivingArea($unit->getLivingArea());
         }
     }
 

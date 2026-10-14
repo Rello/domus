@@ -7,6 +7,7 @@ namespace OCA\Domus\Tests\UserMigration;
 
 use OCA\Domus\UserMigration\DocumentFiles;
 use OCP\Files\{File, Folder, IRootFolder};
+use OCP\IL10N;
 use OCP\UserMigration\{IExportDestination, IImportSource, UserMigrationException};
 use PHPUnit\Framework\TestCase;
 
@@ -18,7 +19,7 @@ class DocumentFilesTest extends TestCase {
         $folder->expects(self::once())->method('getById')->with(12)->willReturn([$file]);
         $root = $this->createMock(IRootFolder::class);
         $root->method('getUserFolder')->willReturn($folder);
-        self::assertEquals(3, (new DocumentFiles($root))->estimateSize('alice', [['file_id' => 12], ['file_id' => 12]]));
+        self::assertEquals(3, (new DocumentFiles($root, $this->l10n()))->estimateSize('alice', [['file_id' => 12], ['file_id' => 12]]));
     }
 
     public function testStreamsSharedDocumentOnceAndRemapsItsId(): void {
@@ -36,7 +37,7 @@ class DocumentFilesTest extends TestCase {
         $root = $this->createMock(IRootFolder::class);
         $targetRoot = $this->createMock(Folder::class);
         $root->method('getUserFolder')->willReturnMap([['alice', $sourceFolder], ['bob', $targetRoot]]);
-        $files = new DocumentFiles($root);
+        $files = new DocumentFiles($root, $this->l10n());
         $manifest = $files->export('alice', [['file_id' => 12], ['file_id' => 12]], $destination);
         self::assertSame([12 => 'contract.pdf'], $manifest);
         $target = $this->createMock(Folder::class);
@@ -62,7 +63,7 @@ class DocumentFilesTest extends TestCase {
         $root = $this->createMock(IRootFolder::class);
         $root->method('getUserFolder')->willReturn($folder);
         $this->expectException(UserMigrationException::class);
-        (new DocumentFiles($root))->export('alice', [['file_id' => 12]], $this->createMock(IExportDestination::class));
+        (new DocumentFiles($root, $this->l10n()))->export('alice', [['file_id' => 12]], $this->createMock(IExportDestination::class));
     }
 
     /** @dataProvider invalidImports */
@@ -77,7 +78,13 @@ class DocumentFilesTest extends TestCase {
         $source = $this->createMock(IImportSource::class);
         $source->method('getFileAsStream')->willThrowException(new UserMigrationException('Missing archive member'));
         $this->expectException(UserMigrationException::class);
-        (new DocumentFiles($root))->import('bob', $manifest, $source);
+        (new DocumentFiles($root, $this->l10n()))->import('bob', $manifest, $source);
+    }
+
+    private function l10n(): IL10N {
+        $l10n = $this->createMock(IL10N::class);
+        $l10n->method('t')->willReturnCallback(static fn(string $text, array $parameters = []) => vsprintf($text, $parameters));
+        return $l10n;
     }
 
     public static function invalidImports(): array {

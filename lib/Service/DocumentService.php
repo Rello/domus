@@ -6,6 +6,10 @@
  */
 
 namespace OCA\Domus\Service;
+
+use OCA\Domus\Exception\ConflictException;
+
+use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\BookingMapper;
 use OCA\Domus\Db\DocumentLink;
 use OCA\Domus\Db\DocumentLinkMapper;
@@ -52,7 +56,7 @@ class DocumentService {
     public function getDocumentDetails(string $userId, int $id): array {
         $link = $this->documentLinkMapper->findForUser($id, $userId);
         if (!$link) {
-            throw new \RuntimeException($this->l10n->t('Document link not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Document link not found.'));
         }
 
         $this->hydrateLink($link);
@@ -73,12 +77,20 @@ class DocumentService {
         ];
     }
 
+    public function getLinkedFile(string $userId, int $id): File {
+        $link = $this->documentLinkMapper->findForUser($id, $userId);
+        if ($link === null || $link->getFileId() === null) {
+            throw new ResourceNotFoundException($this->l10n->t('Document link not found.'));
+        }
+        return $this->getFileById($link->getFileId());
+    }
+
     public function linkFile(string $userId, string $entityType, int $entityId, string $filePath, ?int $year = null, ?string $title = null, ?string $note = null): DocumentLink {
         $this->assertEntityType($entityType);
         $normalizedPath = $this->normalizePath($filePath);
         $userFolder = $this->rootFolder->getUserFolder($userId);
         if (!$userFolder->nodeExists($normalizedPath)) {
-            throw new \RuntimeException($this->l10n->t('File not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('File not found.'));
         }
 
         $node = $userFolder->get($normalizedPath);
@@ -125,7 +137,7 @@ class DocumentService {
      * @param array $targets List of ['entityType' => string, 'entityId' => int]
      * @return DocumentLink[]
      */
-    public function attachToTargets(string $userId, array $targets, ?array $uploadedFile, ?string $filePath, ?int $year = null, ?string $title = null, ?string $note = null, ?string $typeFolder = null): array {
+    public function attachToTargets(string $userId, array $targets, ?array $uploadedFile, ?string $filePath, ?int $year = null, ?string $title = null, ?string $note = null, ?string $typeFolder = null, ?int $sourceLinkId = null): array {
         $normalizedTargets = $this->normalizeTargets($targets);
 
         if (empty($normalizedTargets)) {
@@ -147,8 +159,8 @@ class DocumentService {
             return $links;
         }
 
-        if ($filePath) {
-            $file = $this->getFileFromPath($userId, $filePath);
+        if ($sourceLinkId !== null || $filePath) {
+            $file = $sourceLinkId !== null ? $this->getLinkedFile($userId, $sourceLinkId) : $this->getFileFromPath($userId, $filePath);
             foreach ($normalizedTargets as $target) {
                 $links[] = $this->persistLink($userId, $target['entityType'], $target['entityId'], $file, $title, $note);
             }
@@ -161,12 +173,13 @@ class DocumentService {
     public function unlink(string $userId, int $id): void {
         $link = $this->documentLinkMapper->findForUser($id, $userId);
         if (!$link) {
-            throw new \RuntimeException($this->l10n->t('Document link not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('Document link not found.'));
         }
         $this->documentLinkMapper->delete($link);
     }
 
     private function persistLink(string $userId, string $entityType, int $entityId, File $file, ?string $title = null, ?string $note = null): DocumentLink {
+        $this->assertTargetInContext($userId, $entityType, $entityId);
         $link = new DocumentLink();
         $link->setUserId($userId);
         $link->setEntityType($entityType);
@@ -358,7 +371,7 @@ class DocumentService {
     private function getFileById(int $fileId): File {
         $node = $this->rootFolder->getById($fileId)[0] ?? null;
         if (!$node instanceof File) {
-            throw new \RuntimeException($this->l10n->t('Unable to locate stored file.'));
+            throw new ResourceNotFoundException($this->l10n->t('Unable to locate stored file.'));
         }
         return $node;
     }
@@ -367,7 +380,7 @@ class DocumentService {
         $normalizedPath = $this->normalizePath($filePath);
         $userFolder = $this->rootFolder->getUserFolder($userId);
         if (!$userFolder->nodeExists($normalizedPath)) {
-            throw new \RuntimeException($this->l10n->t('File not found.'));
+            throw new ResourceNotFoundException($this->l10n->t('File not found.'));
         }
 
         $node = $userFolder->get($normalizedPath);
@@ -381,7 +394,7 @@ class DocumentService {
     private function hydrateLink(DocumentLink $link): void {
         $fileId = $link->getFileId();
         if ($fileId !== null) {
-            $link->setFileUrl($this->urlGenerator->getAbsoluteURL('/f/' . $fileId));
+            $link->setFileUrl($this->urlGenerator->linkToRouteAbsolute('domus.Document.content', ['id' => $link->getId()]));
             try {
                 $node = $this->rootFolder->getById($fileId)[0] ?? null;
                 if ($node instanceof File) {
@@ -419,7 +432,7 @@ class DocumentService {
                 case 'property':
                     $property = $this->propertyMapper->findForUser($entityId, $userId);
                     if (!$property) {
-                        throw new \RuntimeException($this->l10n->t('Property not found.'));
+                        throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
                     }
                     return [
                         'basePath' => $property->getDocumentPath(),
@@ -429,7 +442,7 @@ class DocumentService {
                 case 'unit':
                     $unit = $this->unitMapper->findForUser($entityId, $userId);
                     if (!$unit) {
-                        throw new \RuntimeException($this->l10n->t('Unit not found.'));
+                        throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
                     }
                     return [
                         'basePath' => $unit->getDocumentPath(),
@@ -439,11 +452,11 @@ class DocumentService {
                 case 'tenancy':
                     $tenancy = $this->tenancyMapper->findForUser($entityId, $userId);
                     if (!$tenancy) {
-                        throw new \RuntimeException($this->l10n->t('Tenancy not found.'));
+                        throw new ResourceNotFoundException($this->l10n->t('Tenancy not found.'));
                     }
                     $unit = $this->unitMapper->findForUser($tenancy->getUnitId(), $userId);
                     if (!$unit) {
-                        throw new \RuntimeException($this->l10n->t('Unit not found.'));
+                        throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
                     }
                     $tenancyYear = $targetYear;
                     if ($year === null && $tenancy->getStartDate()) {
@@ -457,7 +470,7 @@ class DocumentService {
                 case 'booking':
                     $booking = $this->bookingMapper->findForUser($entityId, $userId);
                     if (!$booking) {
-                        throw new \RuntimeException($this->l10n->t('Booking not found.'));
+                        throw new ResourceNotFoundException($this->l10n->t('Booking not found.'));
                     }
                     $basePath = $this->resolveBookingBasePath($userId, $booking->getUnitId(), $booking->getPropertyId());
                     return [
@@ -483,7 +496,7 @@ class DocumentService {
             if ($node instanceof Folder) {
                 return $node;
             }
-            throw new \RuntimeException($this->l10n->t('A file with the required folder name already exists.'));
+            throw new ConflictException($this->l10n->t('A file with the required folder name already exists.'));
         }
 
         try {
@@ -497,7 +510,7 @@ class DocumentService {
         $normalizedPath = $this->normalizePath($basePath);
         $segments = array_values(array_filter(explode('/', $normalizedPath), static fn(string $segment) => $segment !== ''));
         if ($segments === []) {
-            throw new \RuntimeException($this->l10n->t('Invalid document path.'));
+            throw new \InvalidArgumentException($this->l10n->t('Invalid document path.'));
         }
         $current = $userFolder;
         foreach ($segments as $segment) {
@@ -599,6 +612,20 @@ class DocumentService {
     private function assertEntityType(string $entityType): void {
         if (!in_array($entityType, self::ENTITY_TYPES, true)) {
             throw new \InvalidArgumentException($this->l10n->t('Invalid entity type.'));
+        }
+    }
+
+    private function assertTargetInContext(string $userId, string $entityType, int $entityId): void {
+        $mapper = match ($entityType) {
+            'property' => $this->propertyMapper,
+            'unit' => $this->unitMapper,
+            'partner' => $this->partnerMapper,
+            'tenancy' => $this->tenancyMapper,
+            'booking' => $this->bookingMapper,
+            default => null,
+        };
+        if ($mapper !== null && $mapper->findForUser($entityId, $userId) === null) {
+            throw new \DomainException($this->l10n->t('Document target is not available in the selected context.'));
         }
     }
 }

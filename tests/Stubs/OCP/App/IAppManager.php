@@ -11,4 +11,5 @@ namespace OCP\App;
 
 interface IAppManager {
     public function getAppPath(string $appId): string;
+	public function isEnabledForUser($appId, $user = null);
 }

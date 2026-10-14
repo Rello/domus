@@ -7,10 +7,33 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ## Unreleased
 ### Added
+- Show Teams, Team Folders, and Guests availability in Management Team settings with green checks or red X indicators and links to enabled apps or their App Store pages.
+- Link a Nextcloud account or create a guest from Team contact details; linked accounts can access that contact and its tenancies.
+- Open a dedicated account-based renter view with tenancy details and authenticated downloads of directly linked tenancy documents.
+- Request contact corrections as a renter for management review, with conflict detection and decisions recorded in the standard Activity panels on renter and partner details.
 - Preview a renter’s tenancies, contact details, and linked documents with a temporary renter selector and read-only tenancy view.
 - Assign an existing unit document to a tenancy from the document editor without uploading it again.
 ### Changed
+- Reuse Team membership and tax settings within each request and load invariant tax rates once for financial summaries.
+- Show renter access as a status badge in contact headers, with account management links and a structured account setup dialog.
+- Reduce settings section padding, spacing, and heading size, and keep the task template add control from increasing the section height.
+- Move the Personal/Team selector beside the app name in the Nextcloud header; open Nextcloud Teams management from Admin settings.
+- Show each tenancy’s base rent and rent per square meter in the tenancy list and tenancy detail.
 - Use the compact unit-style header and matching back-link spacing across property, unit, tenancy, and contact details; show only the unit name as the tenancy headline.
+### Fixed
+- Restrict Personal migration archives to canonical fields and Personal ownership, and clear source-instance image references.
+- Restore authenticated browser image and document delivery with explicit MIME types, safe image rendering, and consistent document downloads.
+- Include the standard property-tax account in utility settlements, matching financial statistics.
+- Complete German translations for account access, renter views, financial explanations, reports, and errors, and correct shared dialog wording.
+- Clear stale contact account links when the linked Nextcloud account no longer exists, allowing renter access to be set up again.
+- Translate the unit cost table’s utility, allocable maintenance, property tax, and tenant balance headers into German.
+- Use the same calendar-day proration for annual rent statistics and utility settlements, including mid-month tenancy changes.
+- Keep distribution reports consistent with posted amounts and rounding, allocating only represented shares when an explicit base includes other units.
+- Keep future tenancies separate from current occupants and monthly rent totals.
+- Reject impossible dates, invalid amounts, and reversed financial periods consistently.
+- Prevent delayed page responses from replacing the current view and dispose charts when leaving a view.
+- Protect unsaved picture changes consistently for properties and units.
+- Return consistent API errors and log unexpected failures instead of reporting them as missing records.
 
 ## 1.1.0 - 2026-09-29
 ### Added

@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class BookingYearMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_booking_years', BookingYear::class);
+class BookingYearMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_booking_years', BookingYear::class, $access);
     }
 
     /**
@@ -37,6 +37,7 @@ class BookingYearMapper extends QBMapper {
             $qb->andWhere($qb->expr()->isNull('unit_id'));
         }
 
+        $this->applyScope($qb);
         $results = $this->findEntities($qb);
         return $results[0] ?? null;
     }
@@ -56,6 +57,7 @@ class BookingYearMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->in('unit_id', $qb->createNamedParameter($unitIds, $qb::PARAM_INT_ARRAY)));
 
+        $this->applyScope($qb);
         return $qb->executeQuery()->fetchAll();
     }
 
@@ -74,6 +76,7 @@ class BookingYearMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->in('property_id', $qb->createNamedParameter($propertyIds, $qb::PARAM_INT_ARRAY)));
 
+        $this->applyScope($qb);
         return $qb->executeQuery()->fetchAll();
     }
 
@@ -86,6 +89,7 @@ class BookingYearMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
 
+        $this->applyScope($qb);
         return $this->findEntities($qb);
     }
 
@@ -98,6 +102,7 @@ class BookingYearMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
 
+        $this->applyScope($qb);
         return (int)$qb->executeQuery()->fetchOne();
     }
 
@@ -109,6 +114,7 @@ class BookingYearMapper extends QBMapper {
         $qb->delete($this->getTableName())
             ->where($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
 
+        $this->applyScope($qb);
         $qb->executeStatement();
     }
 }

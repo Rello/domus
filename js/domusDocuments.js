@@ -61,6 +61,8 @@
 
         function renderList(entityType, entityId, options = {}) {
             const containerId = `domus-documents-${entityType}-${entityId}`;
+            const view = Domus.Router.captureView('documents:' + containerId);
+            const isCurrent = () => view.isCurrent() && (!options.isCurrent || options.isCurrent());
             const canManageDocuments = options.canManageDocuments !== undefined
                 ? options.canManageDocuments
                 : (options.showLinkAction !== undefined ? options.showLinkAction : Domus.Role.hasCapability('manageDocuments'));
@@ -70,7 +72,7 @@
             const emptyActionId = options.emptyActionId || `${containerId}-empty-create`;
 
             function updateContainer(html) {
-                if (options.isCurrent && !options.isCurrent()) return;
+                if (!isCurrent()) return;
                 const placeholder = document.getElementById(containerId);
                 if (placeholder) {
                     placeholder.outerHTML = html;
@@ -79,6 +81,7 @@
 
             Domus.Api.getDocuments(entityType, entityId)
                 .then(docs => {
+                    if (!isCurrent()) return;
                     const filteredDocs = filterYear
                         ? (docs || []).filter(doc => {
                             if (!doc?.createdAt) {
@@ -105,6 +108,7 @@
                     bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
                 })
                 .catch(() => {
+                    if (!isCurrent()) return;
                     const html = '<div id="' + containerId + '">' + Domus.UI.buildEmptyStateAction('', { actionId: canManageDocuments ? emptyActionId : null }) + '</div>';
                     updateContainer(html);
                     bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
@@ -122,6 +126,8 @@
 
         function loadLatestList(entityType, entityId, options = {}) {
             const containerId = options.containerId || `domus-documents-latest-${entityType}-${entityId}`;
+            const view = Domus.Router.captureView('documents:' + containerId);
+            const isCurrent = () => view.isCurrent() && (!options.isCurrent || options.isCurrent());
             const canManageDocuments = options.canManageDocuments !== undefined
                 ? options.canManageDocuments
                 : (options.showLinkAction !== undefined ? options.showLinkAction : Domus.Role.hasCapability('manageDocuments'));
@@ -130,7 +136,7 @@
             let visibleCount = pageSize;
 
             function updateContainer(html) {
-                if (options.isCurrent && !options.isCurrent()) return;
+                if (!isCurrent()) return;
                 const placeholder = document.getElementById(containerId);
                 if (placeholder) {
                     placeholder.outerHTML = html;
@@ -146,7 +152,7 @@
             }
 
             function renderView(docs) {
-                if (options.isCurrent && !options.isCurrent()) return;
+                if (!isCurrent()) return;
                 if (!docs.length) {
                     updateContainer(buildEmptyState());
                     bindEmptyActionTrigger(emptyActionId, () => runEmptyAction(entityType, entityId, options));
@@ -184,6 +190,7 @@
 
             Domus.Api.getDocuments(entityType, entityId)
                 .then(docs => {
+                    if (!isCurrent()) return;
                     const sortedDocs = (docs || []).slice().sort((a, b) => {
                         const aDate = Number(a?.createdAt) || 0;
                         const bDate = Number(b?.createdAt) || 0;
@@ -192,7 +199,7 @@
                     renderView(sortedDocs);
                 })
                 .catch(() => {
-                    if (options.isCurrent && !options.isCurrent()) return;
+                    if (!isCurrent()) return;
                     updateContainer('<div id="' + containerId + '" role="alert">' +
                         Domus.Utils.escapeHtml(t('domus', 'Documents could not be loaded. Please try again.')) + '</div>');
                 });
@@ -516,7 +523,8 @@
 
             const selection = {
                 type: 'link',
-                filePath
+                filePath,
+                sourceLinkId: detail?.document?.id
             };
             const fileId = Number(detail?.document?.fileId);
             if (!Number.isNaN(fileId) && fileId > 0) {

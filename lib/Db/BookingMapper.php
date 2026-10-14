@@ -7,13 +7,13 @@
 
 namespace OCA\Domus\Db;
 
-use OCP\AppFramework\Db\QBMapper;
+use OCA\Domus\Service\ManagementAccessContext;
 use OCP\DB\Exception;
 use OCP\IDBConnection;
 
-class BookingMapper extends QBMapper {
-    public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'domus_bookings', Booking::class);
+class BookingMapper extends TeamScopedMapper {
+    public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
+        parent::__construct($db, 'domus_bookings', Booking::class, $access);
     }
 
     /**
@@ -23,7 +23,7 @@ class BookingMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->where($this->ownerExpression($qb, $userId));
 
         // Map external filter keys (camelCase) to database column names (snake_case)
         $fields = [
@@ -55,7 +55,7 @@ class BookingMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntity($qb);
     }
@@ -68,7 +68,7 @@ class BookingMapper extends QBMapper {
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('source_property_booking_id', $qb->createNamedParameter($bookingId, $qb::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->andWhere($this->ownerExpression($qb, $userId));
 
         return $this->findEntities($qb);
     }
@@ -81,7 +81,7 @@ class BookingMapper extends QBMapper {
         $qb->select('account')
             ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)));
 
         if ($propertyId !== null) {
@@ -106,7 +106,7 @@ class BookingMapper extends QBMapper {
             ->addSelect('account')
             ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->groupBy('year')
             ->addGroupBy($groupColumn)
             ->addGroupBy('account')
@@ -139,7 +139,7 @@ class BookingMapper extends QBMapper {
             ->addSelect('account')
             ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->in('account', $qb->createNamedParameter($accounts, $qb::PARAM_INT_ARRAY)))
             ->groupBy('year')
             ->addGroupBy('account')
@@ -162,7 +162,7 @@ class BookingMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('account', $qb->createNamedParameter((int)$accountNumber, $qb::PARAM_INT)));
 
         return (int)$qb->executeQuery()->fetchOne();
@@ -175,7 +175,7 @@ class BookingMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
         $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
 
         return (int)$qb->executeQuery()->fetchOne();
@@ -187,7 +187,7 @@ class BookingMapper extends QBMapper {
     public function deleteByUnit(string $userId, int $unitId): void {
         $qb = $this->db->getQueryBuilder();
         $qb->delete($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
 
         $qb->executeStatement();
@@ -201,7 +201,7 @@ class BookingMapper extends QBMapper {
         $qb->select('account')
             ->selectAlias($qb->createFunction('COUNT(*)'), 'usage_count')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($this->ownerExpression($qb, $userId))
             ->groupBy('account');
 
         return $qb->executeQuery()->fetchAll();
