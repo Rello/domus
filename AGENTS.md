@@ -5,7 +5,7 @@ Guidance for Codex and other agents working in this Nextcloud app. Follow the re
 ## Project structure and protected content
 
 - Focus on the core application logic and relevant documentation.
-- Do not modify `/vendor` (external dependencies), `/l10n` (translation files), `/js/3rdParty`, or `/css/3rdParty` unless the task specifically requires it.
+- Do not modify `/vendor` (external dependencies), `/js/3rdParty`, or `/css/3rdParty` unless the task specifically requires it.
 - Treat `/screenshots` as documentation media and `/sample_data` as human reference data. Do not change these as part of unrelated work.
 - Preserve external dependencies and generated or imported content. Use existing tests in `/tests` where they cover the change.
 - The frontend is loaded through multiple `Util::addScript` calls in `templates/main.php`; load order matters because modules attach to `window.Domus`.
@@ -13,7 +13,7 @@ Guidance for Codex and other agents working in this Nextcloud app. Follow the re
 ## General development guidelines
 
 - Prefer lowerCamelCase names and avoid underscores, consistent with the technical guidelines.
-- Use `OCP\IL10N` in PHP and Nextcloud's `t()` API in JavaScript for user-facing strings. Follow the repository's existing localization approach; add strings to the existing language files where required.
+- Use `OCP\IL10N` in PHP and Nextcloud's `t()` API in JavaScript for user-facing strings. All new or updated strings need to be added to the available l10n translations files. Update all existing languages. Do not add new languages unless told.
 - Keep the main page layout containers `app-navigation`, `app-content`, and `app-sidebar` intact unless a design document explicitly calls for a change.
 - Use Nextcloud-provided services and APIs. Do not add external Composer dependencies or frontend build tooling such as webpack without an explicit architectural decision.
 - Do not use the deprecated `ILogger`; use `Psr\Log\LoggerInterface`.
