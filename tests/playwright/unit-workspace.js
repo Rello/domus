@@ -162,7 +162,7 @@ async function main() {
         });
         assert.ok(layout.pictureWidth >= 128, `Unit picture is prominent: ${JSON.stringify(layout)}`);
         assert.equal(layout.metaLines.length, 2);
-        assert.ok(Math.abs(layout.metaLines[0] - layout.metaLines[1]) <= 1, `Address, size and renter share a line: ${JSON.stringify(layout)}`);
+        assert.ok(Math.abs(layout.metaLines[0] - layout.metaLines[1]) <= 1, `Address and size share a line: ${JSON.stringify(layout)}`);
         assert.ok(layout.heroTop - layout.backBottom < 18, `Unit identity follows the Back control: ${JSON.stringify(layout)}`);
         assert.ok(Math.abs(layout.navTop - layout.actionsTop) <= 8, `Sections and actions share a row: ${JSON.stringify(layout)}`);
         assert.ok(layout.cardsTop - layout.heroBottom < 100, `Unit information starts near the header: ${JSON.stringify(layout)}`);
@@ -202,7 +202,8 @@ async function main() {
         await sections.getByRole('link', {name: 'Overview'}).click();
         await page.getByRole('button', {name: 'Show phone number'}).click();
         assert.equal(await sections.getByRole('link', {name: 'Overview'}).getAttribute('aria-current'), 'page');
-        await page.locator('.domus-detail-hero [data-current-tenancy-id]').click();
+        assert.equal(await page.locator('.domus-detail-hero [data-current-tenancy-id]').count(), 0);
+        await page.locator('[data-current-tenancy-id]').click();
         await page.getByRole('heading', {name: 'Tenancy 3'}).waitFor();
         await page.goBack();
         await page.getByRole('navigation', {name: 'Unit sections'}).waitFor();

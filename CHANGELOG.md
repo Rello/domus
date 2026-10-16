@@ -14,6 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Preview a renter’s tenancies, contact details, and linked documents with a temporary renter selector and read-only tenancy view.
 - Assign an existing unit document to a tenancy from the document editor without uploading it again.
 ### Changed
+- Remove the duplicate renter from the unit detail header; keep the renter link in the tenancy KPI tile.
 - Reuse Team membership and tax settings within each request and load invariant tax rates once for financial summaries.
 - Show renter access as a status badge in contact headers, with account management links and a structured account setup dialog.
 - Reduce settings section padding, spacing, and heading size, and keep the task template add control from increasing the section height.

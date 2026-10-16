@@ -1641,9 +1641,6 @@
             const unitInlineMeta = '<div class="domus-hero-meta-line domus-hero-meta-line-inline">' +
                 '<span class="domus-icon domus-icon-ruler" aria-hidden="true"></span>' +
                 '<span>' + Domus.Utils.escapeHtml(livingAreaLabel || '—') + '</span>' +
-                '<span class="domus-hero-meta-inline-spacer" aria-hidden="true"></span>' +
-                '<span class="domus-icon domus-icon-partner" aria-hidden="true"></span>' +
-                '<span>' + currentTenancyLink + '</span>' +
                 '</div>';
             const unitMetaLines = [
                 addressLine ? Domus.UI.buildHeroMetaLine('domus-icon-location', addressLine) : '',
