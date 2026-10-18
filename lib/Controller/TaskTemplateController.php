@@ -75,6 +75,8 @@ class TaskTemplateController extends Controller {
     public function addStep(int $id): DataResponse {
         $this->managementContext->managementUserId();
         $payload = $this->request->getParams();
+        // The route's id identifies the template, not a step to update.
+        unset($payload['id']);
         return new DataResponse($this->taskTemplateService->addOrUpdateStep($id, $payload), Http::STATUS_CREATED);
     }
 

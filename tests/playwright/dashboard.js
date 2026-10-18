@@ -7,6 +7,10 @@ const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 
 async function setup(page, role, summary) {
+    if (page.url() === 'about:blank') {
+        await page.route('http://domus.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html>'}));
+        await page.goto('http://domus.test/apps/domus/');
+    }
     await page.setContent('<div id="app-content" class="app-domus"></div>');
     // Nextcloud's native-button selectors are more specific than a single class.
     // Keep these host defaults present to catch divergence from the upload div.
@@ -30,6 +34,9 @@ async function setup(page, role, summary) {
     await page.evaluate(({ role, summary }) => {
         Domus.state.currentRoleView = role;
         Domus.state.currentView = 'dashboard';
+        const originalPost = Domus.Api.post;
+        Domus.Api.post = (path, payload) => path === '/rules/evaluate'
+            ? Promise.resolve({alerts: [], createdTasks: 0}) : originalPost(path, payload);
         Domus.Api.getDashboardSummary = async () => summary;
         Domus.Api.getWorkflowRun = async () => ({ id: 3, name: 'Inspection process', status: 'open', entityType: 'unit', entityId: 1, steps: [{id: 2, title: 'Inspection', status: 'open'}] });
         window.actionCalls = [];
@@ -88,6 +95,13 @@ async function main() {
         if (process.env.DASHBOARD_SCREENSHOT_DIR) {
             await page.screenshot({ path: `${process.env.DASHBOARD_SCREENSHOT_DIR}/dashboard-desktop.png`, fullPage: true });
         }
+        const panelPositions = await page.evaluate(() => {
+            const attention = document.querySelector('.domus-upcoming-card-shell').getBoundingClientRect();
+            const actions = document.querySelector('.domus-dashboard-quick-panel').getBoundingClientRect();
+            return {attentionX: attention.x, actionsX: actions.x, attentionY: attention.y, actionsY: actions.y};
+        });
+        assert.ok(panelPositions.attentionX < panelPositions.actionsX, 'Attention remains in the left column');
+        assert.ok(Math.abs(panelPositions.attentionY - panelPositions.actionsY) < 2, 'Quick actions remain alongside attention');
         assert.deepEqual(await page.locator('.domus-dashboard-task-group-title').allTextContents(), ['Overdue 1', 'Today 1', 'Later 2']);
         assert.match(await page.locator('section.domus-dashboard-task-group-overdue').innerText(), /2 days overdue/);
         assert.equal(await page.locator('section.domus-dashboard-task-group-overdue .domus-task-date-exact').count(), 0);
@@ -133,6 +147,23 @@ async function main() {
         await page.keyboard.press('Space');
         await page.getByRole('dialog', { name: 'Inspection process' }).waitFor();
         assert.ok(await page.getByRole('dialog', { name: 'Inspection process' }).getByText('Mark done').count());
+    });
+
+    await test('task-based rules preserve the dashboard grid without separate alerts', async page => {
+        await setup(page, 'landlord', summary);
+        assert.equal(await page.locator('#domus-rule-alerts').count(), 0);
+        const layout = await page.evaluate(() => {
+            const row = document.querySelector('.domus-dashboard-panel-row');
+            const kpis = document.querySelector('.domus-dashboard-kpi-row');
+            const attention = document.querySelector('.domus-upcoming-card-shell').getBoundingClientRect();
+            const actions = document.querySelector('.domus-dashboard-quick-panel').getBoundingClientRect();
+            return {children: row.children.length, gap: kpis.getBoundingClientRect().top - row.getBoundingClientRect().bottom,
+                expectedGap: parseFloat(getComputedStyle(row.parentElement).rowGap),
+                sameRow: Math.abs(attention.y - actions.y) < 2 && attention.x < actions.x};
+        });
+        assert.equal(layout.children, 2);
+        assert.ok(layout.sameRow);
+        assert.ok(Math.abs(layout.gap - layout.expectedGap) < 2);
     });
 
     await test('phone keeps work and actions before compact statistics', async page => {

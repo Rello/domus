@@ -30,6 +30,7 @@
                     const html = buildContent(data || {});
                     Domus.UI.renderContent(html);
                     bindDashboard(data || {});
+                    Domus.Tasks.watchReminders(data?.nextTaskReminder, render, view.isCurrent);
                     Domus.UI.onContentDispose(destroyOccupancyChart);
                     Domus.Router.restoreContentContext();
                 })
@@ -293,7 +294,7 @@
                     subline: t('domus', 'Agreed in active tenancies')
                 },
                 { label: t('domus', 'Overall rentability'), value: data.overallRentability, type: 'percentage', subline: t('domus', 'Current year') },
-                { label: t('domus', 'Units'), value: data.unitCount || 0, subline: t('domus', 'Active'), link: '#/units' }
+                { label: t('domus', 'Units'), value: data.unitCount || 0, subline: t('domus', 'Active'), link: Domus.Router.url('units') }
             ];
 
             const cardHtml = cards.map(card => {
@@ -329,7 +330,7 @@
                     Domus.UI.buildKpiTile({
                         headline: t('domus', 'Occupancy'),
                         value: `${occupiedUnits} ${t('domus', 'of')} ${totalUnits}`,
-                        linkHref: '#/units',
+                        linkHref: Domus.Router.url('units'),
                         linkLabel: t('domus', 'More'),
                         linkIconClass: 'domus-icon-arrow-right',
                         chartId: 'domus-dashboard-occupancy-chart',
@@ -420,8 +421,8 @@
 
         function buildBuildingMgmtDashboard(data) {
             const cards = [
-                { label: t('domus', 'Properties'), value: data.propertyCount || 0, link: '#/properties' },
-                { label: t('domus', 'Units'), value: data.unitCount || 0, link: '#/units' },
+                { label: t('domus', 'Properties'), value: data.propertyCount || 0, link: Domus.Router.url('properties') },
+                { label: t('domus', 'Units'), value: data.unitCount || 0, link: Domus.Router.url('units') },
                 { label: t('domus', 'Managed owners'), value: data.tenancyCount || 0 },
                 { label: t('domus', 'Bookings this year'), value: data.bookingCount || 0 }
             ];

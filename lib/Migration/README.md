@@ -3,6 +3,14 @@ SPDX-FileCopyrightText: 2026 Marcel Scherello
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
+# Development migrations
+
+Consolidate local, unpushed iterations of one feature into one migration containing
+only its final schema. Remove temporary additions, removals, and data conversions
+that existing users will never encounter. Reconcile the development database's
+migration records only after verifying that its schema already matches the final
+migration. Never consolidate migrations already pushed for users to run.
+
 # Updating bundled process templates
 
 For a release that changes bundled defaults:

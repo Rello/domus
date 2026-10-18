@@ -17,6 +17,7 @@ use OCP\IUserSession;
  * The actor is always a Nextcloud user. A Team is a separate data owner.
  */
 class ManagementAccessContext {
+    private ?array $backgroundScope = null;
     public function __construct(
         private IUserSession $userSession,
         private IRequest $request,
@@ -28,6 +29,7 @@ class ManagementAccessContext {
     }
 
     public function actorUserId(): string {
+        if ($this->backgroundScope !== null) return $this->backgroundScope['userId'];
         $user = $this->userSession->getUser();
         if ($user === null || !$user->isEnabled()) {
             throw new \DomainException($this->l10n->t('A signed-in account is required.'));
@@ -36,6 +38,7 @@ class ManagementAccessContext {
     }
 
     public function activeTeamId(): ?string {
+        if ($this->backgroundScope !== null) return $this->backgroundScope['teamId'];
         $teamId = trim($this->request->getHeader('X-Domus-Team'));
         if ($teamId === '' && $this->config !== null) {
             $teamId = trim($this->config->getUserValue($this->actorUserId(), 'domus', 'activeTeamId', ''));
@@ -48,6 +51,24 @@ class ManagementAccessContext {
         }
         $this->teams->assertTeamAdmin($teamId);
         return $teamId;
+    }
+
+    /** Internal job scope: validate the persisted actor afresh, never alter browser preferences. */
+    public function runBackground(\OCP\IUser $user, ?string $teamId, callable $operation): mixed {
+        if (!$user->isEnabled() || $this->groupManager->isInGroup($user->getUID(), 'guest_app')) {
+            throw new \DomainException($this->l10n->t('A staff account is required for management access.'));
+        }
+        $this->teams?->clearRequestCache();
+        if ($teamId !== null && ($this->teams === null || !$this->teams->isTeamMember($teamId, $user->getUID()))) {
+            throw new \DomainException($this->l10n->t('You do not have access to this Team.'));
+        }
+        $previous = $this->backgroundScope;
+        $this->backgroundScope = ['userId' => $user->getUID(), 'teamId' => $teamId];
+        try {
+            return $operation();
+        } finally {
+            $this->backgroundScope = $previous;
+        }
     }
 
     public function selectTeam(string $teamId): array {

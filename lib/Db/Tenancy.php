@@ -27,6 +27,8 @@ class Tenancy extends Entity implements JsonSerializable {
     protected array $partnerIds = [];
     protected array $partners = [];
     protected ?string $unitLabel = null;
+    protected ?string $unitStreet = null;
+    protected ?string $unitCity = null;
     protected ?string $unitLivingArea = null;
     protected ?string $period = null;
     protected ?string $partnerName = null;
@@ -56,6 +58,8 @@ class Tenancy extends Entity implements JsonSerializable {
             'partnerIds' => $this->partnerIds,
             'partners' => $this->partners,
             'unitLabel' => $this->unitLabel,
+            'unitStreet' => $this->unitStreet,
+            'unitCity' => $this->unitCity,
             'unitLivingArea' => $this->unitLivingArea,
             'period' => $this->period,
             'partnerName' => $this->partnerName,
@@ -93,6 +97,14 @@ class Tenancy extends Entity implements JsonSerializable {
 
     public function getUnitLabel(): ?string {
         return $this->unitLabel;
+    }
+
+    public function setUnitStreet(?string $unitStreet): void {
+        $this->unitStreet = $unitStreet;
+    }
+
+    public function setUnitCity(?string $unitCity): void {
+        $this->unitCity = $unitCity;
     }
 
     public function setUnitLivingArea(?string $unitLivingArea): void {

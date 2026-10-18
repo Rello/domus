@@ -11,7 +11,11 @@ const { chromium } = require('playwright');
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     try {
-        await page.setContent('<div id="app-content" class="app-domus"></div>');
+        if (page.url() === 'about:blank') {
+        await page.route('http://domus.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html>'}));
+        await page.goto('http://domus.test/apps/domus/');
+    }
+    await page.setContent('<div id="app-content" class="app-domus"></div>');
         await page.evaluate(() => {
             window.t = (app, value, params = {}) => value.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? key);
             window.OC = { generateUrl: path => path };

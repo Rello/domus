@@ -7,65 +7,67 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ## Unreleased
 ### Added
-- Show Teams, Team Folders, and Guests availability in Management Team settings with green checks or red X indicators and links to enabled apps or their App Store pages.
-- Link a Nextcloud account or create a guest from Team contact details; linked accounts can access that contact and its tenancies.
-- Open a dedicated account-based renter view with tenancy details and authenticated downloads of directly linked tenancy documents.
-- Request contact corrections as a renter for management review, with conflict detection and decisions recorded in the standard Activity panels on renter and partner details.
-- Preview a renter’s tenancies, contact details, and linked documents with a temporary renter selector and read-only tenancy view.
-- Assign an existing unit document to a tenancy from the document editor without uploading it again.
+- Create rules that remind you when rent is due for review, listed in Settings with the same table and action icons as task templates.
+- Set reminders for tasks and process steps.
+- Check which Nextcloud apps are available for team management.
+- Give renters access through a linked Nextcloud account or a guest account.
+- Let renters view their tenancy details and documents and request contact corrections.
+- Preview what renters can see from Settings → Management Team.
+- Link existing unit documents to a tenancy without uploading them again.
+
 ### Changed
-- Remove the duplicate renter from the unit detail header; keep the renter link in the tenancy KPI tile.
-- Reuse Team membership and tax settings within each request and load invariant tax rates once for financial summaries.
-- Show renter access as a status badge in contact headers, with account management links and a structured account setup dialog.
-- Reduce settings section padding, spacing, and heading size, and keep the task template add control from increasing the section height.
-- Move the Personal/Team selector beside the app name in the Nextcloud header; open Nextcloud Teams management from Admin settings.
-- Show each tenancy’s base rent and rent per square meter in the tenancy list and tenancy detail.
-- Use the compact unit-style header and matching back-link spacing across property, unit, tenancy, and contact details; show only the unit name as the tenancy headline.
+- Use direct page URLs without fragments and keep data endpoints under /api/.
+- Show the unit address instead of repeating the tenant in tenancy headers.
+- Use the shared tenancy table with base rent in the renter overview and remove the redundant header and refresh button.
+- Make renter access easier to manage from contact details.
+- Move the Personal/Team selector to the app header.
+- Show base rent and rent per square meter in tenancy lists and details.
+- Make property, unit, tenancy, and contact pages more consistent.
+
 ### Fixed
-- Restrict Personal migration archives to canonical fields and Personal ownership, and clear source-instance image references.
-- Restore authenticated browser image and document delivery with explicit MIME types, safe image rendering, and consistent document downloads.
-- Include the standard property-tax account in utility settlements, matching financial statistics.
-- Complete German translations for account access, renter views, financial explanations, reports, and errors, and correct shared dialog wording.
-- Clear stale contact account links when the linked Nextcloud account no longer exists, allowing renter access to be set up again.
-- Translate the unit cost table’s utility, allocable maintenance, property tax, and tenant balance headers into German.
-- Use the same calendar-day proration for annual rent statistics and utility settlements, including mid-month tenancy changes.
-- Keep distribution reports consistent with posted amounts and rounding, allocating only represented shares when an explicit base includes other units.
-- Keep future tenancies separate from current occupants and monthly rent totals.
-- Reject impossible dates, invalid amounts, and reversed financial periods consistently.
-- Prevent delayed page responses from replacing the current view and dispose charts when leaving a view.
-- Protect unsaved picture changes consistently for properties and units.
-- Return consistent API errors and log unexpected failures instead of reporting them as missing records.
+- Fix creating task templates with new identifiers, saving them in Personal mode, and adding steps with a visible plus button in the template editor.
+- Show calculated rent per square meter in renter tenancy details.
+- Use the same document panel in renter and management tenancy views, keeping renter download links.
+- Keep large numbers readable in dashboard tiles.
+- Fix image display and document downloads.
+- Include property tax in utility settlements.
+- Improve German translations and dialog wording.
+- Allow renter access to be set up again after a linked account is deleted.
+- Calculate rent correctly for tenancies that start or end partway through a month.
+- Match distribution reports to booked amounts and rounding.
+- Exclude future tenancies from current occupants and monthly rent totals.
+- Reject invalid dates, amounts, and financial periods.
+- Prevent outdated page content from appearing after navigation.
+- Warn before discarding unsaved property or unit pictures.
 
 ## 1.1.0 - 2026-09-29
 ### Added
-- Search contacts by name, contact details, address, and notes, with a combinable type filter.
-- Complete eligible process steps early or cancel an open process, with clear handling of skipped work.
+- Search contacts by name, contact details, address, or notes and filter by type.
+- Complete process steps early or cancel an open process.
 
 ### Changed
-- Refresh the dashboard, unit and tenancy views with clearer navigation, actions, financial context, and mobile layouts.
-- Make task and process creation and progress easier to follow, including step previews, due dates, and completion actions.
-- Expand booking search and filters, and improve analytics with annual breakdowns, trend presets, and account selection.
-- Simplify document access and forms, and clarify contact controls and linked contacts.
-- Refresh German translations, welcome screenshots, and the README and app description.
+- Improve navigation and mobile layouts across the dashboard, units, and tenancies.
+- Make tasks and processes easier to create and track.
+- Add booking filters and more ways to explore financial trends.
+- Simplify document access, forms, and contact management.
+- Improve German translations and help content.
 
 ### Fixed
-- Preserve unsaved form input, booking filters, and the selected unit finance year during navigation and editing.
-- Restore activity links, process templates, and permissions in unit exports and imports.
-- Correct task urgency displays, contact filtering, document layout, and task template loading.
-- Improve table and form accessibility, including keyboard access and linked dashboard tiles.
+- Preserve unsaved input, booking filters, and the selected financial year.
+- Fix activity links, process templates, and unit imports and exports.
+- Correct task priorities, contact filters, and document layouts.
+- Improve keyboard navigation and accessibility.
 
 ## 1.0.2 - 2026-09-23
 ### Fixed
-- Prorate rent and service-charge totals by calendar days for partial months.
-- Exclude future tenancies and unrelated bookings from landlord dashboard totals; keep empty unit scopes empty.
-- Batch tenancy partner and unit lookups in groups of up to 500 IDs.
-- Include linked document files in user migration archives and remap imported links to new file IDs. Files are restored into a separate Domus import folder. Older archives containing document links without file contents must be exported again.
+- Calculate rent and service charges by calendar days for partial months.
+- Exclude future tenancies and unrelated bookings from dashboard totals.
+- Include document files in exports and restore them to a separate Domus import folder. Export older archives again to include their files.
 
 ## 1.0.1 - 2026-05-10
 ### Fixed
-- Translation issues
-- Document upload
+- Fix translations and document uploads.
 
 ## 1.0.0 - 2026-04-19
 ### Added
-- Initial version of DomusNC
+- Initial release of DomusNC.

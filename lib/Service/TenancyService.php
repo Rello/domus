@@ -64,6 +64,8 @@ class TenancyService {
             $tenancy->setStatus($this->getStatus($tenancy, $today));
             $unit = $unitsById[$tenancy->getUnitId()] ?? null;
             $tenancy->setUnitLabel($unit?->getLabel());
+            $tenancy->setUnitStreet($unit?->getStreet());
+            $tenancy->setUnitCity($unit?->getCity());
             $tenancy->setUnitLivingArea($unit?->getLivingArea());
             $this->hydrateDerivedFields($tenancy);
         }
@@ -302,6 +304,8 @@ class TenancyService {
         $unit = $this->unitMapper->findForUser($tenancy->getUnitId(), $userId);
         if ($unit) {
             $tenancy->setUnitLabel($unit->getLabel());
+            $tenancy->setUnitStreet($unit->getStreet());
+            $tenancy->setUnitCity($unit->getCity());
             $tenancy->setUnitLivingArea($unit->getLivingArea());
         }
     }

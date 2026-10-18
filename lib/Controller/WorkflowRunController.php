@@ -51,6 +51,11 @@ class WorkflowRunController extends Controller {
     }
 
     #[NoAdminRequired]
+    public function remindStep(int $stepId, string $choice, ?string $date = null): DataResponse {
+        return new DataResponse($this->workflowRunService->remindStep($stepId, $choice, $date, $this->getUserId()));
+    }
+
+    #[NoAdminRequired]
     public function closeStep(int $stepId): DataResponse {
         return new DataResponse($this->workflowRunService->closeStep($stepId, $this->getUserId()));
     }

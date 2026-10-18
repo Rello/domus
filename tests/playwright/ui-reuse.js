@@ -6,6 +6,10 @@ const assert = require('node:assert/strict');
 const {chromium} = require('playwright');
 
 async function setup(page) {
+    if (page.url() === 'about:blank') {
+        await page.route('http://domus.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html>'}));
+        await page.goto('http://domus.test/apps/domus/');
+    }
     await page.setContent('<div id="app-navigation"></div><div id="app-content" class="app-domus"><div id="domus-content"></div></div>');
     await page.addStyleTag({path: 'css/style.css'});
     await page.evaluate(() => {
@@ -88,6 +92,53 @@ async function main() {
             assert.match(result.text, /data-kpi-target="revenue"/);
         }
         assert.equal(values.find(value => value.type === 'count').zero, '0');
+    });
+    await test('numeric KPI tiles drop decimals, shrink and recover when resized without clipping', async page => {
+        await page.setViewportSize({width: 1440, height: 900});
+        await page.evaluate(() => {
+            const tiles = [
+                ['money', 11400.75], ['money', -123456789.12],
+                ['percentage', 0.041], ['count', 123456789012345678901234567890],
+                ['money', 0], ['money', null]
+            ].map(([type, value], index) => Domus.UI.buildTypedKpiTile(type, {
+                headline: type, value, valueClassName: 'domus-kpi-value-priority',
+                chartId: 'fixture-chart-' + index, showChart: true
+            })).join('');
+            Domus.UI.renderContent('<div id="tile-fixture" style="font-family:Arial,sans-serif;display:grid;grid-template-columns:repeat(3, 290px);gap:16px">' + tiles + '</div>');
+        });
+        const values = page.locator('.domus-kpi-value');
+        await page.waitForFunction(() => {
+            const value = document.querySelector('.domus-kpi-value');
+            return value.textContent === value.dataset.compactValue;
+        });
+        assert.equal(await values.nth(0).textContent(), await values.nth(0).getAttribute('data-compact-value'));
+        assert.equal(await values.nth(0).getAttribute('title'), await page.evaluate(() => Domus.Utils.formatCurrency(11400.75)));
+        assert.equal(await values.nth(2).textContent(), await page.evaluate(() => Domus.Utils.formatPercentage(0.041)));
+        assert.equal(await values.nth(5).textContent(), '—');
+        assert.ok(await values.nth(1).evaluate(el => parseFloat(getComputedStyle(el).fontSize) < 29));
+        const assertFits = async () => {
+            await page.waitForFunction(() => Array.from(document.querySelectorAll('.domus-kpi-value'))
+                .every(el => el.scrollWidth <= el.clientWidth + 1));
+            assert.ok(await values.evaluateAll(elements => elements.every(el => el.scrollWidth <= el.clientWidth + 1)));
+            assert.ok(await page.locator('.domus-kpi-body').evaluateAll(elements => elements.every(el => el.scrollWidth <= el.clientWidth + 1)));
+        };
+        await assertFits();
+        await page.evaluate(() => { document.getElementById('tile-fixture').style.gridTemplateColumns = 'repeat(3, 650px)'; });
+        await page.waitForFunction(() => {
+            const value = document.querySelector('.domus-kpi-value');
+            return value.textContent === value.title && !value.style.fontSize;
+        });
+        await assertFits();
+        await page.setViewportSize({width: 375, height: 900});
+        await page.evaluate(() => { document.getElementById('tile-fixture').style.gridTemplateColumns = '290px'; });
+        await page.waitForFunction(() => {
+            const value = document.querySelector('.domus-kpi-value');
+            return value.textContent === value.title && !value.style.fontSize;
+        });
+        await assertFits();
+        // Replacing content must release observers belonging to the old tiles.
+        await page.evaluate(() => Domus.UI.renderContent('<p>Replacement view</p>'));
+        assert.equal(await values.count(), 0);
     });
     await test('unit current tenancy stays vacant while future tenancy remains accessible', async page => {
         await page.evaluate(() => Domus.Router.navigate('unitDetail', [1]));

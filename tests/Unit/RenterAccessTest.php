@@ -42,7 +42,7 @@ class RenterAccessTest extends TestCase {
                 ['id' => 3, 'team_id' => null, 'partner_type' => 'tenant', 'email' => 'renter@example.invalid', 'name' => 'Personal'],
             ],
             'domus_tenancies' => [
-                ['id' => 11, 'team_id' => 'a', 'unit_id' => 101, 'start_date' => '2020-01-01', 'end_date' => '2021-01-01', 'conditions' => 'private'],
+                ['id' => 11, 'team_id' => 'a', 'unit_id' => 101, 'start_date' => '2020-01-01', 'end_date' => '2021-01-01', 'conditions' => 'private', 'base_rent' => '850.00'],
                 ['id' => 22, 'team_id' => 'b', 'unit_id' => 202, 'start_date' => '2021-01-01', 'end_date' => null],
             ],
             'domus_partner_rel' => [
@@ -123,7 +123,7 @@ class RenterAccessTest extends TestCase {
         $this->actor = 'canonical-renter'; $this->team = 'forged-team';
         $data = $this->controller->identity()->getData();
         self::assertSame([1], array_column($data['partners'], 'id'));
-        self::assertSame([['teamId' => 'a', 'id' => 11, 'unitLabel' => 'Home A', 'startDate' => '2020-01-01', 'endDate' => '2021-01-01']], $data['tenancies']);
+        self::assertSame([['teamId' => 'a', 'id' => 11, 'unitLabel' => 'Home A', 'startDate' => '2020-01-01', 'endDate' => '2021-01-01', 'baseRent' => '850.00']], $data['tenancies']);
         self::assertTrue($data['canAccessTenancies']);
         self::assertStringNotContainsString('private', json_encode($data));
         $this->db->tables['domus_tenancies'][] = ['id' => 12, 'team_id' => 'a', 'unit_id' => 101, 'start_date' => '2026-01-01', 'end_date' => null];

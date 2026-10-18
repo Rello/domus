@@ -495,7 +495,7 @@
             ];
             return '<nav class="domus-unit-sections" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Unit sections')) + '">' +
                 sections.map(section => {
-                    const route = '#/unitDetail/' + unitId + (section.target ? '/' + section.target : '');
+                    const route = Domus.Router.url('unitDetail', section.target ? [unitId, section.target] : [unitId]);
                     return '<a class="domus-unit-section-link" href="' + Domus.Utils.escapeHtml(route) + '" data-unit-section="' + section.name + '" data-unit-target="' + section.target + '">' +
                         Domus.Utils.escapeHtml(section.label) + '</a>';
                 }).join('') +
@@ -1635,7 +1635,7 @@
                 ? formatPartnerNames(currentTenancy.partners) || currentTenancy.partnerName
                 : '';
             const currentTenancyLink = currentTenancy?.id
-                ? '<a class="domus-unit-current-tenancy-link" href="#/tenancyDetail/' + Domus.Utils.escapeHtml(String(currentTenancy.id)) + '" data-current-tenancy-id="' + Domus.Utils.escapeHtml(String(currentTenancy.id)) + '">' +
+                ? '<a class="domus-unit-current-tenancy-link" href="' + Domus.Utils.escapeHtml(Domus.Router.url('tenancyDetail', [currentTenancy.id])) + '" data-current-tenancy-id="' + Domus.Utils.escapeHtml(String(currentTenancy.id)) + '">' +
                     Domus.Utils.escapeHtml(currentTenantSummary || t('domus', 'Current tenancy')) + '</a>'
                 : Domus.Utils.escapeHtml(currentTenantSummary || t('domus', 'Vacant'));
             const unitInlineMeta = '<div class="domus-hero-meta-line domus-hero-meta-line-inline">' +
@@ -1795,6 +1795,7 @@
                     tileClassName: 'domus-unit-kpi-tile',
                     linkLabel: t('domus', 'View finances'),
                     linkIconClass: 'domus-icon-arrow-right',
+                    linkHref: Domus.Router.url('unitDetail', [id, 'revenue']),
                     detailTarget: 'revenue'
                 }) +
                 Domus.UI.buildTypedKpiTile('money', {
@@ -1807,6 +1808,7 @@
                     tileClassName: 'domus-unit-kpi-tile',
                     linkLabel: t('domus', 'View finances'),
                     linkIconClass: 'domus-icon-arrow-right',
+                    linkHref: Domus.Router.url('unitDetail', [id, 'revenue']),
                     detailTarget: 'revenue'
                 }) +
                 Domus.UI.buildTypedKpiTile('contact', {
@@ -1818,6 +1820,7 @@
                     tileClassName: 'domus-unit-kpi-tile domus-unit-kpi-tile-tenancy',
                     linkLabel: t('domus', 'View tenancies'),
                     linkIconClass: 'domus-icon-arrow-right',
+                    linkHref: Domus.Router.url('unitDetail', [id, 'tenancies']),
                     detailTarget: 'tenancies'
                 }) +
                 Domus.UI.buildTypedKpiTile('documents', {
@@ -1828,6 +1831,7 @@
                     tileClassName: 'domus-unit-kpi-tile',
                     linkLabel: t('domus', 'View documents'),
                     linkIconClass: 'domus-icon-arrow-right',
+                    linkHref: Domus.Router.url('unitDetail', [id, 'documents']),
                     detailTarget: 'documents'
                 }) +
                 '</div>'
@@ -1974,7 +1978,7 @@
                 revenue: buildKpiDetailPanel(t('domus', 'Finances'), financeSummary + '<div id="domus-unit-revenue-table-detail">' + revenueTable + '</div>', [
                     yearStatusAction,
                     {
-                        href: '#',
+                        href: Domus.Router.url('unitDetail', [id, 'cost']),
                         label: t('domus', 'to costs'),
                         className: 'domus-link domus-section-action-link domus-section-jump-link',
                         align: 'left',
@@ -1982,7 +1986,7 @@
                     }
                 ]) + bookingsPanelInline,
                 cost: buildKpiDetailPanel(t('domus', 'Costs'), financeSummary + costDetailTable, {
-                    href: '#',
+                    href: Domus.Router.url('unitDetail', [id, 'revenue']),
                     label: t('domus', 'to revenue'),
                     className: 'domus-link domus-section-action-link domus-section-jump-link',
                     align: 'left',
@@ -2150,7 +2154,7 @@
             Domus.state.unitDetailTarget = normalizedInitialTarget;
             if (normalizedUnitId && Domus.state.currentView === 'unitDetail') {
                 const routeArgs = normalizedInitialTarget ? [normalizedUnitId, normalizedInitialTarget] : [normalizedUnitId];
-                Domus.Router.setCurrentArgs(routeArgs, {replaceHash: true});
+                Domus.Router.setCurrentArgs(routeArgs, {replaceUrl: true});
             }
             if (!refreshing) Domus.UI.showLoading(t('domus', 'Loading {entity}…', {entity: t('domus', 'Unit')}));
             document.querySelector('.domus-unit-workspace')?.setAttribute('aria-busy', 'true');

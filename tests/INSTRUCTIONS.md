@@ -75,3 +75,16 @@ Run `PLAYWRIGHT_TEST=view-lifecycle ./tests/run-playwright.sh` for delayed
 success/failure responses, repeated rendering, and chart disposal, or
 `PLAYWRIGHT_TEST=ui-reuse ./tests/run-playwright.sh` for reusable KPI types and
 property/unit image editors. These suites also run in the full browser wrapper.
+
+Run `PLAYWRIGHT_TEST=rules ./tests/run-playwright.sh` for ruleset editing and
+preview, task reminder choices, deferred task visibility, reference-date entry,
+retry, and phone layout. Process-detail tests cover the same reminder dialog for open
+process steps. Reminder tests verify unchanged deadlines, hidden sleeping tasks,
+expiry, and process access boundaries. Task lifecycle tests cover expiry rechecks, rent changes,
+completion/deletion, rule disabling, invalid dates, and unauthorized reminders. The PHP rule tests cover calendar thresholds,
+unknown history, ownership boundaries, scope selection, duplicate-task prevention,
+snooze expiry, resolution, and background ownership-context restoration.
+
+Run `PLAYWRIGHT_TEST=routing ./tests/run-playwright.sh` for path-based deep links,
+reload initialization, browser Back/Forward, encoded route
+arguments, subdirectory installations, and renter navigation restrictions.

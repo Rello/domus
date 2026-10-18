@@ -148,6 +148,18 @@ class WorkflowRunService {
     /**
      * @throws DbException
      */
+    public function remindStep(int $stepId, string $choice, ?string $date, string $userId): TaskStep {
+        $step = $this->taskStepMapper->findById($stepId);
+        if (!$step) throw new ResourceNotFoundException($this->l10n->t('Task step not found.'));
+        $this->assertEntityExists((string)$step->getEntityType(), (int)$step->getEntityId(), $userId);
+        if ($step->getStatus() !== self::STEP_STATUS_OPEN) {
+            throw new \InvalidArgumentException($this->l10n->t('Only open tasks can be deferred.'));
+        }
+        $step->setDeferredUntil(TaskReminderSchedule::calculate($choice, $date, $this->l10n));
+        $step->setUpdatedAt(time());
+        return $this->taskStepMapper->update($step);
+    }
+
     public function closeStep(int $stepId, string $userId): TaskStep {
         $step = $this->taskStepMapper->findById($stepId);
         if (!$step) {
@@ -165,6 +177,7 @@ class WorkflowRunService {
         $this->connection->beginTransaction();
         try {
             $step->setStatus(self::STEP_STATUS_CLOSED);
+            $step->setDeferredUntil(null);
             $step->setClosedAt($now);
             $step->setClosedBy($userId);
             $step->setUpdatedAt($now);
@@ -225,6 +238,7 @@ class WorkflowRunService {
             foreach ($steps as $remaining) {
                 if (in_array($remaining->getStatus(), [self::STEP_STATUS_OPEN, self::STEP_STATUS_NEW], true)) {
                     $remaining->setStatus(self::STEP_STATUS_SKIPPED);
+                    $remaining->setDeferredUntil(null);
                     $remaining->setUpdatedAt($now);
                     $this->taskStepMapper->update($remaining);
                 }
@@ -274,6 +288,7 @@ class WorkflowRunService {
             foreach ($skippedSteps as $skipped) {
                 if ($skipped->getId() === $step->getId()) continue;
                 $skipped->setStatus(self::STEP_STATUS_NEW);
+                $skipped->setDeferredUntil(null);
                 $skipped->setOpenedAt(null);
                 $skipped->setDueDate(null);
                 $skipped->setUpdatedAt($now);
@@ -282,6 +297,7 @@ class WorkflowRunService {
             $openStep = $this->taskStepMapper->findOpenStepForRun($step->getWorkflowRunId());
             if ($openStep && $openStep->getId() !== $step->getId()) {
                 $openStep->setStatus(self::STEP_STATUS_NEW);
+                $openStep->setDeferredUntil(null);
                 $openStep->setOpenedAt(null);
                 $openStep->setUpdatedAt($now);
                 $this->taskStepMapper->update($openStep);
@@ -294,6 +310,7 @@ class WorkflowRunService {
                 $offset = $templateStep ? (int)$templateStep->getDefaultDueDaysOffset() : 0;
             }
             $step->setStatus(self::STEP_STATUS_OPEN);
+            $step->setDeferredUntil(null);
             $step->setOpenedAt($now);
             $step->setDueDate($this->buildDueDate($offset, $now));
             $step->setClosedAt(null);
@@ -346,7 +363,7 @@ class WorkflowRunService {
     /**
      * @throws DbException
      */
-    public function listOpenStepsForUser(string $userId, string $role): array {
+    public function listOpenStepsForUser(string $userId, string $role, bool $includeDeferred = false): array {
         $units = $this->unitMapper->findByUser($userId, null, false);
         if ($role === 'buildingMgmt') {
             $units = array_filter($units, fn($unit) => $unit->getPropertyId() !== null);
@@ -389,6 +406,9 @@ class WorkflowRunService {
         }
 
         $steps = $this->taskStepMapper->findOpenStepsByEntities(array_values($entityMap));
+        if (!$includeDeferred) {
+            $steps = array_values(array_filter($steps, static fn(TaskStep $step) => ($step->getDeferredUntil() ?? 0) <= time()));
+        }
         $runs = [];
         foreach ($steps as $step) {
             $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
@@ -415,6 +435,7 @@ class WorkflowRunService {
                 'actionType' => $step->getActionType(),
                 'actionUrl' => $step->getActionUrl(),
                 'dueDate' => $step->getDueDate(),
+                'deferredUntil' => $step->getDeferredUntil(),
                 'workflowName' => $run?->getName(),
                 'year' => $run?->getYear(),
             ];

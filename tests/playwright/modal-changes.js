@@ -17,6 +17,10 @@ const discard = async page => {
 };
 
 async function setup(page) {
+    if (page.url() === 'about:blank') {
+        await page.route('http://domus.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html>'}));
+        await page.goto('http://domus.test/apps/domus/');
+    }
     await page.setContent('<button id="launcher">Open form</button><div id="app-content" class="app-domus"></div>');
     await page.addStyleTag({ path: 'css/style.css' });
     await page.evaluate(() => {

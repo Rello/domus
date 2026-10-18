@@ -27,6 +27,64 @@ use OCP\IL10N;
 use PHPUnit\Framework\TestCase;
 
 class WorkflowRunServiceTest extends TestCase {
+    /** @dataProvider reminderCases */
+    public function testStepReminder(string $status, bool $authorized, string $choice): void {
+        $step = new TaskStep();
+        $step->setId(91);
+        $step->setEntityType('unit');
+        $step->setEntityId(7);
+        $step->setStatus($status);
+        $step->setDueDate('2020-01-02');
+        $steps = $this->createMock(TaskStepMapper::class);
+        $steps->method('findById')->willReturn($step);
+        $units = $this->createMock(UnitMapper::class);
+        $units->method('findForUser')->willReturn($authorized ? new Unit() : null);
+        $valid = $authorized && $status === 'open' && $choice === '5minutes';
+        $steps->expects($valid ? self::once() : self::never())->method('update')->willReturnArgument(0);
+        $service = new WorkflowRunService(
+            $this->createMock(WorkflowRunMapper::class), $steps,
+            $this->createMock(TaskTemplateMapper::class), $this->createMock(TaskTemplateStepMapper::class),
+            $this->createMock(PropertyMapper::class), $units, $this->createMock(EntityImageService::class),
+            $this->createMock(IDBConnection::class), $this->createMock(IL10N::class)
+        );
+        if (!$valid) $this->expectException(\Throwable::class);
+        $now = time();
+        $result = $service->remindStep(91, $choice, null, 'alice');
+        self::assertSame('open', $result->getStatus());
+        self::assertSame('2020-01-02', $result->getDueDate());
+        self::assertGreaterThanOrEqual($now + 300, $result->getDeferredUntil());
+    }
+
+    public static function reminderCases(): array {
+        return [['open', true, '5minutes'], ['closed', true, '5minutes'], ['new', true, '5minutes'], ['open', false, '5minutes'], ['open', true, 'invalid']];
+    }
+
+    public function testSleepingStepsStayAccessibleAndReturnAfterExpiry(): void {
+        $unit = new Unit(); $unit->setId(7);
+        $units = $this->createMock(UnitMapper::class);
+        $units->method('findByUser')->willReturn([$unit]);
+        $step = new TaskStep();
+        $step->setId(91); $step->setWorkflowRunId(90);
+        $step->setEntityType('unit'); $step->setEntityId(7);
+        $step->setStatus('open'); $step->setDueDate('2020-01-02');
+        $step->setDeferredUntil(time() + 300);
+        $steps = $this->createMock(TaskStepMapper::class);
+        $steps->method('findOpenStepsByEntities')->willReturn([$step]);
+        $service = new WorkflowRunService(
+            $this->createMock(WorkflowRunMapper::class), $steps,
+            $this->createMock(TaskTemplateMapper::class), $this->createMock(TaskTemplateStepMapper::class),
+            $this->createMock(PropertyMapper::class), $units, $this->createMock(EntityImageService::class),
+            $this->createMock(IDBConnection::class), $this->createMock(IL10N::class)
+        );
+        self::assertSame([], $service->listOpenStepsForUser('alice', 'landlord'));
+        self::assertCount(1, $service->listOpenStepsForUser('alice', 'landlord', true));
+        $step->setDeferredUntil(time() - 1);
+        $returned = $service->listOpenStepsForUser('alice', 'landlord');
+        self::assertCount(1, $returned);
+        self::assertSame(91, $returned[0]['stepId']);
+        self::assertSame('2020-01-02', $returned[0]['dueDate']);
+    }
+
     public function testStartWorkflowRunCreatesStepsAndOpensFirst(): void {
         $unit = new Unit();
         $unit->setId(7);

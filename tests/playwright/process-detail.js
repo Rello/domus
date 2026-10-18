@@ -6,6 +6,10 @@ const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 
 async function setup(page) {
+    if (page.url() === 'about:blank') {
+        await page.route('http://domus.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html>'}));
+        await page.goto('http://domus.test/apps/domus/');
+    }
     await page.setContent('<button id="launcher">Open process</button><div id="app-content" class="app-domus"></div>');
     await page.addStyleTag({ path: 'css/style.css' });
     await page.evaluate(() => {
@@ -202,6 +206,23 @@ async function main() {
         await detail.waitFor({state:'detached'});
         assert.equal(await page.evaluate(() => taskStatus), 'open');
     });
+    await test('open process steps share reminders without changing their deadline or advancing', async page => {
+        await page.evaluate(() => {
+            run.steps[0].dueDate = '2020-01-02';
+            Domus.Api.post = async (path, payload) => {
+                if (path !== '/task-steps/91/remind' || payload.choice !== '5minutes') throw new Error('Unexpected reminder');
+                run.steps[0].deferredUntil = Math.floor(Date.now() / 1000) + 300;
+            };
+        });
+        await page.getByRole('button', {name:'Remind me later',exact:true}).first().click();
+        const reminder = page.getByRole('dialog', {name:'Remind me later',exact:true});
+        assert.deepEqual(await reminder.locator('select option').allTextContents(), ['5 minutes (test)', '1 month', '3 months', '6 months', 'Choose a date']);
+        await reminder.getByRole('combobox').selectOption('5minutes');
+        await reminder.getByRole('button', {name:'Save',exact:true}).click();
+        await reminder.waitFor({state:'detached'});
+        await page.getByText('Remind me on', {exact:false}).waitFor();
+        assert.deepEqual(await page.evaluate(() => [run.steps[0].dueDate, ...run.steps.map(step => step.status)]), ['2020-01-02', 'open', 'new', 'new']);
+    }, 375);
     await test('narrow panel fits and keeps work controls visible', async page => {
         assert.equal(await page.locator('.domus-modal').evaluate(el => el.scrollWidth <= el.clientWidth), true);
         assert.equal(await page.locator('.domus-modal-header h3').evaluate(el => {

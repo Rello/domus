@@ -44,7 +44,8 @@ class RenterAccessMapper {
             $unit = $this->select('domus_units', ['team_id' => $teamId, 'id' => (int)$tenancy['unit_id']])[0] ?? null;
             if ($unit !== null) {
                 $rows[] = ['id' => (int)$tenancy['id'], 'unitLabel' => $unit['label'],
-                    'startDate' => $tenancy['start_date'], 'endDate' => $tenancy['end_date']];
+                    'startDate' => $tenancy['start_date'], 'endDate' => $tenancy['end_date'],
+                    'baseRent' => $tenancy['base_rent'] ?? null];
             }
         }
         return $rows;

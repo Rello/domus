@@ -14,6 +14,9 @@ use OCP\IDBConnection;
 class TaskMapper extends TeamScopedMapper {
     private const SELECT_COLUMNS = [
         'id',
+        'deferred_until',
+        'rule_id',
+        'rule_tenancy_id',
         'team_id',
         'entity_type',
         'entity_id',

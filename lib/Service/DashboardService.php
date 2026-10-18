@@ -29,6 +29,7 @@ class DashboardService {
         private EntityImageService $entityImageService,
         private IL10N $l10n,
         private PortfolioSettingsService $portfolioSettings,
+        private RuleService $rules,
     ) {
     }
 
@@ -100,7 +101,14 @@ class DashboardService {
         }, $properties);
 
         $openTasks = [];
+        $nextTaskReminder = null;
         if ($role !== 'tenant') {
+            $this->rules->evaluate($userId);
+            $tasks = $this->taskService->listOpenTasks($userId, $role, null, null, true);
+            foreach ($tasks as $task) {
+                $until = $task->getDeferredUntil();
+                if ($until !== null && $until > time()) $nextTaskReminder = min($nextTaskReminder ?? $until, $until);
+            }
             $entityMap = [];
             if ($isBuildingManagement) {
                 foreach ($properties as $property) {
@@ -130,8 +138,13 @@ class DashboardService {
                     'imageUrl' => $unit->getResolvedImageUrl(),
                 ];
             }
+            $steps = $this->workflowRunService->listOpenStepsForUser($userId, $role, true);
+            foreach ($steps as $step) {
+                $until = $step['deferredUntil'] ?? null;
+                if ($until !== null && $until > time()) $nextTaskReminder = min($nextTaskReminder ?? $until, $until);
+            }
             $openTasks = array_merge(
-                $this->workflowRunService->listOpenStepsForUser($userId, $role),
+                array_values(array_filter($steps, static fn(array $step) => ($step['deferredUntil'] ?? 0) <= time())),
                 array_map(function ($task) use ($entityMap) {
                     $entityType = (string)$task->getEntityType();
                     $entityId = (int)$task->getEntityId();
@@ -144,9 +157,11 @@ class DashboardService {
                         'entityName' => $entityMeta['name'] ?? '',
                         'entityImageUrl' => $entityMeta['imageUrl'] ?? null,
                         'title' => $task->getTitle(),
+                        'description' => $task->getDescription(),
+                        'ruleTenancyId' => $task->getRuleTenancyId(),
                         'dueDate' => $task->getDueDate(),
                     ];
-                }, $this->taskService->listOpenTasks($userId, $role))
+                }, $this->taskService->visibleTasks($tasks))
             );
         }
 
@@ -160,6 +175,7 @@ class DashboardService {
             'overallRentability' => $overallRentability === null ? null : round($overallRentability, 4),
             'annualResult' => number_format($income - $expense, 2, '.', ''),
             'openTasks' => $openTasks,
+            'nextTaskReminder' => $nextTaskReminder,
             'occupancy' => $isLandlord ? [
                 'occupied' => count($occupiedUnitIds),
                 'vacant' => max(0, count($units) - count($occupiedUnitIds)),

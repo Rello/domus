@@ -10,7 +10,11 @@ const { chromium } = require('playwright');
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     try {
-        await page.setContent('<header id="header"><div class="header-start"><nav id="header-start__appmenu">Domus</nav></div></header><div id="app-navigation"></div><div id="app-content"><div id="domus-content"></div></div>');
+        if (page.url() === 'about:blank') {
+        await page.route('http://domus.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html>'}));
+        await page.goto('http://domus.test/apps/domus/');
+    }
+    await page.setContent('<header id="header"><div class="header-start"><nav id="header-start__appmenu">Domus</nav></div></header><div id="app-navigation"></div><div id="app-content"><div id="domus-content"></div></div>');
         await page.evaluate(() => {
             window.t = (app, value) => value;
             window.OC = { generateUrl: value => value, requestToken: 'test' };

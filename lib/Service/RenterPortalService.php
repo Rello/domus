@@ -67,6 +67,9 @@ class RenterPortalService {
         $row = $this->tenancyRow($teamId, $id);
         $unit = $this->mapper->rows('domus_units', ['team_id' => $teamId, 'id' => (int)$row['unit_id']])[0];
         $tenancy = ['id' => $id, 'unitLabel' => $unit['label'], 'startDate' => $row['start_date'], 'endDate' => $row['end_date']];
+        $tenancy['unitStreet'] = $unit['street'] ?? null;
+        $tenancy['unitCity'] = $unit['city'] ?? null;
+        $tenancy['unitLivingArea'] = $unit['living_area'] ?? null;
         foreach (['baseRent' => 'base_rent', 'serviceCharge' => 'service_charge', 'deposit' => 'deposit', 'conditions' => 'conditions'] as $field => $column) {
             $tenancy[$field] = $row[$column] ?? null;
         }

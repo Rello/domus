@@ -62,7 +62,8 @@ class TaskTemplateMapper extends TeamScopedMapper {
             ->setMaxResults(1);
 
         $this->applyCatalogueScope($qb, false);
-        return $this->findEntity($qb);
+        $templates = $this->findEntities($qb);
+        return $templates[0] ?? null;
     }
 
     /**
@@ -76,6 +77,7 @@ class TaskTemplateMapper extends TeamScopedMapper {
             ->setMaxResults(1);
 
         $this->applyCatalogueScope($qb, false);
-        return $this->findEntity($qb);
+        $templates = $this->findEntities($qb);
+        return $templates[0] ?? null;
     }
 }

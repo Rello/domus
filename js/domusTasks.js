@@ -230,6 +230,8 @@
                 'task-due-date': task.dueDate || '',
                 'task-type': task.type || 'task',
                 'task-status': task.status || 'open',
+                'task-deferred-until': task.deferredUntil || '',
+                'task-rule-tenancy-id': task.ruleTenancyId || '',
                 'task-completion-completed': task.completion?.completed || '',
                 'task-completion-total': task.completion?.total || ''
             };
@@ -253,6 +255,8 @@
                 dueDate: element.getAttribute('data-task-due-date') || '',
                 type: element.getAttribute('data-task-type') || 'task',
                 status: element.getAttribute('data-task-status') || 'open',
+                deferredUntil: Number(element.getAttribute('data-task-deferred-until')) || null,
+                ruleTenancyId: Number(element.getAttribute('data-task-rule-tenancy-id')) || null,
                 completion: {
                     completed: element.getAttribute('data-task-completion-completed') || '',
                     total: element.getAttribute('data-task-completion-total') || ''
@@ -331,6 +335,10 @@
             }
             if (String(task.status).toLowerCase() === 'open') {
                 const isProcessTask = task.type === 'process';
+                if (!isProcessTask && task.taskId) {
+                    actionItems.push({icon: 'domus-icon-arrow-right', label: t('domus', 'Remind me later'), type: 'remind', dataset: {taskId: task.taskId}});
+                    if (task.ruleTenancyId) actionItems.push({icon: 'domus-icon-edit', label: t('domus', 'Set reference date'), type: 'reference', dataset: {}});
+                }
                 if (!isProcessTask || task.taskId || task.stepId) {
                     actionItems.push({
                         icon: 'domus-icon-task',
@@ -424,6 +432,7 @@
                 '</div>' +
                 (badges ? '<div class="domus-task-detail-badges">' + badges + '</div>' : '') +
                 completionHtml +
+                (task.deferredUntil ? '<p>' + Domus.Utils.escapeHtml(t('domus', 'Remind me on {date}', {date: new Date(task.deferredUntil * 1000).toLocaleString()})) + '</p>' : '') +
                 descriptionHtml +
                 '<div class="domus-task-detail-meta">' +
                 '<div class="domus-task-detail-meta-card">' +
@@ -468,6 +477,11 @@
                     button.addEventListener('click', (event) => {
                         event.preventDefault();
                         const action = button.getAttribute('data-modal-action');
+                        if (action === 'remind' || action === 'reference') {
+                            modal.close();
+                            openReminderModal(resolvedTask, action === 'reference');
+                            return;
+                        }
                         if (action === 'cancel') {
                             const runId = button.getAttribute('data-run-id');
                             if (!runId) {
@@ -590,6 +604,61 @@
             openModalWithTask(task);
         }
 
+        function openReminderModal(task, reference = false, onSaved = null) {
+            const escape = Domus.Utils.escapeHtml;
+            const title = reference ? t('domus', 'Set reference date') : t('domus', 'Remind me later');
+            const choices = [['5minutes', t('domus', '5 minutes (test)')], ['1', t('domus', '1 month')], ['3', t('domus', '3 months')], ['6', t('domus', '6 months')], ['date', t('domus', 'Choose a date')]];
+            const dateLabel = reference ? t('domus', 'Last rent increase or tenancy start') : t('domus', 'Reminder date');
+            const modal = Domus.UI.openModal({title, content: '<div class="domus-form"><form>' +
+                (!reference ? '<label>' + escape(title) + '<select name="choice">' + choices.map(([value, label]) => '<option value="' + value + '"' + (value === '6' ? ' selected' : '') + '>' + escape(label) + '</option>').join('') + '</select></label>' : '') +
+                '<label data-date-row' + (!reference ? ' hidden' : '') + '>' + escape(dateLabel) + '<input name="date" type="date"' + (reference ? ' required' : ' disabled') + '></label>' +
+                '<div class="domus-form-actions"><button type="button" data-cancel>' + escape(t('domus', 'Cancel')) + '</button><button type="submit" class="primary">' + escape(t('domus', 'Save')) + '</button></div></form></div>'});
+            modal.protectChanges();
+            const form = modal.modalEl.querySelector('form');
+            form.querySelector('[data-cancel]').onclick = modal.requestClose;
+            if (!reference) form.elements.choice.onchange = () => {
+                const custom = form.elements.choice.value === 'date';
+                form.querySelector('[data-date-row]').hidden = !custom;
+                form.elements.date.disabled = !custom;
+                form.elements.date.required = custom;
+            };
+            form.onsubmit = async event => {
+                event.preventDefault();
+                const submit = form.querySelector('[type="submit"]');
+                submit.disabled = true;
+                try {
+                    await Domus.Api.post(reference ? '/rules/tenancies/' + task.ruleTenancyId + '/reference' : task.stepId ? '/task-steps/' + task.stepId + '/remind' : '/tasks/' + task.taskId + '/remind',
+                        reference ? {date: form.elements.date.value} : {choice: form.elements.choice.value, date: form.elements.date.value || null});
+                    modal.close();
+                    if (onSaved) await onSaved();
+                    else Domus.Router.navigate(Domus.state.currentView, Domus.state.currentViewArgs || []);
+                } catch (error) {
+                    Domus.UI.showNotification(error.message, 'error');
+                    submit.disabled = false;
+                }
+            };
+        }
+
+        function isDeferred(task) {
+            return !!task.deferredUntil && (!!task.ruleId || Number(task.deferredUntil) * 1000 > Date.now());
+        }
+
+        // Refresh at the reminder time without interrupting an open editor/dialog.
+        function watchReminders(until, refresh, isCurrent = () => true) {
+            if (!until) return;
+            let timer;
+            let disposed = false;
+            const wake = () => {
+                if (disposed || !isCurrent()) return;
+                if (document.querySelector('.domus-modal')) { timer = setTimeout(wake, 1000); return; }
+                refresh();
+            };
+            timer = setTimeout(wake, Math.min(2147483647, Math.max(1000, until * 1000 - Date.now() + 250)));
+            const cancel = () => { disposed = true; clearTimeout(timer); };
+            Domus.UI.onContentDispose(cancel);
+            return cancel;
+        }
+
         function openEditTaskModal(task, onSaved) {
             if (!task?.taskId) {
                 return;
@@ -703,7 +772,7 @@
                         '</span>'
                     : '<span>' + Domus.Utils.escapeHtml(entityName || '') + '</span>';
                 const unitCell = showUnit
-                    ? '<a class="domus-link domus-task-unit-link" href="#/' + Domus.Utils.escapeHtml(navigateTarget) + '/' + encodeURIComponent(String(entityId || '')) + '" data-navigate="' + Domus.Utils.escapeHtml(navigateTarget) + '" data-args="' + Domus.Utils.escapeHtml(String(entityId || '')) + '">' +
+                    ? '<a class="domus-link domus-task-unit-link" href="' + Domus.Utils.escapeHtml(Domus.Router.url(navigateTarget, [entityId || ''])) + '" data-navigate="' + Domus.Utils.escapeHtml(navigateTarget) + '" data-args="' + Domus.Utils.escapeHtml(String(entityId || '')) + '">' +
                         buildTaskEntityImage(item, 'task') +
                         unitText +
                         '</a>'
@@ -1386,6 +1455,7 @@
                     : step.status === 'closed' || (run.completionType === 'early' && step.id === firstSkippedId)
                         ? buildAction(t('domus', 'Reopen'), 'domus-icon-back', 'reopen')
                         : '';
+                const reminderAction = step.status === 'open' ? buildAction(t('domus', 'Remind me later'), 'domus-icon-arrow-right', 'remind') : '';
                 const earlyAction = step.status === 'open' && step.allowEarlyCompletion
                     ? buildAction(t('domus', 'Close early'), 'domus-icon-task', 'early') : '';
                 return '<li><details class="domus-process-step" data-process-step="' + escape(String(step.id)) + '"' + (index === currentIndex ? ' open aria-current="step"' : '') + '>' +
@@ -1393,8 +1463,9 @@
                     '<div class="domus-process-step-content">' +
                     (description ? '<div class="domus-task-detail-description">' + escape(description).replace(/\n/g, '<br>') + '</div>' : '') +
                     (step.status === 'open' ? '<div>' + buildDueDateBadge(step.dueDate) + '</div>' : '') +
+                    (isDeferred(step) ? '<p>' + escape(t('domus', 'Remind me on {date}', {date: new Date(step.deferredUntil * 1000).toLocaleString()})) + '</p>' : '') +
                     (step.closedAt ? '<div class="muted">' + escape(t('domus', 'Completed')) + ': ' + escape(Domus.Utils.formatDate(step.closedAt * 1000)) + '</div>' : '') +
-                    (workAction || completionAction || earlyAction ? '<div class="domus-process-step-actions">' + workAction + completionAction + earlyAction + '</div>' : '') +
+                    (workAction || completionAction || earlyAction ? '<div class="domus-process-step-actions">' + workAction + completionAction + reminderAction + earlyAction + '</div>' : '') +
                     '</div></details></li>';
             }).join('');
             const entityName = getEntityName(context);
@@ -1444,7 +1515,7 @@
                 busy = value;
                 body.setAttribute('aria-busy', String(value));
                 body.querySelectorAll('button').forEach(button => {
-                    button.disabled = value || (needsRefresh && ['run', 'close', 'reopen', 'early'].includes(button.dataset.processAction));
+                    button.disabled = value || (needsRefresh && ['run', 'close', 'reopen', 'early', 'remind'].includes(button.dataset.processAction));
                 });
             };
             const bindActions = () => {
@@ -1453,6 +1524,17 @@
                         if (busy) return;
                         const action = button.dataset.processAction;
                         const step = (run.steps || []).find(item => String(item.id) === button.dataset.stepId);
+                        if (action === 'remind' && step?.status === 'open') {
+                            openReminderModal({stepId: step.id}, false, async () => {
+                                changed = true;
+                                try { await reload(); } catch (error) {
+                                    needsRefresh = true;
+                                    setBusy(false);
+                                    Domus.UI.showNotification(error.message, 'error');
+                                }
+                            });
+                            return;
+                        }
                         if (action === 'run' && step?.status === 'open') {
                             runTaskAction(step.actionType, step.actionUrl, run.year, run.entityType, run.entityId, () => {
                                 changed = true;
@@ -1575,12 +1657,12 @@
             });
         }
 
-        function buildUnitOpenItems(unitId, data) {
+        function buildUnitOpenItems(unitId, data, deferred = false) {
             const openItems = [];
             (data.runs || []).forEach(run => {
                 const steps = run.steps || [];
                 const openStep = steps.find(step => step.status === 'open');
-                if (openStep) {
+                if (openStep && isDeferred(openStep) === deferred) {
                     const completedSteps = steps.filter(step => step.status === 'closed').length;
                     openItems.push({
                         type: 'process',
@@ -1596,6 +1678,7 @@
                         actionUrl: openStep.actionUrl,
                         year: run.year,
                         dueDate: openStep.dueDate,
+                        deferredUntil: openStep.deferredUntil,
                         workflowName: translateTemplateText(run.name) || run.name,
                         status: openStep.status,
                         completion: {
@@ -1605,7 +1688,7 @@
                     });
                 }
             });
-            (data.tasks || []).filter(task => task.status === 'open').forEach(task => {
+            (data.tasks || []).filter(task => task.status === 'open' && isDeferred(task) === deferred).forEach(task => {
                 openItems.push({
                     type: 'task',
                     taskId: task.id,
@@ -1616,7 +1699,9 @@
                     title: task.title,
                     description: task.description,
                     dueDate: task.dueDate,
-                    status: task.status
+                    status: task.status,
+                    deferredUntil: task.deferredUntil,
+                    ruleTenancyId: task.ruleTenancyId
                 });
             });
             return openItems;
@@ -1713,7 +1798,10 @@
                     '<div class="domus-task-closed-body" id="' + Domus.Utils.escapeHtml(closedBodyId) + '" hidden>' + closedCards + '</div>';
             }
 
-            return '<div class="domus-task-section">' + openSection + closedSection + '</div>';
+            const deferred = buildUnitOpenItems(unitId, data, true);
+            const deferredSection = deferred.length ? '<details class="domus-task-deferred"><summary>' + Domus.Utils.escapeHtml(t('domus', 'Deferred tasks')) + ' (' + deferred.length + ')</summary>' +
+                buildOpenTasksTable(deferred, {layout: 'overviewCards', showUnit: false, showAction: false, showType: false, wrapPanel: false, showRelativeDueDate: true}) + '</details>' : '';
+            return '<div class="domus-task-section">' + openSection + deferredSection + closedSection + '</div>';
         }
 
         function bindUnitTaskActions(unitId, runs, options = {}) {
@@ -1790,6 +1878,9 @@
                         body.innerHTML = content;
                         Domus.UI.bindCollapsibles();
                         bindUnitTaskActions(unitId, runs, { onRefresh: () => loadUnitTasks(unitId, options) });
+                        const sleeps = [...tasks, ...runs.flatMap(run => run.steps || [])].filter(task => task.status === 'open' && isDeferred(task)).map(task => Number(task.deferredUntil));
+                        body.domusCancelReminder?.();
+                        if (sleeps.length) body.domusCancelReminder = watchReminders(Math.min(...sleeps), () => loadUnitTasks(unitId, options), () => body.isConnected && view.isCurrent());
                         bindUnitTaskButtons(unitId, () => loadUnitTasks(unitId, options));
                         if (processFocusContext) {
                             if (Domus.state.currentView === processFocusContext.view && JSON.stringify(Domus.state.currentViewArgs || []) === JSON.stringify(processFocusContext.args)) {
@@ -1855,6 +1946,7 @@
         }
 
         return {
+            watchReminders,
             buildOpenTasksTable,
             buildDashboardTaskGroups,
             bindOpenTaskActions,
@@ -2278,7 +2370,4 @@
         return { renderSection, loadTemplates };
     })();
 
-    /**
-     * Settings view
-     */
 })();

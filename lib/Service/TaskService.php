@@ -66,10 +66,11 @@ class TaskService {
     /**
      * @throws DbException
      */
-    public function listOpenTasks(string $userId, string $role, ?string $entityType = null, ?int $entityId = null): array {
+    public function listOpenTasks(string $userId, string $role, ?string $entityType = null, ?int $entityId = null, bool $includeDeferred = false): array {
         if ($entityType !== null && $entityId !== null) {
             $this->assertEntityExists($entityType, $entityId, $userId);
-            return $this->taskMapper->findByEntity($entityType, $entityId, self::STATUS_OPEN);
+            $tasks = $this->taskMapper->findByEntity($entityType, $entityId, self::STATUS_OPEN);
+            return $includeDeferred ? $tasks : $this->visibleTasks($tasks);
         }
 
         $entities = [];
@@ -94,7 +95,8 @@ class TaskService {
                 $entities[] = ['entityType' => 'unit', 'entityId' => (int)$unitId];
             }
         }
-        return $this->taskMapper->findOpenTasks($entities);
+        $tasks = $this->taskMapper->findOpenTasks($entities);
+        return $includeDeferred ? $tasks : $this->visibleTasks($tasks);
     }
 
     /**
@@ -133,6 +135,7 @@ class TaskService {
         }
         $now = time();
         $task->setStatus(self::STATUS_CLOSED);
+        $task->setDeferredUntil(null);
         $task->setClosedAt($now);
         $task->setClosedBy($userId);
         $task->setUpdatedAt($now);
@@ -172,6 +175,78 @@ class TaskService {
         $this->assertTaskAccess($task, $userId);
 
         $this->taskMapper->delete($task);
+    }
+
+    public function findTask(int $taskId, string $userId): ?Task {
+        try {
+            $task = $this->taskMapper->findById($taskId);
+        } catch (\OCP\AppFramework\Db\DoesNotExistException) {
+            return null;
+        }
+        if ($task) $this->assertTaskAccess($task, $userId);
+        return $task;
+    }
+
+    public function deferTask(int $taskId, ?int $until, string $userId): Task {
+        $task = $this->findTask($taskId, $userId);
+        if (!$task) throw new ResourceNotFoundException($this->l10n->t('Task not found.'));
+        if ($task->getStatus() !== self::STATUS_OPEN) {
+            throw new \InvalidArgumentException($this->l10n->t('Only open tasks can be deferred.'));
+        }
+        if ($until !== null && $until <= time()) {
+            throw new \InvalidArgumentException($this->l10n->t('Choose a future reminder date.'));
+        }
+        $task->setDeferredUntil($until);
+        $task->setUpdatedAt(time());
+        return $this->taskMapper->update($task);
+    }
+
+    /** Called only after a rule has been re-evaluated under its ownership lock. */
+    public function synchronizeRuleTask(int $taskId, int $ruleId, ?int $tenancyId, string $description, bool $relevant, string $userId, bool $detach = false): void {
+        $task = $this->findTask($taskId, $userId);
+        if (!$task) return; // Deleted tasks are never recreated for this cycle.
+        $changed = false;
+        if ($task->getRuleId() === null) {
+            $task->setRuleId($ruleId);
+            $changed = true;
+        }
+        if ($relevant && $task->getRuleTenancyId() !== $tenancyId) {
+            $task->setRuleTenancyId($tenancyId);
+            $changed = true;
+        }
+        if ($task->getStatus() === self::STATUS_OPEN) {
+            if (!$relevant) {
+                $task->setStatus(self::STATUS_CLOSED);
+                $task->setClosedAt(time());
+                $task->setClosedBy($userId);
+                $task->setDeferredUntil(null);
+                $changed = true;
+            } else {
+                if ($task->getDescription() !== $description) {
+                    $task->setDescription($description);
+                    $changed = true;
+                }
+                if ($task->getDeferredUntil() !== null && $task->getDeferredUntil() <= time()) {
+                    $task->setDeferredUntil(null);
+                    $changed = true;
+                }
+            }
+        }
+        if ($detach) {
+            $task->setRuleId(null);
+            $task->setRuleTenancyId(null);
+            $changed = true;
+        }
+        if ($changed) {
+            $task->setUpdatedAt(time());
+            $this->taskMapper->update($task);
+        }
+    }
+
+    public function visibleTasks(array $tasks): array {
+        return array_values(array_filter($tasks, static fn(Task $task) =>
+            $task->getDeferredUntil() === null
+            || ($task->getRuleId() === null && $task->getDeferredUntil() <= time())));
     }
 
     private function assertTaskAccess(Task $task, string $userId): void {

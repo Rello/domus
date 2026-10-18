@@ -17,44 +17,42 @@
         function renderRenter(teamId = '', tenancyId = '') {
             const { isCurrent } = Domus.Router.beginView();
             const escape = Domus.Utils.escapeHtml;
-            const reload = () => Domus.Router.navigate('renter', [teamId, tenancyId]);
-            const bind = () => document.getElementById('domus-renter-retry')?.addEventListener('click', reload);
-            const header = '<section class="domus-panel"><div class="domus-panel-body"><h2>' + escape(t('domus', 'My tenancies')) + '</h2>' +
-                '<button type="button" id="domus-renter-retry">' + escape(t('domus', 'Refresh')) + '</button></div></section>';
             const show = (message, error = false) => {
                 if (!isCurrent()) return;
-                Domus.UI.renderContent(header + '<p role="' + (error ? 'alert' : 'status') + '">' + escape(message) + '</p>');
-                bind();
+                Domus.UI.renderContent('<p role="' + (error ? 'alert' : 'status') + '">' + escape(message) + '</p>');
             };
             show(t('domus', 'Loading…'));
-            return Domus.Api.get('/api/renter/me').then(identity => {
+            return Domus.Api.get('/renter/me').then(identity => {
                 if (!isCurrent()) return;
                 Domus.state.renterIdentity = identity;
                 const tenancies = identity.tenancies || [];
                 if (!tenancies.length) return show(t('domus', 'No tenancies are linked to your account. Contact your property manager.'));
                 const selected = tenancies.find(item => item.teamId === teamId && String(item.id) === String(tenancyId));
                 if (!selected && tenancies.length > 1) {
-                    Domus.UI.renderContent(header + '<ul class="domus-renter-tenancy-list">' + tenancies.map(item =>
-                        '<li><a href="#/renter/' + encodeURIComponent(item.teamId) + '/' + item.id + '">' + escape(item.unitLabel) +
-                        ' · ' + escape(Domus.Utils.formatDate(item.startDate)) + ' – ' + escape(item.endDate ? Domus.Utils.formatDate(item.endDate) : t('domus', 'Ongoing')) + '</a></li>').join('') + '</ul>');
-                    bind();
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const rows = tenancies.map(item => ({
+                        ...item,
+                        status: item.startDate && new Date(item.startDate + 'T00:00:00') > today ? 'future'
+                            : item.endDate && new Date(item.endDate + 'T00:00:00') < today ? 'historical' : 'active'
+                    }));
+                    Domus.UI.renderContent('<div class="domus-panel domus-panel-table">' + renderInline(rows, {
+                        hidePartnersColumn: true,
+                        hideRentPerSquareMeter: true,
+                        statusAsBadge: true,
+                        navigation: item => ({ navigate: 'renter', args: item.teamId + ',' + item.id })
+                    }) + '</div>');
+                    Domus.UI.bindRowNavigation();
                     return;
                 }
                 if (!selected && teamId) return show(t('domus', 'This tenancy is no longer available to you.'));
                 const tenancy = selected || tenancies[0];
-                return Domus.Api.get('/api/renter/teams/' + encodeURIComponent(tenancy.teamId) + '/tenancies/' + tenancy.id).then(payload => {
+                return Domus.Api.get('/renter/teams/' + encodeURIComponent(tenancy.teamId) + '/tenancies/' + tenancy.id).then(payload => {
                     if (!isCurrent()) return;
-                    const detailHeader = header + (tenancies.length > 1 ? Domus.UI.buildBackButton('renter') : '');
-                    return renderDetail(tenancy.id, { renterPayload: payload, teamId: tenancy.teamId, header: detailHeader, isCurrent, onRendered: bind });
+                    const detailHeader = tenancies.length > 1 ? Domus.UI.buildBackButton('renter') : '';
+                    return renderDetail(tenancy.id, { renterPayload: payload, teamId: tenancy.teamId, header: detailHeader, isCurrent });
                 });
             }).catch(error => show(error.message, true));
-        }
-
-        function renderRenterDocuments(documents) {
-            const escape = Domus.Utils.escapeHtml;
-            if (!documents.length) return '<p>' + escape(t('domus', 'No documents linked to this tenancy.')) + '</p>';
-            return '<ul class="domus-renter-document-list">' + documents.map(doc => '<li><a href="' + escape(doc.fileUrl) + '">' +
-                escape(doc.fileName) + '</a></li>').join('') + '</ul>';
         }
 
         function renderPendingCorrections(requests) {
@@ -91,7 +89,7 @@
                     const submit = form.querySelector('button[type="submit"]');
                     submit.disabled = true;
                     try {
-                        await Domus.Api.post('/api/renter/teams/' + encodeURIComponent(teamId) + '/partners/' + contact.id + '/corrections', { proposed });
+                        await Domus.Api.post('/renter/teams/' + encodeURIComponent(teamId) + '/partners/' + contact.id + '/corrections', { proposed });
                         modal.close();
                         if (isCurrent()) Domus.Router.navigate('renter', [teamId, payload.tenancy.id]);
                     } catch (error) {
@@ -104,7 +102,7 @@
         async function renderCorrectionReview(partnerId, panel, teamId) {
             const escape = Domus.Utils.escapeHtml;
             try {
-                const requests = (await Domus.Api.get('/api/teams/' + encodeURIComponent(teamId) + '/partners/' + partnerId + '/corrections'))
+                const requests = (await Domus.Api.get('/teams/' + encodeURIComponent(teamId) + '/partners/' + partnerId + '/corrections'))
                     .filter(request => request.state === 'pending');
                 if (!panel.isConnected) return;
                 panel.closest('section').classList.toggle('domus-hidden', !requests.length);
@@ -117,7 +115,7 @@
                     const id = button.dataset.correctionApprove || button.dataset.correctionReject;
                     panel.querySelectorAll('button').forEach(item => { item.disabled = true; });
                     try {
-                        const result = await Domus.Api.post('/api/teams/' + encodeURIComponent(teamId) + '/corrections/' + id, { approve });
+                        const result = await Domus.Api.post('/teams/' + encodeURIComponent(teamId) + '/corrections/' + id, { approve });
                         if (!panel.isConnected) return;
                         Domus.UI.showNotification(correctionState(result.state));
                         Domus.Router.navigate('partnerDetail', [partnerId]);
@@ -179,7 +177,7 @@
                     if (!selected) return showMessage(t('domus', 'No tenancies are assigned to this renter.'));
                     const teamId = Domus.state.managementContext?.activeTeamId;
                     if (teamId) {
-                        return Domus.Api.get('/api/teams/' + encodeURIComponent(teamId) + '/tenancies/' + selected.id + '/renter-preview/' + partner.id)
+                        return Domus.Api.get('/teams/' + encodeURIComponent(teamId) + '/tenancies/' + selected.id + '/renter-preview/' + partner.id)
                             .then(payload => { if (isCurrent()) return renderDetail(selected.id, { renterPayload: payload, previewPartner: partner, header, isCurrent, onRendered: bindControls }); });
                     }
                     return renderDetail(selected.id, { previewPartner: partner, header, isCurrent, onRendered: bindControls });
@@ -242,13 +240,18 @@
             return Domus.Utils.formatCurrency(rent / livingArea) + ' / m²';
         }
 
-        function buildTenancyLink(tenancy, content) {
+        function buildTenancyLink(tenancy, content, navigation) {
             if (!tenancy.id) {
                 return content;
             }
+            if (navigation) {
+                const href = Domus.Router.url(navigation.navigate, String(navigation.args).split(','));
+                return '<a class="domus-table-action-link" data-domus-row-link href="' +
+                    Domus.Utils.escapeHtml(href) + '">' + content + '</a>';
+            }
             const label = Domus.Role.getTenancyLabels().singular + ' #' + tenancy.id;
-            return '<a class="domus-table-action-link" data-domus-row-link href="#/tenancyDetail/' +
-                encodeURIComponent(String(tenancy.id)) + '" aria-label="' + Domus.Utils.escapeHtml(label) + '">' +
+            return '<a class="domus-table-action-link" data-domus-row-link href="' +
+                Domus.Utils.escapeHtml(Domus.Router.url('tenancyDetail', [tenancy.id])) + '" aria-label="' + Domus.Utils.escapeHtml(label) + '">' +
                 content + '</a>';
         }
 
@@ -309,6 +312,7 @@
             const hideUnitColumn = Boolean(options.hideUnitColumn);
             const hidePartnersColumn = Boolean(options.hidePartnersColumn);
             const statusAsBadge = Boolean(options.statusAsBadge);
+            const hideRentPerSquareMeter = Boolean(options.hideRentPerSquareMeter);
             const headers = [];
             if (!hideUnitColumn) {
                 headers.push(t('domus', 'Unit'));
@@ -316,12 +320,17 @@
             if (!hidePartnersColumn) {
                 headers.push(t('domus', 'Partners'));
             }
-            headers.push(t('domus', 'Base rent'), t('domus', 'Base rent per m²'), t('domus', 'Status'), t('domus', 'Period'));
+            headers.push(t('domus', 'Base rent'));
+            if (!hideRentPerSquareMeter) {
+                headers.push(t('domus', 'Base rent per m²'));
+            }
+            headers.push(t('domus', 'Status'), t('domus', 'Period'));
 
             const rows = (tenancies || []).map(tn => {
+                const navigation = options.navigation ? options.navigation(tn) : { navigate: 'tenancyDetail', args: tn.id };
                 const cells = [];
                 if (!hideUnitColumn) {
-                    cells.push(buildTenancyLink(tn, Domus.Utils.escapeHtml(formatUnitLabel(tn))));
+                    cells.push(buildTenancyLink(tn, Domus.Utils.escapeHtml(formatUnitLabel(tn)), options.navigation ? navigation : null));
                 }
                 if (!hidePartnersColumn) {
                     cells.push(
@@ -334,15 +343,17 @@
                 const statusContent = statusAsBadge
                     ? renderStatusBadge(tn.status)
                     : Domus.Utils.escapeHtml(formatStatusLabel(tn.status));
+                cells.push(Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(tn.baseRent) || '—'));
+                if (!hideRentPerSquareMeter) {
+                    cells.push(Domus.Utils.escapeHtml(formatRentPerSquareMeter(tn)));
+                }
                 cells.push(
-                    Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(tn.baseRent) || '—'),
-                    Domus.Utils.escapeHtml(formatRentPerSquareMeter(tn)),
-                    hideUnitColumn && hidePartnersColumn ? buildTenancyLink(tn, statusContent) : statusContent,
+                    hideUnitColumn && hidePartnersColumn ? buildTenancyLink(tn, statusContent, options.navigation ? navigation : null) : statusContent,
                     Domus.Utils.escapeHtml([Domus.Utils.formatDate(tn.startDate), tn.endDate ? Domus.Utils.formatDate(tn.endDate) : t('domus', 'Ongoing')].filter(Boolean).join(' – '))
                 );
                 return {
                     cells,
-                    dataset: tn.id ? { navigate: 'tenancyDetail', args: tn.id } : null
+                    dataset: tn.id ? navigation : null
                 };
             });
             if (!rows.length && options.emptyMessage) {
@@ -621,10 +632,10 @@
                     }) : '';
                     const statusTag = renderStatusBadge(tenancy.status);
                     const tenancyPeriod = [Domus.Utils.formatDate(tenancy.startDate), tenancy.endDate ? Domus.Utils.formatDate(tenancy.endDate) : t('domus', 'Ongoing')].filter(Boolean).join(' – ');
-                    const partnerSummary = previewPartner ? previewPartner.name : formatPartnerNames(tenancy.partners) || tenancy.partnerName || '';
+                    const addressLine = [tenancy.unitStreet, tenancy.unitCity].filter(Boolean).join(', ');
                     const heroMetaLines = [
+                        addressLine ? Domus.UI.buildHeroMetaLine('domus-icon-location', addressLine) : '',
                         tenancyPeriod ? Domus.UI.buildHeroMetaLine('domus-icon-booking', tenancyPeriod) : '',
-                        Domus.UI.buildHeroMetaLine('domus-icon-partner', partnerSummary || t('domus', 'No tenant assigned'))
                     ].filter(Boolean).join('');
                     const hero = Domus.UI.buildDetailHero({
                         indicator: '<div class="domus-hero-indicator domus-tenancy-hero-indicator">' +
@@ -670,7 +681,8 @@
                         (renterPayload ? renderRenterContacts(renterPayload, Boolean(options.previewPartner)) : previewPartner ? renderRenterContact(previewPartner) : Domus.Partners.renderInline(tenancy.partners || [], { linkNameToDetail: true, includeTypeColumn: false, includeEmailColumn: false, showHeader: false })) + '</div></div>';
                     const documentsPanel = '<div class="domus-panel">' + documentsHeader + '<div class="domus-panel-body">' +
                         (options.previewPartner ? '<p class="muted">' + Domus.Utils.escapeHtml(t('domus', 'This preview shows all documents linked to this tenancy.')) + '</p>' : '') +
-                        (renterPayload ? renderRenterDocuments(renterPayload.documents || []) : Domus.Documents.renderLatestList('tenancy', id, {
+                        Domus.Documents.renderLatestList('tenancy', id, {
+                            documents: renterPayload ? (renterPayload.documents || []) : undefined,
                             pageSize: 10,
                             canManageDocuments: documentActionsEnabled,
                             showNotes: !previewPartner,
@@ -682,7 +694,7 @@
                                     unitId: tenancy?.unitId
                                 });
                             }
-                        })) + '</div></div>';
+                        }) + '</div></div>';
 
                     const content = (options.header || '') + '<div class="domus-detail domus-dashboard domus-tenancy-detail">' +
                         (previewPartner ? '' : Domus.UI.buildBackButton('tenancies')) +

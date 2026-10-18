@@ -105,4 +105,31 @@ class ManagementAccessContextTest extends TestCase {
         $this->expectException(\RuntimeException::class);
         $this->context('team-a', teamsAvailable: false)->activeTeamId();
     }
+    public function testBackgroundContextIsRestoredAfterFailure(): void {
+        $context = $this->context('team-a');
+        $user = $this->createMock(\OCP\IUser::class);
+        $user->method('getUID')->willReturn('job-owner');
+        $user->method('isEnabled')->willReturn(true);
+        try {
+            $context->runBackground($user, null, function () use ($context) {
+                self::assertNull($context->activeTeamId());
+                self::assertSame('job-owner', $context->managementUserId());
+                throw new \RuntimeException('job failed');
+            });
+            self::fail('Expected failure');
+        } catch (\RuntimeException $e) {
+            self::assertSame('job failed', $e->getMessage());
+        }
+        self::assertSame('manager', $context->actorUserId());
+        self::assertSame('team-a', $context->activeTeamId());
+    }
+
+    public function testBackgroundTeamRequiresCurrentMembership(): void {
+        $context = $this->context('');
+        $user = $this->createMock(\OCP\IUser::class);
+        $user->method('getUID')->willReturn('former-member');
+        $user->method('isEnabled')->willReturn(true);
+        $this->expectException(\DomainException::class);
+        $context->runBackground($user, 'team-a', fn() => self::fail('Access must be rechecked'));
+    }
 }

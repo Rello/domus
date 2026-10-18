@@ -8,7 +8,7 @@ playwrightImage="${PLAYWRIGHT_IMAGE:-domus-playwright:local}"
 if ! docker image inspect "$playwrightImage" >/dev/null 2>&1; then
     docker build -t "$playwrightImage" "$rootDir/tests/playwright"
 fi
-suites=(modal-changes dashboard unit-workspace process-detail task-creation analytics contacts renter-preview team-context renter-access renter-portal view-lifecycle ui-reuse)
+suites=(routing modal-changes dashboard unit-workspace process-detail task-creation analytics contacts renter-preview team-context renter-access renter-portal view-lifecycle ui-reuse rules)
 if [[ -n "${PLAYWRIGHT_TEST:-}" ]]; then
     [[ "$PLAYWRIGHT_TEST" =~ ^[a-z-]+$ ]] || exit 2
     suites=("$PLAYWRIGHT_TEST")

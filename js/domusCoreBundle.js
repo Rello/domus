@@ -314,7 +314,7 @@
      * API helper for AJAX requests with Nextcloud headers
      */
     Domus.Api = (function() {
-        const baseUrl = OC.generateUrl('/apps/domus');
+        const baseUrl = OC.generateUrl('/apps/domus/api');
         const baseJsonHeaders = {
             'Content-Type': 'application/json',
             'OCS-APIREQUEST': 'true',
@@ -383,7 +383,7 @@
 
         async function createGuestAccount(teamId, details) {
             const encodedTeamId = encodeURIComponent(teamId);
-            const readiness = await request('GET', `/api/teams/${encodedTeamId}/guest-creation`);
+            const readiness = await request('GET', `/teams/${encodedTeamId}/guest-creation`);
             if (!readiness.canCreate) {
                 throw new Error(readiness.message || t('domus', 'Guest invitations are unavailable.'));
             }
@@ -424,7 +424,7 @@
             delete: path => request('DELETE', path),
             getDashboardSummary: () => request('GET', '/dashboard/summary'),
             getSettings: () => request('GET', '/settings'),
-            getGuestCreationContext: teamId => request('GET', `/api/teams/${encodeURIComponent(teamId)}/guest-creation`),
+            getGuestCreationContext: teamId => request('GET', `/teams/${encodeURIComponent(teamId)}/guest-creation`),
             createGuestAccount,
             updateSettings: data => request('PUT', '/settings', data),
             createDemoContent: data => request('POST', '/settings/demo-content', data),
@@ -434,32 +434,32 @@
             deleteProperty: id => request('DELETE', `/properties/${id}`),
             getPropertyDeletionSummary: id => request('GET', `/properties/${id}/deletion-summary`),
             getProperty: id => request('GET', `/properties/${id}`),
-            getTaskTemplates: (activeOnly = true, appliesTo) => request('GET', buildUrl('/api/task-templates', appendFilters(new URLSearchParams(), {
+            getTaskTemplates: (activeOnly = true, appliesTo) => request('GET', buildUrl('/task-templates', appendFilters(new URLSearchParams(), {
                 activeOnly: activeOnly ? 1 : 0,
                 appliesTo
             }))),
-            getTaskTemplate: id => request('GET', `/api/task-templates/${id}`),
-            createTaskTemplate: data => request('POST', '/api/task-templates', data),
-            updateTaskTemplate: (id, data) => request('PUT', `/api/task-templates/${id}`, data),
-            deleteTaskTemplate: id => request('DELETE', `/api/task-templates/${id}`),
-            reorderTaskTemplateSteps: (id, orderedStepIds) => request('POST', `/api/task-templates/${id}/reorder-steps`, { orderedStepIds }),
-            addTaskTemplateStep: (id, data) => request('POST', `/api/task-templates/${id}/steps`, data),
-            updateTaskTemplateStep: (stepId, data) => request('PUT', `/api/task-template-steps/${stepId}`, data),
-            deleteTaskTemplateStep: stepId => request('DELETE', `/api/task-template-steps/${stepId}`),
-            startWorkflowRun: (entityType, entityId, data) => request('POST', `/api/workflow-runs/${entityType}/${entityId}`, data),
-            getWorkflowRunsByEntity: (entityType, entityId) => request('GET', `/api/workflow-runs/${entityType}/${entityId}`),
-            getWorkflowRun: runId => request('GET', `/api/workflow-runs/${runId}`),
-            closeWorkflowRunEarly: stepId => request('POST', `/api/task-steps/${stepId}/close-early`),
-            deleteWorkflowRun: runId => request('DELETE', `/api/workflow-runs/${runId}`),
-            closeTaskStep: stepId => request('POST', `/api/task-steps/${stepId}/close`),
-            reopenTaskStep: stepId => request('POST', `/api/task-steps/${stepId}/reopen`),
-            createTask: (entityType, entityId, data) => request('POST', `/api/tasks/${entityType}/${entityId}`, data),
-            getTasksByEntity: (entityType, entityId, status) => request('GET', buildUrl(`/api/tasks/${entityType}/${entityId}`, appendFilters(new URLSearchParams(), { status }))),
-            getOpenTasks: (status, entityType, entityId) => request('GET', buildUrl('/api/tasks', appendFilters(new URLSearchParams(), { status, entityType, entityId }))),
-            updateTask: (taskId, data) => request('PUT', `/api/tasks/${taskId}`, data),
-            closeTask: taskId => request('POST', `/api/tasks/${taskId}/close`),
-            reopenTask: taskId => request('POST', `/api/tasks/${taskId}/reopen`),
-            deleteTask: taskId => request('DELETE', `/api/tasks/${taskId}`),
+            getTaskTemplate: id => request('GET', `/task-templates/${id}`),
+            createTaskTemplate: data => request('POST', '/task-templates', data),
+            updateTaskTemplate: (id, data) => request('PUT', `/task-templates/${id}`, data),
+            deleteTaskTemplate: id => request('DELETE', `/task-templates/${id}`),
+            reorderTaskTemplateSteps: (id, orderedStepIds) => request('POST', `/task-templates/${id}/reorder-steps`, { orderedStepIds }),
+            addTaskTemplateStep: (id, data) => request('POST', `/task-templates/${id}/steps`, data),
+            updateTaskTemplateStep: (stepId, data) => request('PUT', `/task-template-steps/${stepId}`, data),
+            deleteTaskTemplateStep: stepId => request('DELETE', `/task-template-steps/${stepId}`),
+            startWorkflowRun: (entityType, entityId, data) => request('POST', `/workflow-runs/${entityType}/${entityId}`, data),
+            getWorkflowRunsByEntity: (entityType, entityId) => request('GET', `/workflow-runs/${entityType}/${entityId}`),
+            getWorkflowRun: runId => request('GET', `/workflow-runs/${runId}`),
+            closeWorkflowRunEarly: stepId => request('POST', `/task-steps/${stepId}/close-early`),
+            deleteWorkflowRun: runId => request('DELETE', `/workflow-runs/${runId}`),
+            closeTaskStep: stepId => request('POST', `/task-steps/${stepId}/close`),
+            reopenTaskStep: stepId => request('POST', `/task-steps/${stepId}/reopen`),
+            createTask: (entityType, entityId, data) => request('POST', `/tasks/${entityType}/${entityId}`, data),
+            getTasksByEntity: (entityType, entityId, status) => request('GET', buildUrl(`/tasks/${entityType}/${entityId}`, appendFilters(new URLSearchParams(), { status }))),
+            getOpenTasks: (status, entityType, entityId) => request('GET', buildUrl('/tasks', appendFilters(new URLSearchParams(), { status, entityType, entityId }))),
+            updateTask: (taskId, data) => request('PUT', `/tasks/${taskId}`, data),
+            closeTask: taskId => request('POST', `/tasks/${taskId}/close`),
+            reopenTask: taskId => request('POST', `/tasks/${taskId}/reopen`),
+            deleteTask: taskId => request('DELETE', `/tasks/${taskId}`),
             getUnits: (propertyId) => {
                 const path = propertyId ? `/properties/${propertyId}/units` : '/units';
                 return request('GET', buildYearUrl(path));
@@ -553,11 +553,11 @@
                 }
                 return request('GET', buildUrl('/statistics/accounts', params));
             },
-            getActionLogs: (entityType, entityId) => request('GET', `/api/action-logs/${entityType}/${entityId}`),
-            getActionLogEntry: id => request('GET', `/api/action-logs/entry/${id}`),
-            createActionLog: (entityType, entityId, data) => request('POST', `/api/action-logs/${entityType}/${entityId}`, data),
-            updateActionLog: (id, data) => request('PUT', `/api/action-logs/entry/${id}`, data),
-            deleteActionLog: id => request('DELETE', `/api/action-logs/entry/${id}`),
+            getActionLogs: (entityType, entityId) => request('GET', `/action-logs/${entityType}/${entityId}`),
+            getActionLogEntry: id => request('GET', `/action-logs/entry/${id}`),
+            createActionLog: (entityType, entityId, data) => request('POST', `/action-logs/${entityType}/${entityId}`, data),
+            updateActionLog: (id, data) => request('PUT', `/action-logs/entry/${id}`, data),
+            deleteActionLog: id => request('DELETE', `/action-logs/entry/${id}`),
             getDocuments: (entityType, entityId) => request('GET', `/documents/${entityType}/${entityId}`),
             getDocumentDetail: (id) => request('GET', `/documents/${id}`),
             linkDocument: (entityType, entityId, data) => request('POST', `/documents/${entityType}/${entityId}`, data),
@@ -702,6 +702,7 @@
                 const contentTarget = document.getElementById('domus-content') || appContent;
                 contentTarget.innerHTML = html;
                 relocateToolbar(contentTarget);
+                fitKpiValues(contentTarget);
             }
         }
 
@@ -1613,8 +1614,7 @@
                         const first = cells[0];
                         const content = typeof first === 'string' ? first : first?.content;
                         if (typeof content === 'string') {
-                            const href = '#/' + encodeURIComponent(String(destination)) + '/' +
-                                String(args).split(',').map(part => encodeURIComponent(part)).join('/');
+                            const href = Domus.Router.url(destination, String(args).split(','));
                             let linkedContent = content;
                             const template = document.createElement('template');
                             template.innerHTML = content;
@@ -1961,7 +1961,7 @@
             const serializedArgs = (args || []).join(',');
             const link = document.createElement('a');
             link.className = 'domus-back-button';
-            link.href = '#/' + targetView + (args?.length ? '/' + args.map(encodeURIComponent).join('/') : '');
+            link.href = Domus.Router.url(targetView, args);
             link.dataset.back = targetView;
             link.dataset.backArgs = serializedArgs;
             link.textContent = '← ' + t('domus', 'Back');
@@ -2166,8 +2166,52 @@
                 linkIconClass: 'domus-icon-arrow-right',
                 ...defaults,
                 ...options,
+                compactValue: !missing && format ? (type === 'money' ? '€ ' : '') +
+                    Domus.Utils.formatNumber(Number(value) * (type === 'percentage' ? 100 : 1), {
+                        minimumFractionDigits: 0, maximumFractionDigits: 0, useGrouping: type !== 'percentage'
+                    }) + (type === 'percentage' ? ' %' : '') : undefined,
                 valueHtml: buildValue ? buildValue(options) ?? options.valueHtml : options.valueHtml,
                 value: missing ? null : (format ? format(value) : value)
+            });
+        }
+
+        // Keep the precise value available while adapting only the tile display.
+        function fitKpiValues(root) {
+            const values = root.querySelectorAll('.domus-kpi-value[data-compact-value]');
+            if (!values.length) return;
+            const widths = new WeakMap();
+            const fit = element => {
+                if (!element.clientWidth) return;
+                element.style.fontSize = '';
+                element.classList.remove('domus-kpi-value-wrap');
+                element.textContent = element.title;
+                if (element.scrollWidth <= element.clientWidth) return;
+                element.textContent = element.dataset.compactValue;
+                let size = parseFloat(getComputedStyle(element).fontSize);
+                while (element.scrollWidth > element.clientWidth && size > 16) {
+                    size = Math.max(16, size - 1);
+                    element.style.fontSize = size + 'px';
+                }
+                element.classList.toggle('domus-kpi-value-wrap', element.scrollWidth > element.clientWidth);
+            };
+            const observer = new ResizeObserver(entries => {
+                entries.forEach(({target, contentRect}) => {
+                    if (widths.get(target) === contentRect.width) return;
+                    widths.set(target, contentRect.width);
+                    fit(target);
+                });
+            });
+            values.forEach(element => {
+                fit(element);
+                observer.observe(element);
+            });
+            let active = true;
+            document.fonts.ready.then(() => {
+                if (active) values.forEach(fit);
+            });
+            onContentDispose(() => {
+                active = false;
+                observer.disconnect();
             });
         }
 
@@ -2254,6 +2298,11 @@
 
             const headline = Domus.Utils.escapeHtml(String(options.headline));
             const customValue = options.valueHtml;
+            const numericAttributes = customValue === undefined && options.compactValue !== undefined
+                ? ' data-compact-value="' + Domus.Utils.escapeHtml(options.compactValue) +
+                    '" title="' + Domus.Utils.escapeHtml(String(options.value)) +
+                    '" aria-label="' + Domus.Utils.escapeHtml(String(options.value)) + '"'
+                : '';
             const value = customValue !== undefined
                 ? ((customValue === null || customValue === '') ? '—' : customValue)
                 : (options.value === undefined || options.value === null || options.value === '' ? '—' : Domus.Utils.escapeHtml(String(options.value)));
@@ -2294,7 +2343,7 @@
                 '<div class="' + bodyClassName + '">' +
                 '<div class="domus-kpi-main">' +
                 '<div class="domus-kpi-value-block">' +
-                '<div class="domus-kpi-value' + valueClassName + '">' + value + '</div>' +
+                '<div class="domus-kpi-value' + valueClassName + '"' + numericAttributes + '>' + value + '</div>' +
                 subline +
                 '</div>' +
                 '</div>' +
@@ -2588,7 +2637,6 @@
             if (!preserveContent) commit();
             return { isCurrent, commit };
         }
-        let skipNextHashChange = false;
         const maxHistoryEntries = 50;
         const contentContexts = new Map();
         const contextKey = (name, args) => JSON.stringify([Domus.Role.getCurrentRole(), name, normalizeArgs(args)]);
@@ -2616,18 +2664,6 @@
             }
             for (let i = 0; i < first.length; i += 1) {
                 if (String(first[i]) !== String(second[i])) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        function areArgsCompatible(fullArgs = [], partialArgs = []) {
-            if (fullArgs.length < partialArgs.length) {
-                return false;
-            }
-            for (let i = 0; i < partialArgs.length; i += 1) {
-                if (String(fullArgs[i]) !== String(partialArgs[i])) {
                     return false;
                 }
             }
@@ -2694,54 +2730,63 @@
             if (routes[name]) {
                 routes[name].apply(null, normalizedArgs);
             }
-            skipNextHashChange = updateHash(name, normalizedArgs, options.replaceHash === true);
+            updateUrl(name, normalizedArgs, options.replaceUrl === true);
             Domus.Navigation.render();
         }
 
-        function updateHash(name, args, replace = false) {
-            const hash = '#/' + name + (args && args.length ? '/' + args.join('/') : '');
-            if (window.location.hash !== hash) {
-                if (replace && window.history?.replaceState) {
-                    const baseUrl = window.location.href.split('#')[0];
-                    window.history.replaceState(null, '', baseUrl + hash);
-                    return false;
-                }
-                window.location.hash = hash;
-                return true;
-            }
-            return false;
+        function url(name, args = []) {
+            const base = OC.generateUrl('/apps/domus/');
+            return base + [name, ...normalizeArgs(args)].map(encodeURIComponent).join('/');
         }
 
-        function parseHash() {
-            const hash = window.location.hash.replace(/^#\//, '');
-            if (!hash) return null;
-            const parts = hash.split('/');
-            return { name: parts[0], args: parts.slice(1) };
+        function updateUrl(name, args, replace = false) {
+            const destination = url(name, args) + window.location.search;
+            if (window.location.pathname + window.location.search + window.location.hash !== destination) {
+                window.history[replace ? 'replaceState' : 'pushState'](null, '', destination);
+            }
         }
 
-        window.addEventListener('hashchange', function() {
-            if (skipNextHashChange) {
-                skipNextHashChange = false;
-                return;
+        function parseUrl(location = window.location) {
+            const base = OC.generateUrl('/apps/domus/');
+            const path = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : '';
+            if (!path) return null;
+            try {
+                const parts = path.split('/').map(decodeURIComponent);
+                return { name: parts[0], args: parts.slice(1) };
+            } catch (error) {
+                return null;
             }
-            const parsed = parseHash();
-            // Several programmatic navigations can queue hashchange events in
-            // one turn. Their final route has already rendered synchronously.
+        }
+
+        document.addEventListener('click', event => {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            const link = event.target.closest('a[href]');
+            if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+            const destination = new URL(link.href, window.location.href);
+            if (destination.origin !== window.location.origin || destination.hash
+                || !destination.pathname.startsWith(OC.generateUrl('/apps/domus/'))
+                || destination.search !== window.location.search) return;
+            const parsed = parseUrl(destination);
+            if (!parsed || !routes[parsed.name]) return;
+            event.preventDefault();
+            navigate(parsed.name, parsed.args);
+        });
+
+        window.addEventListener('popstate', function() {
+            const parsed = parseUrl() || {name: Domus.state.managementContext?.mode === 'external' ? 'renter' : 'dashboard', args: []};
             if (parsed && parsed.name === Domus.state.currentView
                 && areArgsEqual(normalizeArgs(parsed.args), normalizeArgs(Domus.state.currentViewArgs))) return;
             if (parsed && routes[parsed.name] && !(['external'].includes(Domus.state.managementContext?.mode) && parsed.name !== 'renter')) {
                 const parsedArgs = normalizeArgs(parsed.args);
                 const history = Domus.state.navigationHistory || [];
                 const previousEntry = history[history.length - 1];
-                let effectiveArgs = parsedArgs;
-                if (parsed.name !== 'renter' && previousEntry?.name === parsed.name && areArgsCompatible(previousEntry.args, parsedArgs)) {
+                if (parsed.name !== 'renter' && previousEntry?.name === parsed.name && areArgsEqual(previousEntry.args, parsedArgs)) {
                     history.pop();
                     Domus.state.navigationHistory = history;
-                    effectiveArgs = previousEntry.args;
                 }
                 rememberContentContext();
-                updateCurrentRouteState(parsed.name, effectiveArgs);
-                routes[parsed.name].apply(null, effectiveArgs);
+                updateCurrentRouteState(parsed.name, parsedArgs);
+                routes[parsed.name].apply(null, parsedArgs);
                 Domus.Navigation.render();
             }
         });
@@ -2751,11 +2796,11 @@
             const previousEntry = history.pop();
             Domus.state.navigationHistory = history;
             if (previousEntry?.name && routes[previousEntry.name]) {
-                navigate(previousEntry.name, previousEntry.args, { skipHistory: true, replaceHash: true });
+                navigate(previousEntry.name, previousEntry.args, { skipHistory: true, replaceUrl: true });
                 return true;
             }
             if (fallbackName && routes[fallbackName]) {
-                navigate(fallbackName, fallbackArgs, { skipHistory: true, replaceHash: true });
+                navigate(fallbackName, fallbackArgs, { skipHistory: true, replaceUrl: true });
                 return true;
             }
             return false;
@@ -2772,16 +2817,14 @@
             }
             if (options.pushHistory) rememberContentContext();
             Domus.state.currentViewArgs = normalizedArgs;
-            const shouldSkipHashChange = updateHash(Domus.state.currentView, normalizedArgs, options.replaceHash === true);
-            if (shouldSkipHashChange) {
-                skipNextHashChange = true;
-            }
+            updateUrl(Domus.state.currentView, normalizedArgs, options.replaceUrl === true);
         }
 
-        function navigateFromHash() {
-            const parsed = parseHash();
+        function navigateFromUrl() {
+            const parsed = parseUrl();
             if (parsed && routes[parsed.name] && !(['external'].includes(Domus.state.managementContext?.mode) && parsed.name !== 'renter')) {
                 const parsedArgs = normalizeArgs(parsed.args);
+                updateUrl(parsed.name, parsedArgs, true);
                 updateCurrentRouteState(parsed.name, parsedArgs);
                 routes[parsed.name].apply(null, parsedArgs);
                 Domus.Navigation.render();
@@ -2790,7 +2833,7 @@
             return false;
         }
 
-        return { register, navigate, navigateFromHash, back, setCurrentArgs, restoreContentContext, beginView, captureView };
+        return { url, register, navigate, navigateFromUrl, back, setCurrentArgs, restoreContentContext, beginView, captureView };
     })();
 
     /**
@@ -2814,7 +2857,7 @@
             select.disabled = true;
             wrapper.appendChild(select);
             header.appendChild(wrapper);
-            Domus.Api.get('/api/teams').then(result => {
+            Domus.Api.get('/teams').then(result => {
                 const teams = Array.isArray(result?.teams) ? result.teams : [];
                 teams.forEach(team => select.add(new Option(team.displayName, team.teamId)));
                 select.value = Domus.state.managementContext?.activeTeamId || '';
@@ -2826,8 +2869,8 @@
             select.addEventListener('change', async () => {
                 select.disabled = true;
                 try {
-                    await Domus.Api.post(select.value ? '/api/teams/' + encodeURIComponent(select.value) + '/activate' : '/api/teams/deactivate');
-                    window.location.hash = '#/dashboard';
+                    await Domus.Api.post(select.value ? '/teams/' + encodeURIComponent(select.value) + '/activate' : '/teams/deactivate');
+                    window.history.replaceState(null, '', Domus.Router.url('dashboard'));
                     window.location.reload();
                 } catch (error) {
                     select.disabled = false;
@@ -2916,13 +2959,6 @@
                 }
             }
 
-            if (!['renterPreview', 'renter'].includes(Domus.state.currentView) && !['external'].includes(Domus.state.managementContext?.mode)) {
-                const previewList = buildNavList([
-                    { view: 'renterPreview', label: t('domus', 'Renter preview'), icon: 'domus-icon-partner' }
-                ], activeView);
-                (bottomNavPrimary || container || topNavContainer)?.appendChild(previewList);
-            }
-
             const renter = Domus.state.currentView === 'renter';
             if (renter && Domus.state.managementContext?.canManage) {
                 (bottomNavPrimary || container || topNavContainer)?.appendChild(buildNavList([
@@ -2946,7 +2982,7 @@
                 const li = document.createElement('li');
                 li.className = activeView === item.view ? 'active' : '';
                 const link = document.createElement('a');
-                link.href = '#';
+                link.href = Domus.Router.url(item.view, item.args || []);
                 const icon = document.createElement('span');
                 icon.className = ['domus-icon', 'domus-nav-icon', item.icon].filter(Boolean).join(' ');
                 icon.setAttribute('aria-hidden', 'true');
@@ -3262,7 +3298,7 @@
             Domus.Role.setRoleInfo(readRoleInfoFromBootstrap());
 
             registerRoutes();
-            if (!Domus.Router.navigateFromHash()) {
+            if (!Domus.Router.navigateFromUrl()) {
                 Domus.Router.navigate(Domus.Utils.getInitialState('renterEntry') || Domus.state.managementContext.mode === 'external' ? 'renter' : 'dashboard');
             }
         }

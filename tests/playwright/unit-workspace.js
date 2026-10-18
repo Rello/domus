@@ -43,6 +43,10 @@ const statistics = {
 };
 
 async function setup(page, role = 'landlord') {
+    if (page.url() === 'about:blank') {
+        await page.route('http://domus.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html>'}));
+        await page.goto('http://domus.test/apps/domus/');
+    }
     await page.setContent('<div id="app-navigation"></div><div id="app-content" class="app-domus"><div class="domus-top-navigation"><div class="domus-top-navigation-inner"><div id="domus-top-nav-primary" class="domus-top-nav-primary"></div></div></div><div id="domus-content" class="domus-content"></div></div>');
     await page.addStyleTag({path: 'css/style.css'});
     await page.evaluate(() => {
@@ -62,6 +66,9 @@ async function setup(page, role = 'landlord') {
         Domus.state.currentYear = 2026;
         Domus.Api.get = async path => path === '/units/1' ? unitData : null;
         Domus.Api.getUnitStatistics = async () => stats;
+        const originalPost = Domus.Api.post;
+        Domus.Api.post = (path, payload) => path === '/rules/evaluate'
+            ? Promise.resolve({alerts: [], createdTasks: 0}) : originalPost(path, payload);
         Domus.Api.getSettings = async () => ({settings: {taxRate: '25'}});
         Domus.Api.getBookings = async () => [];
         Domus.Api.getUnitPartners = async () => [];
@@ -217,13 +224,13 @@ async function main() {
         const table = page.locator('#domus-unit-kpi-detail table.domus-table');
         const firstRow = table.locator('tbody tr').first();
         const name = firstRow.getByRole('link', {name: 'Test renter'});
-        assert.equal(await name.getAttribute('href'), '#/tenancyDetail/3');
+        assert.equal(await name.getAttribute('href'), '/apps/domus/tenancyDetail/3');
         assert.equal(await name.getAttribute('class').then(value => value.includes('domus-table-primary-action')), true);
         assert.equal(await name.evaluate(element => getComputedStyle(element).textDecorationLine), 'none');
         assert.equal(await name.evaluate(element => getComputedStyle(element.closest('tr')).cursor), 'pointer');
         assert.equal(await firstRow.getByRole('link', {name: 'Email'}).count(), 1);
         assert.equal(await firstRow.getByRole('button', {name: 'Show phone number'}).count(), 1);
-        assert.equal(await table.getByRole('link', {name: 'Former renter'}).getAttribute('href'), '#/tenancyDetail/4');
+        assert.equal(await table.getByRole('link', {name: 'Former renter'}).getAttribute('href'), '/apps/domus/tenancyDetail/4');
         await name.press('Enter');
         await page.getByRole('heading', {name: 'Tenancy 3'}).waitFor();
     });

@@ -11,6 +11,8 @@ const { chromium } = require('playwright');
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     try {
+        await page.context().route('https://domus.test/**', route => route.fulfill({ contentType: 'text/html', body: 'Authenticated document fixture' }));
+        await page.goto('https://domus.test/apps/domus/');
         await page.setContent('<div id="domus-top-nav-primary"></div><div id="domus-top-nav-secondary"></div><div id="app-content"><div id="domus-content"></div></div>');
         await page.addStyleTag({ content: '*, *::before, *::after { box-sizing: border-box } dl { display:flex; flex-wrap:wrap } dt, dd { display:inline; width:33% } .domus-panel dl { padding:12px 0 } .domus-panel dt, .domus-panel dd { padding:12px; text-align:end }' });
         await page.addStyleTag({ path: 'css/style.css' });
@@ -18,6 +20,7 @@ const { chromium } = require('playwright');
         for (const module of ['domusCoreBundle', 'domusActionLog', 'domusPartners', 'domusDocuments', 'domusTenancies']) await page.addScriptTag({ path: `js/${module}.js` });
         await page.evaluate(() => {
             window.tenancies = [{ teamId: 'a', id: 11, unitLabel: 'Home A', startDate: '2020-01-01', endDate: '2021-01-01' }];
+            window.renterDocuments = [{ id: 51, fileName: 'Contract.pdf', fileUrl: '/apps/domus/api/renter/documents/51/content', createdAt: 1700000000 }];
             window.calls = []; window.pending = null; window.delay = false; window.revoked = false; window.requests = []; window.activities = [];
             Domus.state.managementContext = { mode: 'external', canManage: false };
             Domus.Role.setRoleInfo({ currentRole: 'tenant', availableRoles: ['tenant'] });
@@ -26,25 +29,30 @@ const { chromium } = require('playwright');
             Domus.Router.register('dashboard', () => Domus.UI.renderContent('Management dashboard'));
             Domus.Api.get = async path => {
                 calls.push(path);
-                if (path === '/api/renter/me') return { partners: [{ id: 1 }], tenancies: window.revoked ? [] : tenancies };
+                if (path === '/renter/me') return { partners: [{ id: 1 }], tenancies: window.revoked ? [] : tenancies };
                 if (path.includes('/corrections')) return requests;
-                if (!path.startsWith('/api/renter/teams/')) throw new Error('Unexpected management request ' + path);
+                if (!path.startsWith('/renter/teams/')) throw new Error('Unexpected management request ' + path);
                 if (delay) await new Promise(resolve => { pending = resolve; });
                 if (revoked) throw new Error('Access removed');
                 const tenancy = tenancies.find(item => String(item.id) === path.split('/').pop());
-                return { tenancy: { ...tenancy, partnerIds: [1], baseRent: 900, serviceCharge: 100, deposit: 2700, conditions: 'Agreed conditions' },
+                return { tenancy: { ...tenancy, unitStreet: 'Main Street 1', unitCity: 'Munich', unitLivingArea: '75', partnerIds: [1], baseRent: 900, serviceCharge: 100, deposit: 2700, conditions: 'Agreed conditions' },
                     contacts: [{ id: 1, name: 'Alice', email: 'alice@example.test' }],
-                    documents: [{ id: 51, fileName: 'Contract.pdf', fileUrl: '/apps/domus/api/renter/documents/51/content' }], corrections: requests, activities };
+                    documents: renterDocuments, corrections: requests, activities };
             };
             Domus.Api.post = async (path, data) => {
                 calls.push(path);
-                if (path.includes('/api/renter/')) requests.push({ id: 101, partnerId: 1, state: 'pending', createdAt: 1, original: { phone: '' }, proposed: data.proposed });
+                if (path.includes('/renter/')) requests.push({ id: 101, partnerId: 1, state: 'pending', createdAt: 1, original: { phone: '' }, proposed: data.proposed });
                 else requests[0].state = data.approve ? 'approved' : 'rejected';
                 return { state: requests[0].state };
             };
             Domus.Router.navigate('dashboard');
         });
         await page.getByRole('heading', { name: 'Home A', exact: true }).waitFor();
+        assert.match(await page.locator('.domus-detail-hero').innerText(), /Main Street 1, Munich/);
+        assert.doesNotMatch(await page.locator('.domus-detail-hero').innerText(), /Alice|No tenant assigned/);
+        assert.equal(await page.locator('.domus-detail-hero .domus-icon-location').count(), 1);
+        const rentPerSquareMeter = await page.evaluate(() => Domus.Utils.formatCurrency(12) + ' / m²');
+        assert.ok((await page.locator('.domus-kpi-tiles-tenancy-detail').innerText()).includes(rentPerSquareMeter));
         assert.equal(await page.locator('[data-doc-edit], #domus-tenancy-change, #domus-context-select').count(), 0);
         assert.equal(await page.getByRole('link', { name: 'Management', exact: true }).count(), 0);
         assert.equal(await page.getByRole('link', { name: 'Contract.pdf' }).getAttribute('href'), '/apps/domus/api/renter/documents/51/content');
@@ -52,8 +60,37 @@ const { chromium } = require('playwright');
         assert.equal(await page.locator('.domus-renter-contact dt').first().evaluate(el => getComputedStyle(el).textAlign), 'start');
         assert.equal(await page.locator('.domus-renter-contact dd').first().evaluate(el => getComputedStyle(el).padding), '0px');
         assert.match(await page.locator('.domus-tenancy-detail').innerText(), /Agreed conditions|alice@example.test/);
-        assert.ok((await page.evaluate(() => calls)).every(path => path.startsWith('/api/renter/')));
+        assert.ok((await page.evaluate(() => calls)).every(path => path.startsWith('/renter/')));
         console.log('PASS renter entry uses dedicated APIs, historical tenancy facts and authenticated document links');
+
+        const documentPanel = page.locator('#domus-tenancy-documents-11');
+        assert.equal(await documentPanel.locator('.domus-documents-table .domus-documents-row').count(), 1);
+        assert.equal(await documentPanel.locator('.domus-documents-date-cell').innerText(), await page.evaluate(() => Domus.Utils.formatDate(1700000000 * 1000)));
+        assert.equal(await documentPanel.locator('a').getAttribute('target'), '_blank');
+        const openedDocument = page.waitForEvent('popup');
+        await documentPanel.getByRole('link', { name: 'Contract.pdf' }).click();
+        const documentPage = await openedDocument;
+        await documentPage.waitForLoadState();
+        assert.match(documentPage.url(), /\/api\/renter\/documents\/51\/content$/);
+        await documentPage.close();
+        await page.evaluate(() => {
+            window.originalDocuments = renterDocuments;
+            renterDocuments = Array.from({ length: 11 }, (_, index) => ({ id: 100 + index, fileName: `Document ${index}.pdf`, fileUrl: `/apps/domus/api/renter/documents/${100 + index}/content`, createdAt: 1700000000 + index }));
+            Domus.Router.navigate('renter', ['a', 11]);
+        });
+        await documentPanel.getByRole('button', { name: 'More', exact: true }).waitFor();
+        assert.equal(await documentPanel.locator('.domus-documents-row').count(), 10);
+        assert.equal(await documentPanel.locator('.domus-documents-file-name').first().innerText(), 'Document 10.pdf');
+        await documentPanel.getByRole('button', { name: 'More', exact: true }).click();
+        assert.equal(await documentPanel.locator('.domus-documents-row').count(), 11);
+        assert.equal(await documentPanel.getByRole('button', { name: 'More', exact: true }).count(), 0);
+        await page.evaluate(() => { renterDocuments = []; Domus.Router.navigate('renter', ['a', 11]); });
+        await page.waitForFunction(() => document.querySelector('#domus-tenancy-documents-11') && !document.querySelector('#domus-tenancy-documents-11').textContent.includes('Loading'));
+        assert.equal(await documentPanel.locator('.domus-documents-row, a, button').count(), 0);
+        await page.evaluate(() => { renterDocuments = originalDocuments; Domus.Router.navigate('renter', ['a', 11]); });
+        await documentPanel.getByRole('link', { name: 'Contract.pdf' }).waitFor();
+        assert.ok((await page.evaluate(() => calls)).every(path => path.startsWith('/renter/')));
+        console.log('PASS shared renter document rows, dates, download clicks, pagination and empty state without management requests');
 
         await page.getByRole('button', { name: 'Request a correction' }).click();
         await page.getByLabel('Phone', { exact: true }).fill('12345');
@@ -73,7 +110,7 @@ const { chromium } = require('playwright');
         await page.locator('#domus-renter-activity').getByRole('button').click();
         await page.getByRole('dialog').getByText('Phone: old → 12345', { exact: true }).waitFor();
         assert.equal(await page.getByRole('dialog').getByRole('button', { name: 'Edit', exact: true }).count(), 0);
-        assert.ok((await page.evaluate(() => calls)).every(path => path.startsWith('/api/renter/')));
+        assert.ok((await page.evaluate(() => calls)).every(path => path.startsWith('/renter/')));
         await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
         console.log('PASS renter uses standard activity list and read-only dialog without management API requests');
 
@@ -81,7 +118,7 @@ const { chromium } = require('playwright');
         await page.getByRole('link', { name: /Home B/ }).waitFor();
         await page.getByRole('link', { name: /Home B/ }).click();
         await page.getByRole('heading', { name: 'Home B', exact: true }).waitFor();
-        assert.ok((await page.evaluate(() => calls)).includes('/api/renter/teams/b/tenancies/22'));
+        assert.ok((await page.evaluate(() => calls)).includes('/renter/teams/b/tenancies/22'));
         await page.evaluate(() => { delay = true; Domus.Router.navigate('renter', ['a', 11]); });
         await page.waitForFunction(() => pending !== null);
         await page.evaluate(() => { Domus.Router.navigate('renter'); delay = false; pending(); });

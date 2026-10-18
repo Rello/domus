@@ -1522,7 +1522,8 @@
     font-size: 1rem;
 }
 
-#domus-task-templates-panel .domus-settings-section-header > .domus-icon-only-button {
+#domus-task-templates-panel .domus-settings-section-header > .domus-icon-only-button,
+#domus-rules-panel .domus-settings-section-header > .domus-icon-only-button {
     width: 24px;
     min-width: 24px;
     height: 24px;
@@ -2919,18 +2920,13 @@
 
 .domus-task-steps-title {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 12px;
 }
 
 .domus-task-steps-title strong {
     line-height: 1.2;
-}
-
-.domus-task-step-add-button {
-    width: 24px;
-    height: 24px;
-    padding: 2px;
 }
 
 .domus-task-step-list {
@@ -3022,9 +3018,9 @@
     flex-shrink: 0;
 }
 
+.domus-rule-actions .domus-icon-only-button,
 .domus-task-template-actions .domus-icon-only-button,
-.domus-task-step-actions .domus-icon-only-button,
-.domus-task-step-add-button {
+.domus-task-step-actions .domus-icon-only-button {
     width: 24px;
     min-width: 24px;
     max-width: 24px;
@@ -3040,6 +3036,7 @@
     flex: 0 0 24px;
 }
 
+.domus-rule-actions .domus-icon-only-button .domus-icon,
 .domus-task-template-actions .domus-icon-only-button .domus-icon,
 .domus-task-step-actions .domus-icon-only-button .domus-icon,
 .domus-task-step-add-button .domus-icon {
@@ -3172,6 +3169,12 @@
 
 .domus-kpi-value-priority {
     font-size: 29px;
+}
+
+.domus-kpi-value-wrap {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
 }
 
 .domus-kpi-value .domus-partner-list {
@@ -4063,20 +4066,20 @@
 }
 
 .domus-dashboard-kpi-tile,
-.domus-upcoming-card-shell .domus-empty-state,
+.domus-upcoming-card-shell .domus-empty-state-action,
 .domus-dashboard-quick-card {
     transition: border-color 160ms ease;
 }
 
 .domus-dashboard-kpi-tile:hover,
-.domus-upcoming-card-shell .domus-empty-state:hover {
+.domus-upcoming-card-shell .domus-empty-state-action:hover {
     border-color: var(--domus-hover-border-color);
     border-style: solid;
     border-width: 1px;
 }
 
 .domus-dashboard-kpi-tile:focus-within,
-.domus-upcoming-card-shell .domus-empty-state:focus-within,
+.domus-upcoming-card-shell .domus-empty-state-action:focus-visible,
 .domus-dashboard-quick-card:focus-visible {
     border-color: var(--domus-hover-border-color);
     border-style: solid;
@@ -4187,19 +4190,8 @@
     overflow: hidden;
 }
 
-.domus-upcoming-card-shell .domus-empty-state {
-    border: var(--domus-border);
-    border-radius: var(--domus-border-radius);
-    background: #fff;
-    cursor: pointer;
-}
-
 .domus-upcoming-card-shell .domus-task-overview-card {
     cursor: pointer;
-}
-
-.domus-upcoming-card-shell .domus-empty-state * {
-    cursor: inherit;
 }
 
 .domus-upcoming-card-shell .domus-task-overview-card * {
@@ -5451,3 +5443,26 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
 .domus-required-app-unavailable {
     color: var(--color-error, #c62828);
 }
+
+/* Ruleset settings and deferred tasks. */
+.domus-rule-alert-list { list-style: none; padding: 0; margin: 0; }
+.domus-rule-alert { padding: 12px 0; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+.domus-rule-alert:last-child { border-bottom: 0; }
+.domus-rule-alert p { margin: 6px 0; }
+.domus-rule-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.domus-rule-scope-options { display: flex; flex-direction: column; max-height: 240px; overflow-y: auto; }
+.domus-rule-scope-options label { padding: 6px; }
+#domus-rule-form input:not([type=checkbox]), #domus-rule-form select { max-width: 100%; }
+#domus-rule-form fieldset[hidden] { display: none; }
+#domus-rule-form label:has(input[type="checkbox"]) { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; }
+#domus-rule-form input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; max-width: 20px; margin: 0; flex-shrink: 0; }
+
+
+.domus-task-deferred { margin-top: 12px; }
+.domus-task-deferred summary { cursor: pointer; padding: 10px 0; }
+
+.domus-form [data-date-row][hidden] { display: none; }
+
+#domus-rule-preview:not(:empty) { margin: 24px 0; }
+#domus-rule-preview .domus-table { width: 100%; table-layout: fixed; }
+#domus-rule-preview th, #domus-rule-preview td { padding: 12px 8px; white-space: normal; overflow-wrap: anywhere; }

@@ -62,6 +62,7 @@ class TenancyServiceTest extends TestCase {
         $partnerMapper = $this->createMock(PartnerMapper::class);
         $partnerMapper->expects(self::once())->method('findForUserByIds')->willReturn($partners);
         $unit = new Unit(); $unit->setId(7); $unit->setLabel('Apartment');
+        $unit->setStreet('Main Street 1'); $unit->setCity('Munich');
         $unitMapper = $this->createMock(UnitMapper::class);
         $unitMapper->expects(self::never())->method('findForUser');
         $unitMapper->expects(self::once())->method('findForUserByIds')->willReturn([$unit]);
@@ -71,6 +72,8 @@ class TenancyServiceTest extends TestCase {
         self::assertSame([2, 1], $result[0]->getPartnerIds());
         self::assertSame('Partner 2', $result[0]->getPartnerName());
         self::assertSame('Apartment', $result[0]->getUnitLabel());
+        self::assertSame('Main Street 1', $result[0]->jsonSerialize()['unitStreet']);
+        self::assertSame('Munich', $result[0]->jsonSerialize()['unitCity']);
         self::assertSame('active', $result[0]->getStatus());
     }
 }

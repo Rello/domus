@@ -188,7 +188,10 @@
                 }
             }
 
-            Domus.Api.getDocuments(entityType, entityId)
+            const documentsRequest = options.documents !== undefined
+                ? Promise.resolve(options.documents)
+                : Domus.Api.getDocuments(entityType, entityId);
+            documentsRequest
                 .then(docs => {
                     if (!isCurrent()) return;
                     const sortedDocs = (docs || []).slice().sort((a, b) => {

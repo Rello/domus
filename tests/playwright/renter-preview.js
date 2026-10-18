@@ -13,13 +13,17 @@ async function main() {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     try {
-        await page.setContent('<div id="domus-top-nav-primary"></div><div id="domus-top-nav-secondary"></div><div id="app-content"><div id="domus-content"></div></div>');
+        if (page.url() === 'about:blank') {
+        await page.route('http://domus.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html>'}));
+        await page.goto('http://domus.test/apps/domus/');
+    }
+    await page.setContent('<div id="domus-top-nav-primary"></div><div id="domus-top-nav-secondary"></div><div id="app-content"><div id="domus-content"></div></div>');
         await page.addStyleTag({ path: 'css/style.css' });
         await page.evaluate(() => {
             window.t = (app, value, params = {}) => value.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? key);
             window.OC = { generateUrl: path => path };
         });
-        for (const module of ['domusCoreBundle', 'domusActionLog', 'domusPartners', 'domusDocuments', 'domusTenancies']) {
+        for (const module of ['domusCoreBundle', 'domusActionLog', 'domusPartners', 'domusDocuments', 'domusTenancies', 'domusSettings']) {
             await page.addScriptTag({ path: `js/${module}.js` });
         }
         await page.evaluate(() => {
@@ -33,6 +37,7 @@ async function main() {
                 { id: 12, unitLabel: 'Bob home', partnerIds: [2], partners: [bob], startDate: '2026-06-01', status: 'active' }
             ];
             window.previewCalls = [];
+            Object.assign(previewTenancies[0], { unitStreet: 'Main Street 1', unitCity: 'Munich' });
             window.previewFailures = {};
             window.pendingDetail = null;
             Domus.Api.getPartners = async () => {
@@ -51,16 +56,28 @@ async function main() {
                 if (previewFailures.documents) throw new Error('Document failure');
                 return Number(id) === 10 ? [{ id: 50, fileName: 'Contract.pdf', fileUrl: 'https://example.test/contract.pdf', note: 'Internal document note', createdAt: 1700000000 }] : [];
             };
+            Domus.Api.getSettings = async () => ({ settings: {} });
+            const getPreviewData = Domus.Api.get;
+            Domus.Api.get = async path => path === '/rules' ? [] : getPreviewData(path);
+            Domus.TaskTemplates = { renderSection: () => '', loadTemplates: () => {} };
+            Domus.Accounts = { renderSettingsSection: () => '', loadSettingsSection: () => {} };
+            Domus.Router.register('settings', Domus.Settings.render);
             Domus.Role.setRoleInfo({ currentRole: 'landlord', availableRoles: ['landlord'] });
             Domus.Router.register('renterPreview', Domus.Tenancies.renderRenterPreview);
             Domus.Router.register('tenancyDetail', Domus.Tenancies.renderDetail);
             Domus.Router.register('dashboard', () => Domus.UI.renderContent('Owner dashboard'));
             Domus.Router.navigate('dashboard');
         });
-        await page.getByRole('link', { name: 'Renter preview', exact: true }).click();
+        assert.equal(await page.getByRole('link', { name: 'Renter preview', exact: true }).count(), 0);
+        await page.getByRole('link', { name: 'Settings', exact: true }).click();
+        await page.getByRole('heading', { name: 'Management Team', exact: true }).click();
+        await page.locator('#domus-team-settings-panel').getByRole('button', { name: 'Renter preview', exact: true }).click();
+        console.log('PASS renter preview opens from Settings → Management Team without a navigation shortcut');
         await page.getByLabel('Simulate renter').selectOption('1');
         await page.getByRole('link', { name: 'Contract.pdf', exact: true }).waitFor();
         assert.equal(await page.locator('.domus-tenancy-detail h2').innerText(), 'Current home');
+        assert.match(await page.locator('.domus-detail-hero').innerText(), /Main Street 1, Munich/);
+        assert.doesNotMatch(await page.locator('.domus-detail-hero').innerText(), /Alice|No tenant assigned/);
         assert.match(await page.locator('.domus-renter-contact').innerText(), /alice@example.test/);
         assert.doesNotMatch(await page.locator('.domus-tenancy-detail').innerText(), /bob@example.test|Bob Renter|Internal/);
         assert.equal(await page.locator('#domus-preview-renter option[value="4"]').count(), 0);
@@ -113,6 +130,8 @@ async function main() {
             return Math.round(hero.top - back.bottom);
         });
         assert.equal(headerGap, 8);
+        assert.match(await page.locator('.domus-detail-hero').innerText(), /Main Street 1, Munich/);
+        assert.doesNotMatch(await page.locator('.domus-detail-hero').innerText(), /Alice|Bob Renter|No tenant assigned/);
         assert.equal(await page.locator('#domus-tenancy-delete').count(), 1);
         assert.equal(await page.locator('#domus-tenancy-document-create').count(), 1);
         assert.match(await page.locator('.domus-tenancy-detail').innerText(), /Internal document note/);

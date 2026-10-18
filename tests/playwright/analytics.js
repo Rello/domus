@@ -8,7 +8,11 @@ const { chromium } = require('playwright');
     const browser = await chromium.launch({headless: true});
     const page = await browser.newPage();
     try {
-        await page.setContent('<div id="app-content" class="app-domus"></div>');
+        if (page.url() === 'about:blank') {
+        await page.route('http://domus.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html>'}));
+        await page.goto('http://domus.test/apps/domus/');
+    }
+    await page.setContent('<div id="app-content" class="app-domus"></div>');
         await page.addStyleTag({path: 'css/style.css'});
         await page.evaluate(() => {
             window.t = (app, text) => text;

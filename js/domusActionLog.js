@@ -481,7 +481,7 @@
         function buildViewForm(entry) {
             const targetLabel = entry?.entityLabel || '';
             const targetHref = entry?.entityType && entry?.entityId && (entry.entityType === 'property' || entry.entityType === 'unit')
-                ? `#/${entry.entityType === 'property' ? 'propertyDetail' : 'unitDetail'}/${entry.entityId}`
+                ? Domus.Router.url(entry.entityType === 'property' ? 'propertyDetail' : 'unitDetail', [entry.entityId])
                 : '';
             const linkedEntity = entry?.linkedEntity || null;
 
@@ -529,7 +529,7 @@
             const selectedType = isCustomType ? 'custom' : (entry?.type || 'note');
             const targetLabel = entry?.entityLabel || '';
             const targetHref = entry?.entityType && entry?.entityId && (entry.entityType === 'property' || entry.entityType === 'unit')
-                ? `#/${entry.entityType === 'property' ? 'propertyDetail' : 'unitDetail'}/${entry.entityId}`
+                ? Domus.Router.url(entry.entityType === 'property' ? 'propertyDetail' : 'unitDetail', [entry.entityId])
                 : '';
 
             const rows = [
@@ -709,7 +709,7 @@
             }
 
             if (linkedEntity.navigate && linkedEntity.id) {
-                return '<a class="domus-link" href="#/' + Domus.Utils.escapeHtml(linkedEntity.navigate) + '/' + Domus.Utils.escapeHtml(String(linkedEntity.id)) + '">' +
+                return '<a class="domus-link" href="' + Domus.Utils.escapeHtml(Domus.Router.url(linkedEntity.navigate, [linkedEntity.id])) + '">' +
                     Domus.Utils.escapeHtml(linkedEntity.label || '') +
                     '</a>';
             }

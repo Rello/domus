@@ -114,7 +114,7 @@
             const actionsHtml = actions.length ? '<span class="domus-partner-actions">' + actions.join('') + '</span>' : '';
             const partnerId = partner?.id;
             const nameHtml = (options.linkNameToDetail && partnerId)
-                ? '<a class="domus-link domus-partner-name domus-partner-name-link" href="#/partnerDetail/' + encodeURIComponent(String(partnerId)) + '" data-partner-id="' + Domus.Utils.escapeHtml(String(partnerId)) + '">' + name + '</a>'
+                ? '<a class="domus-link domus-partner-name domus-partner-name-link" href="' + Domus.Utils.escapeHtml(Domus.Router.url('partnerDetail', [partnerId])) + '" data-partner-id="' + Domus.Utils.escapeHtml(String(partnerId)) + '">' + name + '</a>'
                 : '<span class="domus-partner-name">' + name + '</span>';
             if (options.hideName && !actions.length) return '';
             const className = options.className ? ' ' + Domus.Utils.escapeHtml(options.className) : '';
@@ -460,7 +460,7 @@
 
         async function renderRenterAccessBadge(partner, badge, teamId) {
             if (!badge?.isConnected) return;
-            const path = `/api/teams/${encodeURIComponent(teamId)}/partners/${partner.id}/account`;
+            const path = `/teams/${encodeURIComponent(teamId)}/partners/${partner.id}/account`;
             try {
                 const account = await Domus.Api.get(path);
                 if (!badge.isConnected) return;
@@ -498,7 +498,7 @@
         }
 
         async function renderOnlineAccess(partner, panel, teamId, notice = '', onChanged = () => {}) {
-            const path = `/api/teams/${encodeURIComponent(teamId)}/partners/${partner.id}/account`;
+            const path = `/teams/${encodeURIComponent(teamId)}/partners/${partner.id}/account`;
             const escape = Domus.Utils.escapeHtml;
             try {
                 const account = await Domus.Api.get(path);

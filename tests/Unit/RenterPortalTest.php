@@ -82,7 +82,14 @@ class RenterPortalTest extends TestCase {
     }
 
     public function testSerializesOwnContactsAgreedChargesAndOnlyTenancyDocuments(): void {
+        $this->db->tables['domus_units'][0]['street'] = 'Main Street 1';
+        $this->db->tables['domus_units'][0]['city'] = 'Munich';
+        $this->db->tables['domus_units'][0]['living_area'] = '75';
         $data = $this->service->detail('a', 11);
+        self::assertSame('Main Street 1', $data['tenancy']['unitStreet']);
+        self::assertSame('Munich', $data['tenancy']['unitCity']);
+        self::assertSame('75', $data['tenancy']['unitLivingArea']);
+        self::assertNull($this->service->detail('b', 22)['tenancy']['unitLivingArea']);
         self::assertSame('900', $data['tenancy']['baseRent']);
         self::assertSame('Agreed conditions', $data['tenancy']['conditions']);
         self::assertSame([1], array_column($data['contacts'], 'id'));

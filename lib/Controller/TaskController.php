@@ -25,6 +25,7 @@ class TaskController extends Controller {
         private TaskService $taskService,
         private PermissionService $permissionService,
         private IL10N $l10n,
+        private \OCA\Domus\Service\RuleService $rules,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -41,11 +42,13 @@ class TaskController extends Controller {
 
     #[NoAdminRequired]
     public function listByEntity(string $entityType, int $entityId, ?string $status = null): DataResponse {
+        $this->rules->evaluate($this->getUserId());
         return new DataResponse($this->taskService->listTasksByEntity($entityType, $entityId, $this->getUserId(), $status));
     }
 
     #[NoAdminRequired]
     public function listOpen(?string $status = null, ?string $entityType = null, ?int $entityId = null): DataResponse {
+        $this->rules->evaluate($this->getUserId());
         $role = $this->permissionService->getRoleFromRequest($this->request);
         $status = $status ?: 'open';
         if ($status !== 'open') {
@@ -78,6 +81,12 @@ class TaskController extends Controller {
     public function delete(int $taskId): DataResponse {
         $this->taskService->deleteTask($taskId, $this->getUserId());
         return new DataResponse(['status' => 'success']);
+    }
+
+    #[NoAdminRequired]
+    public function remind(int $taskId, string $choice, ?string $date = null): DataResponse {
+        $this->rules->remindTask($taskId, $choice, $date, $this->getUserId());
+        return new DataResponse([]);
     }
 
     private function getUserId(): string {

@@ -27,7 +27,7 @@ Entwickelt für Vermieter und kleine Hausverwaltungen, die einen klaren Überbli
 - Einzelne Aufgaben und mehrstufige Prozesse verfolgen.
 - Buchungen nach Jahr, Einheit und Konto auswerten.
 ]]></description>
-    <version>1.1.8</version>
+    <version>1.1.12</version>
     <licence>agpl</licence>
     <author>Marcel Scherello</author>
     <namespace>Domus</namespace>
@@ -48,6 +48,9 @@ Entwickelt für Vermieter und kleine Hausverwaltungen, die einen klaren Überbli
     <dependencies>
         <nextcloud min-version="31" max-version="99"/>
     </dependencies>
+    <background-jobs>
+        <job>OCA\Domus\BackgroundJob\EvaluateRules</job>
+    </background-jobs>
     <repair-steps>
         <install>
             <step>OCA\Domus\Migration\FillDefaultAccountsRepairStep</step>
