@@ -10,6 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Add portfolio development analytics across all years with annual agreed rent totals, estimated annual net profit, weighted profitability, and unit breakdowns using shared financial calculations.
 
 ### Changed
+- Show booking descriptions in the booking table on unit details.
 - Make tenancy details easier to review with a completion indicator, clearer headers, and a checklist of assigned partners.
 
 ### Fixed

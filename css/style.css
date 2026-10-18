@@ -1054,6 +1054,37 @@
     align-items: center;
 }
 
+.domus-tenancy-partners {
+    max-height: 220px;
+    overflow-y: auto;
+    border: var(--domus-border);
+    border-radius: var(--domus-border-radius);
+}
+
+.domus-tenancy-partners .domus-tenancy-partner {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 4px 8px;
+    margin: 0;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+    font-weight: normal;
+    box-sizing: border-box;
+}
+
+.domus-tenancy-partners .domus-tenancy-partner input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--color-border-dark, #777) !important;
+}
+
 .domus-form-value-text:empty::after {
     content: '—';
     color: var(--color-text-maxcontrast);

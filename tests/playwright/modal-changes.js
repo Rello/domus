@@ -609,6 +609,42 @@ async function main() {
         assert.deepEqual(await page.evaluate(() => window.refreshedUnits), [1]);
     });
 
+    for (const width of [1280, 390]) {
+        await test(`tenancy checkboxes preserve partners and reject empty selection (${width}px)`, async page => {
+            await page.evaluate(() => {
+                Domus.Api.getPartners = async () => [
+                    { id: 7, name: 'Gerhard', partnerType: 'tenant' },
+                    { id: 8, name: 'Thomas', partnerType: 'tenant' },
+                    { id: 9, name: 'Bhupinder', partnerType: 'tenant' }
+                ];
+                window.savedTenancy = null;
+                Domus.Tenancies.openCreateModal({ unitId: 1, partnerIds: [8, '9'], baseRent: '900' }, () => {},
+                    async data => { window.savedTenancy = data; return { id: 1 }; }, undefined, undefined, { useGuidedWorkflow: false });
+            });
+            const group = page.getByRole('group', { name: 'Partners', exact: true });
+            await group.waitFor();
+            assert.equal(await group.getByRole('checkbox', { name: 'Thomas', exact: true }).isChecked(), true);
+            assert.equal(await group.getByRole('checkbox', { name: 'Bhupinder', exact: true }).isChecked(), true);
+            assert.equal(await group.getByRole('checkbox', { name: 'Gerhard', exact: true }).isChecked(), false);
+            assert.deepEqual(await group.locator('label').allTextContents(), ['Thomas', 'Bhupinder', 'Gerhard']);
+            assert.equal(await group.locator('label').first().evaluate(label => getComputedStyle(label).flexDirection), 'row');
+            const box = await group.boundingBox();
+            assert.ok(box.height >= 132 && box.x >= 0 && box.x + box.width <= width);
+            await group.getByRole('checkbox', { name: 'Thomas', exact: true }).focus();
+            await page.keyboard.press('Space');
+            await group.getByRole('checkbox', { name: 'Bhupinder', exact: true }).uncheck();
+            await page.getByRole('button', { name: 'Save', exact: true }).click();
+            assert.equal(await page.evaluate(() => window.savedTenancy), null);
+            await page.getByText('Unit and at least one partner are required.', { exact: true }).waitFor();
+            await group.getByRole('checkbox', { name: 'Thomas', exact: true }).check();
+            await group.getByRole('checkbox', { name: 'Bhupinder', exact: true }).check();
+            await page.screenshot({ path: `/tmp/tenancy-partners-${width}.png` });
+            await page.getByRole('button', { name: 'Save', exact: true }).click();
+            await waitClosed(page);
+            assert.deepEqual(await page.evaluate(() => savedTenancy.partnerIds), ['8', '9']);
+        }, { width, height: 900 });
+    }
+
     for (const kind of ['unit', 'tenancy', 'task']) {
         await test(`${kind} initialized form closes cleanly and protects changed fields`, async page => {
             async function open() {
@@ -623,7 +659,7 @@ async function main() {
             await page.keyboard.press('Escape');
             await waitClosed(page);
             await open();
-            const input = page.locator('form input:not([type="hidden"]):not([disabled]), form textarea:not([disabled])').first();
+            const input = page.locator('form input:not([type="hidden"]):not([type="checkbox"]):not([disabled]), form textarea:not([disabled])').first();
             const type = await input.getAttribute('type');
             await input.fill(type === 'date' ? '2027-01-15' : type === 'number' ? '25' : 'Changed value');
             await page.getByRole('button', { name: 'Cancel', exact: true }).click();

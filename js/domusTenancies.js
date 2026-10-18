@@ -255,6 +255,11 @@
                 content + '</a>';
         }
 
+        function sortByStartDate(tenancies) {
+            return (tenancies || []).slice().sort((a, b) =>
+                (b.startDate || '').localeCompare(a.startDate || ''));
+        }
+
         function renderList() {
             const view = Domus.Router.beginView();
             Domus.UI.showLoading(t('domus', 'Loading {entity}…', { entity: Domus.Role.getTenancyLabels().plural }));
@@ -266,7 +271,7 @@
                     const toolbar = '<div class="domus-toolbar">' +
                         (canManageTenancies && tenancyLabels.action ? Domus.UI.buildIconButton('domus-icon-add', tenancyLabels.action, { id: 'domus-tenancy-create' }) : '') +
                         '</div>';
-                    const rows = (tenancies || []).map(tn => {
+                    const rows = sortByStartDate(tenancies).map(tn => {
                         const partnerLabel = Domus.Partners.renderPartnerContactList(tn.partners, {
                             fallbackName: tn.partnerName,
                             emptyLabel: '—'
@@ -326,7 +331,7 @@
             }
             headers.push(t('domus', 'Status'), t('domus', 'Period'));
 
-            const rows = (tenancies || []).map(tn => {
+            const rows = sortByStartDate(tenancies).map(tn => {
                 const navigation = options.navigation ? options.navigation(tn) : { navigate: 'tenancyDetail', args: tn.id };
                 const cells = [];
                 if (!hideUnitColumn) {
@@ -596,6 +601,15 @@
             openGuidedCreateWorkflow(prefill, onCreated);
         }
 
+        function getTenancyMasterdataStatus(tenancy) {
+            const values = [tenancy.unitId, (tenancy.partnerIds || []).length || null, tenancy.startDate, tenancy.conditions];
+            // An ongoing tenancy has no end date, so it is not a missing detail.
+            if (!Domus.Permission.hideTenancyFinancialFields()) {
+                values.push(tenancy.baseRent, tenancy.serviceCharge, tenancy.deposit);
+            }
+            return { completed: values.filter(Domus.Utils.isValueFilled).length, total: values.length };
+        }
+
         function renderDetail(id, options = {}) {
             const renterPayload = options.renterPayload;
             const previewPartner = options.previewPartner || renterPayload?.contacts?.[0];
@@ -617,10 +631,6 @@
                     const canManageTenancies = !previewPartner && Domus.Role.hasCapability('manageTenancies');
                     const documentActionsEnabled = !previewPartner && Domus.Role.hasCapability('manageDocuments');
                     const menuActions = canManageTenancies ? [
-                        Domus.UI.buildIconLabelButton('domus-icon-details', t('domus', 'Details'), {
-                            id: 'domus-tenancy-details',
-                            className: 'domus-action-menu-item'
-                        }),
                         Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
                             id: 'domus-tenancy-delete',
                             className: 'domus-action-menu-item'
@@ -637,14 +647,19 @@
                         addressLine ? Domus.UI.buildHeroMetaLine('domus-icon-location', addressLine) : '',
                         tenancyPeriod ? Domus.UI.buildHeroMetaLine('domus-icon-booking', tenancyPeriod) : '',
                     ].filter(Boolean).join('');
+                    const masterdataStatus = getTenancyMasterdataStatus(tenancy);
+                    const masterdataIndicator = canManageTenancies
+                        ? Domus.UI.buildCompletionIndicator(t('domus', 'Tenancy details'), masterdataStatus.completed, masterdataStatus.total, {
+                            id: 'domus-tenancy-details'
+                        }) : '';
                     const hero = Domus.UI.buildDetailHero({
                         indicator: '<div class="domus-hero-indicator domus-tenancy-hero-indicator">' +
                             '<span class="domus-icon domus-icon-tenancy" aria-hidden="true"></span></div>',
-                        kicker: `${tenancyLabels.singular} #${id}`,
                         title: tenancy.unitLabel || tenancyLabels.singular,
                         badges: statusTag,
                         meta: heroMetaLines,
-                        actions: actionMenu
+                        actions: actionMenu,
+                        status: masterdataIndicator
                     });
 
                     const kpiTiles = '<div class="domus-kpi-tiles domus-kpi-tiles-tenancy-detail domus-panel-row domus-panel-row-thirds">' +
@@ -733,7 +748,10 @@
         }
 
         function bindDetailActions(id, tenancy) {
-            document.getElementById('domus-tenancy-details')?.addEventListener('click', () => openTenancyModal(id, tenancy, 'view'));
+            document.getElementById('domus-tenancy-details')?.addEventListener('click', event => {
+                event.preventDefault();
+                openTenancyModal(id, tenancy, 'view');
+            });
             document.getElementById('domus-tenancy-delete')?.addEventListener('click', () => {
                 Domus.UI.confirmAction({
                     message: t('domus', 'Delete {entity}?', { entity: Domus.Role.getTenancyLabels().singular }),
@@ -784,7 +802,7 @@
                     if (el.disabled) return;
                     if (el.name === 'partnerIds' && !el.multiple) {
                         data.partnerIds = data.partnerIds || [];
-                        if (el.value) {
+                        if (el.value && (el.type !== 'checkbox' || el.checked)) {
                             data.partnerIds.push(el.value);
                         }
                         return;
@@ -928,9 +946,10 @@
             const lockedPartnerInputs = partnerIds.map(partnerId => '<input type="hidden" name="partnerIds" value="' + Domus.Utils.escapeHtml(partnerId) + '">').join('');
             const partnerSelect = (isView || lockPartnerIds)
                 ? renderDisplay(selectedPartnerLabel) + lockedPartnerInputs
-                : '<select name="partnerIds" multiple required size="4">' +
-                partnerOptions.map(opt => '<option value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (partnerIds.includes(String(opt.value)) ? ' selected' : '') + '>' + Domus.Utils.escapeHtml(opt.label) + '</option>').join('') +
-                '</select>';
+                : '<div class="domus-tenancy-partners" role="group" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Partners')) + '">' +
+                partnerOptions.slice().sort((a, b) => Number(partnerIds.includes(String(b.value))) - Number(partnerIds.includes(String(a.value))))
+                    .map(opt => '<label class="domus-tenancy-partner"><input type="checkbox" name="partnerIds" value="' + Domus.Utils.escapeHtml(opt.value) + '"' + (partnerIds.includes(String(opt.value)) ? ' checked' : '') + '><span>' + Domus.Utils.escapeHtml(opt.label) + '</span></label>').join('') +
+                '</div>';
 
             const hiddenFields = [];
             const rows = [];

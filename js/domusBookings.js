@@ -103,10 +103,12 @@
         }
 
         function buildInlineBookingsMarkup(pageInfo, options = {}) {
+            const showDescription = options.refreshView === 'unitDetail';
             const rows = (pageInfo.items || []).map(b => ({
                 cells: [
                     buildBookingEditButton(b),
                     buildAccountCell(b),
+                    ...(showDescription ? [Domus.Utils.escapeHtml(b.description || '—')] : []),
                     { content: Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(b.amount)), alignRight: true }
                 ],
                 dataset: b.id ? {
@@ -118,6 +120,7 @@
             const table = Domus.UI.buildTable([
                 t('domus', 'Invoice date'),
                 t('domus', 'Account'),
+                ...(showDescription ? [t('domus', 'Description')] : []),
                 { label: t('domus', 'Amount'), alignRight: true }
             ], rows, { wrapPanel: false });
             const pagination = Domus.UI.buildPagination(pageInfo);

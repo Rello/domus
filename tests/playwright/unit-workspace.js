@@ -123,11 +123,46 @@ async function main() {
         });
         await page.getByRole('heading', {name: 'Apartment with a very long descriptive name'}).waitFor();
         assert.match(await page.locator('.domus-hero-meta-stack').innerText(), /Street with a long name 123, Munich/);
-        assert.equal(await page.locator('.domus-hero-kicker').textContent(), 'Tenancy #1');
+        assert.equal(await page.locator('.domus-hero-kicker').count(), 0);
         assert.ok(!(await page.locator('.domus-hero-meta-stack').innerText()).includes('2025-01-01'));
         const layout = await page.evaluate(() => ({width: innerWidth, scroll: document.documentElement.scrollWidth}));
         assert.ok(layout.scroll <= layout.width, JSON.stringify(layout));
     });
+
+    await test('tenancy details counts completed fields and opens the existing view and edit dialogs', async page => {
+        await page.evaluate(() => {
+            window.detailTenancy = {id: 1, unitId: 1, unitLabel: 'Test unit', partnerIds: [2], startDate: '2025-01-01', status: 'active'};
+            Domus.Api.get = async () => window.detailTenancy;
+            Domus.Api.getPartners = async () => [{id: 2, name: 'Test renter', partnerType: 'tenant'}];
+            return Domus.Tenancies.renderDetail(1);
+        });
+        const link = page.locator('#domus-tenancy-details');
+        assert.equal(await link.getAttribute('aria-label'), 'Tenancy details (3/7)');
+        await link.focus();
+        await page.keyboard.press('Enter');
+        const dialog = page.getByRole('dialog', {name: 'Tenancy details', exact: true});
+        await dialog.waitFor();
+        await dialog.getByRole('button', {name: 'Edit', exact: true}).click();
+        await page.getByRole('dialog', {name: 'Edit Tenancy', exact: true}).waitFor();
+        await page.getByRole('button', {name: 'Cancel', exact: true}).click();
+        await page.evaluate(() => {
+            Object.assign(window.detailTenancy, {baseRent: 950, serviceCharge: 0, deposit: 0, conditions: 'Standard terms'});
+            return Domus.Tenancies.renderDetail(1);
+        });
+        assert.equal(await link.getAttribute('aria-label'), 'Tenancy details (7/7)');
+        assert.equal(await page.locator('.domus-completion-circle').evaluate(el => el.style.getPropertyValue('--domus-completion-progress')), '100%');
+        await page.setViewportSize({width: 390, height: 844});
+        assert.ok(await link.isVisible());
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    });
+
+    await test('tenancy completion excludes financial fields in building management', async page => {
+        await page.evaluate(() => {
+            Domus.Api.get = async () => ({id: 1, unitId: 1, unitLabel: 'Test unit', partnerIds: [2], startDate: '2025-01-01', conditions: 'Standard terms', status: 'active'});
+            return Domus.Tenancies.renderDetail(1);
+        });
+        assert.equal(await page.locator('#domus-tenancy-details').getAttribute('aria-label'), 'Tenancy details (4/4)');
+    }, 'buildingMgmt');
 
     await test('failed entity images have an accessible fallback', async page => {
         await page.evaluate(() => {
@@ -233,6 +268,31 @@ async function main() {
         assert.equal(await table.getByRole('link', {name: 'Former renter'}).getAttribute('href'), '/apps/domus/tenancyDetail/4');
         await name.press('Enter');
         await page.getByRole('heading', {name: 'Tenancy 3'}).waitFor();
+    });
+
+    await test('tenancy periods appear newest first in shared and main lists', async page => {
+        const tenancies = [
+            {id: 10, startDate: '2021-10-01', status: 'active'},
+            {id: 11, startDate: '2008-01-01', endDate: '2012-12-31', status: 'inactive'},
+            {id: 12, startDate: '2013-01-01', endDate: '2017-09-30', status: 'inactive'},
+            {id: 13, startDate: '2017-10-01', endDate: '2021-09-30', status: 'inactive'},
+            {id: 14, startDate: null, status: 'inactive'}
+        ];
+        const originalOrder = tenancies.map(item => String(item.id));
+        await page.evaluate(items => {
+            Domus.UI.renderContent(Domus.Tenancies.renderInline(items, {statusAsBadge: true}));
+            window.tenancyFixture = items;
+        }, tenancies);
+        const rowIds = () => page.locator('#domus-content table tbody tr').evaluateAll(rows => rows.map(row => row.dataset.args));
+        assert.deepEqual(await rowIds(), ['10', '13', '12', '11', '14']);
+        assert.deepEqual(await page.evaluate(() => window.tenancyFixture.map(item => String(item.id))), originalOrder);
+        await page.evaluate(() => {
+            Domus.Api.getTenancies = async () => window.tenancyFixture;
+            Domus.Tenancies.renderList();
+        });
+        await page.locator('#domus-content table tbody tr').first().waitFor();
+        assert.deepEqual(await rowIds(), ['10', '13', '12', '11', '14']);
+        assert.deepEqual(await page.evaluate(() => window.tenancyFixture.map(item => String(item.id))), originalOrder);
     });
 
     await test('narrow unit workspace keeps section navigation usable', async page => {
