@@ -986,9 +986,10 @@
                 widget.pickerButton.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
+                    const startPath = options.getPickerPath?.() || undefined;
                     OC.dialogs.filepicker(t('domus', 'Select file'), function(path) {
                         widget.setPath(path);
-                    }, false, '', true, 1);
+                    }, false, '', true, 1, startPath);
                 });
             }
 
@@ -1107,7 +1108,11 @@
                     });
                     const docWidget = mountBookingDocumentWidget(modal.modalEl, {
                         initialSelection: formConfig.initialDocumentSelection || null,
-                        lockSelection: formConfig.lockDocumentSelection === true
+                        lockSelection: formConfig.lockDocumentSelection === true,
+                        getPickerPath: () => {
+                            const unitId = modal.modalEl.querySelector('[name="unitId"]')?.value;
+                            return effectiveUnits.find(unit => String(unit.id) === String(unitId))?.documentPath;
+                        }
                     });
                     bindBookingForm(modal, data => {
                         const bookingPromise = (() => {

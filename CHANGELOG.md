@@ -15,6 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ### Fixed
 - Restore the Delete button when editing a booking.
 - Show the most recent tenancy periods first.
+- Open the document file picker in the selected unit's document folder.
 
 ## 1.2.0 - 2026-10-18
 ### Added

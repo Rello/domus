@@ -369,6 +369,40 @@ async function main() {
         });
     }
 
+    await test('document picker starts in the currently selected unit document folder', async page => {
+        await page.evaluate(() => {
+            Domus.Api.getUnits = async () => [
+                { id: 1, label: 'First unit', propertyId: 1, documentPath: '/Domus/First unit' },
+                { id: 2, label: 'Second unit', propertyId: 1, documentPath: '/Custom/Second unit' },
+                { id: 3, label: 'No folder', propertyId: 1 }
+            ];
+            window.pickerPaths = [];
+            OC.dialogs.filepicker = (title, callback, multiple, mime, modal, type, path) => {
+                window.pickerPaths.push(path ?? null);
+                callback('/test/document.pdf');
+            };
+            Domus.Documents.openLinkModal('unit', 1, () => {});
+        });
+        await bookingDialog(page).waitFor();
+        const picker = page.getByRole('button', { name: 'Select existing file', exact: true });
+        await picker.click();
+        assert.deepEqual(await page.evaluate(() => pickerPaths), ['/Domus/First unit']);
+        await page.keyboard.press('Escape');
+        await discard(page);
+        await page.evaluate(() => openBooking({}, { createContext: 'document' }));
+        await bookingDialog(page).waitFor();
+        const unitSelect = bookingDialog(page).locator('select[name="unitId"]');
+        await unitSelect.selectOption('2');
+        await picker.click();
+        await unitSelect.selectOption('3');
+        await picker.click();
+        await unitSelect.selectOption('');
+        await picker.click();
+        assert.deepEqual(await page.evaluate(() => pickerPaths), [
+            '/Domus/First unit', '/Custom/Second unit', null, null
+        ]);
+    });
+
     await test('document picker selection and upload are protected', async page => {
         await page.evaluate(() => openBooking({ unitId: 1 }, { createContext: 'document' }));
         await bookingDialog(page).waitFor();
