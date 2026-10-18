@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
-## Unreleased
+## 1.2.0 - 2026-10-18
 ### Added
 - Create rules that remind you when rent is due for review, listed in Settings with the same table and action icons as task templates.
 - Set reminders for tasks and process steps.
