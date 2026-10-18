@@ -5,40 +5,36 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
+## Unreleased
+### Changed
+- Make tenancy details easier to review with a completion indicator, clearer headers, and a checklist of assigned partners.
+
+### Fixed
+- Show the most recent tenancy periods first.
+
 ## 1.2.0 - 2026-10-18
 ### Added
-- Create rules that remind you when rent is due for review, listed in Settings with the same table and action icons as task templates.
-- Set reminders for tasks and process steps.
-- Check which Nextcloud apps are available for team management.
-- Give renters access through a linked Nextcloud account or a guest account.
-- Let renters view their tenancy details and documents and request contact corrections.
-- Preview what renters can see from Settings → Management Team.
+- Create reminders for rent reviews, tasks, and process steps.
+- Give renters access to their tenancy details and documents through a linked Nextcloud or guest account, with contact correction requests and a preview of their access.
 - Link existing unit documents to a tenancy without uploading them again.
 
 ### Changed
-- Use direct page URLs without fragments and keep data endpoints under /api/.
-- Show the unit address instead of repeating the tenant in tenancy headers.
-- Use the shared tenancy table with base rent in the renter overview and remove the redundant header and refresh button.
 - Make renter access easier to manage from contact details.
 - Move the Personal/Team selector to the app header.
-- Show base rent and rent per square meter in tenancy lists and details.
-- Make property, unit, tenancy, and contact pages more consistent.
+- Show base rent and rent per square meter in tenancy lists and details, including the renter overview.
+- Make property, unit, tenancy, and contact pages more consistent and show the unit address in tenancy headers.
 
 ### Fixed
-- Fix creating task templates with new identifiers, saving them in Personal mode, and adding steps with a visible plus button in the template editor.
-- Show calculated rent per square meter in renter tenancy details.
-- Use the same document panel in renter and management tenancy views, keeping renter download links.
+- Fix creating and saving task templates and adding template steps.
+- Fix image display and document downloads, including renter access to tenancy documents.
 - Keep large numbers readable in dashboard tiles.
-- Fix image display and document downloads.
-- Include property tax in utility settlements.
-- Improve German translations and dialog wording.
+- Include property tax in utility settlements and match distribution reports to booked amounts and rounding.
+- Calculate rent correctly for partial months and exclude future tenancies from current occupants and monthly rent totals.
 - Allow renter access to be set up again after a linked account is deleted.
-- Calculate rent correctly for tenancies that start or end partway through a month.
-- Match distribution reports to booked amounts and rounding.
-- Exclude future tenancies from current occupants and monthly rent totals.
 - Reject invalid dates, amounts, and financial periods.
 - Prevent outdated page content from appearing after navigation.
 - Warn before discarding unsaved property or unit pictures.
+- Improve German translations and dialog wording.
 
 ## 1.1.0 - 2026-09-29
 ### Added
