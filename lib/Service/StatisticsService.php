@@ -157,6 +157,64 @@ class StatisticsService {
                 ];
         }
 
+        /** Batch-load the current ownership scope and reuse the unit finance formulas. */
+        public function portfolioPerformance(string $userId, ?int $propertyId = null, ?int $unitId = null, string $role = 'landlord'): array {
+                $management = $this->permissionService->isBuildingManagement($role);
+                $units = $this->unitMapper->findByUser($userId, $management ? $propertyId : null, !$management);
+                $units = array_values(array_filter($units, static fn(Unit $unit) => $unitId === null || $unit->getId() === $unitId));
+                $unitIds = array_map(static fn(Unit $unit) => $unit->getId(), $units);
+                $propertyIds = array_values(array_unique(array_filter(array_map(static fn(Unit $unit) => $unit->getPropertyId(), $units))));
+                $unitSet = array_fill_keys($unitIds, true);
+                $tenancies = $units === [] ? [] : array_intersect_key($this->tenancyService->listTenanciesByUnit($userId), $unitSet);
+                $bookings = [];
+                if ($units !== []) {
+                        foreach ($this->bookingService->sumByAccountGrouped($userId, null, 'unit') as $row) {
+                                if (isset($unitSet[(int)$row['unit_id']])) {
+                                        $bookings[(int)$row['unit_id']][(int)$row['year']][] = $row;
+                                }
+                        }
+                }
+                $closedUnits = $this->bookingYearService->getClosedYearsForUnits($unitIds);
+                $closedProperties = $this->bookingYearService->getClosedYearsForProperties($propertyIds);
+                $topMap = $this->accountService->getTopAccountNumberMap();
+                $taxRate = $this->getTaxRateSetting($userId);
+                $years = [];
+                $currentYear = (int)date('Y');
+                foreach ($units as $unit) {
+                        $id = $unit->getId();
+                        $years = array_merge($years, $this->collectYears($bookings[$id] ?? [], $tenancies[$id] ?? []));
+                }
+                $years = array_values(array_filter($years, static fn(int $year) => $year > 0 && $year <= $currentYear));
+                // Keep calendar gaps visible and stop at the current, provisional year.
+                $years = $years === [] ? [] : range(min($years), $currentYear);
+                $trend = [];
+                foreach ($years as $reportYear) {
+                        $totals = ['baseRent' => 0.0, 'netProfit' => 0.0, 'totalCosts' => 0.0, 'missingCosts' => 0, 'isProvisional' => false];
+                        $rows = [];
+                        foreach ($units as $unit) {
+                                $id = $unit->getId();
+                                $sums = $this->buildUnitYearSums($unit, $taxRate, $reportYear, $topMap, $tenancies[$id] ?? [], $bookings[$id][$reportYear] ?? []);
+                                $values = StatisticCalculations::calculateValues(StatisticCalculations::unitRevenue(), $sums, $topMap);
+                                $costs = (float)($unit->getTotalCosts() ?? 0);
+                                $provisional = !$this->isYearClosed($reportYear, $id, $unit->getPropertyId(), $closedUnits, $closedProperties);
+                                $row = ['unitId' => $id, 'label' => $unit->getLabel(), 'baseRent' => $values['baseRent'],
+                                        'netProfit' => $values['netProfit'], 'totalCosts' => $costs,
+                                        'netRentability' => $costs > 0 ? $values['netRentability'] : null, 'isProvisional' => $provisional];
+                                $rows[] = $row;
+                                $totals['baseRent'] += $row['baseRent'];
+                                $totals['netProfit'] += $row['netProfit'];
+                                $totals['totalCosts'] += $costs;
+                                $totals['missingCosts'] += $costs > 0 ? 0 : 1;
+                                $totals['isProvisional'] = $totals['isProvisional'] || $provisional;
+                        }
+                        // Ratios must be recomputed from totals, never averaged across units.
+                        $totals['netRentability'] = $units !== [] && $totals['missingCosts'] === 0 && $totals['totalCosts'] > 0
+                                ? $totals['netProfit'] / $totals['totalCosts'] : null;
+                        $trend[] = ['year' => $reportYear, 'rows' => $rows] + $totals;
+                }
+                return ['years' => $years, 'trend' => $trend, 'unitCount' => count($units), 'taxRate' => $taxRate];
+        }
+
         /**
          * @param string[] $accounts
          */

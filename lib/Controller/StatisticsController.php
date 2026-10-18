@@ -70,6 +70,13 @@ class StatisticsController extends Controller {
         ));
     }
 
+    #[NoAdminRequired]
+    public function portfolioPerformance(?int $propertyId = null, ?int $unitId = null): DataResponse {
+        return new DataResponse($this->statisticsService->portfolioPerformance(
+            $this->getUserId(), $propertyId, $unitId, $this->getRole(),
+        ));
+    }
+
     private function getUserId(): string {
         return $this->managementContext->managementUserId();
     }

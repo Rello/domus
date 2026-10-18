@@ -61,6 +61,7 @@ return [
         ['name' => 'Statistics#unit', 'url' => 'api/statistics/units/{unitId}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitPerYear', 'url' => 'api/statistics/units/{unitId}/{year}', 'verb' => 'GET'],
         ['name' => 'Statistics#unitsOverview', 'url' => 'api/statistics/units-overview', 'verb' => 'GET'],
+        ['name' => 'Statistics#portfolioPerformance', 'url' => 'api/statistics/portfolio-performance', 'verb' => 'GET'],
         ['name' => 'Statistics#accountTotals', 'url' => 'api/statistics/accounts', 'verb' => 'GET'],
         ['name' => 'BookingYear#close', 'url' => 'api/booking-years/{year}/close', 'verb' => 'POST'],
         ['name' => 'BookingYear#reopen', 'url' => 'api/booking-years/{year}/reopen', 'verb' => 'POST'],

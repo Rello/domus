@@ -97,5 +97,107 @@ const { chromium } = require('playwright');
         assert.equal(await page.locator('canvas').isVisible(), true);
         assert.equal(await page.locator('#domus-analytics-status').innerText(), '');
         console.log('PASS obsolete request rejection preserves current results');
+        await page.evaluate(() => {
+            window.portfolioCalls = [];
+            window.performanceMissing = false;
+            window.performanceEmpty = false;
+            window.performanceFail = false;
+            window.performanceFixture = filters => {
+                const years = performanceEmpty ? [] : [2024, 2025, new Date().getFullYear()];
+                const trend = years.map((year, index) => {
+                    const factor = .8 + index / 10;
+                    const rows = [
+                        {unitId: 1, label: 'Unit one', baseRent: 12000 * factor, netProfit: 9000 * factor, netRentability: .09 * factor, isProvisional: year !== 2024},
+                        {unitId: 3, label: 'Unit three', baseRent: 24000 * factor, netProfit: 21000 * factor, netRentability: performanceMissing ? null : .07 * factor, isProvisional: year !== 2024}
+                    ].filter(row => (!filters.unitId || String(row.unitId) === filters.unitId) && (!filters.propertyId || (row.unitId === 1 ? '2' : '4') === filters.propertyId));
+                    const totals = {year, rows, baseRent: 0, netProfit: 0, totalCosts: 0, missingCosts: 0, isProvisional: year !== 2024};
+                    rows.forEach(row => {totals.baseRent += row.baseRent; totals.netProfit += row.netProfit; totals.totalCosts += row.unitId === 1 ? 100000 : (performanceMissing ? 0 : 300000); if (row.unitId === 3 && performanceMissing) totals.missingCosts++;});
+                    totals.netRentability = rows.length && !totals.missingCosts ? totals.netProfit / totals.totalCosts : null;
+                    return totals;
+                });
+                return {years, trend, unitCount: performanceEmpty ? 0 : trend[0].rows.length, taxRate: .3};
+            };
+            Domus.Api.getPortfolioPerformance = async filters => {
+                portfolioCalls.push(filters);
+                if (performanceFail) throw new Error('fixture failure');
+                return performanceFixture(filters);
+            };
+        });
+        await page.setViewportSize({width: 1280, height: 900});
+        await page.locator('#domus-analytics-preset').selectOption('portfolio');
+        await page.locator('#domus-analytics-summary .domus-kpi-tile').first().waitFor();
+        await page.locator('#domus-analytics-property').selectOption('');
+        await page.waitForFunction(() => document.querySelector('#domus-analytics-summary').textContent.includes('30,000'));
+        assert.equal(await page.locator('#domus-analytics-summary .domus-kpi-tile').count(), 3);
+        assert.match(await page.locator('#domus-analytics-summary').innerText(), /7[.,]5/);
+        assert.match(await page.locator('#domus-analytics-status').innerText(), /provisional/);
+        assert.equal(await page.locator('#domus-analytics-year').isVisible(), false);
+        assert.equal(await page.locator('#domus-analytics-month').count(), 0);
+        assert.equal(await page.locator('#domus-analytics-values > table tbody tr').count(), 3);
+        assert.match(await page.locator('#domus-analytics-values > table').innerText(), /2024/);
+        assert.match(await page.locator('#domus-analytics-values > table').innerText(), /2025/);
+        assert.deepEqual(await page.evaluate(() => Chart.getChart(document.querySelector('canvas')).data.datasets[0].data), [28800, 32400, 36000]);
+        await page.locator('#domus-analytics-metric').selectOption('netProfit');
+        assert.deepEqual(await page.evaluate(() => Chart.getChart(document.querySelector('canvas')).data.datasets[0].data), [24000, 27000, 30000]);
+        await page.locator('#domus-analytics-metric').selectOption('netRentability');
+        const ratios = await page.evaluate(() => Chart.getChart(document.querySelector('canvas')).data.datasets[0].data);
+        assert.ok(ratios.every((value, index) => Math.abs(value - [.06, .0675, .075][index]) < 1e-10));
+        await page.getByText('Details by unit and year', {exact: true}).click();
+        await page.locator('#domus-analytics-values details details summary').first().click();
+        assert.equal(await page.locator('#domus-analytics-values details details').first().locator('tbody tr').count(), 2);
+        assert.match(await page.locator('#domus-analytics-values details details').first().locator('tbody th a').first().getAttribute('href'), /unit/);
+        console.log('PASS all-year development chart, yearly metrics, weighted ratios and unit details without period selectors');
+        await page.locator('#domus-analytics-unit').selectOption('1');
+        await page.waitForFunction(() => document.querySelector('#domus-analytics-summary').textContent.includes('9.0 %'));
+        await page.locator('#domus-analytics-property').selectOption('4');
+        await page.waitForFunction(() => document.querySelector('#domus-analytics-summary').textContent.includes('21,000'));
+        assert.equal(await page.locator('#domus-analytics-unit').inputValue(), '');
+        assert.deepEqual(await page.evaluate(() => portfolioCalls.at(-1)), {unitId: '', propertyId: '4'});
+        console.log('PASS property and unit scope filters without year or month API parameters');
+        await page.evaluate(() => {performanceMissing = true;});
+        await page.locator('#domus-analytics-property').selectOption('');
+        await page.waitForFunction(() => document.querySelector('#domus-analytics-status').textContent.includes('acquisition costs are missing'));
+        assert.equal(await page.locator('#domus-analytics-summary .domus-kpi-value').nth(2).innerText(), '—');
+        assert.equal(await page.locator('canvas').isVisible(), false);
+        await page.setViewportSize({width: 390, height: 844});
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        assert.equal(await page.locator('#domus-analytics-values > table').evaluate(table => table.scrollWidth > table.parentElement.clientWidth), true);
+        await page.evaluate(() => {Domus.UI.renderContent('Other page'); Domus.Analytics.render();});
+        await page.locator('#domus-analytics-summary .domus-kpi-tile').first().waitFor();
+        assert.equal(await page.locator('#domus-analytics-year').isVisible(), false);
+        assert.equal(await page.locator('#domus-analytics-metric').inputValue(), 'netRentability');
+        console.log('PASS missing costs, phone layout and development selection continuity');
+        if (process.env.DOMUS_ANALYTICS_SCREENSHOT) {
+            await page.screenshot({path: process.env.DOMUS_ANALYTICS_SCREENSHOT + '-missing-phone.png', fullPage: true});
+            await page.evaluate(() => {performanceMissing = false;});
+            await page.locator('#domus-analytics-unit').selectOption('1');
+            await page.locator('#domus-analytics-unit').selectOption('');
+            await page.waitForFunction(() => document.querySelector('#domus-analytics-summary .domus-kpi-tile:last-child .domus-kpi-value').textContent !== '—');
+            await page.locator('#domus-analytics-metric').selectOption('baseRent');
+            await page.screenshot({path: process.env.DOMUS_ANALYTICS_SCREENSHOT + '-phone.png', fullPage: true});
+            await page.setViewportSize({width: 1280, height: 900});
+            await page.screenshot({path: process.env.DOMUS_ANALYTICS_SCREENSHOT + '-desktop.png', fullPage: true});
+        }
+        await page.evaluate(() => {performanceFail = true;});
+        await page.locator('#domus-analytics-unit').selectOption('1');
+        await page.getByRole('button', {name: 'Retry', exact: true}).waitFor();
+        assert.equal(await page.locator('#domus-analytics-summary').isVisible(), false);
+        await page.evaluate(() => {performanceFail = false; performanceEmpty = true;});
+        await page.getByRole('button', {name: 'Retry', exact: true}).click();
+        await page.waitForFunction(() => document.querySelector('#domus-analytics-status').textContent.includes('No units available'));
+        assert.equal(await page.locator('canvas').isVisible(), false);
+        await page.evaluate(() => {
+            Domus.Api.getPortfolioPerformance = () => new Promise(resolve => {window.resolvePerformance = resolve;});
+        });
+        await page.locator('#domus-analytics-unit').selectOption('');
+        await page.locator('#domus-analytics-preset').selectOption('annual');
+        await page.locator('#domus-analytics-values tbody tr').first().waitFor();
+        await page.evaluate(() => resolvePerformance(performanceFixture({})));
+        await page.waitForTimeout(50);
+        assert.equal(await page.locator('#domus-analytics-summary').isVisible(), false);
+        assert.equal(await page.locator('canvas').isVisible(), true);
+        assert.equal(await page.locator('#domus-analytics-portfolio-controls').isVisible(), false);
+        assert.equal(await page.locator('#domus-analytics-year').isVisible(), true);
+        console.log('PASS development retry, empty scope, stale responses and booking year selector restoration');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

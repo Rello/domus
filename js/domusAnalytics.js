@@ -16,13 +16,19 @@
         let units = [];
         let properties = [];
         let stateRole = null;
-        let state = { preset: 'annual', year: '', unitId: '', propertyId: '', accounts: [], search: '' };
+        let state = { preset: 'annual', year: '', unitId: '', propertyId: '', accounts: [], search: '', metric: 'baseRent' };
         const escape = value => Domus.Utils.escapeHtml(String(value));
         const normalize = value => String(value).replace(/^0+/, '') || '0';
         const presets = () => [
+            { value: 'portfolio', label: t('domus', 'Portfolio development') },
             { value: 'annual', label: t('domus', 'Annual booking breakdown') },
             { value: 'trend', label: t('domus', 'Yearly booking trend') },
             { value: 'custom', label: t('domus', 'Custom accounts') }
+        ];
+        const metrics = () => [
+            { value: 'baseRent', label: t('domus', 'Annual base rent') },
+            { value: 'netProfit', label: t('domus', 'Estimated annual net profit') },
+            { value: 'netRentability', label: t('domus', 'Estimated profitability') }
         ];
         const option = (value, label) => '<option value="' + escape(value) + '">' + escape(label) + '</option>';
         const filter = (id, label, html) => '<label class="domus-analytics-filter"><span>' + escape(label) + '</span><select id="domus-analytics-' + id + '">' + html + '</select></label>';
@@ -31,7 +37,7 @@
         function render() {
             const role = Domus.Role.isBuildingMgmtView() ? 'management' : 'landlord';
             if (stateRole !== role) {
-                state = { preset: 'annual', year: '', unitId: '', propertyId: '', accounts: [], search: '' };
+                state = { preset: 'annual', year: '', unitId: '', propertyId: '', accounts: [], search: '', metric: 'baseRent' };
                 stateRole = role;
             }
             view = Domus.Router.beginView();
@@ -55,13 +61,16 @@
                 (Domus.Role.isBuildingMgmtView() ? filter('property', t('domus', 'Property'), option('', t('domus', 'All properties'))) : '') +
                 filter('unit', t('domus', 'Unit'), option('', t('domus', 'All units'))) +
                 filter('year', t('domus', 'Year'), option('', t('domus', 'Latest year with bookings'))) +
+                '<div id="domus-analytics-portfolio-controls" hidden>' +
+                filter('metric', t('domus', 'Trend metric'), metrics().map(metric => option(metric.value, metric.label)).join('')) + '</div>' +
                 '<div id="domus-analytics-custom" hidden><label class="domus-analytics-filter" for="domus-analytics-search">' + escape(t('domus', 'Search accounts')) +
                 '<input id="domus-analytics-search" type="search"></label><fieldset class="domus-analytics-accounts"><legend>' + escape(t('domus', 'Accounts')) + '</legend>' +
                 options.map((o, index) => '<label class="domus-analytics-account" data-search="' + escape(o.label.toLocaleLowerCase()) + '"><input type="checkbox" value="' + escape(o.value) + '" id="domus-analytics-account-' + index + '"' + (state.accounts.includes(normalize(o.value)) ? ' checked' : '') + '><span>' + escape(o.label) + '</span></label>').join('') +
                 '<p id="domus-analytics-search-empty" hidden>' + escape(t('domus', 'No matching accounts.')) + '</p></fieldset></div>' +
-                '<p class="domus-analytics-hint">' + escape(t('domus', 'Recorded bookings only. Each account shows its own postings; parent accounts do not include child accounts.')) + '</p>' +
+                '<p id="domus-analytics-hint" class="domus-analytics-hint">' + escape(t('domus', 'Recorded bookings only. Each account shows its own postings; parent accounts do not include child accounts.')) + '</p>' +
                 '<button id="domus-analytics-retry" type="button" hidden>' + escape(t('domus', 'Retry')) + '</button></div>' +
                 '<div class="domus-analytics-results"><p id="domus-analytics-context"></p><p id="domus-analytics-status" role="status" aria-live="polite"></p>' +
+                '<div id="domus-analytics-summary" class="domus-kpi-tiles domus-analytics-summary" hidden></div>' +
                 '<div class="domus-analytics-chart" hidden><canvas id="domus-analytics-chart" role="img" aria-label="' + escape(t('domus', 'Recorded bookings by account')) + '"></canvas></div>' +
                 '<div id="domus-analytics-values" class="domus-analytics-values" tabindex="0" role="region" aria-label="' + escape(t('domus', 'Booking totals')) + '"></div></div></div>';
         }
@@ -86,6 +95,10 @@
                 state.unitId = event.target.value;
                 updateChart();
             });
+            element('metric').addEventListener('change', event => {
+                state.metric = event.target.value;
+                draw();
+            });
             element('custom').addEventListener('change', () => {
                 state.accounts = Array.from(element('custom').querySelectorAll('input[type="checkbox"]:checked')).map(input => normalize(input.value));
                 updateChart();
@@ -99,6 +112,13 @@
 
         function showCustomAccounts() {
             element('custom').hidden = state.preset !== 'custom';
+            element('portfolio-controls').hidden = state.preset !== 'portfolio';
+            element('values').classList.toggle('domus-analytics-performance', state.preset === 'portfolio');
+            element('year').closest('label').hidden = state.preset === 'portfolio';
+            element('metric').value = state.metric;
+            element('hint').textContent = state.preset === 'portfolio'
+                ? t('domus', 'Development across all years. Rent and net profit are yearly totals. Annual net profit uses agreed rent and recorded unit costs after estimated taxes. Profitability divides this profit by current acquisition costs. Property-level postings are excluded.')
+                : t('domus', 'Recorded bookings only. Each account shows its own postings; parent accounts do not include child accounts.');
             searchAccounts();
         }
 
@@ -172,6 +192,10 @@
             updateContext();
             element('retry').hidden = true;
             element('year').disabled = true;
+            if (state.preset === 'portfolio') {
+                loadPortfolio(currentRequest, requestView);
+                return;
+            }
             const accounts = getSelectedAccounts();
             if (!accounts.length) {
                 element('status').textContent = state.preset === 'custom' ? t('domus', 'Select accounts to view recorded bookings.') : t('domus', 'No accounts available.');
@@ -193,10 +217,83 @@
                 });
         }
 
+        function loadPortfolio(currentRequest, requestView) {
+            element('status').textContent = t('domus', 'Loading…');
+            Domus.Api.getPortfolioPerformance({unitId: state.unitId, propertyId: state.propertyId})
+                .then(result => {
+                    if (!requestView.isCurrent() || currentRequest !== requestId || !element('status')) return;
+                    if (!Array.isArray(result?.years) || !Array.isArray(result.trend)) throw new Error('Invalid performance response');
+                    data = result;
+                    draw();
+                })
+                .catch(() => {
+                    if (!requestView.isCurrent() || currentRequest !== requestId || !element('status')) return;
+                    data = null;
+                    clearResults();
+                    element('status').textContent = t('domus', 'Could not load portfolio development. Please retry.');
+                    element('retry').hidden = false;
+                });
+        }
+
+        function drawPortfolio() {
+            const years = data.years.map(String);
+            updateContext(years.length > 1 ? [years[0], years[years.length - 1]] : years);
+            if (!data.trend.length) {
+                element('status').textContent = data.unitCount ? t('domus', 'No financial history available for this scope.') : t('domus', 'No units available for this scope.');
+                return;
+            }
+            const currency = value => value === null ? '—' : Domus.Utils.formatCurrency(value);
+            const percentage = value => value === null ? '—' : Domus.Utils.formatPercentage(value);
+            const provisional = t('domus', 'Provisional');
+            const status = row => row.isProvisional ? provisional : t('domus', 'Closed');
+            const latest = data.trend[data.trend.length - 1];
+            const summary = element('summary');
+            summary.hidden = false;
+            summary.innerHTML = metrics().map(metric => Domus.UI.buildKpiTile({
+                headline: metric.label,
+                value: metric.value === 'netRentability' ? percentage(latest[metric.value]) : currency(latest[metric.value]),
+                subline: String(latest.year) + ' · ' + status(latest)
+            })).join('');
+            const cells = row => [currency(row.baseRent), currency(row.netProfit), percentage(row.netRentability), status(row)].map(escape);
+            const headers = [t('domus', 'Year'), ...metrics().map(metric => metric.label), t('domus', 'Status')];
+            element('values').setAttribute('aria-label', t('domus', 'Portfolio development by year'));
+            element('values').innerHTML = Domus.UI.buildTable(headers, data.trend.map(row => [
+                {content: escape(row.year), rowHeader: true}, ...cells(row)
+            ]), {wrapPanel: false, caption: t('domus', 'Portfolio development by year')});
+            element('values').insertAdjacentHTML('beforeend', '<details><summary>' + escape(t('domus', 'Details by unit and year')) + '</summary>' +
+                data.trend.map(period => '<details><summary>' + escape(period.year + ' · ' + status(period)) + '</summary>' +
+                    Domus.UI.buildTable([t('domus', 'Unit'), ...headers.slice(1)], period.rows.map(row => ({
+                        cells: [{content: escape(row.label || row.unitId), rowHeader: true}, ...cells(row)],
+                        dataset: {navigate: 'unitDetail', args: row.unitId}
+                    })), {wrapPanel: false, caption: String(period.year)}) + '</details>').join('') + '</details>');
+            Domus.UI.bindRowNavigation();
+            const notes = [t('domus', 'Applied tax rate') + ': ' + percentage(data.taxRate)];
+            if (data.trend.some(row => row.missingCosts)) notes.push(t('domus', 'Profitability is unavailable because acquisition costs are missing for one or more units.'));
+            if (data.trend.some(row => row.isProvisional)) notes.push(t('domus', 'Open years are provisional. Annual agreed rent includes the full tenancy period in that year; recorded costs may still be incomplete.'));
+            element('status').textContent = notes.join(' ');
+            const metric = metrics().find(item => item.value === state.metric);
+            const format = state.metric === 'netRentability' ? percentage : currency;
+            const values = data.trend.map(row => row[state.metric]);
+            const labels = data.trend.map(row => String(row.year) + (row.isProvisional ? ' · ' + provisional : ''));
+            if (!window.Chart || !values.some(value => value !== null && Number.isFinite(value))) return;
+            const canvas = element('chart');
+            canvas.setAttribute('aria-label', metric.label);
+            canvas.parentElement.hidden = false;
+            const color = getComputedStyle(canvas).getPropertyValue('--color-primary').trim() || '#0082c9';
+            chartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {labels, datasets: [{label: metric.label, data: values, borderColor: color, backgroundColor: color, tension: 0.25, spanGaps: false}]},
+                options: {responsive: true, maintainAspectRatio: false, animation: false,
+                    plugins: {legend: {display: false}, tooltip: {callbacks: {label: context => format(context.raw)}}},
+                    scales: {y: {beginAtZero: true, ticks: {callback: value => format(value)}}}}
+            });
+        }
+
         function updateContext(years = []) {
             const property = element('property');
             const unit = element('unit');
             const scope = [property?.selectedOptions[0]?.textContent, unit?.selectedOptions[0]?.textContent].filter(Boolean);
+            if (state.preset === 'portfolio' && !years.length) years = [t('domus', 'All years')];
             const period = years.length ? years.join(' – ') : (data ? t('domus', 'No booking years') : state.year || (state.preset === 'annual' ? t('domus', 'Latest year with bookings') : t('domus', 'All booking years')));
             element('context').textContent = [presets().find(p => p.value === state.preset).label, ...scope, period].join(' · ');
         }
@@ -204,6 +301,12 @@
         function draw() {
             if (!data || !element('year')) return;
             clearResults();
+            if (state.preset === 'portfolio') {
+                drawPortfolio();
+                return;
+            }
+            element('values').setAttribute('aria-label', t('domus', 'Booking totals'));
+            element('chart').setAttribute('aria-label', t('domus', 'Recorded bookings by account'));
             const years = data.years.map(String);
             const annual = state.preset === 'annual';
             const select = element('year');
@@ -264,6 +367,10 @@
             destroyChart();
             if (element('chart')) element('chart').parentElement.hidden = true;
             if (element('values')) element('values').innerHTML = '';
+            if (element('summary')) {
+                element('summary').innerHTML = '';
+                element('summary').hidden = true;
+            }
         }
 
         function destroyChart() {

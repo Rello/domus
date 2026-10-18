@@ -88,3 +88,9 @@ snooze expiry, resolution, and background ownership-context restoration.
 Run `PLAYWRIGHT_TEST=routing ./tests/run-playwright.sh` for path-based deep links,
 reload initialization, browser Back/Forward, encoded route
 arguments, subdirectory installations, and renter navigation restrictions.
+
+Portfolio performance coverage in `PLAYWRIGHT_TEST=analytics ./tests/run-playwright.sh`
+includes the three summary metrics, all-year trends and tables, scope filters, missing
+acquisition costs, provisional years, phone layout, retry, and obsolete responses.
+`PortfolioPerformanceTest` verifies shared finance formulas, weighted profitability,
+annual rent proration, annual rent totals, continuous years, and exclusion of out-of-scope units.

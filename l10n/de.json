@@ -774,6 +774,7 @@
         "All booking years": "Alle Buchungsjahre",
         "Allow this process to be closed early at this step": "Erlauben, diesen Prozess bei diesem Schritt vorzeitig abzuschließen",
         "Annual base rent": "Jährliche Kaltmiete",
+        "Estimated annual net profit": "Geschätzter jährlicher Nettogewinn",
         "Annual booking breakdown": "Jährliche Buchungsübersicht",
         "Applied tax rate": "Angewendeter Steuersatz",
         "Assignment": "Zuordnung",
@@ -1118,7 +1119,22 @@
         "Unable to check rules.": "Regeln konnten nicht geprüft werden.",
         "Unable to load rulesets.": "Regelwerke konnten nicht geladen werden.",
         "Units in selected properties": "Einheiten in ausgewählten Objekten",
-        "View tasks": "Aufgaben anzeigen"
+        "View tasks": "Aufgaben anzeigen",
+        "All years": "Alle Jahre",
+        "Annual base rent": "Jährliche Kaltmiete",
+        "Estimated annual net profit": "Geschätzter jährlicher Nettogewinn",
+        "Closed": "Abgeschlossen",
+        "Could not load portfolio development. Please retry.": "Die Portfolio-Entwicklung konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+        "Details by unit and year": "Details nach Einheit und Jahr",
+        "Development across all years. Rent and net profit are yearly totals. Annual net profit uses agreed rent and recorded unit costs after estimated taxes. Profitability divides this profit by current acquisition costs. Property-level postings are excluded.": "Entwicklung über alle Jahre. Miete und Nettogewinn werden als Jahressummen ausgewiesen. Der jährliche Nettogewinn ergibt sich aus vereinbarter Miete und erfassten Kosten der Einheiten nach geschätzten Steuern. Die Rentabilität teilt diesen Gewinn durch die aktuellen Anschaffungskosten. Buchungen auf Immobilienebene sind ausgeschlossen.",
+        "Estimated profitability": "Geschätzte Rentabilität",
+        "No financial history available for this scope.": "Für diese Auswahl ist keine Finanzhistorie vorhanden.",
+        "No units available for this scope.": "Für diese Auswahl sind keine Einheiten vorhanden.",
+        "Open years are provisional. Annual agreed rent includes the full tenancy period in that year; recorded costs may still be incomplete.": "Offene Jahre sind vorläufig. Die vereinbarte Jahresmiete umfasst den gesamten Mietzeitraum des Jahres; erfasste Kosten können noch unvollständig sein.",
+        "Portfolio development": "Portfolio-Entwicklung",
+        "Portfolio development by year": "Portfolio-Entwicklung nach Jahren",
+        "Profitability is unavailable because acquisition costs are missing for one or more units.": "Die Rentabilität ist nicht verfügbar, da für eine oder mehrere Einheiten Anschaffungskosten fehlen.",
+        "Trend metric": "Kennzahl für den Verlauf"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

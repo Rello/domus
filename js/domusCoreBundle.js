@@ -539,6 +539,13 @@
             disableAccount: id => request('POST', `/accounts/${id}/disable`),
             enableAccount: id => request('POST', `/accounts/${id}/enable`),
             deleteAccount: id => request('DELETE', `/accounts/${id}`),
+            getPortfolioPerformance: (filters = {}) => {
+                const params = new URLSearchParams();
+                ['propertyId', 'unitId'].forEach(key => {
+                    if (filters[key]) params.set(key, filters[key]);
+                });
+                return request('GET', buildUrl('/statistics/portfolio-performance', params));
+            },
             getAccountTotals: (accounts = [], filters = {}) => {
                 const params = new URLSearchParams();
                 const list = (accounts || []).filter(account => account !== undefined && account !== null && account !== '');

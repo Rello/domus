@@ -5466,3 +5466,18 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
 #domus-rule-preview:not(:empty) { margin: 24px 0; }
 #domus-rule-preview .domus-table { width: 100%; table-layout: fixed; }
 #domus-rule-preview th, #domus-rule-preview td { padding: 12px 8px; white-space: normal; overflow-wrap: anywhere; }
+
+.domus-analytics-summary {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    margin-block: 12px;
+}
+
+.domus-analytics-summary[hidden] { display: none; }
+.domus-analytics-summary .domus-kpi-tile { min-width: 0; }
+.domus-analytics-summary .domus-kpi-value { overflow-wrap: anywhere; }
+.domus-analytics-values details { margin-block: 16px; }
+
+.domus-analytics-performance > table { min-width: 740px; }
+.domus-analytics-performance > table td { white-space: nowrap; }
+.domus-analytics-performance > table caption { text-align: start; }
+.domus-analytics-filter[hidden] { display: none; }
