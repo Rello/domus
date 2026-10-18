@@ -13,6 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Make tenancy details easier to review with a completion indicator, clearer headers, and a checklist of assigned partners.
 
 ### Fixed
+- Restore the Delete button when editing a booking.
 - Show the most recent tenancy periods first.
 
 ## 1.2.0 - 2026-10-18

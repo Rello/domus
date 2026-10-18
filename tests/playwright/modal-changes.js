@@ -552,6 +552,29 @@ async function main() {
         assert.equal(await page.locator('input[name="unitId"]').inputValue(), '1');
     });
 
+    await test('booking deletion requires confirmation and refreshes the unit', async page => {
+        await page.evaluate(() => {
+            window.deletedBookings = [];
+            window.refreshedUnits = [];
+            Domus.Api.get = async () => ({unitId: 1, account: '2000', amount: 100, date: '2026-09-25'});
+            Domus.Api.getDocuments = async () => [];
+            Domus.Api.deleteBooking = async id => {window.deletedBookings.push(id);};
+            Domus.Units.refreshDetail = id => {window.refreshedUnits.push(id);};
+            Domus.Bookings.openEditModal(7, {refreshView: 'unitDetail', refreshId: 1});
+        });
+        const editor = bookingDialog(page);
+        await editor.getByRole('button', {name: 'Delete', exact: true}).click();
+        const confirmation = page.getByRole('dialog', {name: 'Delete Booking?', exact: true});
+        await confirmation.getByRole('button', {name: 'Cancel', exact: true}).click();
+        assert.deepEqual(await page.evaluate(() => window.deletedBookings), []);
+        assert.equal(await editor.isVisible(), true);
+        await editor.getByRole('button', {name: 'Delete', exact: true}).click();
+        await confirmation.getByRole('button', {name: 'Delete', exact: true}).click();
+        await waitClosed(page);
+        assert.deepEqual(await page.evaluate(() => window.deletedBookings), [7]);
+        assert.deepEqual(await page.evaluate(() => window.refreshedUnits), [1]);
+    });
+
     for (const kind of ['unit', 'tenancy', 'task']) {
         await test(`${kind} initialized form closes cleanly and protects changed fields`, async page => {
             async function open() {

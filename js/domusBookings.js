@@ -1100,6 +1100,7 @@
                             hidePropertyField,
                             hideUnitField,
                             sectionMode,
+                            editBookingId,
                             editDocumentLinkId,
                             tenancyAssignment: formConfig.tenancyAssignment
                         })
