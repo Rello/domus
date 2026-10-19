@@ -16,6 +16,83 @@ use OCP\Files\IRootFolder;
 use PHPUnit\Framework\TestCase;
 
 class DocumentTeamScopeTest extends TestCase {
+    /** @dataProvider closedBookingDocumentOperations */
+    public function testClosedBookingDocumentChangesAreRejectedBeforeWrites(string $operation): void {
+        $dependencies = [];
+        foreach ((new \ReflectionClass(DocumentService::class))->getConstructor()->getParameters() as $parameter) {
+            $dependencies[$parameter->getName()] = $this->createMock($parameter->getType()->getName());
+        }
+        $booking = new \OCA\Domus\Db\Booking();
+        $booking->setId(402);
+        $booking->setUnitId(34);
+        $dependencies['bookingMapper']->method('findForUser')->with(402, 'actor')->willReturn($booking);
+        $dependencies['bookingService']->method('assertYearOpenForBooking')->with($booking)->willThrowException(new \InvalidArgumentException('Bookings cannot be changed in a closed year.'));
+        $link = new DocumentLink();
+        $link->setId(7);
+        $link->setFileId(42);
+        $link->setEntityType($operation === 'unitUnlink' ? 'unit' : 'booking');
+        $link->setEntityId($operation === 'unitUnlink' ? 34 : 402);
+        $dependencies['documentLinkMapper']->method('findForUser')->willReturn($link);
+        $bookingLink = clone $link;
+        $bookingLink->setEntityType('booking');
+        $bookingLink->setEntityId(402);
+        $dependencies['documentLinkMapper']->method('findByFileId')->willReturn([$bookingLink]);
+        foreach (['insert', 'update', 'delete', 'deleteByIds'] as $method) {
+            $dependencies['documentLinkMapper']->expects($this->never())->method($method);
+        }
+        $dependencies['rootFolder']->expects($this->never())->method('getUserFolder');
+        $dependencies['rootFolder']->expects($this->never())->method('getById');
+        $service = new DocumentService(...array_values($dependencies));
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Bookings cannot be changed in a closed year.');
+        match ($operation) {
+            'upload' => $service->uploadAndLink('actor', 'booking', 402, []),
+            'link' => $service->linkFile('actor', 'booking', 402, '/receipt.pdf'),
+            'attach' => $service->attachToTargets('actor', [['entityType' => 'unit', 'entityId' => 34], ['entityType' => 'booking', 'entityId' => 402]], null, '/receipt.pdf'),
+            'content' => $service->createContentForTargets('actor', [['entityType' => 'booking', 'entityId' => 402]], 'receipt.txt', 'receipt'),
+            default => $service->unlink('actor', 7),
+        };
+    }
+
+    public static function closedBookingDocumentOperations(): array {
+        return array_map(static fn($operation) => [$operation], ['upload', 'link', 'attach', 'content', 'unlink', 'unitUnlink']);
+    }
+
+    /** @dataProvider viewerAccess */
+    public function testDocumentViewerRequiresReadableFileInActorFiles(bool $mounted, bool $readable, string $route): void {
+        $dependencies = [];
+        foreach ((new \ReflectionClass(DocumentService::class))->getConstructor()->getParameters() as $parameter) {
+            $dependencies[$parameter->getName()] = $this->createMock($parameter->getType()->getName());
+        }
+        $link = new DocumentLink();
+        $link->setId(7);
+        $link->setFileId(42);
+        $link->setFileName('Invoice.pdf');
+        $dependencies['documentLinkMapper']->method('findForEntity')->with('actor', 'unit', 1)->willReturn([$link]);
+        $dependencies['managementContext']->method('actorUserId')->willReturn('actor');
+        $file = $this->createMock(File::class);
+        $file->method('isReadable')->willReturn($readable);
+        $folder = $this->createMock(Folder::class);
+        $folder->method('getById')->with(42)->willReturn($mounted ? [$file] : []);
+        $dependencies['rootFolder']->method('getUserFolder')->with('actor')->willReturn($folder);
+        $dependencies['urlGenerator']->method('linkToRouteAbsolute')->willReturnCallback(static function ($name, $params) {
+            if ($name === 'files.view.showFile') {
+                self::assertSame(['fileid' => 42, 'openfile' => 'true'], $params);
+            }
+            return $name;
+        });
+        $result = (new DocumentService(...array_values($dependencies)))->listForEntity('actor', 'unit', 1);
+        self::assertSame($route, $result[0]->jsonSerialize()['fileUrl']);
+    }
+
+    public static function viewerAccess(): array {
+        return [
+            [true, true, 'files.view.showFile'],
+            [false, false, 'domus.Document.content'],
+            [true, false, 'domus.Document.content'],
+        ];
+    }
+
     public function testUnitUnlinkRemovesOnlyTheSameFilesUnitAndDescendantRelations(): void {
         $constructor = (new \ReflectionClass(DocumentService::class))->getConstructor();
         $dependencies = [];
@@ -71,6 +148,7 @@ class DocumentTeamScopeTest extends TestCase {
             $link->setEntityType($type);
             $link->setEntityId(20);
             $dependencies['documentLinkMapper']->method('findForUser')->with(7, 'actor')->willReturn($link);
+            $dependencies['bookingMapper']->method('findForUser')->willReturn(new \OCA\Domus\Db\Booking());
             $dependencies['documentLinkMapper']->expects($this->never())->method('findByFileId');
             $dependencies['documentLinkMapper']->expects($this->never())->method('deleteByIds');
             $dependencies['documentLinkMapper']->expects($this->once())->method('delete')->with($link);

@@ -98,6 +98,37 @@ class PortfolioPerformanceTest extends TestCase {
         self::assertSame(0, $result['unitCount']);
     }
 
+    public function testHistoricalYearsOnlyIncludeUnitsWithHistory(): void {
+        $deps = $this->dependencies(StatisticsService::class);
+        $units = [];
+        foreach ([1, 2, 3] as $id) {
+            $unit = new Unit(); $unit->setId($id); $unit->setLabel('Unit ' . $id);
+            $unit->setTotalCosts($id === 3 ? null : '100000'); $units[] = $unit;
+        }
+        $deps['unitMapper']->method('findByUser')->willReturn($units);
+        $deps['tenancyService']->method('listTenanciesByUnit')->willReturn([
+            2 => [$this->tenancy(2, '2024-01-01', '2024-12-31', '0')],
+        ]);
+        $deps['bookingService']->method('sumByAccountGrouped')->willReturn([
+            ['unit_id' => 1, 'year' => 2008, 'account' => '2100', 'total' => 0],
+        ]);
+        $deps['bookingYearService']->method('getClosedYearsForUnits')->willReturn([1 => [2008 => true]]);
+        $deps['bookingYearService']->method('getClosedYearsForProperties')->willReturn([]);
+        $report = (new StatisticsService(...array_values($deps)))->portfolioPerformance('alice');
+        $historical = $report['trend'][0];
+        self::assertSame(2008, $historical['year']);
+        self::assertSame([1], array_column($historical['rows'], 'unitId'));
+        self::assertFalse($historical['isProvisional']);
+        self::assertSame(100000.0, $historical['totalCosts']);
+        self::assertSame(0, $historical['missingCosts']);
+        self::assertSame(0.0, $historical['netRentability']);
+        self::assertSame([], $report['trend'][1]['rows']);
+        self::assertNull($report['trend'][1]['netRentability']);
+        $later = $report['trend'][2024 - 2008];
+        self::assertSame([2], array_column($later['rows'], 'unitId'));
+        self::assertTrue($later['isProvisional']);
+    }
+
     public function testNoHistoryDoesNotInventYears(): void {
         $deps = $this->dependencies(StatisticsService::class);
         $unit = new Unit(); $unit->setId(1); $unit->setTotalCosts('100000');

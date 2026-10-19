@@ -41,6 +41,8 @@ class DocumentService {
         private AccountService $accountService,
         private DocumentPathService $documentPathService,
         private LoggerInterface $logger,
+        private ManagementAccessContext $managementContext,
+        private BookingService $bookingService,
     ) {
     }
 
@@ -87,6 +89,7 @@ class DocumentService {
 
     public function linkFile(string $userId, string $entityType, int $entityId, string $filePath, ?int $year = null, ?string $title = null, ?string $note = null, ?string $documentDate = null): DocumentLink {
         $this->assertEntityType($entityType);
+        $this->assertTargetEditable($userId, $entityType, $entityId);
         $normalizedPath = $this->normalizePath($filePath);
         $userFolder = $this->rootFolder->getUserFolder($userId);
         if (!$userFolder->nodeExists($normalizedPath)) {
@@ -103,6 +106,7 @@ class DocumentService {
 
     public function uploadAndLink(string $userId, string $entityType, int $entityId, array $uploadedFile, ?int $year = null, ?string $title = null, ?string $note = null, ?string $typeFolder = null, ?string $documentDate = null): DocumentLink {
         $this->assertEntityType($entityType);
+        $this->assertTargetEditable($userId, $entityType, $entityId);
         if (!isset($uploadedFile['tmp_name']) || !is_readable($uploadedFile['tmp_name'])) {
             throw new \InvalidArgumentException($this->l10n->t('No file uploaded.'));
         }
@@ -147,6 +151,9 @@ class DocumentService {
             throw new \InvalidArgumentException($this->l10n->t('At least one valid target is required.'));
         }
 
+        foreach ($normalizedTargets as $target) {
+            $this->assertTargetEditable($userId, $target['entityType'], $target['entityId']);
+        }
         $links = [];
 
         if ($uploadedFile && isset($uploadedFile['tmp_name'])) {
@@ -178,6 +185,7 @@ class DocumentService {
         if (!$link) {
             throw new ResourceNotFoundException($this->l10n->t('Document link not found.'));
         }
+        $this->assertTargetEditable($userId, $link->getEntityType(), $link->getEntityId());
         if ($link->getEntityType() === 'unit' && $link->getFileId() !== null) {
             $ids = [$link->getId()];
             foreach ($this->documentLinkMapper->findByFileId($userId, $link->getFileId()) as $candidate) {
@@ -188,6 +196,7 @@ class DocumentService {
                 };
                 if (($target !== null && $target->getUnitId() === $link->getEntityId())
                     || ($candidate->getEntityType() === 'unit' && $candidate->getEntityId() === $link->getEntityId())) {
+                    $this->assertTargetEditable($userId, $candidate->getEntityType(), $candidate->getEntityId());
                     $ids[] = $candidate->getId();
                 }
             }
@@ -209,6 +218,7 @@ class DocumentService {
     private function persistLink(string $userId, string $entityType, int $entityId, File $file, ?string $title = null, ?string $note = null, ?int $preferredLinkId = null, ?string $documentDate = null): DocumentLink {
         $documentDate = $this->normalizeDocumentDate($documentDate);
         $this->assertTargetInContext($userId, $entityType, $entityId);
+        $this->assertTargetEditable($userId, $entityType, $entityId);
         $existingLink = null;
         foreach ($this->documentLinkMapper->findForEntity($userId, $entityType, $entityId) as $candidate) {
             if ($candidate->getFileId() !== $file->getId()) {
@@ -394,6 +404,9 @@ class DocumentService {
             throw new \InvalidArgumentException($this->l10n->t('At least one valid target is required.'));
         }
 
+        foreach ($normalizedTargets as $target) {
+            $this->assertTargetEditable($userId, $target['entityType'], $target['entityId']);
+        }
         $primary = array_shift($normalizedTargets);
         $targetFolder = $this->ensureTargetFolder($userId, $primary['entityType'], $primary['entityId'], $year, $typeFolder);
 
@@ -444,6 +457,19 @@ class DocumentService {
         $fileId = $link->getFileId();
         if ($fileId !== null) {
             $link->setFileUrl($this->urlGenerator->linkToRouteAbsolute('domus.Document.content', ['id' => $link->getId()]));
+            try {
+                // The Files viewer needs the file mounted in the signed-in user's Files.
+                // Team documents may only be accessible through Domus's checked endpoint.
+                $viewerFiles = $this->rootFolder->getUserFolder($this->managementContext->actorUserId())->getById($fileId);
+                foreach ($viewerFiles as $viewerFile) {
+                    if ($viewerFile instanceof File && $viewerFile->isReadable()) {
+                        $link->setFileUrl($this->urlGenerator->linkToRouteAbsolute('files.view.showFile', ['fileid' => $fileId, 'openfile' => 'true']));
+                        break;
+                    }
+                }
+            } catch (\OCP\Files\NotFoundException $e) {
+                // Retain the authorized content endpoint for files outside the user's Files.
+            }
             try {
                 $node = $this->rootFolder->getById($fileId)[0] ?? null;
                 if ($node instanceof File) {
@@ -662,6 +688,15 @@ class DocumentService {
         if (!in_array($entityType, self::ENTITY_TYPES, true)) {
             throw new \InvalidArgumentException($this->l10n->t('Invalid entity type.'));
         }
+    }
+
+    private function assertTargetEditable(string $userId, string $entityType, int $entityId): void {
+        if ($entityType !== 'booking') return;
+        $booking = $this->bookingMapper->findForUser($entityId, $userId);
+        if ($booking === null) {
+            throw new ResourceNotFoundException($this->l10n->t('Booking not found.'));
+        }
+        $this->bookingService->assertYearOpenForBooking($booking);
     }
 
     private function assertTargetInContext(string $userId, string $entityType, int $entityId): void {

@@ -32,6 +32,9 @@ GitHub Actions runs this same PHPUnit configuration and the browser wrapper on p
   responses. They do not require a Nextcloud login or write server records.
 - The Team context fixture checks Personal and multiple Team choices after navigation refresh.
   stale preview responses, and the management boundary for accounts without portfolio access.
+- Booking/document regressions in `modal-changes` cover partial-save retries, nested
+  document editing without competing booking drafts, file-source switching/reset,
+  property-scoped allocation defaults, disclosure state, and keyboard file picking.
 - Coverage includes changed/unchanged forms, dismissal paths, successful/failed
   saves, asynchronous defaults, document selections, nested dialogs, keyboard
   focus, dashboard due-date groups and creation shortcuts, unit section

@@ -37,7 +37,8 @@ class BookingController extends Controller {
 
     #[NoAdminRequired]
     public function show(int $id): DataResponse {
-        return new DataResponse($this->bookingService->getBookingForUser($id, $this->getUserId()));
+        $booking = $this->bookingService->getBookingForUser($id, $this->getUserId());
+        return new DataResponse(array_merge($booking->jsonSerialize(), ['yearClosed' => $this->bookingService->isBookingYearClosed($booking)]));
     }
 
     #[NoAdminRequired]

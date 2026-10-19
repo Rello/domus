@@ -43,7 +43,7 @@ class RenterPortalController extends Controller {
     #[NoCSRFRequired]
     public function content(int $id): FileDisplayResponse|DataResponse {
         try {
-            return FileResponse::download($this->service->content($id));
+            return FileResponse::document($this->service->content($id));
         } catch (\Throwable $exception) {
             return ApiErrorResponse::fromException($exception, $this->l10n, $this->logger);
         }
@@ -53,7 +53,7 @@ class RenterPortalController extends Controller {
     #[NoCSRFRequired]
     public function previewContent(string $teamId, int $tenancyId, int $id): FileDisplayResponse|DataResponse {
         try {
-            return FileResponse::download($this->service->previewContent($teamId, $tenancyId, $id));
+            return FileResponse::document($this->service->previewContent($teamId, $tenancyId, $id));
         } catch (\Throwable $exception) {
             return ApiErrorResponse::fromException($exception, $this->l10n, $this->logger);
         }

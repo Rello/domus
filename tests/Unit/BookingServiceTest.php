@@ -25,6 +25,19 @@ use OCP\IL10N;
 use PHPUnit\Framework\TestCase;
 
 class BookingServiceTest extends TestCase {
+    public function testBookingClosureStateUsesTheExistingBookingScope(): void {
+        foreach ([false, true] as $closed) {
+            $booking = $this->createDraftBooking();
+            $booking->setYear(2025);
+            $booking->setPropertyId(9);
+            $booking->setUnitId(34);
+            $years = $this->createMock(BookingYearService::class);
+            $years->expects($this->once())->method('isYearClosedForBookingScope')->with(2025, 9, 34)->willReturn($closed);
+            $service = $this->createService(bookingYearService: $years);
+            self::assertSame($closed, $service->isBookingYearClosed($booking));
+        }
+    }
+
     public function testCreateBookingRejectsClosedPropertyYear(): void {
         $bookingMapper = $this->createMock(BookingMapper::class);
         $bookingMapper->expects($this->never())->method('insert');

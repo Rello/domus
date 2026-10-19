@@ -591,7 +591,7 @@ async function main() {
     });
 
     for (const confirmStep of [false, true]) {
-        await test(`year warnings link to bookings from ${confirmStep ? 'confirmation' : 'completion checks'}`, async page => {
+        await test(`year warnings ${confirmStep ? 'omit the booking action on confirmation' : 'link to bookings from completion checks'}`, async page => {
             await page.getByRole('navigation', {name: 'Unit sections'}).getByRole('link', {name: 'Finances'}).click();
             await page.evaluate(hasBookings => {
                 window.yearCalls = [];
@@ -609,7 +609,13 @@ async function main() {
             await dialog.locator('select[name="year"]').selectOption('2025');
             await dialog.getByRole('button', {name: 'Next', exact: true}).click();
             await dialog.getByRole('button', {name: 'Check bookings', exact: true}).waitFor();
-            if (confirmStep) await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+            if (confirmStep) {
+                await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+                assert.equal(await dialog.getByRole('button', {name: 'Check bookings', exact: true}).count(), 0);
+                assert.deepEqual(await dialog.locator('.domus-form-actions button').allTextContents(), ['Back', 'Close year']);
+                assert.equal(await dialog.locator('.domus-form-actions button.primary').innerText(), 'Close year');
+                return;
+            }
             assert.equal(await dialog.locator('.domus-form-actions button.primary').innerText(), 'Check bookings');
             await dialog.getByRole('button', {name: 'Check bookings', exact: true}).click();
             await dialog.waitFor({state: 'detached'});
@@ -628,20 +634,23 @@ async function main() {
         }, 'landlord', confirmStep ? {width: 390, height: 844} : {width: 1280, height: 900});
     }
 
-    await test('year closing checks every 2* account and allows closing with advisory errors', async page => {
+    await test('year closing checks only primary 2* accounts and allows closing with advisory errors', async page => {
         await page.evaluate(() => {
             window.yearCalls = [];
             Domus.Api.getAccounts = async () => [
                 {number: '1000', label: 'Revenue'},
-                {number: '2100', label: 'Maintenance <cost>', children: [{number: '2110', label: 'Child account'}]},
+                {number: '2000', label: 'Maintenance <cost>', children: [
+                    {number: '2001', label: 'Missing child account'},
+                    {number: '2010', label: 'Booked child account'}
+                ]},
                 {number: '2200', label: 'Zero total'},
                 {number: '2300', label: 'Missing booking'},
                 {number: '2500', label: 'Negative total', status: 'disabled'}
             ];
             Domus.Api.getBookings = async filter => {
                 window.bookingFilter = filter;
-                return [{account: 2100, amount: 12.34}, {account: 2100, amount: 0.01},
-                    {account: 2110, amount: 4}, {account: 2200, amount: 10},
+                return [{account: 2000, amount: 12.34}, {account: 2000, amount: 0.01},
+                    {account: 2010, amount: 4}, {account: 2200, amount: 10},
                     {account: 2200, amount: -10}, {account: 2500, amount: -3}];
             };
             Domus.Api.closeBookingYear = async (year, scope) => window.yearCalls.push({year, scope});
@@ -650,9 +659,11 @@ async function main() {
         const dialog = page.getByRole('dialog').filter({has: page.locator('.domus-year-status-form')});
         await dialog.getByRole('button', {name: 'Next', exact: true}).click();
         await dialog.locator('tbody tr').first().waitFor();
-        assert.equal(await dialog.locator('tbody tr').count(), 5);
+        assert.equal(await dialog.locator('tbody tr').count(), 4);
+        assert.equal(await dialog.getByText('Missing child account', {exact: true}).count(), 0);
+        assert.equal(await dialog.getByText('Booked child account', {exact: true}).count(), 0);
         assert.equal(await dialog.locator('.domus-guided-content h3').count(), 0);
-        assert.equal(await dialog.locator('.domus-year-check-pass').count(), 2);
+        assert.equal(await dialog.locator('.domus-year-check-pass').count(), 1);
         assert.equal(await dialog.locator('.domus-year-check-fail').count(), 3);
         assert.match(await dialog.locator('tbody tr').first().innerText(), /Maintenance <cost>/);
         const value = await page.evaluate(() => Domus.Utils.formatCurrency(12.35));

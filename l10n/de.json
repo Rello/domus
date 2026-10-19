@@ -2,6 +2,7 @@
     "translations": {
         "{action} {entity}?": "{action} {entity}?",
         "{action} a backup before deleting this unit.": "{action} Sie eine Sicherung, bevor Sie diese Einheit löschen.",
+        "Changes saved.": "Änderungen gespeichert.",
         "{entity} created.": "{entity} erstellt.",
         "{entity} deleted.": "{entity} gelöscht.",
         "{entity} updated.": "{entity} aktualisiert.",
@@ -1155,7 +1156,9 @@
         "{count} accounts need attention. You can still close the year.": "{count} Konten müssen geprüft werden. Sie können das Jahr trotzdem abschließen.",
         "All mandatory accounts have positive booking totals.": "Alle Pflichtkonten haben positive Buchungssummen.",
         "Close year {year}? Bookings for this year will be locked.": "Jahr {year} abschließen? Buchungen für dieses Jahr werden gesperrt.",
-        "Reopen year {year}? Bookings for this year can be edited again.": "Jahr {year} wieder öffnen? Buchungen für dieses Jahr können wieder bearbeitet werden."
+        "Reopen year {year}? Bookings for this year can be edited again.": "Jahr {year} wieder öffnen? Buchungen für dieses Jahr können wieder bearbeitet werden.",
+        "Display Booking": "Buchung anzeigen",
+        "Year already closed": "Jahr bereits abgeschlossen"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

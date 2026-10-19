@@ -131,7 +131,11 @@ class BookingService {
         $this->bookingMapper->delete($booking);
     }
 
-    private function assertYearOpenForBooking(Booking $booking): void {
+    public function isBookingYearClosed(Booking $booking): bool {
+        return $this->bookingYearService->isYearClosedForBookingScope((int)$booking->getYear(), $booking->getPropertyId(), $booking->getUnitId());
+    }
+
+    public function assertYearOpenForBooking(Booking $booking): void {
         $this->assertYearOpen(
             (int)$booking->getYear(),
             $booking->getPropertyId(),

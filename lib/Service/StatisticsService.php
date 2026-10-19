@@ -179,10 +179,12 @@ class StatisticsService {
                 $topMap = $this->accountService->getTopAccountNumberMap();
                 $taxRate = $this->getTaxRateSetting($userId);
                 $years = [];
+                $unitYears = [];
                 $currentYear = (int)date('Y');
                 foreach ($units as $unit) {
                         $id = $unit->getId();
-                        $years = array_merge($years, $this->collectYears($bookings[$id] ?? [], $tenancies[$id] ?? []));
+                        $unitYears[$id] = array_fill_keys($this->collectYears($bookings[$id] ?? [], $tenancies[$id] ?? []), true);
+                        $years = array_merge($years, array_keys($unitYears[$id]));
                 }
                 $years = array_values(array_filter($years, static fn(int $year) => $year > 0 && $year <= $currentYear));
                 // Keep calendar gaps visible and stop at the current, provisional year.
@@ -193,6 +195,9 @@ class StatisticsService {
                         $rows = [];
                         foreach ($units as $unit) {
                                 $id = $unit->getId();
+                                if (!isset($unitYears[$id][$reportYear])) {
+                                        continue;
+                                }
                                 $sums = $this->buildUnitYearSums($unit, $taxRate, $reportYear, $topMap, $tenancies[$id] ?? [], $bookings[$id][$reportYear] ?? []);
                                 $values = StatisticCalculations::calculateValues(StatisticCalculations::unitRevenue(), $sums, $topMap);
                                 $costs = (float)($unit->getTotalCosts() ?? 0);
@@ -208,7 +213,7 @@ class StatisticsService {
                                 $totals['isProvisional'] = $totals['isProvisional'] || $provisional;
                         }
                         // Ratios must be recomputed from totals, never averaged across units.
-                        $totals['netRentability'] = $units !== [] && $totals['missingCosts'] === 0 && $totals['totalCosts'] > 0
+                        $totals['netRentability'] = $rows !== [] && $totals['missingCosts'] === 0 && $totals['totalCosts'] > 0
                                 ? $totals['netProfit'] / $totals['totalCosts'] : null;
                         $trend[] = ['year' => $reportYear, 'rows' => $rows] + $totals;
                 }

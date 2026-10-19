@@ -44,7 +44,7 @@ class DocumentController extends Controller {
     #[NoAdminRequired]
     #[NoCSRFRequired]
     public function content(int $id): FileDisplayResponse|DataResponse {
-        return FileResponse::download($this->documentService->getLinkedFile($this->getUserId(), $id));
+        return FileResponse::document($this->documentService->getLinkedFile($this->getUserId(), $id));
     }
 
     #[NoAdminRequired]

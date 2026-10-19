@@ -1306,75 +1306,13 @@
 .domus-booking-section-header {
     display: flex;
     align-items: center;
-    padding: 12px 14px;
+    padding: 8px 14px;
 }
 
-.domus-form .domus-booking-section-toggle {
-    display: inline-flex;
-    align-items: center;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    gap: 10px;
-    cursor: pointer;
+.domus-booking-section-header .domus-booking-section-name {
     margin: 0;
-    width: auto;
-}
-
-.domus-booking-section-toggle input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    margin: 0;
-    pointer-events: none;
-}
-
-.domus-booking-section-slider {
-    position: relative;
-    width: 42px;
-    height: 24px;
-    border-radius: 999px;
-    border: var(--domus-border);
-    background: var(--color-background-darker);
-    cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.domus-booking-section-slider::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s ease;
-}
-
-.domus-booking-section-toggle input:checked + .domus-booking-section-slider {
-    background: var(--color-primary-element-light);
-    border-color: var(--color-primary);
-}
-
-.domus-booking-section-toggle input:checked + .domus-booking-section-slider::after {
-    transform: translateX(18px);
-    background: var(--color-primary);
-}
-
-.domus-booking-section-toggle input:focus-visible + .domus-booking-section-slider {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-}
-
-.domus-booking-section-toggle input:disabled + .domus-booking-section-slider {
-    opacity: 0.85;
-    cursor: not-allowed;
-}
-
-.domus-booking-section-name {
+    font-size: 16px;
+    line-height: 1.4;
     font-weight: 600;
 }
 
@@ -1400,14 +1338,14 @@
     display: none;
 }
 
-.domus-document-form .domus-document-tenancies {
+.domus-form .domus-document-tenancies {
     border: 0;
     padding: 0;
     margin: 0;
     min-width: 0;
 }
 
-.domus-document-form .domus-document-tenancies legend {
+.domus-form .domus-document-tenancies legend {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1534,15 +1472,6 @@
     padding: 8px 12px;
 }
 
-.domus-booking-document-locked .domus-booking-section-name {
-    margin: 0;
-    font-size: 16px;
-}
-
-.domus-document-form .domus-booking-section-body {
-    padding: 14px;
-}
-
 .domus-booking-document-locked .domus-doc-attachment {
     margin: 0;
 }
@@ -1554,17 +1483,6 @@
 
 .domus-document-form .domus-booking-relations {
     margin-top: 14px;
-}
-
-.domus-booking-doc-picker-row {
-    justify-content: flex-start;
-    align-items: center;
-    gap: 8px;
-}
-
-.domus-booking-doc-picker-row .domus-doc-picker-display {
-    max-width: 100%;
-    word-break: break-all;
 }
 
 .domus-form-actions {
@@ -4910,10 +4828,6 @@
 
 .domus-ghost:hover {
     background: var(--color-background-hover);
-}
-
-.domus-doc-footer {
-    justify-content: flex-end;
 }
 
 .domus-documents-date-cell {

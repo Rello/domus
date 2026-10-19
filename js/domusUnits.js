@@ -1166,13 +1166,13 @@
                     }
                 }
                 const isConfirm = currentStep === steps.length - 1;
-                const showCheckBookings = isOpen() && currentStep > 0 && checkState === 'ready' && failedCount() > 0;
+                const showCheckBookings = isOpen() && currentStep === 1 && checkState === 'ready' && failedCount() > 0;
                 content += '<div class="domus-form-actions">' +
                     (currentStep > 0 ? button('back', t('domus', 'Back'), false, saving) : '') +
+                    (showCheckBookings ? button('check-bookings', t('domus', 'Check bookings'), true, saving) : '') +
                     (isConfirm
                         ? button('submit', isOpen() ? t('domus', 'Close year') : t('domus', 'Reopen year'), !showCheckBookings, saving)
-                        : button('next', t('domus', 'Next'), !showCheckBookings, !selectedYear || (currentStep === 1 && checkState !== 'ready'))) +
-                    (showCheckBookings ? button('check-bookings', t('domus', 'Check bookings'), true, saving) : '') + '</div>';
+                        : button('next', t('domus', 'Next'), !showCheckBookings, !selectedYear || (currentStep === 1 && checkState !== 'ready'))) + '</div>';
                 container.innerHTML = Domus.UI.buildGuidedWorkflowLayout(steps, currentStep, '<div class="domus-form">' + content + '</div>');
                 container.querySelector('#domus-year-status-year')?.addEventListener('change', event => {
                     selectedYear = Number(event.target.value);
@@ -1220,7 +1220,7 @@
                             const number = String(booking.account);
                             totals.set(number, (totals.get(number) || 0) + Math.round(Number(booking.amount) * 100));
                         });
-                        checks = Domus.Accounts.flattenHierarchy(accounts).filter(account => String(account.number).startsWith('2'))
+                        checks = Domus.Accounts.flattenHierarchy(accounts).filter(account => account.level === 0 && String(account.number).startsWith('2'))
                             .map(account => ({number: String(account.number), label: account.label || '', total: (totals.get(String(account.number)) || 0) / 100}));
                         checkState = 'ready';
                         renderStep(false);

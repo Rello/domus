@@ -8,6 +8,7 @@ OC.L10N.register(
     {
         "{action} {entity}?": "{action} {entity}?",
         "{action} a backup before deleting this unit.": "{action} Sie eine Sicherung, bevor Sie diese Einheit löschen.",
+        "Changes saved.": "Änderungen gespeichert.",
         "{entity} created.": "{entity} erstellt.",
         "{entity} deleted.": "{entity} gelöscht.",
         "{entity} updated.": "{entity} aktualisiert.",
@@ -822,6 +823,8 @@ OC.L10N.register(
         "Due {days} days before opening": "Fällig {days} Tage vor der Öffnung",
         "Early completion": "Vorzeitiger Abschluss",
         "Early completion is not allowed for this step.": "Ein vorzeitiger Abschluss ist für diesen Schritt nicht erlaubt.",
+        "Display Booking": "Buchung anzeigen",
+        "Year already closed": "Jahr bereits abgeschlossen",
         "Edit booking": "Buchung bearbeiten",
         "Edit contact": "Kontakt bearbeiten",
         "Edit document": "Dokument bearbeiten",

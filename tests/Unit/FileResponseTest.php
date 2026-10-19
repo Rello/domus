@@ -52,8 +52,8 @@ class FileResponseTest extends TestCase {
             'unit svg' => [UnitController::class, 'imageContent', 'entityImageService', 'getUnitImage', [1], [1, 'alice'], 'image/svg+xml', 'inline'],
             'renamed html image' => [UnitController::class, 'imageContent', 'entityImageService', 'getUnitImage', [1], [1, 'alice'], 'text/html', 'attachment'],
             'management document' => [DocumentController::class, 'content', 'documentService', 'getLinkedFile', [1], ['alice', 1], 'text/html', 'attachment'],
-            'renter document' => [RenterPortalController::class, 'content', 'service', 'content', [1], [1], 'application/pdf', 'attachment'],
-            'preview document' => [RenterPortalController::class, 'previewContent', 'service', 'previewContent', ['a', 2, 1], ['a', 2, 1], 'application/pdf', 'attachment'],
+            'renter document' => [RenterPortalController::class, 'content', 'service', 'content', [1], [1], 'application/pdf', 'inline'],
+            'preview document' => [RenterPortalController::class, 'previewContent', 'service', 'previewContent', ['a', 2, 1], ['a', 2, 1], 'application/pdf', 'inline'],
         ];
     }
 

@@ -451,6 +451,8 @@ async function main() {
         assert.equal(await page.locator('.domus-modal').count(), 0);
         await page.getByRole('button', {name: 'Edit document Invoice.pdf'}).press('Space');
         await page.getByRole('dialog', {name: 'Edit document', exact: true}).waitFor();
+        assert.equal(await bookingDialog(page).locator('.domus-booking-document-preview').textContent(), 'document.pdf');
+        assert.equal(await page.getByRole('textbox', {name: 'Title', exact: true}).inputValue(), 'Invoice.pdf');
         assert.equal(await page.getByRole('textbox', {name: 'Note', exact: true}).inputValue(), 'Existing note');
         await page.getByRole('textbox', {name: 'Note', exact: true}).fill('Changed note');
         await page.keyboard.press('Escape');
@@ -624,6 +626,66 @@ async function main() {
             {entityType: 'booking', entityId: 2}, {entityType: 'unit', entityId: 1},
             {entityType: 'tenancy', entityId: 31}, {entityType: 'tenancy', entityId: 32}
         ]));
+    });
+
+    await test('document editor updates every linked booking by identity and preserves differing metadata', async page => {
+        await page.evaluate(() => {
+            window.updatedBookings = [];
+            window.createdBookings = [];
+            Domus.Accounts.toOptions = () => [{value: '', label: 'Select account'}, {value: '2000', label: 'Allocable'}, {value: '2100', label: 'Other'}];
+            Domus.Api.getDocuments = async () => [{id: 7, fileName: 'Invoice.pdf'}];
+            Domus.Api.getDocumentDetail = async () => ({
+                document: {id: 7, filePath: '/Invoice.pdf', fileName: 'Invoice.pdf', documentDate: '2025-12-31'},
+                linkedEntities: [{id: 7, entityType: 'unit', entityId: 1}, {id: 8, entityType: 'booking', entityId: 397}, {id: 9, entityType: 'booking', entityId: 396}]
+            });
+            Domus.Api.get = async path => path.endsWith('/tenancies') ? [] : {
+                unitId: 1, account: path.endsWith('/397') ? '2000' : '2100',
+                amount: path.endsWith('/397') ? 2843.3 : 906.85,
+                date: path.endsWith('/397') ? '2025-12-31' : '2025-12-30',
+                description: path.endsWith('/397') ? 'First' : 'Second'
+            };
+            Domus.Api.updateBooking = async (id, payload) => window.updatedBookings.push({id, payload});
+            Domus.Api.createBooking = async payload => {window.createdBookings.push(payload); return {id: 398};};
+            Domus.Api.attachDocumentToTargets = async () => [{id: 7}];
+            document.querySelector('#app-content').innerHTML = Domus.Documents.renderList('unit', 1);
+        });
+        await page.locator('tr[data-doc-info="7"]').hover();
+        await page.getByRole('button', {name: 'Edit document Invoice.pdf', exact: true}).click();
+        const dialog = bookingDialog(page);
+        const rows = dialog.locator('.domus-booking-entry');
+        await rows.nth(2).waitFor();
+        assert.equal(await rows.nth(0).locator('[data-role="amount"]').inputValue(), '2843.3');
+        assert.equal(await rows.nth(1).locator('[data-role="amount"]').inputValue(), '906.85');
+        await rows.nth(0).locator('[data-role="amount"]').fill('2800');
+        await rows.nth(1).locator('[data-role="amount"]').fill('900');
+        await rows.nth(2).locator('select').selectOption('2000');
+        await rows.nth(2).locator('[data-role="amount"]').fill('50');
+        await dialog.getByRole('button', {name: 'Save', exact: true}).click();
+        await waitClosed(page);
+        assert.deepEqual(await page.evaluate(() => window.updatedBookings), [
+            {id: 397, payload: {account: '2000', amount: '2800'}},
+            {id: 396, payload: {account: '2100', amount: '900'}}
+        ]);
+        const created = await page.evaluate(() => window.createdBookings);
+        assert.equal(created.length, 1);
+        assert.equal(created[0].amount, '50');
+        assert.equal('row' in created[0], false);
+        await page.locator('tr[data-doc-info="7"]').hover();
+        await page.getByRole('button', {name: 'Edit document Invoice.pdf', exact: true}).click();
+        await dialog.locator('[name="description"]').fill('Shared description');
+        await dialog.getByRole('button', {name: 'Save', exact: true}).click();
+        await waitClosed(page);
+        assert.deepEqual(await page.evaluate(() => window.updatedBookings.slice(2).map(item => item.payload.description)), ['Shared description', 'Shared description']);
+        await page.evaluate(() => {
+            Domus.Api.get = async path => {
+                if (path.endsWith('/396')) throw new Error('Cannot load second booking');
+                return {unitId: 1, account: '2000', amount: 100, date: '2025-12-31'};
+            };
+        });
+        await page.locator('tr[data-doc-info="7"]').hover();
+        await page.getByRole('button', {name: 'Edit document Invoice.pdf', exact: true}).click();
+        await page.getByText('Cannot load second booking', {exact: true}).waitFor();
+        assert.equal(await dialog.count(), 0);
     });
 
     await test('unit document editor links an additional tenancy without reuploading or duplicating links', async page => {
@@ -825,7 +887,9 @@ async function main() {
             await page.evaluate(() => Domus.Bookings.openEditModal(7, {refreshView: 'unitDetail', refreshId: 1}));
         }
         const editor = bookingDialog(page);
-        await editor.getByRole('button', {name: 'Attach document (optional)', exact: true}).click();
+        await editor.getByRole('heading', {name: 'Documents', exact: true}).waitFor();
+        assert.equal(await editor.getByRole('button', {name: 'Attach document (optional)', exact: true}).count(), 0);
+        assert.equal(await editor.locator('[data-section="document"]').getAttribute('data-enabled'), '1');
         const remove = editor.getByRole('button', {name: 'Remove document link Electricity', exact: true});
         assert.equal(await remove.count(), 2);
         await page.evaluate(() => {window.failUnlink = true;});
@@ -843,6 +907,108 @@ async function main() {
         assert.equal(await page.evaluate(() => window.attachments.length), 0);
         assert.equal(await page.evaluate(() => window.fixtureDocuments.length), 1);
     });
+
+    for (const direct of [false, true]) {
+    for (const width of [1280, 390]) {
+        await test(`booking documents allow editing existing tenancy assignments ${direct ? 'directly' : 'in document editor'} (${width}px)`, async page => {
+            await page.evaluate(() => {
+                window.removedLinks = [];
+                window.savedTargets = null;
+                Domus.Api.getDocuments = async () => [{id: 7, fileName: 'Invoice.pdf', fileUrl: 'https://files.example.test/42'}];
+                Domus.Api.getDocumentDetail = async () => ({
+                    document: {id: 7, filePath: '/Invoice.pdf', fileName: 'Invoice.pdf'},
+                    linkedEntities: [
+                        {id: 7, entityType: 'booking', entityId: 402},
+                        {id: 8, entityType: 'unit', entityId: 1},
+                        {id: 9, entityType: 'tenancy', entityId: 12}
+                    ]
+                });
+                Domus.Api.get = async path => path === '/units/1/tenancies'
+                    ? [{id: 12, partners: [{name: 'Existing renter'}]}, {id: 13, partners: [{name: 'New renter'}]}]
+                    : {unitId: 1, account: '2000', amount: 100, date: '2026-09-25', description: 'Existing booking'};
+                Domus.Api.updateBooking = async () => {};
+                Domus.Api.attachDocumentToTargets = async payload => {
+                    window.savedTargets = payload.targets;
+                    return [{id: 7}, {id: 8}, {id: 10}];
+                };
+                Domus.Api.unlinkDocument = async id => {window.removedLinks.push(Number(id));};
+                Domus.Bookings.openEditModal(402);
+            });
+            const booking = page.getByRole('dialog', {name: 'Edit booking', exact: true});
+            const selected = booking.getByRole('checkbox', {name: 'Existing renter', exact: true});
+            await selected.waitFor();
+            assert.equal(await selected.isChecked(), true);
+            const layout = await selected.evaluate(input => {
+                const fieldset = input.closest('fieldset');
+                const root = fieldset.parentElement;
+                const sections = root.previousElementSibling;
+                return {
+                    border: getComputedStyle(fieldset).borderTopWidth,
+                    direction: getComputedStyle(input.closest('label')).flexDirection,
+                    belowSections: sections.classList.contains('domus-booking-sections') && root.getBoundingClientRect().top >= sections.getBoundingClientRect().bottom,
+                    lastInForm: root === root.parentElement.lastElementChild
+                };
+            });
+            assert.equal(layout.border, '0px');
+            assert.equal(layout.direction, 'row');
+            assert.equal(layout.belowSections, true);
+            // Persistent actions are moved into the modal footer.
+            assert.equal(layout.lastInForm, true);
+            let editor = booking;
+            if (!direct) {
+                await booking.getByRole('link', {name: 'Invoice.pdf', exact: true}).hover();
+                await booking.getByRole('button', {name: 'Edit document Invoice.pdf', exact: true}).click();
+                editor = page.getByRole('dialog', {name: 'Edit document', exact: true});
+            }
+            const existing = editor.getByRole('checkbox', {name: 'Existing renter', exact: true});
+            assert.equal(await existing.isChecked(), true);
+            await existing.uncheck();
+            await editor.getByRole('checkbox', {name: 'New renter', exact: true}).check();
+            await editor.getByRole('button', {name: 'Save', exact: true}).click();
+            await editor.waitFor({state: 'detached'});
+            assert.deepEqual(await page.evaluate(() => window.savedTargets), [
+                {entityType: 'booking', entityId: 402},
+                {entityType: 'unit', entityId: 1},
+                {entityType: 'tenancy', entityId: '13'}
+            ]);
+            assert.deepEqual(await page.evaluate(() => window.removedLinks), [9]);
+            if (!direct) {
+                assert.equal(await booking.isVisible(), true);
+                await booking.getByRole('button', {name: 'Cancel', exact: true}).click();
+            }
+            await waitClosed(page);
+        }, {width, height: 844});
+    }
+    }
+
+    for (const width of [1280, 390]) {
+        await test(`closed-year booking displays locked fields and documents (${width}px)`, async page => {
+            await page.evaluate(() => {
+                window.writes = 0;
+                Domus.Api.get = async () => ({unitId: 1, account: 2000, amount: 116.48, date: '2025-03-14', deliveryDate: '2025-03-14', description: 'Existing booking', yearClosed: true});
+                Domus.Api.getDocuments = async () => [{id: 9, fileId: 42, fileName: 'Receipt', fileUrl: 'https://files.example.test/42'}];
+                Domus.Api.updateBooking = Domus.Api.deleteBooking = Domus.Api.attachDocumentToTargets = Domus.Api.unlinkDocument = async () => {window.writes++;};
+                Domus.Bookings.openEditModal(402);
+            });
+            const viewer = page.getByRole('dialog', {name: 'Display Booking', exact: true});
+            await viewer.getByText('Year already closed', {exact: true}).waitFor();
+            await viewer.getByRole('link', {name: 'Receipt', exact: true}).waitFor();
+            assert.equal(await viewer.locator('[data-role="amount"]').inputValue(), '116.48');
+            assert.equal(await viewer.getByRole('textbox', {name: 'Description', exact: true}).inputValue(), 'Existing booking');
+            assert.equal(await viewer.locator('input:enabled, select:enabled, textarea:enabled').count(), 0);
+            assert.equal(await viewer.getByRole('button', {name: /Save|Delete|Attach document|Select existing file|Remove document/}).count(), 0);
+            assert.equal(await viewer.locator('input[type="file"]').count(), 0);
+            assert.equal(await viewer.locator('[data-doc-info], [data-doc-unlink]').count(), 0);
+            await viewer.getByRole('button', {name: 'Close', exact: true}).click();
+            await waitClosed(page);
+            assert.equal(await page.evaluate(() => window.writes), 0);
+            await page.evaluate(() => Domus.Bookings.openEditModal(402));
+            await viewer.waitFor();
+            await page.keyboard.press('Escape');
+            await waitClosed(page);
+            assert.equal(await confirmDialog(page).count(), 0);
+        }, {width, height: 844});
+    }
 
     await test('booking deletion requires confirmation and refreshes the unit', async page => {
         await page.evaluate(() => {
@@ -1020,6 +1186,171 @@ async function main() {
         });
         await page.locator('#domus-bookings-table').getByText('Showing 21 - 40 of 65').waitFor();
         assert.equal(await page.getByRole('searchbox', {name: 'Search bookings'}).inputValue(), 'Fixture');
+    });
+
+    await test('attachment selection switches sources and resets without retaining files', async page => {
+        const selections = await page.evaluate(() => {
+            const widget = Domus.Documents.createAttachmentWidget();
+            document.body.append(widget.root);
+            const file = new File(['a'], 'A.pdf');
+            widget.dropZone.setFile([file]);
+            widget.setPath('/B.pdf');
+            const linked = {
+                display: widget.root.querySelector('.domus-dropzone-filename').textContent,
+                type: widget.getSelection().type,
+                path: widget.getSelection().filePath,
+                files: widget.dropZone.input.files.length
+            };
+            widget.dropZone.setFile([file]);
+            const uploaded = {type: widget.getSelection().type, file: widget.getSelection().file.name};
+            widget.reset();
+            return {linked, uploaded, reset: widget.getSelection(), filesAfterReset: widget.dropZone.input.files.length};
+        });
+        assert.deepEqual(selections, {
+            linked: {display: 'B.pdf', type: 'link', path: '/B.pdf', files: 0},
+            uploaded: {type: 'upload', file: 'A.pdf'},
+            reset: null,
+            filesAfterReset: 0
+        });
+    });
+
+    for (const failure of ['attachment', 'booking']) {
+        await test(`${failure} retry retains successful booking identities`, async page => {
+            await page.evaluate(failure => {
+                window.created = [];
+                window.updated = [];
+                window.attached = [];
+                window.failBooking = failure === 'booking';
+                Domus.Api.updateBooking = async (id, data) => updated.push({id, data});
+                Domus.Api.createBooking = async data => {
+                    if (data.amount === '20' && failBooking) {
+                        failBooking = false;
+                        throw new Error('Save failed');
+                    }
+                    created.push(data);
+                    return {id: created.length};
+                };
+                Domus.Api.attachDocumentToTargets = async data => {
+                    attached.push(data);
+                    if (failure === 'attachment' && attached.length === 1) throw new Error('Save failed');
+                    return [];
+                };
+                openBooking({unitId: 1}, {createContext: 'document'});
+            }, failure);
+            await bookingDialog(page).waitFor();
+            await bookingDialog(page).getByRole('button', {name: 'Select existing file', exact: true}).click();
+            await bookingDialog(page).getByRole('button', {name: 'Create a booking for this document', exact: true}).click();
+            for (const [index, amount] of ['10', '20'].entries()) {
+                await bookingDialog(page).locator('[data-role="account"]').nth(index).selectOption('2000');
+                await bookingDialog(page).locator('[data-role="amount"]').nth(index).fill(amount);
+            }
+            await bookingDialog(page).getByRole('button', {name: 'Save', exact: true}).click();
+            await page.getByText('Save failed', {exact: true}).waitFor();
+            await bookingDialog(page).getByRole('button', {name: 'Save', exact: true}).click();
+            await waitClosed(page);
+            const result = await page.evaluate(() => ({
+                created: created.length,
+                updated: updated.map(item => item.id),
+                attachedIds: attached.at(-1).targets.filter(target => target.entityType === 'booking').map(target => target.entityId)
+            }));
+            assert.equal(result.created, 2);
+            assert.deepEqual(result.updated, failure === 'attachment' ? [1, 2] : [1]);
+            assert.deepEqual(result.attachedIds, [1, 2]);
+        });
+    }
+
+    await test('property-scoped editor retains allocation and unit', async page => {
+        await page.evaluate(() => {
+            Domus.Role.setRoleInfo({currentRole: 'buildingMgmt', availableRoles: ['buildingMgmt']});
+            Domus.Api.getDocuments = async () => [];
+            Domus.Api.get = async path => path.endsWith('/tenancies') ? [] : {
+                id: 1, propertyId: 1, unitId: 1, date: '2026-01-01', deliveryDate: '2026-01-01', account: 2000, amount: 10
+            };
+            Domus.Bookings.openEditModal(1);
+        });
+        await bookingDialog(page).waitFor();
+        await page.waitForFunction(() => !document.querySelector('#domus-booking-distribution').disabled);
+        const result = await page.evaluate(() => ({
+            distribution: document.querySelector('#domus-booking-distribution').value,
+            unit: document.querySelector('[name="unitId"]').value,
+            property: document.querySelector('[name="propertyId"]').value
+        }));
+        assert.deepEqual(result, {distribution: 'unit-allocation', unit: '1', property: '1'});
+        assert.equal(await bookingDialog(page).getByText('Add multiple booking lines.', {exact: false}).count(), 0);
+        await bookingDialog(page).getByRole('button', {name: 'Cancel', exact: true}).click();
+        await waitClosed(page);
+    });
+
+    await test('section toggle preserves selected allocation without reloading options', async page => {
+        await page.evaluate(() => {
+            window.distributionLoads = 0;
+            Domus.Role.setRoleInfo({currentRole: 'buildingMgmt', availableRoles: ['buildingMgmt']});
+            Domus.Api.getDistributions = async () => {
+                distributionLoads++;
+                return [{id: 2, name: 'Area', type: 'area'}];
+            };
+            openBooking();
+        });
+        await bookingDialog(page).waitFor();
+        await bookingDialog(page).locator('select[name="propertyId"]').selectOption('1');
+        await page.waitForFunction(() => !document.querySelector('#domus-booking-distribution').disabled);
+        await bookingDialog(page).locator('#domus-booking-distribution').selectOption('2');
+        const toggle = bookingDialog(page).getByRole('button', {name: 'Attach document (optional)', exact: true});
+        await toggle.click();
+        await toggle.click();
+        assert.equal(await bookingDialog(page).locator('#domus-booking-distribution').inputValue(), '2');
+        assert.equal(await page.evaluate(() => distributionLoads), 1);
+    });
+
+    for (const key of ['Enter', 'Space']) {
+        await test(`${key} on existing-file action opens only the Nextcloud picker`, async page => {
+            await page.evaluate(() => {
+                window.nativePicker = 0;
+                window.cloudPicker = 0;
+                HTMLInputElement.prototype.showPicker = function() { nativePicker++; };
+                OC.dialogs.filepicker = () => { cloudPicker++; };
+                openBooking({unitId: 1}, {createContext: 'document'});
+            });
+            await bookingDialog(page).waitFor();
+            await bookingDialog(page).getByRole('button', {name: 'Select existing file', exact: true}).press(key);
+            assert.deepEqual(await page.evaluate(() => ({native: nativePicker, cloud: cloudPicker})), {native: 0, cloud: 1});
+            await bookingDialog(page).locator('.domus-dropzone').press(key);
+            assert.equal(await page.evaluate(() => nativePicker), 1, 'Upload area remains keyboard accessible');
+        });
+    }
+
+    await test('nested document editor leaves booking editing to its parent', async page => {
+        await page.evaluate(() => {
+            window.record = {id: 402, unitId: 1, account: 2000, amount: 100, date: '2026-09-25', deliveryDate: '2026-09-25', description: 'Existing'};
+            window.bookingUpdates = [];
+            Domus.Api.getDocuments = async () => [{id: 7, fileName: 'Invoice.pdf'}];
+            Domus.Api.getDocumentDetail = async () => ({
+                document: {id: 7, filePath: '/Invoice.pdf', fileName: 'Invoice.pdf'},
+                linkedEntities: [{id: 7, entityType: 'booking', entityId: 402}, {id: 8, entityType: 'unit', entityId: 1}]
+            });
+            Domus.Api.get = async path => path.endsWith('/tenancies') ? [] : {...record};
+            Domus.Api.updateBooking = async (id, data) => {
+                bookingUpdates.push(id);
+                Object.assign(record, data);
+            };
+            Domus.Api.attachDocumentToTargets = async () => [{id: 7}, {id: 8}];
+            Domus.Bookings.openEditModal(402);
+        });
+        const parent = page.getByRole('dialog', {name: 'Edit booking', exact: true});
+        await parent.getByRole('textbox', {name: 'Description', exact: true}).fill('Parent draft');
+        await parent.getByRole('button', {name: 'Edit document Invoice.pdf'}).press('Enter');
+        const child = page.getByRole('dialog', {name: 'Edit document', exact: true});
+        await child.waitFor();
+        assert.equal(await child.locator('[data-role="amount"]').count(), 0);
+        await child.getByRole('textbox', {name: 'Note', exact: true}).fill('Updated document');
+        await child.getByRole('button', {name: 'Save', exact: true}).click();
+        await child.waitFor({state: 'detached'});
+        assert.deepEqual(await page.evaluate(() => bookingUpdates), []);
+        assert.equal(await parent.getByRole('textbox', {name: 'Description', exact: true}).inputValue(), 'Parent draft');
+        await parent.getByRole('button', {name: 'Save', exact: true}).click();
+        await waitClosed(page);
+        const result = await page.evaluate(() => ({amount: record.amount, description: record.description, updates: bookingUpdates}));
+        assert.deepEqual(result, {amount: '100', description: 'Parent draft', updates: [402]});
     });
 
     await browser.close();

@@ -18,6 +18,13 @@ final class FileResponse {
         return $response;
     }
 
+    public static function document(File $file): FileDisplayResponse {
+        $mime = $file->getMimeType();
+        // Only passive formats may be rendered on the authenticated app origin.
+        $inline = in_array($mime, ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'text/plain'], true);
+        return self::create($file, $mime, !$inline);
+    }
+
     public static function download(File $file): FileDisplayResponse {
         return self::create($file, $file->getMimeType(), true);
     }

@@ -1849,7 +1849,18 @@
             label.appendChild(fileName);
 
             container.appendChild(input);
-            container.appendChild(label);
+            if (options.action) {
+                const content = document.createElement('div');
+                content.className = 'domus-dropzone-content';
+                const icon = document.createElement('span');
+                icon.className = 'domus-icon domus-icon-upload domus-dropzone-icon';
+                const heading = document.createElement('strong');
+                heading.textContent = options.label;
+                content.append(icon, heading, options.action, fileName);
+                container.appendChild(content);
+            } else {
+                container.appendChild(label);
+            }
 
             function updateFileName(file) {
                 fileName.textContent = file ? file.name : (options.placeholder || t('domus', 'No file selected'));
@@ -1857,6 +1868,7 @@
 
             function handleFiles(files) {
                 if (!files || !files.length) {
+                    input.value = '';
                     updateFileName(null);
                     if (typeof options.onFileSelected === 'function') {
                         options.onFileSelected(null);
@@ -1874,6 +1886,7 @@
 
             let isChoosing = false;
             const triggerSelect = (e) => {
+                if (input.disabled || (e?.target !== container && e?.target.closest('button, input, select, textarea, a'))) return;
                 if (e?.type === 'keydown') {
                     e.preventDefault();
                 }
@@ -1937,6 +1950,7 @@
             return {
                 element: container,
                 input,
+                setFileName: name => { fileName.textContent = name || options.placeholder || t('domus', 'No file selected'); },
                 setFile: handleFiles,
                 reset: () => handleFiles(null),
                 focus: () => container.focus && container.focus(),

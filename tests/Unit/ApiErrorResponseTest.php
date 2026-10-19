@@ -77,6 +77,18 @@ class ApiErrorResponseTest extends TestCase {
         return [[new \RuntimeException('Database connection secret')], [new \TypeError('Internal implementation details')]];
     }
 
+    public function testBookingDetailsExposeClosedYearState(): void {
+        $booking = new \OCA\Domus\Db\Booking();
+        $booking->setId(402);
+        $bookings = $this->createMock(BookingService::class);
+        $bookings->method('getBookingForUser')->with(402, 'alice')->willReturn($booking);
+        $bookings->method('isBookingYearClosed')->with($booking)->willReturn(true);
+        $context = $this->createMock(ManagementAccessContext::class);
+        $context->method('managementUserId')->willReturn('alice');
+        $controller = new BookingController($this->createMock(IRequest::class), $context, $bookings);
+        self::assertSame(array_merge($booking->jsonSerialize(), ['yearClosed' => true]), $controller->show(402)->getData());
+    }
+
     public function testControllerDoesNotMisreportDatabaseFailureAsMissingBooking(): void {
         $failure = new \RuntimeException('Database unavailable');
         $bookings = $this->createMock(BookingService::class);

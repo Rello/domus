@@ -104,9 +104,11 @@
                         '</div>' +
                         '</div>';
                     updateContainer(html);
+                    options.onLoaded?.(filteredDocs, document.getElementById(containerId));
                     bindDocumentActions(containerId, documentId => openDetailModal(documentId, {
                         entityType,
                         entityId,
+                        editBookings: options.editBookings,
                         onUpdated: typeof options.onUpdated === 'function'
                             ? options.onUpdated
                             : () => renderList(entityType, entityId, options)
@@ -263,6 +265,30 @@
             });
         }
 
+        function createMetadataFields(selection = {}) {
+            const uploadNameLabel = document.createElement('label');
+            uploadNameLabel.className = 'domus-booking-doc-title';
+            uploadNameLabel.textContent = t('domus', 'Title');
+            const uploadNameInput = document.createElement('input');
+            uploadNameInput.type = 'text';
+            uploadNameInput.name = 'title';
+            uploadNameInput.placeholder = t('domus', 'Defaults to file name');
+            uploadNameInput.value = selection.title || '';
+            uploadNameInput.addEventListener('input', () => { uploadNameInput.dataset.autoTitle = ''; });
+            uploadNameLabel.appendChild(uploadNameInput);
+
+            const noteLabel = document.createElement('label');
+            noteLabel.className = 'domus-booking-doc-note';
+            noteLabel.textContent = t('domus', 'Note');
+            const noteInput = document.createElement('input');
+            noteInput.type = 'text';
+            noteInput.name = 'note';
+            noteInput.value = selection.note || '';
+            noteLabel.appendChild(noteInput);
+
+            return {uploadNameLabel, uploadNameInput, noteLabel, noteInput};
+        }
+
         function createAttachmentWidget(options = {}) {
             const defaultYear = options.defaultYear ?? Domus.state.currentYear;
             const includeYearInput = options.includeYearInput !== false;
@@ -303,59 +329,23 @@
                 }
             };
 
-            const dropZone = Domus.UI.createFileDropZone({
-                placeholder: t('domus', 'No file selected'),
-                label: t('domus', 'Drop file here or click to select one'),
-                onFileSelected: syncUploadTitle
-            });
-            if (largeDropZone) {
-                dropZone.element.classList.add('domus-dropzone-large');
-            }
-
             const pickerButton = document.createElement('button');
             pickerButton.type = 'button';
             pickerButton.textContent = t('domus', 'Select existing file');
             pickerButton.className = 'domus-dropzone-picker';
+            let selectedPath = '';
+            const dropZone = Domus.UI.createFileDropZone({
+                placeholder: t('domus', 'No file selected'),
+                label: t('domus', 'Drag and drop or click to upload'),
+                action: pickerButton,
+                onFileSelected: file => {
+                    if (file) selectedPath = '';
+                    syncUploadTitle(file);
+                }
+            });
+            if (largeDropZone) dropZone.element.classList.add('domus-dropzone-large');
 
-            const dropZoneArea = dropZone.element.querySelector('.domus-dropzone-area');
-            const dropZoneText = dropZoneArea?.querySelector('strong');
-            const dropZoneFileName = dropZone.element.querySelector('.domus-dropzone-filename');
-            if (dropZoneArea && dropZoneText && dropZoneFileName) {
-                const icon = document.createElement('span');
-                icon.className = 'domus-icon domus-icon-upload domus-dropzone-icon';
-                const content = document.createElement('div');
-                content.className = 'domus-dropzone-content';
-                dropZoneText.textContent = t('domus', 'Drag and drop or click to upload');
-                dropZoneFileName.textContent = t('domus', 'No file selected');
-                dropZoneFileName.classList.remove('muted');
-                content.appendChild(icon);
-                content.appendChild(dropZoneText);
-                content.appendChild(pickerButton);
-                content.appendChild(dropZoneFileName);
-                dropZoneArea.remove();
-                dropZone.element.querySelector('.domus-dropzone-label')?.remove();
-                dropZone.element.appendChild(content);
-            } else {
-                card.appendChild(pickerButton);
-            }
-
-            const uploadNameLabel = document.createElement('label');
-            uploadNameLabel.className = 'domus-booking-doc-title';
-            uploadNameLabel.textContent = t('domus', 'Title');
-            const uploadNameInput = document.createElement('input');
-            uploadNameInput.type = 'text';
-            uploadNameInput.name = 'title';
-            uploadNameInput.placeholder = t('domus', 'Defaults to file name');
-            uploadNameInput.addEventListener('input', () => { uploadNameInput.dataset.autoTitle = ''; });
-            uploadNameLabel.appendChild(uploadNameInput);
-
-            const noteLabel = document.createElement('label');
-            noteLabel.className = 'domus-booking-doc-note';
-            noteLabel.textContent = t('domus', 'Note');
-            const noteInput = document.createElement('input');
-            noteInput.type = 'text';
-            noteInput.name = 'note';
-            noteLabel.appendChild(noteInput);
+            const {uploadNameLabel, uploadNameInput, noteLabel, noteInput} = createMetadataFields();
 
             let uploadYearInput = null;
             let uploadYearLabel = null;
@@ -381,13 +371,10 @@
 
             root.appendChild(card);
 
-            let selectedPath = '';
             function updatePickerDisplay(path) {
+                dropZone.reset();
                 selectedPath = path || '';
-                const fileName = String(selectedPath || '').split('/').pop();
-                if (dropZoneFileName) {
-                    dropZoneFileName.textContent = fileName || t('domus', 'No file selected');
-                }
+                dropZone.setFileName(String(selectedPath).split('/').pop());
             }
 
             function getSelection(preferredType) {
@@ -606,7 +593,10 @@
                 targetType,
                 targetId,
                 bookingId: parseEntityId(bookingLink?.entityId),
-                bookingMeta: bookingLink?.booking || null
+                bookingIds: [...new Set(linkedEntities
+                    .filter(link => normalizeDocumentTarget(link?.entityType) === 'booking')
+                    .map(link => parseEntityId(link.entityId))
+                    .filter(id => id !== null))]
             };
         }
 
@@ -658,22 +648,24 @@
                         editDocumentLinkId: documentId,
                         documentLinks: detail.linkedEntities || [],
                         documentTargets: (detail.linkedEntities || []).map(link => ({entityType: link.entityType, entityId: link.entityId})).concat([{entityType: context.targetType, entityId: context.targetId}]),
+                        omitBookingSection: options.editBookings === false,
                         allowDocumentWithoutRelation: context.targetType === 'partner' || context.targetType === 'tenancy'
                     };
                     if (context.targetType === 'property') {
                         formConfig.restrictUnitsToProperty = Domus.Role.isBuildingMgmtView();
                     }
-                    if (context.targetType === 'partner' || context.targetType === 'tenancy') {
+                    if (options.editBookings === false || context.targetType === 'partner' || context.targetType === 'tenancy') {
                         formConfig.sectionMode = buildDocumentOnlySectionMode();
                         formConfig.initialBookingEnabled = false;
                     }
 
                     const onUpdated = typeof options.onUpdated === 'function' ? options.onUpdated : null;
-                    const openEditor = (bookingDefaults = {}, initialEntries = []) => {
+                    const openEditor = (bookingDefaults = {}, initialEntries = [], bookings = []) => {
                         const nextDefaults = Object.assign({}, bookingDefaults, defaults);
                         if (context.bookingId !== null) {
-                            formConfig.editBookingId = context.bookingId;
-                            formConfig.multiEntry = false;
+                            formConfig.editDocumentBookings = bookings;
+                            formConfig.readOnly = bookings.some(booking => booking.yearClosed === true);
+                            formConfig.multiEntry = true;
                             formConfig.initialBookingEnabled = true;
                             if (Array.isArray(initialEntries) && initialEntries.length) {
                                 formConfig.initialEntries = initialEntries;
@@ -697,41 +689,29 @@
                         return;
                     }
 
-                    Domus.Api.get('/bookings/' + context.bookingId)
-                        .then(booking => {
+                    Promise.all(context.bookingIds.map(id => Domus.Api.get('/bookings/' + id).then(booking => ({...booking, id}))))
+                        .then(bookings => {
+                            const booking = bookings.find(item => item.id === context.bookingId) || bookings[0];
                             const bookingDefaults = {
-                                propertyId: booking?.propertyId || undefined,
-                                unitId: booking?.unitId || undefined,
-                                date: booking?.date || undefined,
-                                deliveryDate: booking?.deliveryDate || booking?.date || undefined,
-                                distributionKeyId: booking?.distributionKeyId || undefined,
-                                description: booking?.description || undefined
+                                propertyId: booking.propertyId || undefined,
+                                unitId: booking.unitId || undefined,
+                                date: booking.date || undefined,
+                                deliveryDate: booking.deliveryDate || booking.date || undefined,
+                                distributionKeyId: booking.distributionKeyId || undefined,
+                                description: booking.description || undefined
                             };
-                            const initialEntries = [{
-                                account: booking?.account || '',
-                                amount: booking?.amount !== undefined && booking?.amount !== null ? booking.amount : ''
-                            }];
-                            openEditor(bookingDefaults, initialEntries);
+                            openEditor(bookingDefaults, bookings.map(item => ({
+                                bookingId: item.id,
+                                account: item.account,
+                                amount: item.amount
+                            })), bookings);
                         })
-                        .catch(() => {
-                            const initialEntries = context.bookingMeta
-                                ? [{
-                                    account: context.bookingMeta.account || '',
-                                    amount: context.bookingMeta.amount !== undefined && context.bookingMeta.amount !== null
-                                        ? context.bookingMeta.amount
-                                        : ''
-                                }]
-                                : [];
-                            const fallbackDefaults = context.bookingMeta?.date
-                                ? { date: context.bookingMeta.date, deliveryDate: context.bookingMeta.date }
-                                : {};
-                            openEditor(fallbackDefaults, initialEntries);
-                        });
+                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
-        return { renderList, renderLatestList, loadLatestList, openLinkModal, createAttachmentWidget, buildTenancyAssignment };
+        return { renderList, renderLatestList, loadLatestList, openLinkModal, createAttachmentWidget, createMetadataFields, buildTenancyAssignment };
     })();
 
     /**

@@ -8,17 +8,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
-- Portfolio analytics across all years, including rent, estimated net profit, weighted profitability, and per-unit breakdowns.
-- Document dates and assignment to multiple tenancies, with editable existing assignments.
+- Portfolio analytics across all years, with rent, estimated net profit, weighted profitability, and per-unit breakdowns based on each year's financial history.
+- Document dates and editable assignments to multiple tenancies.
 
 ### Changed
-- Simplify document upload and editing, and store new booking documents directly in the year folder.
+- Simplify document upload and editing, show filenames alongside editable titles, and store new booking documents directly in the year folder.
+- Open documents in a new tab using the Nextcloud viewer where available, with browser previews for renter PDFs and images.
 - Improve utility settlements with allocable maintenance subaccounts, tenancy and period selection, and a financial preview.
-- Check accounts and request confirmation before closing a financial year, with links to bookings that need review.
+- Check primary expense accounts before closing a financial year and provide booking review and confirmation steps.
 - Improve tenancy details with completion indicators, partner checklists, and the most recent periods first.
 - Show booking descriptions in unit details and simplify account names in booking forms.
+- Show attached documents and tenancy assignments in the booking editor, and allow linked bookings to be edited from documents.
 
 ### Fixed
+- Preserve booking and document edits across retries, nested dialogs, file selection, and allocation changes without creating duplicate bookings.
+- Keep bookings and their document links read-only in closed financial years.
 - Prevent duplicate document assignments and remove related tenancy and booking links when unlinking a unit document.
 - Restore booking deletion, allow clearing descriptions, and use the selected financial year for new booking dates.
 - Keep dashboard tiles and the task panel sized consistently when resizing the window.
