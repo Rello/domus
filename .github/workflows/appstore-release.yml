@@ -98,7 +98,9 @@ jobs:
           appstore_token: ${{ secrets.APPSTORE_TOKEN }}
           download_url: ${{ steps.attach_to_release.outputs.browser_download_url }}
           app_private_key: ${{ secrets.APP_PRIVATE_KEY }}
-          nightly: ${{ github.event.release.prerelease }}
+          # Version suffixes such as -beta.1 identify pre-releases in the App Store.
+          # GitHub pre-releases must remain available to Nextcloud's beta channel.
+          nightly: false
 
       - name: Remove local key material
         if: always()

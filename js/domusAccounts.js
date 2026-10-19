@@ -40,7 +40,7 @@
             Domus.accounts = accounts;
         }
 
-        function toOptions(includePlaceholder = true, filterFn = null, includeDisabled = false) {
+        function toOptions(includePlaceholder = true, filterFn = null, includeDisabled = false, includeNumbers = true) {
             let entries = [];
             if (accountHierarchy && accountHierarchy.length) {
                 entries = flattenHierarchy(accountHierarchy);
@@ -59,7 +59,7 @@
 
             const opts = entries.map(entry => {
                 const prefix = entry.level ? `${'— '.repeat(entry.level)}` : '';
-                const labelText = `${prefix}${entry.number} ${entry.label || ''}`.trim();
+                const labelText = `${prefix}${includeNumbers ? `${entry.number} ` : ''}${entry.label || ''}`.trim();
                 return {
                     value: entry.number,
                     label: labelText || entry.number

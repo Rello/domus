@@ -1083,7 +1083,7 @@
                 Domus.Api.getUnits()
             ])
                 .then(([properties, units]) => {
-                    const accountOptions = Domus.Accounts.toOptions(true, accountFilter);
+                    const accountOptions = Domus.Accounts.toOptions(true, accountFilter, false, false);
                     const propertyOptions = [{ value: '', label: t('domus', 'Select property') }].concat((properties || []).map(p => ({
                         value: p.id,
                         label: p.name || `${t('domus', 'Property')} #${p.id}`

@@ -6,15 +6,19 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 # Changelog
 
 ## Unreleased
+
 ### Added
-- Add portfolio development analytics across all years with annual agreed rent totals, estimated annual net profit, weighted profitability, and unit breakdowns using shared financial calculations.
+- Add portfolio analytics across all years, with annual agreed rent, estimated net profit, weighted profitability, and per-unit breakdowns.
 
 ### Changed
-- Add account checks and confirmation to year closing.
-- Show booking descriptions in the booking table on unit details.
-- Make tenancy details easier to review with a completion indicator, clearer headers, and a checklist of assigned partners.
+- Improve utility settlements with separate allocable maintenance subaccounts counted once, tenancy and period selection, a financial preview, and clearer report actions.
+- Show account names without account numbers in the booking dropdown.
+- Add account checks and confirmation when closing a financial year, with direct access to that year’s bookings when warnings need review.
+- Show booking descriptions in unit details.
+- Make tenancy details easier to review with a completion indicator, clearer headers, and an assigned-partner checklist.
 
 ### Fixed
+- Default new bookings created from a unit’s selected financial year to 31 December of that year.
 - Restore the Delete button when editing a booking.
 - Show the most recent tenancy periods first.
 - Open the document file picker in the selected unit's document folder.

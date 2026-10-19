@@ -53,6 +53,52 @@ class FinancialDomainTest extends TestCase {
         return ['same partner conditions change' => [1], 'new partner' => [2]];
     }
 
+    /** @dataProvider settlementPartners */
+    public function testSettlementBreaksDownUsedMaintenanceAccountsWithoutDoubleCounting(int $replacementPartnerId): void {
+        $tenancies = [];
+        foreach ([['2026-01-01', '2026-06-30', 1], ['2026-07-01', null, $replacementPartnerId]] as [$start, $end, $partnerId]) {
+            $tenancy = new Tenancy();
+            $tenancy->setId(count($tenancies) + 1);
+            $tenancy->setStartDate($start); $tenancy->setEndDate($end);
+            $tenancy->setServiceCharge('200'); $tenancy->setPartnerIds([$partnerId]);
+            $tenancies[] = $tenancy;
+        }
+        $bookings = [];
+        foreach ([['2000', '1200'], ['2001', '100'], ['2001', '80'], ['2002', '60'], ['2003', '10'], ['2003', '-10'], ['2400', '240'], ['2100', '999']] as [$account, $amount]) {
+            $booking = new Booking(); $booking->setAccount($account); $booking->setAmount($amount); $bookings[] = $booking;
+        }
+        $deps = $this->dependencies(ServiceChargeSettlementService::class);
+        $deps['tenancyService']->method('listTenancies')->willReturn($tenancies);
+        $deps['bookingMapper']->method('findByUser')->willReturn($bookings);
+        $deps['accountService']->method('resolveTopAccountNumber')->willReturnCallback(
+            static fn($number) => in_array($number, ['2001', '2002', '2003'], true) ? '2000' : $number
+        );
+        $deps['accountService']->method('listAccounts')->willReturn([
+            '2001' => ['label' => 'Additional | costs'], '2002' => ['label' => 'Nested costs'],
+            '2003' => ['label' => 'Refunded costs'], '2004' => ['label' => 'Unused costs'],
+        ]);
+        $service = new ServiceChargeSettlementService(...array_values($deps));
+        $entries = $service->listForUnit('alice', 1, 2026);
+        self::assertSame([
+            ['startDate' => '2026-01-01', 'endDate' => '2026-06-30'],
+            ['startDate' => '2026-07-01', 'endDate' => null],
+        ], array_merge(...array_column($entries, 'periods')));
+        self::assertSame(1440.0, array_sum(array_column($entries, 'houseFee')));
+        self::assertSame(720.0, array_sum(array_column($entries, 'saldo')));
+        foreach ($entries as $entry) {
+            self::assertSame(['2000', '2001', '2002', '2003'], array_column($entry['houseFeeItems'], 'account'));
+            self::assertSame($entry['houseFee'], array_sum(array_column($entry['houseFeeItems'], 'amount')));
+            $share = $entry['months'] / 12;
+            self::assertSame(180.0 * $share, $entry['houseFeeItems'][1]['amount']);
+            $report = (new \ReflectionMethod($service, 'buildReportMarkdown'))->invoke($service, 'Tenant', null, null, null, null, 2026, $entry);
+            $suffix = $share < 1 ? ' (proportional)' : '';
+            self::assertStringContainsString('| - Maintenance fee' . $suffix . ' | ' . sprintf('%.2f', 1200 * $share) . ' € |', $report);
+            self::assertStringContainsString('| - Additional \| costs' . $suffix . ' | ' . sprintf('%.2f', 180 * $share) . ' € |', $report);
+            self::assertStringNotContainsString('Unused costs', $report);
+            self::assertStringNotContainsString(sprintf('%.2f €', $entry['houseFee']), $report);
+        }
+    }
+
     public function testCurrentTenancyExcludesFutureAndExpiredRecords(): void {
         $service = new TenancyService(...array_values($this->dependencies(TenancyService::class)));
         $rows = [];

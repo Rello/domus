@@ -115,6 +115,63 @@ async function main() {
         }
     }
 
+    for (const viewport of [{width: 1280, height: 900}, {width: 390, height: 844}]) {
+        await test(`utility report selects tenancy before compact preview at ${viewport.width}px`, async page => {
+            await page.evaluate(() => {
+                Domus.Api.getUnitSettlements = async () => [{
+                    groupId: 'partner-1', partnerId: 1, partnerName: 'Test renter', months: 12,
+                    periods: [{startDate: '2025-01-01', endDate: null}],
+                    serviceCharge: 2400, houseFee: 1380, propertyTax: 240, saldo: 780,
+                    houseFeeItems: [
+                        {account: '2000', label: 'Maintenance fee', amount: 1200},
+                        {account: '2001', label: 'Additional <costs>', amount: 180}
+                    ]
+                }];
+                Domus.UnitSettlements.openModal(1);
+            });
+            const dialog = page.getByRole('dialog');
+            await dialog.locator('#domus-settlement-year option').first().waitFor({state: 'attached'});
+            await dialog.locator('#domus-settlement-continue').click();
+            const table = dialog.locator('#domus-settlement-table');
+            await table.getByText('Test renter', {exact: true}).waitFor();
+            assert.deepEqual(await table.locator('th').allTextContents(), ['Name', 'Period']);
+            assert.equal(await table.locator('input[type="radio"]').isChecked(), true);
+            assert.ok((await table.innerText()).includes(await page.evaluate(() => Domus.Utils.formatDate('2025-01-01') + ' – open')));
+            assert.ok(!(await table.innerText()).includes(await page.evaluate(() => Domus.Utils.formatCurrency(2400))));
+            assert.equal(await dialog.getByRole('heading', {name: 'Create utility report – 2025', exact: true}).count(), 1);
+            await dialog.locator('#domus-settlement-next').click();
+            assert.deepEqual(await dialog.locator('.domus-info-row dt').allTextContents(), ['Tenant', 'Prepayment', 'Maintenance fee', 'Additional <costs>', 'Property tax', 'Credit']);
+            assert.equal(await dialog.locator('costs').count(), 0);
+            assert.ok(!(await dialog.innerText()).includes(await page.evaluate(() => Domus.Utils.formatCurrency(1380))));
+            assert.ok((await dialog.innerText()).includes(await page.evaluate(() => Domus.Utils.formatCurrency(780))));
+            const previewHeight = await dialog.locator('.domus-settlement-preview').evaluate(el => el.getBoundingClientRect().height);
+            assert.ok(previewHeight < 230, `Compact financial preview: ${previewHeight}px`);
+            await page.evaluate(() => {
+                Domus.Api.createUnitSettlementReport = async () => ({
+                    documents: [{fileId: 42, fileName: 'Utility Bill Statement 2025', fileUrl: 'http://domus.test/report'}],
+                    reportPath: '/Reports/utility-2025.md'
+                });
+                window.OCA = {Viewer: {open: options => { window.reviewedReportPath = options.path; }}};
+            });
+            await dialog.locator('#domus-create-settlement').click();
+            await dialog.locator('.domus-settlement-review').waitFor();
+            assert.equal(await dialog.locator('.domus-guided-step.is-current').innerText(), 'Review');
+            assert.equal(await dialog.locator('.domus-settlement-review dt').count(), 0);
+            assert.deepEqual(await dialog.locator('.domus-settlement-report-row button').allTextContents(), ['Preview', 'Open']);
+            const centers = await dialog.locator('.domus-settlement-report-row').evaluate(el =>
+                [...el.children].map(child => { const rect = child.getBoundingClientRect(); return rect.top + rect.height / 2; })
+            );
+            assert.ok(Math.max(...centers) - Math.min(...centers) < 1, JSON.stringify(centers));
+            await dialog.locator('#domus-settlement-preview').click();
+            assert.equal(await page.evaluate(() => window.reviewedReportPath), '/Reports/utility-2025.md');
+            await page.evaluate(() => { window.open = (...args) => { window.openedReport = args; }; });
+            await dialog.getByRole('button', {name: 'Open', exact: true}).click();
+            assert.deepEqual(await page.evaluate(() => window.openedReport), ['http://domus.test/report', '_blank', 'noopener,noreferrer']);
+            const layout = await dialog.evaluate(el => ({width: el.clientWidth, scroll: el.scrollWidth}));
+            assert.ok(layout.scroll <= layout.width, JSON.stringify(layout));
+        }, 'landlord', viewport);
+    }
+
     await test('tenancy identity and locale dates remain readable at narrow widths', async page => {
         await page.setViewportSize({width: 390, height: 844});
         await page.evaluate(() => {
@@ -487,9 +544,11 @@ async function main() {
             const root = document.getElementById('app-content');
             root.style.height = '400px'; root.style.overflow = 'auto';
         });
-        await page.locator('#domus-unit-direct-booking').press('Enter');
+        await page.locator('#domus-add-unit-booking-inline').press('Enter');
         const scrollBeforeSave = await page.evaluate(() => document.getElementById('app-content').scrollTop);
         await page.getByRole('dialog', {name: 'Add booking', exact: true}).waitFor();
+        assert.equal(await page.locator('input[name="date"]').inputValue(), '2025-12-31');
+        assert.equal(await page.locator('input[name="deliveryDate"]').inputValue(), '2025-12-31');
         assert.match((await page.locator('.domus-booking-assignment-context').allTextContents()).join(' '), /Test unit/);
         await page.locator('[data-role="account"]').first().selectOption('2000');
         await page.locator('[data-role="amount"]').first().fill('10');
@@ -498,7 +557,7 @@ async function main() {
         await page.waitForFunction(() => !document.querySelector('.domus-unit-workspace')?.hasAttribute('aria-busy'));
         await page.waitForFunction(() => document.querySelector('.domus-stat-year-selected')?.dataset.statYear === '2025');
         assert.equal(await page.getByRole('navigation', {name: 'Unit sections'}).getByRole('link', {name: 'Finances'}).getAttribute('aria-current'), 'page');
-        assert.equal(await page.evaluate(() => document.activeElement.id), 'domus-unit-direct-booking');
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'domus-add-unit-booking-inline');
         assert.equal(await page.evaluate(() => document.getElementById('app-content').scrollTop), scrollBeforeSave);
         await page.evaluate(() => {
             Domus.Api.getUnitStatistics = async () => {throw new Error('Statistics failed');};
@@ -530,6 +589,44 @@ async function main() {
         await page.getByRole('dialog', {name: 'Edit booking', exact: true}).waitFor({state: 'detached'});
         await page.waitForFunction(() => document.querySelector('.domus-stat-year-selected')?.dataset.statYear === '2025' && document.activeElement.getAttribute('aria-label') === 'Edit Booking #101');
     });
+
+    for (const confirmStep of [false, true]) {
+        await test(`year warnings link to bookings from ${confirmStep ? 'confirmation' : 'completion checks'}`, async page => {
+            await page.getByRole('navigation', {name: 'Unit sections'}).getByRole('link', {name: 'Finances'}).click();
+            await page.evaluate(hasBookings => {
+                window.yearCalls = [];
+                Domus.Api.getAccounts = async () => [{number: '2000', label: 'Missing expense'}];
+                Domus.Api.getBookings = async filter => {
+                    window.bookingFilter = filter;
+                    return hasBookings ? [{id: 101, unitId: 1, account: '2000', amount: -10, date: '2025-12-31'}] : [];
+                };
+                Domus.Api.closeBookingYear = async () => window.yearCalls.push('closed');
+            }, confirmStep);
+            await page.evaluate(() => Domus.Units.openYearStatusModal(1, {revenue: {rows: [
+                {year: 2026, isProvisional: true}, {year: 2025, isProvisional: true}
+            ]}}));
+            const dialog = page.getByRole('dialog').filter({has: page.locator('.domus-year-status-form')});
+            await dialog.locator('select[name="year"]').selectOption('2025');
+            await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+            await dialog.getByRole('button', {name: 'Check bookings', exact: true}).waitFor();
+            if (confirmStep) await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+            assert.equal(await dialog.locator('.domus-form-actions button.primary').innerText(), 'Check bookings');
+            await dialog.getByRole('button', {name: 'Check bookings', exact: true}).click();
+            await dialog.waitFor({state: 'detached'});
+            await page.waitForFunction(() => {
+                const body = document.getElementById('domus-unit-bookings-body');
+                return body === document.activeElement || body?.contains(document.activeElement);
+            });
+            assert.equal(await page.locator('.domus-stat-year-selected').getAttribute('data-stat-year'), '2025');
+            assert.deepEqual(await page.evaluate(() => window.bookingFilter), {unitId: 1, year: '2025'});
+            assert.deepEqual(await page.evaluate(() => window.yearCalls), []);
+            assert.equal(await page.evaluate(() => document.activeElement.tagName), 'TABLE');
+            await page.waitForFunction(() => {
+                const rect = document.getElementById('domus-unit-bookings-panel').getBoundingClientRect();
+                return rect.top >= 0 && rect.top < innerHeight;
+            });
+        }, 'landlord', confirmStep ? {width: 390, height: 844} : {width: 1280, height: 900});
+    }
 
     await test('year closing checks every 2* account and allows closing with advisory errors', async page => {
         await page.evaluate(() => {
@@ -628,7 +725,8 @@ async function main() {
         assert.equal(await dialog.getByRole('button', {name: 'Close year', exact: true}).isEnabled(), true);
         await dialog.getByRole('button', {name: 'Back', exact: true}).click();
         await dialog.locator('.domus-year-check-fail').waitFor();
-        await dialog.getByRole('button', {name: 'Cancel', exact: true}).click();
+        assert.equal(await dialog.getByRole('button', {name: 'Cancel', exact: true}).count(), 0);
+        await dialog.getByRole('button', {name: 'Close modal', exact: true}).click();
         await dialog.waitFor({state: 'detached'});
     }, 'landlord', {width: 390, height: 844});
 

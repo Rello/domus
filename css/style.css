@@ -4566,6 +4566,66 @@
     line-height: 1.35;
 }
 
+#domus-settlement-table .domus-table th,
+#domus-settlement-table .domus-table td {
+    padding: 6px 8px;
+    vertical-align: top;
+}
+
+.domus-settlement-choice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    cursor: pointer;
+}
+
+.domus-settlement-preview {
+    gap: 0;
+}
+
+.domus-settlement-preview .domus-info-row {
+    padding: 5px 0;
+    line-height: 1.35;
+}
+
+.domus-settlement-preview .domus-info-row dt {
+    font-weight: 400;
+}
+
+.domus-settlement-preview .domus-info-row dd {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.domus-settlement-preview .domus-info-row:last-child {
+    padding-top: 8px;
+    font-weight: 600;
+}
+
+.domus-settlement-report-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.domus-settlement-report-title {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.domus-settlement-report-row button {
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.domus-settlement-review-actions {
+    align-items: center;
+    margin-top: 20px;
+    padding: 0;
+}
+
 .domus-icon-only-button,
 .domus-icon-only-link {
     display: inline-flex;
