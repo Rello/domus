@@ -90,6 +90,36 @@ async function main() {
     ];
     const summary = { propertyCount: 1, unitCount: 1, openTasks: tasks, occupancy: { occupied: 1, vacant: 0 } };
 
+    await test('desktop resize keeps statistics at the bottom and scrolls tasks', async page => {
+        await setup(page, 'landlord', { ...summary, openTasks: Array.from({ length: 40 }, (_, index) => ({
+            ...tasks[0], taskId: index + 10, title: `Task ${index}`
+        })) });
+        // Model the bounded Nextcloud content area and the app's navigation wrapper.
+        await page.addStyleTag({ content: 'html, body { height: 100%; margin: 0; }' });
+        await page.evaluate(() => {
+            const app = document.getElementById('app-content');
+            const dashboard = app.firstElementChild;
+            app.innerHTML = '<div class="domus-top-navigation" style="height: 60px"></div><div id="domus-content" class="domus-content"></div>';
+            document.getElementById('domus-content').append(dashboard);
+        });
+        const heights = [];
+        for (const height of [900, 650, 1100]) {
+            await page.setViewportSize({ width: 1280, height });
+            const layout = await page.evaluate(() => {
+                const tasks = document.querySelector('.domus-upcoming-card-shell .domus-panel-body');
+                const tiles = document.querySelector('.domus-dashboard-kpi-row').getBoundingClientRect();
+                tasks.scrollTop = tasks.scrollHeight;
+                return { bottom: tiles.bottom, height: tasks.clientHeight, scrolled: tasks.scrollTop,
+                    taskBottom: tasks.getBoundingClientRect().bottom, tileTop: tiles.top };
+            });
+            assert.ok(Math.abs(layout.bottom - (height - 16)) < 2, 'Tiles stay at the bottom');
+            assert.ok(layout.scrolled > 0, 'All tasks remain reachable by scrolling');
+            assert.ok(layout.taskBottom <= layout.tileTop, 'Tasks do not overlap statistics');
+            heights.push(layout.height);
+        }
+        assert.ok(heights[1] < heights[0] && heights[2] > heights[0], 'Task area follows viewport height');
+    });
+
     await test('landlord groups due tasks and opens actions with keyboard', async page => {
         await setup(page, 'landlord', summary);
         if (process.env.DASHBOARD_SCREENSHOT_DIR) {

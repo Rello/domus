@@ -18,6 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Make tenancy details easier to review with a completion indicator, clearer headers, and an assigned-partner checklist.
 
 ### Fixed
+- Keep dashboard statistics at the bottom of the desktop view while the task panel resizes and scrolls with the available height.
 - Default new bookings created from a unit’s selected financial year to 31 December of that year.
 - Restore the Delete button when editing a booking.
 - Show the most recent tenancy periods first.

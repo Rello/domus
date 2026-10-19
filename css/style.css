@@ -4135,6 +4135,48 @@
     gap: var(--domus-dashboard-section-spacing, var(--domus-layout-section-spacing));
 }
 
+@media (min-width: 1001px) {
+    #app-content:has(.domus-dashboard-panel-row) {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        box-sizing: border-box;
+    }
+
+    #app-content:has(.domus-dashboard-panel-row) > .domus-top-navigation,
+    #app-content:has(.domus-dashboard-panel-row) > .domus-bottom-navigation {
+        flex-shrink: 0;
+    }
+
+    .domus-content:has(> .domus-dashboard > .domus-dashboard-panel-row) {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .domus-dashboard:has(> .domus-dashboard-panel-row) {
+        flex: 1;
+        min-height: 0;
+    }
+
+    .domus-dashboard > .domus-dashboard-panel-row {
+        flex: 1;
+        min-height: 0;
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .domus-dashboard > .domus-dashboard-panel-row > .domus-upcoming-card-shell {
+        height: 100%;
+        min-height: 0;
+        max-height: none;
+    }
+
+    .domus-dashboard-panel-row .domus-section-header,
+    .domus-dashboard > .domus-dashboard-kpi-row {
+        flex-shrink: 0;
+    }
+}
+
 .domus-dashboard-panel-row .domus-section-header {
     margin-bottom: 0;
 }
