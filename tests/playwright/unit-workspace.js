@@ -531,6 +531,107 @@ async function main() {
         await page.waitForFunction(() => document.querySelector('.domus-stat-year-selected')?.dataset.statYear === '2025' && document.activeElement.getAttribute('aria-label') === 'Edit Booking #101');
     });
 
+    await test('year closing checks every 2* account and allows closing with advisory errors', async page => {
+        await page.evaluate(() => {
+            window.yearCalls = [];
+            Domus.Api.getAccounts = async () => [
+                {number: '1000', label: 'Revenue'},
+                {number: '2100', label: 'Maintenance <cost>', children: [{number: '2110', label: 'Child account'}]},
+                {number: '2200', label: 'Zero total'},
+                {number: '2300', label: 'Missing booking'},
+                {number: '2500', label: 'Negative total', status: 'disabled'}
+            ];
+            Domus.Api.getBookings = async filter => {
+                window.bookingFilter = filter;
+                return [{account: 2100, amount: 12.34}, {account: 2100, amount: 0.01},
+                    {account: 2110, amount: 4}, {account: 2200, amount: 10},
+                    {account: 2200, amount: -10}, {account: 2500, amount: -3}];
+            };
+            Domus.Api.closeBookingYear = async (year, scope) => window.yearCalls.push({year, scope});
+            Domus.Units.openYearStatusModal(1, {revenue: {rows: [{year: 2026, isProvisional: true}]}}, () => { window.yearRefreshed = true; });
+        });
+        const dialog = page.getByRole('dialog').filter({has: page.locator('.domus-year-status-form')});
+        await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+        await dialog.locator('tbody tr').first().waitFor();
+        assert.equal(await dialog.locator('tbody tr').count(), 5);
+        assert.equal(await dialog.locator('.domus-guided-content h3').count(), 0);
+        assert.equal(await dialog.locator('.domus-year-check-pass').count(), 2);
+        assert.equal(await dialog.locator('.domus-year-check-fail').count(), 3);
+        assert.match(await dialog.locator('tbody tr').first().innerText(), /Maintenance <cost>/);
+        const value = await page.evaluate(() => Domus.Utils.formatCurrency(12.35));
+        assert.equal(await dialog.locator('tbody tr').first().locator('td').nth(1).innerText(), value);
+        assert.deepEqual(await page.evaluate(() => window.bookingFilter), {unitId: 1, year: 2026});
+        assert.deepEqual(await page.evaluate(() => window.yearCalls), []);
+        await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+        assert.match(await dialog.innerText(), /3 accounts need attention/);
+        await dialog.getByRole('button', {name: 'Close year', exact: true}).click();
+        await dialog.waitFor({state: 'detached'});
+        assert.deepEqual(await page.evaluate(() => window.yearCalls), [{year: 2026, scope: {unitId: 1}}]);
+        assert.equal(await page.evaluate(() => window.yearRefreshed), true);
+    });
+
+    await test('year checks retry failed loads, ignore stale responses, and confirm reopening', async page => {
+        await page.evaluate(() => {
+            window.yearCalls = [];
+            Domus.Api.getAccounts = async () => [{number: '2100', label: 'Maintenance'}];
+            Domus.Api.getBookings = () => new Promise(resolve => { window.resolveOldYear = resolve; });
+            Domus.Api.reopenBookingYear = async (year, scope) => window.yearCalls.push({year, scope});
+            Domus.Units.openYearStatusModal(1, {revenue: {rows: [
+                {year: 2026, isProvisional: true}, {year: 2025, isProvisional: true}, {year: 2024, isProvisional: false}
+            ]}}, null, {defaultYear: 2025});
+        });
+        const dialog = page.getByRole('dialog').filter({has: page.locator('.domus-year-status-form')});
+        assert.equal(await dialog.locator('select').inputValue(), '2025');
+        assert.equal(await dialog.locator('.domus-modal-header h3').innerText(), 'Close year 2025');
+        await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+        assert.equal(await dialog.getByRole('button', {name: 'Next', exact: true}).isDisabled(), true);
+        await dialog.getByRole('button', {name: 'Back', exact: true}).click();
+        await page.evaluate(() => {
+            Domus.Api.getBookings = async () => { throw new Error('Bookings unavailable'); };
+        });
+        await dialog.locator('select').selectOption('2026');
+        assert.equal(await dialog.locator('.domus-modal-header h3').innerText(), 'Close year 2026');
+        await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+        await dialog.getByRole('button', {name: 'Retry', exact: true}).waitFor();
+        await page.evaluate(() => window.resolveOldYear([{account: 2100, amount: 999}]));
+        assert.match(await dialog.innerText(), /Bookings unavailable/);
+        assert.equal(await dialog.getByRole('button', {name: 'Next', exact: true}).isDisabled(), true);
+        await page.evaluate(() => { Domus.Api.getBookings = async () => [{account: 2100, amount: 50}]; });
+        await dialog.getByRole('button', {name: 'Retry', exact: true}).click();
+        await dialog.locator('.domus-year-check-pass').waitFor();
+        await dialog.getByRole('button', {name: 'Back', exact: true}).click();
+        await dialog.locator('select').selectOption('2024');
+        assert.equal(await dialog.locator('.domus-modal-header h3').innerText(), 'Reopen year 2024');
+        await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+        assert.equal(await dialog.locator('table').count(), 0);
+        assert.match(await dialog.innerText(), /Reopen year 2024/);
+        await dialog.getByRole('button', {name: 'Reopen year', exact: true}).click();
+        await dialog.waitFor({state: 'detached'});
+        assert.deepEqual(await page.evaluate(() => window.yearCalls), [{year: 2024, scope: {unitId: 1}}]);
+    });
+
+    await test('year closing stays readable on phones and recovers from a failed save', async page => {
+        await page.evaluate(() => {
+            Domus.Api.getAccounts = async () => [{number: '2100', label: 'Maintenance costs with a longer descriptive account name'}];
+            Domus.Api.getBookings = async () => [];
+            Domus.Api.closeBookingYear = async () => { throw new Error('Closing unavailable'); };
+            Domus.Units.openYearStatusModal(1, {revenue: {rows: [{year: 2026, isProvisional: true}]}});
+        });
+        const dialog = page.getByRole('dialog').filter({has: page.locator('.domus-year-status-form')});
+        await dialog.getByRole('button', {name: 'Next', exact: true}).press('Enter');
+        await dialog.locator('.domus-year-check-fail').waitFor();
+        const layout = await dialog.evaluate(el => ({width: el.clientWidth, scroll: el.scrollWidth}));
+        assert.ok(layout.scroll <= layout.width, JSON.stringify(layout));
+        await dialog.getByRole('button', {name: 'Next', exact: true}).click();
+        await dialog.getByRole('button', {name: 'Close year', exact: true}).click();
+        await page.waitForFunction(() => document.body.textContent.includes('Closing unavailable'));
+        assert.equal(await dialog.getByRole('button', {name: 'Close year', exact: true}).isEnabled(), true);
+        await dialog.getByRole('button', {name: 'Back', exact: true}).click();
+        await dialog.locator('.domus-year-check-fail').waitFor();
+        await dialog.getByRole('button', {name: 'Cancel', exact: true}).click();
+        await dialog.waitFor({state: 'detached'});
+    }, 'landlord', {width: 390, height: 844});
+
     await browser.close();
     if (failures) process.exitCode = 1;
 }

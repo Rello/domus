@@ -45,6 +45,9 @@ GitHub Actions runs this same PHPUnit configuration and the browser wrapper on p
   cover field filtering, direct document delivery authorization and correction decisions.
   Browser fixtures do not prove live storage permissions or guest app allowlists.
 
+The unit-workspace suite also checks year-closing account totals, advisory errors,
+confirmation, reopening, load retries, stale responses, failed saves, and phone layout.
+
 ## Welcome wizard screenshots
 - Run `./tests/capture-wizard-screenshots.sh` with the local NC35 stack running.
 - The script reads the local NC35 admin login from `nc35-app-1` and captures the

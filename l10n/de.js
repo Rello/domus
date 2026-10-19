@@ -1140,7 +1140,19 @@ OC.L10N.register(
         "Portfolio development": "Portfolio-Entwicklung",
         "Portfolio development by year": "Portfolio-Entwicklung nach Jahren",
         "Profitability is unavailable because acquisition costs are missing for one or more units.": "Die Rentabilität ist nicht verfügbar, da für eine oder mehrere Einheiten Anschaffungskosten fehlen.",
-        "Trend metric": "Kennzahl für den Verlauf"
+        "Trend metric": "Kennzahl für den Verlauf",
+        "Check completion": "Vollständigkeit prüfen",
+        "Confirm": "Bestätigen",
+        "Close year {year}": "Jahr {year} abschließen",
+        "Reopen year {year}": "Jahr {year} wieder öffnen",
+        "Check the accounts for incomplete bookings": "Prüfen Sie die Konten auf unvollständige Buchungen",
+        "Available": "Vorhanden",
+        "Missing": "Fehlt",
+        "No accounts starting with 2 are configured.": "Es sind keine Konten konfiguriert, die mit 2 beginnen.",
+        "{count} accounts need attention. You can still close the year.": "{count} Konten müssen geprüft werden. Sie können das Jahr trotzdem abschließen.",
+        "All mandatory accounts have positive booking totals.": "Alle Pflichtkonten haben positive Buchungssummen.",
+        "Close year {year}? Bookings for this year will be locked.": "Jahr {year} abschließen? Buchungen für dieses Jahr werden gesperrt.",
+        "Reopen year {year}? Bookings for this year can be edited again.": "Jahr {year} wieder öffnen? Buchungen für dieses Jahr können wieder bearbeitet werden."
     },
     "nplurals=2; plural=(n != 1);"
 );

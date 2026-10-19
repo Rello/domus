@@ -459,7 +459,7 @@
                 });
         }
 
-        return { toOptions, label, renderList, renderSettingsSection, loadSettingsSection };
+        return { toOptions, label, flattenHierarchy, renderList, renderSettingsSection, loadSettingsSection };
     })();
 
     /**

@@ -5512,3 +5512,20 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
 .domus-analytics-performance > table td { white-space: nowrap; }
 .domus-analytics-performance > table caption { text-align: start; }
 .domus-analytics-filter[hidden] { display: none; }
+
+/* Year closing completion checks. */
+.domus-year-status-form .domus-table th,
+.domus-year-status-form .domus-table td {
+    padding: 6px 8px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.domus-year-status-form .domus-table { table-layout: fixed; }
+.domus-year-status-form .domus-table th.domus-year-check-value,
+.domus-year-status-form .domus-table td.domus-year-check-value { width: 30%; text-align: right; font-variant-numeric: tabular-nums; }
+.domus-year-status-form .domus-table .domus-year-check-result { width: 4rem; text-align: center; }
+.domus-year-check-pass { color: var(--color-success-text, var(--color-success)); }
+.domus-year-check-fail { color: var(--color-error-text, var(--color-error)); }
+.domus-year-check-status > span { font-weight: bold; }
+
+.domus-year-status-form .domus-guided-content > .domus-form > p:first-child { margin-top: 0; }

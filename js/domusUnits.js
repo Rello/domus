@@ -1089,68 +1089,162 @@
         function openYearStatusModal(unitId, statistics, onComplete, modalOptions = {}) {
             const years = Domus.Utils.collectStatisticsYears(statistics);
             const provisionalMap = Domus.Utils.collectProvisionalMap(statistics);
-            const yearOptions = years.map(year => '<option value="' + Domus.Utils.escapeHtml(String(year)) + '">' + Domus.Utils.escapeHtml(String(year)) + '</option>').join('');
-            const rows = [
-                Domus.UI.buildFormRow({
-                    label: t('domus', 'Year'),
-                    content: '<select id="domus-year-status-year" name="year">' + yearOptions + '</select>'
-                })
-            ];
-            const content = '<div class="domus-form domus-year-status-form">' +
-                '<form id="domus-year-status-form">' +
-                Domus.UI.buildFormTable(rows) +
-                '<div class="muted domus-year-status-hint" id="domus-year-status-hint"></div>' +
-                '<div class="domus-form-actions">' +
-                '<button type="button" id="domus-year-status-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '<button type="submit" class="primary" id="domus-year-status-submit"></button>' +
-                '</div>' +
-                '</form>' +
-                '</div>';
-
-            const modal = Domus.UI.openModal({title: t('domus', 'Close or open year'), content});
-            const form = modal.modalEl.querySelector('#domus-year-status-form');
-            const yearSelect = modal.modalEl.querySelector('#domus-year-status-year');
-            const hint = modal.modalEl.querySelector('#domus-year-status-hint');
-            const submitBtn = modal.modalEl.querySelector('#domus-year-status-submit');
-            const cancelBtn = modal.modalEl.querySelector('#domus-year-status-cancel');
-
-            function updateState() {
-                const year = Number(yearSelect?.value);
-                const isProvisional = provisionalMap[year] !== undefined ? provisionalMap[year] : true;
-                if (hint) {
-                    hint.textContent = isProvisional
-                        ? t('domus', 'This year is still open. Figures are provisional.')
-                        : t('domus', 'This year is closed.');
-                }
-                if (submitBtn) {
-                    submitBtn.textContent = isProvisional ? t('domus', 'Close year') : t('domus', 'Reopen year');
-                }
-            }
-
-            const defaultYear = modalOptions.defaultYear !== undefined ? Number(modalOptions.defaultYear) : null;
-            if (defaultYear && yearSelect && years.includes(defaultYear)) {
-                yearSelect.value = String(defaultYear);
-            }
-            updateState();
-
-            yearSelect?.addEventListener('change', updateState);
-            cancelBtn?.addEventListener('click', modal.close);
-
-            form?.addEventListener('submit', (event) => {
-                event.preventDefault();
-                const year = Number(yearSelect?.value);
-                const isProvisional = provisionalMap[year] !== undefined ? provisionalMap[year] : true;
-                const action = isProvisional ? Domus.Api.closeBookingYear : Domus.Api.reopenBookingYear;
-                action(year, {unitId})
-                    .then(() => {
-                        Domus.UI.showNotification(isProvisional ? t('domus', 'Year closed.') : t('domus', 'Year reopened.'), 'success');
-                        modal.close();
-                        if (typeof onComplete === 'function') {
-                            onComplete();
-                        }
-                    })
-                    .catch(err => Domus.UI.showError(err.message));
+            const defaultYear = Number(modalOptions.defaultYear);
+            let selectedYear = years.includes(defaultYear) ? defaultYear : years[0];
+            let currentStep = 0;
+            let checkState = 'idle';
+            let checks = [];
+            let checkError = '';
+            let requestId = 0;
+            let saving = false;
+            const escape = Domus.Utils.escapeHtml;
+            const container = document.createElement('div');
+            container.className = 'domus-year-status-form';
+            const modal = Domus.UI.openModal({
+                title: t('domus', 'Close or open year'),
+                content: container,
+                size: 'large',
+                onClose: () => { requestId++; }
             });
+            const isOpen = () => provisionalMap[selectedYear] !== false;
+            const failedCount = () => checks.filter(account => account.total <= 0).length;
+
+            function button(id, label, primary = false, disabled = false) {
+                return '<button type="button" id="domus-year-status-' + id + '"' +
+                    (primary ? ' class="primary"' : '') + (disabled ? ' disabled' : '') + '>' + escape(label) + '</button>';
+            }
+
+            function renderStep(moveFocus = true) {
+                const focusedId = container.contains(document.activeElement) ? document.activeElement.id : null;
+                modal.modalEl.querySelector('.domus-modal-header h3').textContent = isOpen()
+                    ? t('domus', 'Close year {year}', {year: selectedYear})
+                    : t('domus', 'Reopen year {year}', {year: selectedYear});
+                const steps = isOpen()
+                    ? [{label: t('domus', 'Select year')}, {label: t('domus', 'Check completion')}, {label: t('domus', 'Confirm')}]
+                    : [{label: t('domus', 'Select year')}, {label: t('domus', 'Confirm')}];
+                let content = '';
+                if (currentStep === 0) {
+                    const options = years.map(year => '<option value="' + escape(String(year)) + '"' +
+                        (year === selectedYear ? ' selected' : '') + '>' + escape(String(year)) + '</option>').join('');
+                    content = Domus.UI.buildFormTable([Domus.UI.buildFormRow({
+                        label: t('domus', 'Year'),
+                        content: '<select id="domus-year-status-year" name="year">' + options + '</select>'
+                    })]) + '<p class="muted domus-year-status-hint" id="domus-year-status-hint">' + escape(isOpen()
+                        ? t('domus', 'This year is still open. Figures are provisional.')
+                        : t('domus', 'This year is closed.')) + '</p>';
+                } else if (isOpen() && currentStep === 1) {
+                    content = '<p>' + escape(t('domus', 'Check the accounts for incomplete bookings')) + '</p>';
+                    if (checkState === 'loading') {
+                        content += '<p role="status">' + escape(t('domus', 'Loading bookings…')) + '</p>';
+                    } else if (checkState === 'error') {
+                        content += '<p role="alert">' + escape(checkError) + '</p>' + button('retry', t('domus', 'Retry'));
+                    } else if (checkState === 'ready') {
+                        const rows = checks.map(account => {
+                            const passed = account.total > 0;
+                            const status = passed ? t('domus', 'Available') : t('domus', 'Missing');
+                            return [
+                                escape(account.label),
+                                {content: escape(Domus.Utils.formatCurrency(account.total)), className: 'domus-year-check-value'},
+                                {content: '<span role="img" aria-label="' + escape(status) + '" title="' + escape(status) +
+                                    '" class="domus-year-check-status ' + (passed ? 'domus-year-check-pass' : 'domus-year-check-fail') + '">' +
+                                    '<span aria-hidden="true">' + (passed ? '✓' : '✗') + '</span></span>', className: 'domus-year-check-result'}
+                            ];
+                        });
+                        content += checks.length
+                            ? Domus.UI.buildTable([t('domus', 'Account'), {label: t('domus', 'Booking totals'), className: 'domus-year-check-value'}, {label: t('domus', 'Status'), className: 'domus-year-check-result'}], rows, {wrapPanel: false})
+                            : '<p>' + escape(t('domus', 'No accounts starting with 2 are configured.')) + '</p>';
+                        if (checks.length) content += '<p role="status">' + escape(failedCount()
+                            ? t('domus', '{count} accounts need attention. You can still close the year.', {count: failedCount()})
+                            : t('domus', 'All mandatory accounts have positive booking totals.')) + '</p>';
+                    }
+                } else {
+                    content = '<p>' + escape(isOpen()
+                        ? t('domus', 'Close year {year}? Bookings for this year will be locked.', {year: selectedYear})
+                        : t('domus', 'Reopen year {year}? Bookings for this year can be edited again.', {year: selectedYear})) + '</p>';
+                    if (isOpen() && failedCount()) {
+                        content += '<p class="domus-year-check-fail">' + escape(t('domus', '{count} accounts need attention. You can still close the year.', {count: failedCount()})) + '</p>';
+                    }
+                }
+                const isConfirm = currentStep === steps.length - 1;
+                content += '<div class="domus-form-actions">' + button('cancel', t('domus', 'Cancel'), false, saving) +
+                    (currentStep > 0 ? button('back', t('domus', 'Back'), false, saving) : '') +
+                    (isConfirm
+                        ? button('submit', isOpen() ? t('domus', 'Close year') : t('domus', 'Reopen year'), true, saving)
+                        : button('next', t('domus', 'Next'), true, !selectedYear || (currentStep === 1 && checkState !== 'ready'))) + '</div>';
+                container.innerHTML = Domus.UI.buildGuidedWorkflowLayout(steps, currentStep, '<div class="domus-form">' + content + '</div>');
+                container.querySelector('#domus-year-status-year')?.addEventListener('change', event => {
+                    selectedYear = Number(event.target.value);
+                    checkState = 'idle';
+                    checks = [];
+                    requestId++;
+                    renderStep();
+                });
+                container.querySelector('#domus-year-status-cancel')?.addEventListener('click', modal.close);
+                container.querySelector('#domus-year-status-back')?.addEventListener('click', () => {
+                    requestId++;
+                    currentStep--;
+                    renderStep();
+                    if (currentStep === 1) loadChecks();
+                });
+                container.querySelector('#domus-year-status-next')?.addEventListener('click', () => {
+                    currentStep++;
+                    renderStep();
+                    if (isOpen() && currentStep === 1) loadChecks();
+                });
+                container.querySelector('#domus-year-status-retry')?.addEventListener('click', loadChecks);
+                container.querySelector('#domus-year-status-submit')?.addEventListener('click', save);
+                if (moveFocus) {
+                    (container.querySelector('select') || container.querySelector('#domus-year-status-back'))?.focus();
+                } else if (focusedId) {
+                    container.querySelector('#' + focusedId)?.focus();
+                }
+            }
+
+            function loadChecks() {
+                const currentRequest = ++requestId;
+                checkState = 'loading';
+                renderStep(false);
+                Promise.all([Domus.Api.getAccounts(), Domus.Api.getBookings({unitId, year: selectedYear})])
+                    .then(([accounts, bookings]) => {
+                        if (currentRequest !== requestId || !container.isConnected) return;
+                        const totals = new Map();
+                        (bookings || []).forEach(booking => {
+                            const number = String(booking.account);
+                            totals.set(number, (totals.get(number) || 0) + Math.round(Number(booking.amount) * 100));
+                        });
+                        checks = Domus.Accounts.flattenHierarchy(accounts).filter(account => String(account.number).startsWith('2'))
+                            .map(account => ({number: String(account.number), label: account.label || '', total: (totals.get(String(account.number)) || 0) / 100}));
+                        checkState = 'ready';
+                        renderStep(false);
+                    })
+                    .catch(error => {
+                        if (currentRequest !== requestId || !container.isConnected) return;
+                        checkState = 'error';
+                        checkError = error.message || t('domus', 'An error occurred');
+                        renderStep(false);
+                    });
+            }
+
+            function save() {
+                if (saving) return;
+                saving = true;
+                renderStep(false);
+                const closing = isOpen();
+                const action = closing ? Domus.Api.closeBookingYear : Domus.Api.reopenBookingYear;
+                action(selectedYear, {unitId})
+                    .then(() => {
+                        Domus.UI.showNotification(closing ? t('domus', 'Year closed.') : t('domus', 'Year reopened.'), 'success');
+                        modal.close();
+                        onComplete?.();
+                    })
+                    .catch(error => {
+                        Domus.UI.showError(error.message);
+                        saving = false;
+                        if (container.isConnected) renderStep();
+                    });
+            }
+
+            renderStep(false);
         }
 
         function bindYearStatusAction(unitId, statistics) {
