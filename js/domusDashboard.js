@@ -305,7 +305,7 @@
                     linkHref: card.link || '',
                     linkLabel: t('domus', 'More'),
                     linkIconClass: 'domus-icon-arrow-right',
-                    tileClassName: 'domus-dashboard-summary-tile domus-dashboard-kpi-tile'
+                    tileClassName: 'domus-dashboard-kpi-tile'
                 });
             }).join('');
 
@@ -434,7 +434,7 @@
                     linkHref: card.link || '',
                     linkLabel: t('domus', 'More'),
                     linkIconClass: 'domus-icon-arrow-right',
-                    tileClassName: 'domus-dashboard-summary-tile domus-dashboard-kpi-tile'
+                    tileClassName: 'domus-dashboard-kpi-tile'
                 });
             }).join('');
 

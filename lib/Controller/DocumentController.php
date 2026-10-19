@@ -95,7 +95,7 @@ class DocumentController extends Controller {
 
         $year = $yearParam !== null ? (int)$yearParam : null;
 
-        $links = $this->documentService->attachToTargets($this->getUserId(), $targets, $uploadedFile, $filePath, $year, $title, $note, null, $sourceLinkId ? (int)$sourceLinkId : null);
+        $links = $this->documentService->attachToTargets($this->getUserId(), $targets, $uploadedFile, $filePath, $year, $title, $note, null, $sourceLinkId ? (int)$sourceLinkId : null, $this->request->getParam('documentDate'));
         return new DataResponse($links, Http::STATUS_CREATED);
     }
 

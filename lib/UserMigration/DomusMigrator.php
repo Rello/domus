@@ -81,7 +81,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         ],
         'domus_docLinks' => [
             'id', 'user_id', 'entity_type', 'entity_id', 'file_id', 'file_name',
-            'note', 'created_at', 'team_id',
+            'note', 'created_at', 'team_id', 'document_date',
         ],
         'domus_dist_keys' => [
             'id', 'user_id', 'property_id', 'type', 'name', 'config_json',

@@ -8,12 +8,117 @@
 namespace OCA\Domus\Tests\Unit;
 
 use OCA\Domus\Service\DocumentService;
+use OCA\Domus\Db\DocumentLink;
+use OCA\Domus\Db\Property;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use PHPUnit\Framework\TestCase;
 
 class DocumentTeamScopeTest extends TestCase {
+    public function testUnitUnlinkRemovesOnlyTheSameFilesUnitAndDescendantRelations(): void {
+        $constructor = (new \ReflectionClass(DocumentService::class))->getConstructor();
+        $dependencies = [];
+        foreach ($constructor->getParameters() as $parameter) {
+            $dependencies[$parameter->getName()] = $this->createMock($parameter->getType()->getName());
+        }
+        $makeLink = static function (int $id, string $type, int $entityId): DocumentLink {
+            $link = new DocumentLink();
+            $link->setId($id);
+            $link->setFileId(42);
+            $link->setEntityType($type);
+            $link->setEntityId($entityId);
+            return $link;
+        };
+        $unitLink = $makeLink(1, 'unit', 10);
+        $links = [
+            $unitLink, $makeLink(2, 'tenancy', 20), $makeLink(3, 'booking', 30),
+            $makeLink(4, 'tenancy', 21), $makeLink(5, 'booking', 31),
+            $makeLink(6, 'property', 40), $makeLink(7, 'partner', 50),
+            $makeLink(8, 'unit', 11), $makeLink(9, 'unit', 10),
+            $makeLink(10, 'tenancy', 22),
+        ];
+        $dependencies['documentLinkMapper']->method('findForUser')->with(1, 'actor')->willReturn($unitLink);
+        $dependencies['documentLinkMapper']->method('findByFileId')->with('actor', 42)->willReturn($links);
+        $dependencies['tenancyMapper']->method('findForUser')->willReturnCallback(static function ($id, $userId) {
+            if ($userId !== 'actor' || $id === 22) return null;
+            $tenancy = new \OCA\Domus\Db\Tenancy();
+            $tenancy->setUnitId($id === 20 ? 10 : 11);
+            return $tenancy;
+        });
+        $dependencies['bookingMapper']->method('findForUser')->willReturnCallback(static function ($id, $userId) {
+            if ($userId !== 'actor') return null;
+            $booking = new \OCA\Domus\Db\Booking();
+            $booking->setUnitId($id === 30 ? 10 : 11);
+            return $booking;
+        });
+        $dependencies['documentLinkMapper']->expects($this->once())->method('deleteByIds')->with('actor', [1, 2, 3, 9]);
+        $dependencies['documentLinkMapper']->expects($this->never())->method('delete');
+        $dependencies['rootFolder']->expects($this->never())->method('getById');
+        (new DocumentService(...array_values($dependencies)))->unlink('actor', 1);
+    }
+
+    public function testUnlinkBelowUnitKeepsOtherRelations(): void {
+        foreach (['tenancy', 'booking'] as $type) {
+            $constructor = (new \ReflectionClass(DocumentService::class))->getConstructor();
+            $dependencies = [];
+            foreach ($constructor->getParameters() as $parameter) {
+                $dependencies[$parameter->getName()] = $this->createMock($parameter->getType()->getName());
+            }
+            $link = new DocumentLink();
+            $link->setId(7);
+            $link->setFileId(42);
+            $link->setEntityType($type);
+            $link->setEntityId(20);
+            $dependencies['documentLinkMapper']->method('findForUser')->with(7, 'actor')->willReturn($link);
+            $dependencies['documentLinkMapper']->expects($this->never())->method('findByFileId');
+            $dependencies['documentLinkMapper']->expects($this->never())->method('deleteByIds');
+            $dependencies['documentLinkMapper']->expects($this->once())->method('delete')->with($link);
+            (new DocumentService(...array_values($dependencies)))->unlink('actor', 7);
+        }
+    }
+
+    public function testRepeatedAttachmentsUpdateTheExistingRelationAndClearItsNote(): void {
+        $folder = new class extends Folder {
+            public function nodeExists(string $path): bool { return true; }
+            public function get(string $path): File { return new File(42, 'contract.pdf'); }
+        };
+        $constructor = (new \ReflectionClass(DocumentService::class))->getConstructor();
+        $dependencies = [];
+        foreach ($constructor->getParameters() as $parameter) {
+            $dependencies[$parameter->getName()] = $this->createMock($parameter->getType()->getName());
+        }
+        $dependencies['rootFolder']->method('getUserFolder')->willReturn($folder);
+        $dependencies['propertyMapper']->method('findForUser')->with(99, 'actor')->willReturn(new Property());
+        $existing = new DocumentLink();
+        $existing->setId(7);
+        $existing->setFileId(42);
+        $existing->setCreatedAt(123);
+        $existing->setNote('Old note');
+        $duplicate = clone $existing;
+        $duplicate->setId(6);
+        $otherFile = clone $existing;
+        $otherFile->setId(9);
+        $otherFile->setFileId(43);
+        $dependencies['rootFolder']->method('getById')->with(42)->willReturn([new File(42, 'contract.pdf')]);
+        $dependencies['documentLinkMapper']->method('findForUser')->with(7, 'actor')->willReturn($existing);
+        $dependencies['documentLinkMapper']->method('findForEntity')->with('actor', 'property', 99)->willReturn([$otherFile, $duplicate, $existing]);
+        $dependencies['documentLinkMapper']->expects($this->never())->method('insert');
+        $dependencies['documentLinkMapper']->expects($this->exactly(3))->method('update')->with($existing)->willReturn($existing);
+        $service = new DocumentService(...array_values($dependencies));
+
+        foreach (['Changed note', '', null] as $note) {
+            $links = $service->attachToTargets('actor', [['entityType' => 'property', 'entityId' => 99]], null, null, null, 'Contract', $note, null, 7, '2025-06-15');
+            $this->assertCount(1, $links);
+            $this->assertSame(7, $links[0]->getId());
+            $this->assertSame(123, $links[0]->getCreatedAt());
+            $this->assertSame('2025-06-15', $links[0]->getDocumentDate());
+            $this->assertSame($note ?: null, $links[0]->getNote());
+            $this->assertSame('Old note', $duplicate->getNote());
+            $this->assertSame('Old note', $otherFile->getNote());
+        }
+    }
+
     public function testLinkRejectsForeignTargetBeforeCreatingDocumentRow(): void {
         $folder = new class extends Folder {
             public function nodeExists(string $path): bool { return true; }

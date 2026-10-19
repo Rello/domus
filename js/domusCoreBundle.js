@@ -571,6 +571,7 @@
             attachDocumentToTargets: (payload) => {
                 const formData = new FormData();
                 formData.append('targets', JSON.stringify(payload.targets || []));
+                if (payload.documentDate) formData.append('documentDate', payload.documentDate);
                 if (payload.year !== undefined) {
                     formData.append('year', payload.year);
                 }

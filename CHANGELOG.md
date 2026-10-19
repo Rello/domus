@@ -8,21 +8,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
-- Add portfolio analytics across all years, with annual agreed rent, estimated net profit, weighted profitability, and per-unit breakdowns.
+- Portfolio analytics across all years, including rent, estimated net profit, weighted profitability, and per-unit breakdowns.
+- Document dates and assignment to multiple tenancies, with editable existing assignments.
 
 ### Changed
-- Improve utility settlements with separate allocable maintenance subaccounts counted once, tenancy and period selection, a financial preview, and clearer report actions.
-- Show account names without account numbers in the booking dropdown.
-- Add account checks and confirmation when closing a financial year, with direct access to that year’s bookings when warnings need review.
-- Show booking descriptions in unit details.
-- Make tenancy details easier to review with a completion indicator, clearer headers, and an assigned-partner checklist.
+- Simplify document upload and editing, and store new booking documents directly in the year folder.
+- Improve utility settlements with allocable maintenance subaccounts, tenancy and period selection, and a financial preview.
+- Check accounts and request confirmation before closing a financial year, with links to bookings that need review.
+- Improve tenancy details with completion indicators, partner checklists, and the most recent periods first.
+- Show booking descriptions in unit details and simplify account names in booking forms.
 
 ### Fixed
-- Keep dashboard statistics at the bottom of the desktop view while the task panel resizes and scrolls with the available height.
-- Default new bookings created from a unit’s selected financial year to 31 December of that year.
-- Restore the Delete button when editing a booking.
-- Show the most recent tenancy periods first.
-- Open the document file picker in the selected unit's document folder.
+- Prevent duplicate document assignments and remove related tenancy and booking links when unlinking a unit document.
+- Restore booking deletion, allow clearing descriptions, and use the selected financial year for new booking dates.
+- Keep dashboard tiles and the task panel sized consistently when resizing the window.
+- Open the document picker in the selected unit's folder.
 
 ## 1.2.0 - 2026-10-18
 ### Added

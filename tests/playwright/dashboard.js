@@ -120,6 +120,29 @@ async function main() {
         assert.ok(heights[1] < heights[0] && heights[2] > heights[0], 'Task area follows viewport height');
     });
 
+    await test('all KPI tiles share responsive sizing across grid breakpoints', async page => {
+        await setup(page, 'landlord', summary);
+        for (const width of [1920, 1200, 1000, 769, 375, 320, 1920]) {
+            await page.setViewportSize({ width, height: 900 });
+            const tiles = await page.locator('.domus-dashboard-kpi-row > .domus-kpi-tile').evaluateAll(elements =>
+                elements.map(element => {
+                    const rect = element.getBoundingClientRect();
+                    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+                        right: rect.right, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth };
+                })
+            );
+            assert.equal(tiles.length, 4);
+            for (const tile of tiles) {
+                assert.ok(Math.abs(tile.width - tiles[0].width) < 1, `Equal tile widths at ${width}px`);
+                assert.ok(tile.right <= width + 1, `Tile stays within viewport at ${width}px`);
+                assert.ok(tile.scrollWidth <= tile.clientWidth + 1, `Tile content fits at ${width}px`);
+                for (const sibling of tiles.filter(other => Math.abs(other.y - tile.y) < 1)) {
+                    assert.ok(Math.abs(tile.height - sibling.height) < 1, `Equal row heights at ${width}px`);
+                }
+            }
+        }
+    });
+
     await test('landlord groups due tasks and opens actions with keyboard', async page => {
         await setup(page, 'landlord', summary);
         if (process.env.DASHBOARD_SCREENSHOT_DIR) {

@@ -127,6 +127,18 @@ class DocumentLinkMapper extends TeamScopedMapper {
         $qb->executeStatement();
     }
 
+    /** Remove a document's selected relations together within the active ownership context. */
+    public function deleteByIds(string $userId, array $ids): void {
+        if ($ids === []) {
+            return;
+        }
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete($this->getTableName())
+            ->where($this->ownerExpression($qb, $userId))
+            ->andWhere($qb->expr()->in('id', $qb->createNamedParameter($ids, $qb::PARAM_INT_ARRAY)));
+        $qb->executeStatement();
+    }
+
     /**
      * @throws Exception
      */

@@ -19,6 +19,7 @@ class DocumentLink extends Entity implements JsonSerializable {
     protected $fileName;
     protected $note;
     protected $createdAt;
+    protected $documentDate;
 
     private ?string $fileUrl = null;
     private ?string $filePath = null;
@@ -42,6 +43,7 @@ class DocumentLink extends Entity implements JsonSerializable {
             'fileUrl' => $this->fileUrl,
             'filePath' => $this->filePath,
             'createdAt' => $this->createdAt,
+            'documentDate' => $this->documentDate,
         ];
     }
 

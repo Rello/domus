@@ -34,6 +34,8 @@ async function setup(page) {
         Domus.Api.getProperties = async () => [{ id: 1, name: 'Test property' }];
         Domus.Api.getUnits = async () => [{ id: 1, label: 'Test unit', propertyId: 1 }];
         Domus.Api.getPartners = async () => [{ id: 1, name: 'Test tenant', partnerType: 'tenant' }];
+        const originalGet = Domus.Api.get;
+        Domus.Api.get = path => path.endsWith('/tenancies') ? Promise.resolve([]) : originalGet(path);
         Domus.Api.getTaskTemplates = async () => [];
         Domus.Api.getActionLogs = async () => [];
         Domus.Api.getDistributions = async () => [{ id: 2, name: 'Area', type: 'area' }];
@@ -485,6 +487,145 @@ async function main() {
         });
     }
 
+    for (const withBooking of [false, true]) {
+        await test(`new upload assigns a tenancy ${withBooking ? 'with' : 'without'} a booking`, async page => {
+            await page.evaluate(withBooking => {
+                Domus.Api.get = async () => [{id: 13, partners: [{name: 'New renter'}], startDate: '2026-01-01'}, {id: 14, unitLabel: 'Other unit', partners: [{name: 'Other renter'}]}];
+                Domus.Api.attachDocumentToTargets = async payload => {window.savedAttachment = {type: payload.type, targets: payload.targets}; return [];};
+                Domus.Api.createBooking = async () => ({id: 12});
+                if (withBooking) openBooking({unitId: 1});
+                else Domus.Documents.openLinkModal('unit', 1);
+            }, withBooking);
+            const editor = bookingDialog(page);
+            if (withBooking) {
+                await editor.getByRole('button', {name: 'Attach document (optional)', exact: true}).click();
+                await editor.locator('[data-role="account"]').first().selectOption('2000');
+                await editor.locator('[data-role="amount"]').first().fill('10');
+            }
+            const tenancy = editor.getByRole('group', {name: 'Assign to tenancies'});
+            await tenancy.locator('[value="13"]').check();
+            await tenancy.locator('[value="14"]').check();
+            assert.match(await tenancy.innerText(), /New renter/);
+            await editor.locator('input[type="file"]').setInputFiles({name: 'lease.txt', mimeType: 'text/plain', buffer: Buffer.from('lease')});
+            await editor.getByRole('button', {name: 'Save', exact: true}).click();
+            await waitClosed(page);
+            const saved = await page.evaluate(() => window.savedAttachment);
+            assert.equal(saved.type, 'upload');
+            assert.deepEqual(saved.targets, [
+                ...(withBooking ? [{entityType: 'booking', entityId: 12}] : []),
+                {entityType: 'unit', entityId: '1'},
+                {entityType: 'tenancy', entityId: '13'},
+                {entityType: 'tenancy', entityId: '14'}
+            ]);
+        }, {width: 390, height: 844});
+    }
+
+    await test('document-only upload uses its date for 2025 and stays visible in the 2025 list', async page => {
+        await page.evaluate(() => {
+            Domus.Api.attachDocumentToTargets = async payload => {window.savedDocument = payload; return [];};
+            Domus.Documents.openLinkModal('unit', 1);
+        });
+        const editor = bookingDialog(page);
+        await editor.getByLabel('Document date', {exact: true}).fill('2025-06-15');
+        await editor.locator('input[type="file"]').setInputFiles({name: 'old.txt', mimeType: 'text/plain', buffer: Buffer.from('2025 document')});
+        await editor.getByRole('button', {name: 'Save', exact: true}).click();
+        await waitClosed(page);
+        assert.deepEqual(await page.evaluate(() => ({date: savedDocument.documentDate, year: savedDocument.year})), {date: '2025-06-15', year: 2025});
+        await page.evaluate(() => {
+            Domus.Api.getDocuments = async () => [{id: 90, documentDate: savedDocument.documentDate, createdAt: 1790000000, fileName: '2025 document', fileUrl: 'https://files.example.test/90'}];
+            document.querySelector('#app-content').innerHTML = Domus.Documents.renderList('unit', 1, {year: 2025});
+        });
+        await page.getByRole('link', {name: '2025 document', exact: true}).waitFor();
+    });
+
+    await test('upload tenancy loading stays clean and supports retry', async page => {
+        await page.evaluate(() => {
+            window.failTenancies = false;
+            Domus.Api.get = async () => {
+                if (window.failTenancies) throw new Error('Unavailable');
+                return [{id: 13, partners: [{name: 'New renter'}]}];
+            };
+            Domus.Documents.openLinkModal('unit', 1);
+        });
+        await bookingDialog(page).getByRole('group', {name: 'Assign to tenancies'}).waitFor();
+        await bookingDialog(page).getByRole('button', {name: 'Close modal', exact: true}).click();
+        await waitClosed(page);
+        await page.evaluate(() => {
+            window.failTenancies = true;
+            Domus.Documents.openLinkModal('unit', 1);
+        });
+        await bookingDialog(page).getByText('Could not load tenancies.', {exact: true}).waitFor();
+        await page.evaluate(() => {window.failTenancies = false;});
+        await bookingDialog(page).getByRole('button', {name: 'Retry', exact: true}).click();
+        await bookingDialog(page).getByRole('group', {name: 'Assign to tenancies'}).locator('[value="13"]').check();
+        await bookingDialog(page).getByRole('button', {name: 'Close modal', exact: true}).click();
+        await confirmDialog(page).waitFor();
+    });
+
+    await test('upload scopes tenancies to the selected unit and ignores delayed responses', async page => {
+        await page.evaluate(() => {
+            Domus.Api.getUnits = async () => [{id: 1, label: 'First unit'}, {id: 2, label: 'Second unit'}];
+            Domus.Api.get = path => path === '/units/1/tenancies'
+                ? new Promise(resolve => {window.resolveFirst = resolve;})
+                : Promise.resolve([{id: 22, unitLabel: 'Second unit', partners: [{name: 'Second renter'}]}]);
+            openBooking({}, {createContext: 'document'});
+        });
+        const editor = bookingDialog(page);
+        const unit = editor.getByRole('combobox', {name: 'Unit', exact: true});
+        await unit.selectOption('1');
+        await unit.selectOption('2');
+        await editor.getByRole('checkbox', {name: 'Second unit · Second renter', exact: true}).check();
+        await page.evaluate(() => window.resolveFirst([{id: 11, partners: [{name: 'First renter'}]}]));
+        assert.equal(await editor.getByRole('checkbox', {name: /First renter/}).count(), 0);
+        assert.equal(await editor.getByRole('checkbox', {name: /Second renter/}).isChecked(), true);
+        await unit.selectOption('');
+        assert.equal(await editor.getByRole('checkbox').count(), 0);
+    });
+
+    await test('repeated document note edits retain the existing unit and booking relations', async page => {
+        await page.evaluate(() => {
+            window.documentNote = 'Original note';
+            window.documentDates = [];
+            window.documentTitles = [];
+            window.unlinked = [];
+            window.savedTargets = [];
+            Domus.Api.getDocuments = async () => [{id: 7, fileName: 'Invoice.pdf', fileUrl: 'https://files.example.test/42', note: window.documentNote}];
+            Domus.Api.getDocumentDetail = async () => ({
+                document: {id: 7, filePath: '/Invoice.pdf', fileName: 'Invoice.pdf', note: window.documentNote},
+                linkedEntities: [{id: 7, entityType: 'unit', entityId: 1}, {id: 8, entityType: 'booking', entityId: 2}, {id: 9, entityType: 'tenancy', entityId: 31}, {id: 10, entityType: 'tenancy', entityId: 32}]
+            });
+            Domus.Api.get = async path => path.endsWith('/tenancies') ? [] : {unitId: 1, account: '2000', amount: 100, date: '2026-09-25'};
+            Domus.Api.updateBooking = async () => {};
+            Domus.Api.attachDocumentToTargets = async payload => {
+                window.documentNote = payload.note || '';
+                window.documentDates.push(payload.documentDate);
+                window.documentTitles.push(payload.title);
+                window.savedTargets.push(payload.targets);
+                return [{id: 8, entityType: 'booking', entityId: 2}, {id: 7, entityType: 'unit', entityId: 1}];
+            };
+            Domus.Api.unlinkDocument = async id => {window.unlinked.push(id);};
+            document.querySelector('#app-content').innerHTML = Domus.Documents.renderList('unit', 1);
+        });
+        for (const note of ['Changed note', '']) {
+            await page.getByRole('link', {name: 'Invoice.pdf', exact: true}).hover();
+            await page.getByRole('button', {name: 'Edit document Invoice.pdf', exact: true}).click();
+            const dialog = bookingDialog(page);
+            await dialog.getByRole('textbox', {name: 'Note', exact: true}).fill(note);
+            await dialog.getByLabel('Document date', {exact: true}).fill('2025-06-15');
+            await dialog.getByRole('textbox', {name: 'Title', exact: true}).fill('Updated invoice');
+            await dialog.getByRole('button', {name: 'Save', exact: true}).click();
+            await waitClosed(page);
+            assert.deepEqual(await page.evaluate(() => window.unlinked), []);
+            assert.equal(await page.evaluate(() => window.documentNote), note);
+        }
+        assert.deepEqual(await page.evaluate(() => window.documentDates), ['2025-06-15', '2025-06-15']);
+        assert.deepEqual(await page.evaluate(() => window.documentTitles), ['Updated invoice', 'Updated invoice']);
+        assert.deepEqual(await page.evaluate(() => window.savedTargets), Array(2).fill([
+            {entityType: 'booking', entityId: 2}, {entityType: 'unit', entityId: 1},
+            {entityType: 'tenancy', entityId: 31}, {entityType: 'tenancy', entityId: 32}
+        ]));
+    });
+
     await test('unit document editor links an additional tenancy without reuploading or duplicating links', async page => {
         await page.evaluate(() => {
             window.savedAttachment = null;
@@ -503,7 +644,7 @@ async function main() {
                     {id: 13, unitId: 1, partners: [{name: 'New renter'}], startDate: '2026-10-01'}
                 ]
                 : {};
-            Domus.Api.attachDocumentToTargets = async payload => { window.savedAttachment = payload; };
+            Domus.Api.attachDocumentToTargets = async payload => { window.savedAttachment = payload; return [{id: 7}, {id: 9}]; };
             Domus.Api.unlinkDocument = async id => { window.unlinkedDocument = id; };
             document.querySelector('#app-content').innerHTML = Domus.Documents.renderList('unit', 1);
         });
@@ -511,10 +652,11 @@ async function main() {
         await page.getByRole('button', {name: 'Edit document Lease.pdf'}).click();
         const dialog = page.getByRole('dialog', {name: 'Edit document', exact: true});
         await dialog.waitFor();
-        const tenancy = dialog.getByRole('combobox', {name: 'Add tenancy assignment'});
-        assert.deepEqual(await tenancy.locator('option').evaluateAll(options => options.map(option => option.value)), ['', '13']);
-        assert.match(await dialog.innerText(), /Already assigned to: Existing renter/);
-        await tenancy.selectOption('13');
+        const tenancy = dialog.getByRole('group', {name: 'Assign to tenancies'});
+        assert.deepEqual(await tenancy.locator('input').evaluateAll(options => options.map(option => option.value)), ['12', '13']);
+        assert.equal(await tenancy.locator('[value="12"]').isChecked(), true);
+        assert.doesNotMatch(await dialog.innerText(), /Already assigned to:/);
+        await tenancy.locator('[value="13"]').check();
         await dialog.getByRole('button', {name: 'Save', exact: true}).click();
         await waitClosed(page);
         const saved = await page.evaluate(() => ({attachment: window.savedAttachment, unlinked: window.unlinkedDocument}));
@@ -522,10 +664,60 @@ async function main() {
         assert.equal(saved.attachment.filePath, '/Domus/Unit/Lease.pdf');
         assert.deepEqual(saved.attachment.targets, [
             {entityType: 'unit', entityId: 1},
+            {entityType: 'tenancy', entityId: 12},
             {entityType: 'tenancy', entityId: '13'}
         ]);
-        assert.equal(saved.unlinked, 7);
+        assert.equal(saved.unlinked, null);
     });
+
+    for (const width of [1280, 390]) {
+        await test(`existing tenancy checkboxes are compact and removable (${width}px)`, async page => {
+            await page.evaluate(() => {
+                window.removedLinks = [];
+                window.failAttachment = true;
+                Domus.Api.getDocuments = async () => [{id: 7, fileName: 'Shared.pdf', fileUrl: 'https://files.example.test/42'}];
+                Domus.Api.getDocumentDetail = async () => ({
+                    document: {id: 7, filePath: '/Shared.pdf', fileName: 'Shared.pdf'},
+                    linkedEntities: [{id: 7, entityType: 'unit', entityId: 1}, {id: 8, entityType: 'tenancy', entityId: 12}]
+                });
+                Domus.Api.get = async path => {
+                    if (path !== '/units/1/tenancies') throw new Error('Wrong tenancy scope');
+                    return [{id: 12, partners: [{name: 'Existing renter'}]}, {id: 13, partners: [{name: 'New renter'}]}];
+                };
+                Domus.Api.attachDocumentToTargets = async payload => {
+                    if (window.failAttachment) throw new Error('Save failed');
+                    window.savedTargets = payload.targets;
+                    return [{id: 7}];
+                };
+                Domus.Api.unlinkDocument = async id => {window.removedLinks.push(Number(id));};
+                document.querySelector('#app-content').innerHTML = Domus.Documents.renderList('unit', 1);
+            });
+            await page.getByRole('link', {name: 'Shared.pdf', exact: true}).hover();
+            await page.getByRole('button', {name: 'Edit document Shared.pdf', exact: true}).click();
+            const editor = bookingDialog(page);
+            const existing = editor.getByRole('checkbox', {name: 'Existing renter', exact: true});
+            assert.equal(await existing.isChecked(), true);
+            assert.doesNotMatch(await editor.innerText(), /Already assigned to:/);
+            const layout = await existing.evaluate(input => {
+                const row = input.closest('label');
+                const box = input.getBoundingClientRect();
+                const text = row.querySelector('span').getBoundingClientRect();
+                return {direction: getComputedStyle(row).flexDirection, rowHeight: row.getBoundingClientRect().height, listHeight: row.closest('fieldset').getBoundingClientRect().height, sameLine: Math.abs(box.y - text.y) < 12};
+            });
+            assert.equal(layout.direction, 'row');
+            assert.ok(layout.rowHeight <= 40 && layout.listHeight <= 170 && layout.sameLine);
+            await existing.uncheck();
+            await editor.getByRole('checkbox', {name: 'New renter', exact: true}).check();
+            await editor.getByRole('button', {name: 'Save', exact: true}).click();
+            await page.getByText('Save failed', {exact: true}).waitFor();
+            assert.deepEqual(await page.evaluate(() => window.removedLinks), []);
+            await page.evaluate(() => {window.failAttachment = false;});
+            await editor.getByRole('button', {name: 'Save', exact: true}).click();
+            await waitClosed(page);
+            assert.deepEqual(await page.evaluate(() => window.removedLinks), [8]);
+            assert.deepEqual(await page.evaluate(() => window.savedTargets), [{entityType: 'unit', entityId: 1}, {entityType: 'tenancy', entityId: '13'}]);
+        }, {width, height: 844});
+    }
 
     await test('narrow latest documents retain dates, long filenames, and separate actions', async page => {
         await page.evaluate(() => {
@@ -584,6 +776,72 @@ async function main() {
         await page.getByRole('dialog', {name: 'Edit booking', exact: true}).waitFor();
         assert.equal(await page.getByRole('textbox', {name: 'Description', exact: true}).inputValue(), 'Existing booking');
         assert.equal(await page.locator('input[name="unitId"]').inputValue(), '1');
+    });
+
+    await test('cleared booking description remains empty after saving and reopening', async page => {
+        await page.evaluate(() => {
+            window.fixtureBooking = {unitId: 1, account: '2000', amount: 100, date: '2026-09-25', description: 'Existing note'};
+            Domus.Api.get = async () => window.fixtureBooking;
+            Domus.Api.getDocuments = async () => [];
+            Domus.Api.updateBooking = async (id, payload) => {
+                window.savedBooking = payload;
+                Object.assign(window.fixtureBooking, payload);
+            };
+            Domus.Units.refreshDetail = () => {};
+            Domus.Bookings.openEditModal(7, {refreshView: 'unitDetail', refreshId: 1});
+        });
+        await bookingDialog(page).getByRole('textbox', {name: 'Description', exact: true}).fill('');
+        await bookingDialog(page).getByRole('button', {name: 'Save', exact: true}).click();
+        await waitClosed(page);
+        assert.equal(await page.evaluate(() => window.savedBooking.description), '');
+        await page.evaluate(() => Domus.Bookings.openEditModal(7));
+        assert.equal(await bookingDialog(page).getByRole('textbox', {name: 'Description', exact: true}).inputValue(), '');
+    });
+
+    await test('booking edits preserve existing document links and remove only the chosen relation', async page => {
+        await page.evaluate(() => {
+            window.fixtureBooking = {unitId: 1, account: '2000', amount: 100, date: '2026-09-25', description: 'Old note'};
+            window.fixtureDocuments = [7, 8].map(id => ({id, fileId: 42, filePath: '/Electricity.pdf', fileName: 'Electricity', fileUrl: 'https://files.example.test/42'}));
+            window.attachments = [];
+            window.unlinked = [];
+            Domus.Api.get = async () => window.fixtureBooking;
+            Domus.Api.getDocuments = async () => window.fixtureDocuments;
+            Domus.Api.updateBooking = async (id, payload) => Object.assign(window.fixtureBooking, payload);
+            Domus.Api.attachDocumentToTargets = async payload => window.attachments.push(payload);
+            Domus.Api.unlinkDocument = async id => {
+                if (window.failUnlink) throw new Error('Unlink failed');
+                window.unlinked.push(Number(id));
+                window.fixtureDocuments = window.fixtureDocuments.filter(doc => String(doc.id) !== String(id));
+            };
+            Domus.Units.refreshDetail = () => {};
+            Domus.Bookings.openEditModal(7, {refreshView: 'unitDetail', refreshId: 1});
+        });
+        for (const note of ['Changed note', '']) {
+            const editor = bookingDialog(page);
+            await editor.getByRole('textbox', {name: 'Description', exact: true}).fill(note);
+            await editor.getByRole('button', {name: 'Save', exact: true}).click();
+            await waitClosed(page);
+            assert.equal(await page.evaluate(() => window.attachments.length), 0);
+            await page.evaluate(() => Domus.Bookings.openEditModal(7, {refreshView: 'unitDetail', refreshId: 1}));
+        }
+        const editor = bookingDialog(page);
+        await editor.getByRole('button', {name: 'Attach document (optional)', exact: true}).click();
+        const remove = editor.getByRole('button', {name: 'Remove document link Electricity', exact: true});
+        assert.equal(await remove.count(), 2);
+        await page.evaluate(() => {window.failUnlink = true;});
+        await remove.first().click();
+        await page.getByText('Unlink failed', {exact: true}).waitFor();
+        assert.equal(await remove.count(), 2);
+        await page.evaluate(() => {window.failUnlink = false;});
+        await remove.first().click();
+        await page.waitForFunction(() => document.querySelectorAll('[data-doc-unlink]').length === 1);
+        assert.deepEqual(await page.evaluate(() => window.unlinked), [7]);
+        assert.equal(await editor.getByRole('link', {name: 'Electricity', exact: true}).count(), 1);
+        await editor.getByRole('textbox', {name: 'Description', exact: true}).fill('After unlink');
+        await editor.getByRole('button', {name: 'Save', exact: true}).click();
+        await waitClosed(page);
+        assert.equal(await page.evaluate(() => window.attachments.length), 0);
+        assert.equal(await page.evaluate(() => window.fixtureDocuments.length), 1);
     });
 
     await test('booking deletion requires confirmation and refreshes the unit', async page => {
