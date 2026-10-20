@@ -144,7 +144,7 @@ class DashboardService {
                 if ($until !== null && $until > time()) $nextTaskReminder = min($nextTaskReminder ?? $until, $until);
             }
             $openTasks = array_merge(
-                array_values(array_filter($steps, static fn(array $step) => ($step['deferredUntil'] ?? 0) <= time())),
+                $steps,
                 array_map(function ($task) use ($entityMap) {
                     $entityType = (string)$task->getEntityType();
                     $entityId = (int)$task->getEntityId();
@@ -159,9 +159,10 @@ class DashboardService {
                         'title' => $task->getTitle(),
                         'description' => $task->getDescription(),
                         'ruleTenancyId' => $task->getRuleTenancyId(),
-                        'dueDate' => $task->getDueDate(),
+                        'dueDate' => $task->getEffectiveDueDate(),
+                        'deferredUntil' => $task->getDeferredUntil(),
                     ];
-                }, $this->taskService->visibleTasks($tasks))
+                }, $tasks)
             );
         }
 

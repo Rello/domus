@@ -51,7 +51,7 @@ class WorkflowRunServiceTest extends TestCase {
         $now = time();
         $result = $service->remindStep(91, $choice, null, 'alice');
         self::assertSame('open', $result->getStatus());
-        self::assertSame('2020-01-02', $result->getDueDate());
+        self::assertSame(date('Y-m-d', $result->getDeferredUntil()), $result->getDueDate());
         self::assertGreaterThanOrEqual($now + 300, $result->getDeferredUntil());
     }
 
@@ -82,7 +82,7 @@ class WorkflowRunServiceTest extends TestCase {
         $returned = $service->listOpenStepsForUser('alice', 'landlord');
         self::assertCount(1, $returned);
         self::assertSame(91, $returned[0]['stepId']);
-        self::assertSame('2020-01-02', $returned[0]['dueDate']);
+        self::assertSame(date('Y-m-d', $step->getDeferredUntil()), $returned[0]['dueDate']);
     }
 
     public function testStartWorkflowRunCreatesStepsAndOpensFirst(): void {

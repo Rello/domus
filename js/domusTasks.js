@@ -19,6 +19,12 @@
             return Number.isNaN(date.getTime()) ? null : date;
         }
 
+        function getEffectiveDueDate(task) {
+            if (!task.deferredUntil) return task.dueDate;
+            const date = new Date(Number(task.deferredUntil) * 1000);
+            return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        }
+
         function getDayOffset(dueDate, today = new Date()) {
             const parsed = parseDate(dueDate);
             if (!parsed) return null;
@@ -43,7 +49,7 @@
         function getHighestDueStatus(items) {
             let highest = 'ok';
             (items || []).forEach(item => {
-                const status = getDueStatus(item.dueDate);
+                const status = getDueStatus(getEffectiveDueDate(item));
                 if (status === 'overdue') {
                     highest = 'overdue';
                 } else if (status === 'warning' && highest === 'ok') {
@@ -55,10 +61,10 @@
 
         function sortOpenItems(items) {
             return (items || []).slice().sort((a, b) => {
-                const aDate = parseDate(a.dueDate);
-                const bDate = parseDate(b.dueDate);
-                const aOffset = getDayOffset(a.dueDate);
-                const bOffset = getDayOffset(b.dueDate);
+                const aDate = parseDate(getEffectiveDueDate(a));
+                const bDate = parseDate(getEffectiveDueDate(b));
+                const aOffset = getDayOffset(getEffectiveDueDate(a));
+                const bOffset = getDayOffset(getEffectiveDueDate(b));
                 const aOverdue = aOffset !== null && aOffset < 0;
                 const bOverdue = bOffset !== null && bOffset < 0;
                 if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
@@ -306,7 +312,7 @@
             const typeLabel = task.type === 'process' ? t('domus', 'Process') : t('domus', 'Task');
             const statusLabel = getStatusLabel(task.status) || (task.type === 'process' ? t('domus', 'Open') : '');
             const actionMeta = getActionMeta(task.actionType);
-            const dueHtml = buildDueDateBadge(task.dueDate);
+            const dueHtml = buildDueDateBadge(getEffectiveDueDate(task));
             const completion = task.completion || {};
             const hasCompletion = task.type === 'process' && completion.total !== '' && completion.total !== null && completion.total !== undefined;
             const badges = [
@@ -640,7 +646,7 @@
         }
 
         function isDeferred(task) {
-            return !!task.deferredUntil && (!!task.ruleId || Number(task.deferredUntil) * 1000 > Date.now());
+            return !!task.deferredUntil && Number(task.deferredUntil) * 1000 > Date.now();
         }
 
         // Refresh at the reminder time without interrupting an open editor/dialog.
@@ -782,7 +788,7 @@
                 if (workflowName) {
                     titleParts.push('<div class="domus-task-subtitle">' + Domus.Utils.escapeHtml(workflowName) + '</div>');
                 }
-                const dueHtml = buildDueDateBadge(item.dueDate, { showRelative: options.showRelativeDueDate });
+                const dueHtml = buildDueDateBadge(getEffectiveDueDate(item), { showRelative: options.showRelativeDueDate });
                 const actionMeta = getActionMeta(item.actionType);
                 const runActionBtn = showAction && actionMeta
                     ? Domus.UI.buildIconButton(actionMeta.icon, actionMeta.label, {
@@ -876,7 +882,7 @@
                 if (workflowName) {
                     titleParts.push('<div class="domus-task-subtitle">' + Domus.Utils.escapeHtml(workflowName) + '</div>');
                 }
-                const dueHtml = buildDueDateBadge(item.dueDate, { showRelative: options.showRelativeDueDate });
+                const dueHtml = buildDueDateBadge(getEffectiveDueDate(item), { showRelative: options.showRelativeDueDate });
                 const actionMeta = getActionMeta(item.actionType);
                 const runActionBtn = options.showAction && actionMeta
                     ? Domus.UI.buildIconButton(actionMeta.icon, actionMeta.label, {
@@ -952,7 +958,7 @@
             }
             const groups = { overdue: [], today: [], later: [] };
             sorted.forEach(item => {
-                const offset = getDayOffset(item.dueDate);
+                const offset = getDayOffset(getEffectiveDueDate(item));
                 groups[offset !== null && offset < 0 ? 'overdue' : offset === 0 ? 'today' : 'later'].push(item);
             });
             let firstGroup = null;
@@ -1462,7 +1468,7 @@
                     '<summary tabindex="0"><span class="domus-process-step-number">' + (index + 1) + '</span><span class="domus-process-step-title">' + escape(stepTitle) + '</span>' + buildStatusBadge(step.status) + '</summary>' +
                     '<div class="domus-process-step-content">' +
                     (description ? '<div class="domus-task-detail-description">' + escape(description).replace(/\n/g, '<br>') + '</div>' : '') +
-                    (step.status === 'open' ? '<div>' + buildDueDateBadge(step.dueDate) + '</div>' : '') +
+                    (step.status === 'open' ? '<div>' + buildDueDateBadge(getEffectiveDueDate(step)) + '</div>' : '') +
                     (isDeferred(step) ? '<p>' + escape(t('domus', 'Remind me on {date}', {date: new Date(step.deferredUntil * 1000).toLocaleString()})) + '</p>' : '') +
                     (step.closedAt ? '<div class="muted">' + escape(t('domus', 'Completed')) + ': ' + escape(Domus.Utils.formatDate(step.closedAt * 1000)) + '</div>' : '') +
                     (workAction || completionAction || earlyAction ? '<div class="domus-process-step-actions">' + workAction + completionAction + reminderAction + earlyAction + '</div>' : '') +
@@ -1657,12 +1663,12 @@
             });
         }
 
-        function buildUnitOpenItems(unitId, data, deferred = false) {
+        function buildUnitOpenItems(unitId, data) {
             const openItems = [];
             (data.runs || []).forEach(run => {
                 const steps = run.steps || [];
                 const openStep = steps.find(step => step.status === 'open');
-                if (openStep && isDeferred(openStep) === deferred) {
+                if (openStep) {
                     const completedSteps = steps.filter(step => step.status === 'closed').length;
                     openItems.push({
                         type: 'process',
@@ -1688,7 +1694,7 @@
                     });
                 }
             });
-            (data.tasks || []).filter(task => task.status === 'open' && isDeferred(task) === deferred).forEach(task => {
+            (data.tasks || []).filter(task => task.status === 'open').forEach(task => {
                 openItems.push({
                     type: 'task',
                     taskId: task.id,
@@ -1798,10 +1804,7 @@
                     '<div class="domus-task-closed-body" id="' + Domus.Utils.escapeHtml(closedBodyId) + '" hidden>' + closedCards + '</div>';
             }
 
-            const deferred = buildUnitOpenItems(unitId, data, true);
-            const deferredSection = deferred.length ? '<details class="domus-task-deferred"><summary>' + Domus.Utils.escapeHtml(t('domus', 'Deferred tasks')) + ' (' + deferred.length + ')</summary>' +
-                buildOpenTasksTable(deferred, {layout: 'overviewCards', showUnit: false, showAction: false, showType: false, wrapPanel: false, showRelativeDueDate: true}) + '</details>' : '';
-            return '<div class="domus-task-section">' + openSection + deferredSection + closedSection + '</div>';
+            return '<div class="domus-task-section">' + openSection + closedSection + '</div>';
         }
 
         function bindUnitTaskActions(unitId, runs, options = {}) {

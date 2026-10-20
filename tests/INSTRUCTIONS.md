@@ -85,7 +85,7 @@ property/unit image editors. These suites also run in the full browser wrapper.
 Run `PLAYWRIGHT_TEST=rules ./tests/run-playwright.sh` for ruleset editing and
 preview, task reminder choices, deferred task visibility, reference-date entry,
 retry, and phone layout. Process-detail tests cover the same reminder dialog for open
-process steps. Reminder tests verify unchanged deadlines, hidden sleeping tasks,
+process steps. Reminder tests verify rescheduled deadlines, normal-list visibility of deferred tasks,
 expiry, and process access boundaries. Task lifecycle tests cover expiry rechecks, rent changes,
 completion/deletion, rule disabling, invalid dates, and unauthorized reminders. The PHP rule tests cover calendar thresholds,
 unknown history, ownership boundaries, scope selection, duplicate-task prevention,
@@ -96,7 +96,7 @@ reload initialization, browser Back/Forward, encoded route
 arguments, subdirectory installations, and renter navigation restrictions.
 
 Portfolio performance coverage in `PLAYWRIGHT_TEST=analytics ./tests/run-playwright.sh`
-includes the three summary metrics, all-year trends and tables, scope filters, missing
+includes the four summary metrics, cumulative acquisition costs, all-year trends and tables, scope filters, missing
 acquisition costs, provisional years, phone layout, retry, and obsolete responses.
 `PortfolioPerformanceTest` verifies shared finance formulas, weighted profitability,
-annual rent proration, annual rent totals, continuous years, and exclusion of out-of-scope units.
+annual rent proration, annual rent totals, continuous years, acquisition cost accumulation by purchase year with history/current-year fallbacks, and exclusion of out-of-scope units.

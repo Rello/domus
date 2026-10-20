@@ -5,7 +5,7 @@
  */
 namespace OCA\Domus\Tests\Unit;
 
-use OCA\Domus\Db\{Unit, Booking, Tenancy, Partner, Property};
+use OCA\Domus\Db\{Unit, Booking, Tenancy, Partner, Property, Task};
 use OCA\Domus\Service\DashboardService;
 use PHPUnit\Framework\TestCase;
 
@@ -42,8 +42,19 @@ class DashboardServiceTest extends TestCase {
         $dependencies['bookingMapper']->method('findByUser')->willReturn($bookings);
         $dependencies['accountService']->method('getTopAccountNumberMap')->willReturn([]);
         $dependencies['accountService']->method('resolveTopAccountNumber')->willReturnCallback(fn($number) => $number);
+        $reminder = strtotime('+7 days');
+        $task = new Task();
+        $task->setId(42); $task->setEntityType('unit'); $task->setEntityId(1);
+        $task->setDueDate('2020-01-02'); $task->setDeferredUntil($reminder);
+        $dependencies['taskService']->method('listOpenTasks')->willReturn([$task]);
+        $dependencies['workflowRunService']->method('listOpenStepsForUser')->willReturn([
+            ['stepId' => 43, 'dueDate' => date('Y-m-d', $reminder), 'deferredUntil' => $reminder],
+        ]);
         $service = new DashboardService(...array_values($dependencies));
         $summary = $service->getSummary('alice', 2026, $role);
+        self::assertCount(2, $summary['openTasks']);
+        self::assertSame(date('Y-m-d', $reminder), $summary['openTasks'][1]['dueDate']);
+        self::assertSame($reminder, $summary['nextTaskReminder']);
         self::assertSame($empty ? '0.00' : '1000.00', $summary['monthlyBaseRentSum']);
         self::assertSame($empty ? 0 : 1, $summary['tenancyCount']);
         self::assertSame($expectedBookings, $summary['bookingCount']);

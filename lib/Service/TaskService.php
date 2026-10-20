@@ -197,6 +197,7 @@ class TaskService {
             throw new \InvalidArgumentException($this->l10n->t('Choose a future reminder date.'));
         }
         $task->setDeferredUntil($until);
+        if ($until !== null) $task->setDueDate(date('Y-m-d', $until));
         $task->setUpdatedAt(time());
         return $this->taskMapper->update($task);
     }
@@ -227,6 +228,7 @@ class TaskService {
                     $changed = true;
                 }
                 if ($task->getDeferredUntil() !== null && $task->getDeferredUntil() <= time()) {
+                    $task->setDueDate($task->getEffectiveDueDate());
                     $task->setDeferredUntil(null);
                     $changed = true;
                 }

@@ -440,22 +440,22 @@ async function main() {
         assert.equal(await page.locator('#domus-unit-edit').count(), 0);
         assert.equal(await page.locator('#domus-unit-direct-booking').count(), 0);
         assert.equal(await page.locator('#domus-unit-direct-document').count(), 0);
-        assert.equal(await page.locator('#domus-unit-direct-task').count(), 0);
+        assert.equal(await page.locator('#domus-unit-direct-activity').count(), 0);
         await page.getByRole('navigation', {name: 'Unit sections'}).getByRole('link', {name: 'Tenancies'}).click();
         await page.getByRole('heading', {name: 'My tenancies'}).waitFor();
     }, 'tenant');
 
-    await test('document and task actions retain the current unit', async page => {
+    await test('document and activity actions retain the current unit', async page => {
         await page.evaluate(() => {
             window.unitActionCalls = [];
             Domus.Documents.openLinkModal = (...args) => window.unitActionCalls.push(['document', args[0], args[1], args[4]?.propertyId]);
-            Domus.Tasks.openCreateTaskModal = (...args) => window.unitActionCalls.push(['task', args[0], args[1]]);
+            Domus.ActionLog.openCreateModal = options => window.unitActionCalls.push(['activity', options.entityType, options.entityId]);
         });
         await page.locator('#domus-unit-direct-document').click();
-        await page.locator('#domus-unit-direct-task').click();
+        await page.locator('#domus-unit-direct-activity').click();
         assert.deepEqual(await page.evaluate(() => window.unitActionCalls), [
             ['document', 'unit', '1', 2],
-            ['task', 'unit', '1']
+            ['activity', 'unit', '1']
         ]);
     });
 

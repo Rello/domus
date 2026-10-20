@@ -88,6 +88,7 @@ class PortfolioPerformanceTest extends TestCase {
         $result = $this->fixture('300000', true, 2)->portfolioPerformance('alice', 9, 2, 'buildingMgmt')['trend'][0];
         self::assertSame([2], array_column($result['rows'], 'unitId'));
         self::assertSame(8400.0, $result['netProfit']);
+        self::assertSame(300000.0, $result['acquisitionCosts']);
         self::assertFalse($result['isProvisional']);
     }
 
@@ -120,6 +121,8 @@ class PortfolioPerformanceTest extends TestCase {
         self::assertSame([1], array_column($historical['rows'], 'unitId'));
         self::assertFalse($historical['isProvisional']);
         self::assertSame(100000.0, $historical['totalCosts']);
+        self::assertSame(100000.0, $report['trend'][1]['acquisitionCosts']);
+        self::assertSame(200000.0, $report['trend'][2024 - 2008]['acquisitionCosts']);
         self::assertSame(0, $historical['missingCosts']);
         self::assertSame(0.0, $historical['netRentability']);
         self::assertSame([], $report['trend'][1]['rows']);
@@ -129,15 +132,37 @@ class PortfolioPerformanceTest extends TestCase {
         self::assertTrue($later['isProvisional']);
     }
 
-    public function testNoHistoryDoesNotInventYears(): void {
+    public function testNoHistoryIncludesAcquisitionCostsInCurrentYear(): void {
         $deps = $this->dependencies(StatisticsService::class);
         $unit = new Unit(); $unit->setId(1); $unit->setTotalCosts('100000');
         $deps['unitMapper']->method('findByUser')->willReturn([$unit]);
         $deps['tenancyService']->method('listTenanciesByUnit')->willReturn([]);
         $deps['bookingService']->method('sumByAccountGrouped')->willReturn([]);
         $report = (new StatisticsService(...array_values($deps)))->portfolioPerformance('alice');
-        self::assertSame([], $report['trend']);
-        self::assertSame([], $report['years']);
+        self::assertSame([(int)date('Y')], $report['years']);
+        self::assertSame(100000.0, $report['trend'][0]['acquisitionCosts']);
+        self::assertSame([], $report['trend'][0]['rows']);
         self::assertSame(1, $report['unitCount']);
     }
+    public function testAcquisitionCostsAccumulateWithoutRequiringFinancialActivity(): void {
+        $deps = $this->dependencies(StatisticsService::class);
+        $units = [];
+        foreach ([[1, '2022-06-01', '100000'], [2, '2024-03-01', '300000'], [3, '2024-08-01', null]] as [$id, $date, $cost]) {
+            $unit = new Unit(); $unit->setId($id); $unit->setBuyDate($date); $unit->setTotalCosts($cost);
+            $units[] = $unit;
+        }
+        $deps['unitMapper']->method('findByUser')->willReturn($units);
+        $deps['tenancyService']->method('listTenanciesByUnit')->willReturn([]);
+        $deps['bookingService']->method('sumByAccountGrouped')->willReturn([]);
+        $report = (new StatisticsService(...array_values($deps)))->portfolioPerformance('alice');
+        self::assertSame(range(2022, (int)date('Y')), $report['years']);
+        self::assertSame(100000.0, $report['trend'][0]['acquisitionCosts']);
+        self::assertSame(100000.0, $report['trend'][1]['acquisitionCosts']);
+        self::assertSame(400000.0, $report['trend'][2]['acquisitionCosts']);
+        self::assertSame(1, $report['trend'][2]['missingAcquisitionCosts']);
+        self::assertSame(400000.0, $report['trend'][count($report['trend']) - 1]['acquisitionCosts']);
+        self::assertSame([], $report['trend'][2]['rows']);
+        self::assertNull($report['trend'][2]['netRentability']);
+    }
+
 }

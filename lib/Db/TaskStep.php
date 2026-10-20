@@ -47,6 +47,10 @@ class TaskStep extends Entity implements JsonSerializable {
         $this->addType('updatedAt', 'int');
     }
 
+    public function getEffectiveDueDate(): ?string {
+        return $this->deferredUntil !== null ? date('Y-m-d', $this->deferredUntil) : $this->dueDate;
+    }
+
     public function jsonSerialize(): array {
         return [
             'id' => $this->id,
@@ -57,7 +61,7 @@ class TaskStep extends Entity implements JsonSerializable {
             'title' => $this->title,
             'description' => $this->description,
             'status' => $this->status,
-            'dueDate' => $this->dueDate,
+            'dueDate' => $this->getEffectiveDueDate(),
             'deferredUntil' => $this->deferredUntil,
             'openedAt' => $this->openedAt,
             'closedAt' => $this->closedAt,

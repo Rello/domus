@@ -28,7 +28,8 @@
         const metrics = () => [
             { value: 'baseRent', label: t('domus', 'Annual base rent') },
             { value: 'netProfit', label: t('domus', 'Estimated annual net profit') },
-            { value: 'netRentability', label: t('domus', 'Estimated profitability') }
+            { value: 'netRentability', label: t('domus', 'Estimated profitability') },
+            { value: 'acquisitionCosts', label: t('domus', 'Total acquisition costs') }
         ];
         const option = (value, label) => '<option value="' + escape(value) + '">' + escape(label) + '</option>';
         const filter = (id, label, html) => '<label class="domus-analytics-filter"><span>' + escape(label) + '</span><select id="domus-analytics-' + id + '">' + html + '</select></label>';
@@ -254,7 +255,7 @@
                 value: metric.value === 'netRentability' ? percentage(latest[metric.value]) : currency(latest[metric.value]),
                 subline: String(latest.year) + ' · ' + status(latest)
             })).join('');
-            const cells = row => [currency(row.baseRent), currency(row.netProfit), percentage(row.netRentability), status(row)].map(escape);
+            const cells = row => [currency(row.baseRent), currency(row.netProfit), percentage(row.netRentability), currency(row.acquisitionCosts), status(row)].map(escape);
             const headers = [t('domus', 'Year'), ...metrics().map(metric => metric.label), t('domus', 'Status')];
             element('values').setAttribute('aria-label', t('domus', 'Portfolio development by year'));
             element('values').innerHTML = Domus.UI.buildTable(headers, data.trend.map(row => [
@@ -267,7 +268,9 @@
                         dataset: {navigate: 'unitDetail', args: row.unitId}
                     })), {wrapPanel: false, caption: String(period.year)}) + '</details>').join('') + '</details>');
             Domus.UI.bindRowNavigation();
-            const notes = [t('domus', 'Applied tax rate') + ': ' + percentage(data.taxRate)];
+            const notes = [t('domus', 'Applied tax rate') + ': ' + percentage(data.taxRate),
+                t('domus', 'Acquisition costs accumulate from the purchase year, falling back to the first financial year or the current year when no history exists.')];
+            if (data.trend.some(row => row.missingAcquisitionCosts)) notes.push(t('domus', 'Total acquisition costs exclude missing amounts.'));
             if (data.trend.some(row => row.missingCosts)) notes.push(t('domus', 'Profitability is unavailable because acquisition costs are missing for one or more units.'));
             if (data.trend.some(row => row.isProvisional)) notes.push(t('domus', 'Open years are provisional. Annual agreed rent includes the full tenancy period in that year; recorded costs may still be incomplete.'));
             element('status').textContent = notes.join(' ');

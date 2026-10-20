@@ -1782,8 +1782,8 @@
                     id: 'domus-unit-direct-document', className: 'domus-unit-direct-action', compact: true
                 }) : '') +
                 (!Domus.Role.isTenantView() ? Domus.UI.buildQuickActionCard({
-                    iconClass: 'domus-icon-task', title: t('domus', 'New task'),
-                    id: 'domus-unit-direct-task', className: 'domus-unit-direct-action', compact: true
+                    iconClass: 'domus-icon-action-note', title: t('domus', 'Log Activity'),
+                    id: 'domus-unit-direct-activity', className: 'domus-unit-direct-action', compact: true
                 }) : '') +
                 '</div>';
 
@@ -2327,8 +2327,13 @@
                     propertyId: unit?.propertyId
                 });
             });
-            document.getElementById('domus-unit-direct-task')?.addEventListener('click', () => {
-                Domus.Tasks.openCreateTaskModal('unit', id, refreshCurrentSection);
+            document.getElementById('domus-unit-direct-activity')?.addEventListener('click', () => {
+                Domus.ActionLog.openCreateModal({
+                    entityType: 'unit',
+                    entityId: id,
+                    entityLabel: unit?.label || '',
+                    onSaved: refreshCurrentSection
+                });
             });
 
             detailsBtn?.addEventListener('click', (event) => {

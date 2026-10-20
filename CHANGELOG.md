@@ -9,10 +9,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ### Added
 - Read-only OCS endpoints for unit master data and existing annual revenue tables, with explicit Personal/Team selection and OpenAPI documentation for external apps and LLM tools.
-- Portfolio analytics across all years, with rent, estimated net profit, weighted profitability, and per-unit breakdowns based on each year's financial history.
+- Portfolio analytics across all years, with rent, estimated net profit, weighted profitability, cumulative unit acquisition costs, and per-unit breakdowns based on each year's financial history.
 - Document dates and editable assignments to multiple tenancies.
 
 ### Changed
+- Replace the unit detail New task quick action with Log Activity for recording calls and other activities.
 - Simplify document upload and editing, show filenames alongside editable titles, and store new booking documents directly in the year folder.
 - Open documents in a new tab using the Nextcloud viewer where available, with browser previews for renter PDFs and images.
 - Improve utility settlements with allocable maintenance subaccounts, tenancy and period selection, and a financial preview.
@@ -22,6 +23,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Show attached documents and tenancy assignments in the booking editor, and allow linked bookings to be edited from documents.
 
 ### Fixed
+- Use the reminder date as the due date and keep deferred tasks and process steps in the normal task list.
 - Preserve booking and document edits across retries, nested dialogs, file selection, and allocation changes without creating duplicate bookings.
 - Keep bookings and their document links read-only in closed financial years.
 - Prevent duplicate document assignments and remove related tenancy and booking links when unlinking a unit document.

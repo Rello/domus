@@ -156,6 +156,7 @@ class WorkflowRunService {
             throw new \InvalidArgumentException($this->l10n->t('Only open tasks can be deferred.'));
         }
         $step->setDeferredUntil(TaskReminderSchedule::calculate($choice, $date, $this->l10n));
+        $step->setDueDate($step->getEffectiveDueDate());
         $step->setUpdatedAt(time());
         return $this->taskStepMapper->update($step);
     }
@@ -434,7 +435,7 @@ class WorkflowRunService {
                 'description' => $step->getDescription(),
                 'actionType' => $step->getActionType(),
                 'actionUrl' => $step->getActionUrl(),
-                'dueDate' => $step->getDueDate(),
+                'dueDate' => $step->getEffectiveDueDate(),
                 'deferredUntil' => $step->getDeferredUntil(),
                 'workflowName' => $run?->getName(),
                 'year' => $run?->getYear(),

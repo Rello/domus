@@ -107,11 +107,13 @@ const { chromium } = require('playwright');
                 const trend = years.map((year, index) => {
                     const factor = .8 + index / 10;
                     const rows = [
-                        {unitId: 1, label: 'Unit one', baseRent: 12000 * factor, netProfit: 9000 * factor, netRentability: .09 * factor, isProvisional: year !== 2024},
-                        {unitId: 3, label: 'Unit three', baseRent: 24000 * factor, netProfit: 21000 * factor, netRentability: performanceMissing ? null : .07 * factor, isProvisional: year !== 2024}
+                        {unitId: 1, label: 'Unit one', baseRent: 12000 * factor, netProfit: 9000 * factor, acquisitionCosts: 100000, netRentability: .09 * factor, isProvisional: year !== 2024},
+                        {unitId: 3, label: 'Unit three', baseRent: 24000 * factor, netProfit: 21000 * factor, acquisitionCosts: performanceMissing ? 0 : 300000, netRentability: performanceMissing ? null : .07 * factor, isProvisional: year !== 2024}
                     ].filter(row => (!filters.unitId || String(row.unitId) === filters.unitId) && (!filters.propertyId || (row.unitId === 1 ? '2' : '4') === filters.propertyId));
                     const totals = {year, rows, baseRent: 0, netProfit: 0, totalCosts: 0, missingCosts: 0, isProvisional: year !== 2024};
                     rows.forEach(row => {totals.baseRent += row.baseRent; totals.netProfit += row.netProfit; totals.totalCosts += row.unitId === 1 ? 100000 : (performanceMissing ? 0 : 300000); if (row.unitId === 3 && performanceMissing) totals.missingCosts++;});
+                    totals.acquisitionCosts = totals.totalCosts;
+                    totals.missingAcquisitionCosts = totals.missingCosts;
                     totals.netRentability = rows.length && !totals.missingCosts ? totals.netProfit / totals.totalCosts : null;
                     return totals;
                 });
@@ -128,7 +130,7 @@ const { chromium } = require('playwright');
         await page.locator('#domus-analytics-summary .domus-kpi-tile').first().waitFor();
         await page.locator('#domus-analytics-property').selectOption('');
         await page.waitForFunction(() => document.querySelector('#domus-analytics-summary').textContent.includes('30,000'));
-        assert.equal(await page.locator('#domus-analytics-summary .domus-kpi-tile').count(), 3);
+        assert.equal(await page.locator('#domus-analytics-summary .domus-kpi-tile').count(), 4);
         assert.match(await page.locator('#domus-analytics-summary').innerText(), /7[.,]5/);
         assert.match(await page.locator('#domus-analytics-status').innerText(), /provisional/);
         assert.equal(await page.locator('#domus-analytics-year').isVisible(), false);
@@ -137,6 +139,9 @@ const { chromium } = require('playwright');
         assert.match(await page.locator('#domus-analytics-values > table').innerText(), /2024/);
         assert.match(await page.locator('#domus-analytics-values > table').innerText(), /2025/);
         assert.deepEqual(await page.evaluate(() => Chart.getChart(document.querySelector('canvas')).data.datasets[0].data), [28800, 32400, 36000]);
+        await page.locator('#domus-analytics-metric').selectOption('acquisitionCosts');
+        assert.deepEqual(await page.evaluate(() => Chart.getChart(document.querySelector('canvas')).data.datasets[0].data), [400000, 400000, 400000]);
+        assert.match(await page.locator('#domus-analytics-summary .domus-kpi-tile').nth(3).innerText(), /400,000/);
         await page.locator('#domus-analytics-metric').selectOption('netProfit');
         assert.deepEqual(await page.evaluate(() => Chart.getChart(document.querySelector('canvas')).data.datasets[0].data), [24000, 27000, 30000]);
         await page.locator('#domus-analytics-metric').selectOption('netRentability');
@@ -153,6 +158,7 @@ const { chromium } = require('playwright');
         await page.waitForFunction(() => document.querySelector('#domus-analytics-summary').textContent.includes('21,000'));
         assert.equal(await page.locator('#domus-analytics-unit').inputValue(), '');
         assert.deepEqual(await page.evaluate(() => portfolioCalls.at(-1)), {unitId: '', propertyId: '4'});
+        assert.match(await page.locator('#domus-analytics-summary .domus-kpi-tile').nth(3).innerText(), /300,000/);
         console.log('PASS property and unit scope filters without year or month API parameters');
         await page.evaluate(() => {performanceMissing = true;});
         await page.locator('#domus-analytics-property').selectOption('');
@@ -172,7 +178,7 @@ const { chromium } = require('playwright');
             await page.evaluate(() => {performanceMissing = false;});
             await page.locator('#domus-analytics-unit').selectOption('1');
             await page.locator('#domus-analytics-unit').selectOption('');
-            await page.waitForFunction(() => document.querySelector('#domus-analytics-summary .domus-kpi-tile:last-child .domus-kpi-value').textContent !== '—');
+            await page.waitForFunction(() => document.querySelector('#domus-analytics-summary .domus-kpi-tile:nth-child(3) .domus-kpi-value').textContent !== '—');
             await page.locator('#domus-analytics-metric').selectOption('baseRent');
             await page.screenshot({path: process.env.DOMUS_ANALYTICS_SCREENSHOT + '-phone.png', fullPage: true});
             await page.setViewportSize({width: 1280, height: 900});

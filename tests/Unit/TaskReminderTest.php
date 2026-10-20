@@ -110,7 +110,7 @@ class TaskReminderTest extends TestCase {
         self::assertCount(1, $this->tasks->listOpenTasks('alice', 'landlord'));
         self::assertCount(1, $this->taskRows);
         self::assertNull($this->taskRows[1]->getDeferredUntil());
-        self::assertSame('2020-01-02', $this->taskRows[1]->getDueDate());
+        self::assertSame(date('Y-m-d', time() - 1), $this->taskRows[1]->getDueDate());
     }
 
     public function testChangedRentResolvesSleepingTaskInsteadOfReturningIt(): void {
@@ -191,7 +191,7 @@ class TaskReminderTest extends TestCase {
         $task = $this->tasks->createTask('unit', 7, 'Repair', '', '2020-01-02', 'alice');
         $this->rules->remindTask($task->getId(), '5minutes', null, 'alice');
         self::assertSame([], $this->tasks->listOpenTasks('alice', 'landlord'));
-        self::assertSame('2020-01-02', $this->taskRows[$task->getId()]->getDueDate());
+        self::assertSame(date('Y-m-d', $task->getDeferredUntil()), $this->taskRows[$task->getId()]->getDueDate());
         $this->taskRows[$task->getId()]->setDeferredUntil(time() - 1);
         self::assertCount(1, $this->tasks->listOpenTasks('alice', 'landlord'));
     }

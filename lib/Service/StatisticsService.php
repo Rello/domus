@@ -180,11 +180,15 @@ class StatisticsService {
                 $taxRate = $this->getTaxRateSetting($userId);
                 $years = [];
                 $unitYears = [];
+                $acquisitionYears = [];
                 $currentYear = (int)date('Y');
                 foreach ($units as $unit) {
                         $id = $unit->getId();
                         $unitYears[$id] = array_fill_keys($this->collectYears($bookings[$id] ?? [], $tenancies[$id] ?? []), true);
-                        $years = array_merge($years, array_keys($unitYears[$id]));
+                        $historyYears = array_keys($unitYears[$id]);
+                        $purchaseYear = (int)substr((string)$unit->getBuyDate(), 0, 4);
+                        $acquisitionYears[$id] = $purchaseYear > 0 ? $purchaseYear : ($historyYears === [] ? $currentYear : min($historyYears));
+                        $years = array_merge($years, $historyYears, [$acquisitionYears[$id]]);
                 }
                 $years = array_values(array_filter($years, static fn(int $year) => $year > 0 && $year <= $currentYear));
                 // Keep calendar gaps visible and stop at the current, provisional year.
@@ -192,9 +196,16 @@ class StatisticsService {
                 $trend = [];
                 foreach ($years as $reportYear) {
                         $totals = ['baseRent' => 0.0, 'netProfit' => 0.0, 'totalCosts' => 0.0, 'missingCosts' => 0, 'isProvisional' => false];
+                        $totals['acquisitionCosts'] = 0.0;
+                        $totals['missingAcquisitionCosts'] = 0;
                         $rows = [];
                         foreach ($units as $unit) {
                                 $id = $unit->getId();
+                                if ($acquisitionYears[$id] <= $reportYear) {
+                                        $costs = (float)($unit->getTotalCosts() ?? 0);
+                                        $totals['acquisitionCosts'] += $costs;
+                                        $totals['missingAcquisitionCosts'] += $costs > 0 ? 0 : 1;
+                                }
                                 if (!isset($unitYears[$id][$reportYear])) {
                                         continue;
                                 }
@@ -203,7 +214,7 @@ class StatisticsService {
                                 $costs = (float)($unit->getTotalCosts() ?? 0);
                                 $provisional = !$this->isYearClosed($reportYear, $id, $unit->getPropertyId(), $closedUnits, $closedProperties);
                                 $row = ['unitId' => $id, 'label' => $unit->getLabel(), 'baseRent' => $values['baseRent'],
-                                        'netProfit' => $values['netProfit'], 'totalCosts' => $costs,
+                                        'netProfit' => $values['netProfit'], 'totalCosts' => $costs, 'acquisitionCosts' => $acquisitionYears[$id] <= $reportYear ? $costs : 0.0,
                                         'netRentability' => $costs > 0 ? $values['netRentability'] : null, 'isProvisional' => $provisional];
                                 $rows[] = $row;
                                 $totals['baseRent'] += $row['baseRent'];

@@ -67,20 +67,20 @@ async function main() {
         await modal.getByRole('button', {name: 'Save', exact: true}).click();
         assert.ok(await page.evaluate(() => calls.some(call => call.payload?.date === '2030-01-01')));
     });
-    await test('deferred rule tasks stay out of attention and remain accessible on the unit', async page => {
+    await test('deferred tasks override old deadlines and stay in the normal Later group', async page => {
         await page.evaluate(async () => {
-            task.deferredUntil = Math.floor(Date.now() / 1000) + 300;
+            task.dueDate = '2020-01-02';
+            task.deferredUntil = Math.floor(Date.now() / 1000) + 7 * 86400;
             Domus.UI.renderContent(Domus.Tasks.buildUnitTasksPanel(7));
             Domus.Api.getWorkflowRunsByEntity = async () => [];
             Domus.Api.getTasksByEntity = async () => [task];
             Domus.Api.get = async () => ({label: 'Flat 7'});
             Domus.Tasks.loadUnitTasks(7);
         });
-        await page.getByText('Deferred tasks', {exact: false}).waitFor();
-        assert.equal(await page.locator('.domus-dashboard-task-group .domus-task-overview-card').count(), 0);
-        await page.locator('.domus-task-deferred summary').click();
-        assert.equal(await page.locator('.domus-task-deferred table').count(), 0);
-        await page.locator('.domus-task-deferred .domus-task-overview-card').press('Enter');
+        await page.locator('.domus-dashboard-task-group-later .domus-task-overview-card').waitFor();
+        assert.equal(await page.locator('.domus-task-deferred').count(), 0);
+        assert.equal(await page.locator('.domus-dashboard-task-group-overdue').count(), 0);
+        await page.locator('.domus-dashboard-task-group-later .domus-task-overview-card').press('Enter');
         await page.getByText('The rent has not been increased for at least 36 months.', {exact: true}).waitFor();
         assert.ok(await page.getByRole('dialog').getByText(/Remind me on/).count());
     });

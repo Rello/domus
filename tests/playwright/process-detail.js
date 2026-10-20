@@ -206,7 +206,7 @@ async function main() {
         await detail.waitFor({state:'detached'});
         assert.equal(await page.evaluate(() => taskStatus), 'open');
     });
-    await test('open process steps share reminders without changing their deadline or advancing', async page => {
+    await test('open process steps show the reminder date without advancing', async page => {
         await page.evaluate(() => {
             run.steps[0].dueDate = '2020-01-02';
             Domus.Api.post = async (path, payload) => {
@@ -221,7 +221,8 @@ async function main() {
         await reminder.getByRole('button', {name:'Save',exact:true}).click();
         await reminder.waitFor({state:'detached'});
         await page.getByText('Remind me on', {exact:false}).waitFor();
-        assert.deepEqual(await page.evaluate(() => [run.steps[0].dueDate, ...run.steps.map(step => step.status)]), ['2020-01-02', 'open', 'new', 'new']);
+        assert.deepEqual(await page.evaluate(() => run.steps.map(step => step.status)), ['open', 'new', 'new']);
+        assert.equal(await page.locator('.domus-task-date-badge-overdue').count(), 0);
     }, 375);
     await test('narrow panel fits and keeps work controls visible', async page => {
         assert.equal(await page.locator('.domus-modal').evaluate(el => el.scrollWidth <= el.clientWidth), true);

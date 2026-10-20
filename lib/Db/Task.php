@@ -36,6 +36,10 @@ class Task extends Entity implements JsonSerializable {
         $this->addType('updatedAt', 'int');
     }
 
+    public function getEffectiveDueDate(): ?string {
+        return $this->deferredUntil !== null ? date('Y-m-d', $this->deferredUntil) : $this->dueDate;
+    }
+
     public function jsonSerialize(): array {
         return [
             'id' => $this->id,
@@ -47,7 +51,7 @@ class Task extends Entity implements JsonSerializable {
             'title' => $this->title,
             'description' => $this->description,
             'status' => $this->status,
-            'dueDate' => $this->dueDate,
+            'dueDate' => $this->getEffectiveDueDate(),
             'closedAt' => $this->closedAt,
             'closedBy' => $this->closedBy,
             'createdBy' => $this->createdBy,
