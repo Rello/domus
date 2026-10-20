@@ -52,6 +52,32 @@ class ManagementAccessContextTest extends TestCase {
         $this->context('team-b')->activeTeamId();
     }
 
+    public function testExplicitPersonalOverridesSavedTeamWithoutChangingIt(): void {
+        $user = $this->createMock(IUser::class);
+        $user->method('getUID')->willReturn('manager');
+        $user->method('isEnabled')->willReturn(true);
+        $session = $this->createMock(IUserSession::class);
+        $session->method('getUser')->willReturn($user);
+        $request = $this->createMock(IRequest::class);
+        $request->method('getHeader')->with('X-Domus-Team')->willReturn('Personal');
+        $config = $this->createMock(\OCP\IConfig::class);
+        $config->expects(self::never())->method('getUserValue');
+        $config->expects(self::never())->method('setUserValue');
+        $teams = $this->createMock(TeamIntegrationService::class);
+        $teams->expects(self::never())->method('assertTeamAdmin');
+        $context = new ManagementAccessContext(
+            $session, $request, $teams, $this->createMock(IL10N::class),
+            $this->createMock(IGroupManager::class), $config,
+        );
+        self::assertNull($context->activeTeamId());
+        self::assertSame('manager', $context->managementUserId());
+    }
+
+    public function testExplicitPersonalDoesNotGrantGuestAccess(): void {
+        $this->expectException(\DomainException::class);
+        $this->context('personal', guest: true)->managementUserId();
+    }
+
     public function testForgedSubmittedTeamIsDenied(): void {
         $this->expectException(\DomainException::class);
         $this->context('team-a')->assertSubmittedTeam('team-b');

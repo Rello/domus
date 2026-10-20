@@ -4,6 +4,12 @@
 version = 1
 
 [[annotations]]
+path = ["openapi.json"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Marcel Scherello"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
 path = [
     "tests/**", "l10n/**", "screenshots/**", "img/pictures/**", "img/**", ".**", "phpunit.xml",
 ]

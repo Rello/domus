@@ -43,6 +43,12 @@ Entwickelt für Vermieter und kleine Hausverwaltungen, die einen klaren Überbli
 ## Sprachen
 - EN, DE
 
+## OCS API
+
+Die schreibgeschützte OCS API liefert Einheiten-Stammdaten und die vorhandene
+jährliche Ertragstabelle für externe Anwendungen und LLM-Werkzeuge.
+Siehe [OpenAPI-Spezifikation](openapi.json).
+
 ## Maintainer
 - [Marcel Scherello](https://github.com/rello) (author, project leader)
 

@@ -1,0 +1,531 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Domus OCS API",
+    "version": "1.0.0",
+    "description": "Read-only unit master data and existing annual revenue calculations. Authenticate with a Nextcloud account and app password. Send Accept: application/json and OCS-APIRequest: true. Uses existing Personal/Team permissions. Monetary values follow the current EUR UI convention. Revenue reuses the UI calculations, not reconciled cash flow. Missing expenses are not proof of no expenses; current-year rent may include future months. Loan principal, remaining debt and market valuations must be supplied by consumers.",
+    "license": {
+      "name": "AGPL-3.0-or-later"
+    }
+  },
+  "servers": [
+    {
+      "url": "/ocs/v2.php/apps/domus",
+      "description": "For subdirectory installations, prepend the Nextcloud installation path."
+    }
+  ],
+  "security": [
+    {
+      "basic_auth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "units",
+      "description": "Unit facts and annual revenue"
+    }
+  ],
+  "paths": {
+    "/api/v1/units": {
+      "get": {
+        "operationId": "ocs-units",
+        "summary": "List unit master data",
+        "tags": [
+          "units"
+        ],
+        "parameters": [
+          {
+            "name": "OCS-APIRequest",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "description": "Required for external OCS requests."
+          },
+          {
+            "name": "X-Domus-Team",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Use Personal (case-insensitive) to explicitly select the signed-in user's Personal portfolio, or a verified Team ID. Omission or an empty value uses the saved active Team, or Personal if none is selected. Does not change the saved selection.",
+            "example": "Personal"
+          },
+          {
+            "name": "X-Domus-Role",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "landlord",
+                "buildingMgmt"
+              ],
+              "default": "landlord"
+            },
+            "description": "Existing role-based unit listing. Building management is accepted only for authorized users."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success; values are inside ocs.data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unit not found or unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/units/{id}/revenue": {
+      "get": {
+        "operationId": "ocs-revenue",
+        "summary": "Get the existing annual revenue table",
+        "tags": [
+          "units"
+        ],
+        "parameters": [
+          {
+            "name": "OCS-APIRequest",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "description": "Required for external OCS requests."
+          },
+          {
+            "name": "X-Domus-Team",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Use Personal (case-insensitive) to explicitly select the signed-in user's Personal portfolio, or a verified Team ID. Omission or an empty value uses the saved active Team, or Personal if none is selected. Does not change the saved selection.",
+            "example": "Personal"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Unit ID from the selected portfolio."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success; values are inside ocs.data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevenueResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unit not found or unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "basic_auth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Nextcloud user ID and app password."
+      }
+    },
+    "schemas": {
+      "Unit": {
+        "type": "object",
+        "required": [
+          "id",
+          "propertyId",
+          "label",
+          "street",
+          "zip",
+          "city",
+          "country",
+          "unitNumber",
+          "unitType",
+          "livingArea",
+          "buyDate",
+          "totalCosts"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "propertyId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "street": {
+            "type": "string",
+            "nullable": true
+          },
+          "zip": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitType": {
+            "type": "string",
+            "nullable": true
+          },
+          "livingArea": {
+            "type": "string",
+            "nullable": true,
+            "description": "Recorded area in square metres, as a decimal string."
+          },
+          "buyDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "totalCosts": {
+            "type": "string",
+            "nullable": true,
+            "description": "Recorded total costs in EUR, as a decimal string. Not a purchase-price breakdown or current valuation."
+          }
+        }
+      },
+      "RevenueRow": {
+        "type": "object",
+        "required": [
+          "year",
+          "baseRent",
+          "nonAllocableCosts",
+          "loanInterest",
+          "grossProfit",
+          "depreciationAndOthers",
+          "estimatedTaxes",
+          "netProfit",
+          "netRentability",
+          "isProvisional"
+        ],
+        "properties": {
+          "year": {
+            "type": "integer"
+          },
+          "baseRent": {
+            "type": "number",
+            "description": "Existing base-rent calculation; not verified payments received."
+          },
+          "nonAllocableCosts": {
+            "type": "number",
+            "description": "Sum of accounts 2100 and 2300."
+          },
+          "loanInterest": {
+            "type": "number",
+            "description": "Account 2500. Principal repayments are not included."
+          },
+          "grossProfit": {
+            "type": "number",
+            "description": "Base rent minus non-allocable costs and interest."
+          },
+          "depreciationAndOthers": {
+            "type": "number",
+            "description": "Sum of accounts 2600 and 2700."
+          },
+          "estimatedTaxes": {
+            "type": "number",
+            "description": "(Gross profit minus depreciation and others) multiplied by applied taxRate."
+          },
+          "netProfit": {
+            "type": "number",
+            "description": "Gross profit minus estimated taxes; not a cash balance."
+          },
+          "netRentability": {
+            "type": "number",
+            "description": "Net profit divided by account 3000 input. Fraction: 0.05 means 5%. Preserves the UI calculation, including its zero-denominator behavior."
+          },
+          "isProvisional": {
+            "type": "boolean",
+            "description": "True unless the unit or its property has closed the reporting year."
+          }
+        }
+      },
+      "Column": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "format",
+          "unit",
+          "help"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "Localized label; use key for machine processing."
+          },
+          "format": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "help": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Revenue": {
+        "type": "object",
+        "required": [
+          "unitId",
+          "taxRate",
+          "columns",
+          "rows"
+        ],
+        "properties": {
+          "unitId": {
+            "type": "integer"
+          },
+          "taxRate": {
+            "type": "number",
+            "description": "Current configured tax fraction used for all returned years (0.3 = 30%); defaults to zero, not a historical or assessed tax rate."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Column"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RevenueRow"
+            }
+          }
+        }
+      },
+      "OCSMeta": {
+        "type": "object",
+        "required": [
+          "status",
+          "statuscode"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "statuscode": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "UnitsResponse": {
+        "type": "object",
+        "required": [
+          "ocs"
+        ],
+        "properties": {
+          "ocs": {
+            "type": "object",
+            "required": [
+              "meta",
+              "data"
+            ],
+            "properties": {
+              "meta": {
+                "$ref": "#/components/schemas/OCSMeta"
+              },
+              "data": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Unit"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RevenueResponse": {
+        "type": "object",
+        "required": [
+          "ocs"
+        ],
+        "properties": {
+          "ocs": {
+            "type": "object",
+            "required": [
+              "meta",
+              "data"
+            ],
+            "properties": {
+              "meta": {
+                "$ref": "#/components/schemas/OCSMeta"
+              },
+              "data": {
+                "$ref": "#/components/schemas/Revenue"
+              }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "ocs"
+        ],
+        "properties": {
+          "ocs": {
+            "type": "object",
+            "required": [
+              "meta",
+              "data"
+            ],
+            "properties": {
+              "meta": {
+                "$ref": "#/components/schemas/OCSMeta"
+              },
+              "data": {
+                "description": "Empty data for OCS errors; the error message and code are in ocs.meta.",
+                "nullable": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
+- Read-only OCS endpoints for unit master data and existing annual revenue tables, with explicit Personal/Team selection and OpenAPI documentation for external apps and LLM tools.
 - Portfolio analytics across all years, with rent, estimated net profit, weighted profitability, and per-unit breakdowns based on each year's financial history.
 - Document dates and editable assignments to multiple tenancies.
 

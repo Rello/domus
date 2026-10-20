@@ -40,6 +40,10 @@ class ManagementAccessContext {
     public function activeTeamId(): ?string {
         if ($this->backgroundScope !== null) return $this->backgroundScope['teamId'];
         $teamId = trim($this->request->getHeader('X-Domus-Team'));
+        // Explicit Personal scope overrides the saved Team for this request only.
+        if (strcasecmp($teamId, 'personal') === 0) {
+            return null;
+        }
         if ($teamId === '' && $this->config !== null) {
             $teamId = trim($this->config->getUserValue($this->actorUserId(), 'domus', 'activeTeamId', ''));
         }

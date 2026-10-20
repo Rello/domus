@@ -71,6 +71,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - `js/domusSettings.js`: settings view and form submission logic.
 - `js/domusDocuments.js`: document upload/link flows and attachment lists.
 
+## External OCS API
+
+- `OcsController` provides read-only `/api/v1/units` and `/api/v1/units/{id}/revenue`
+  under `/ocs/v2.php/apps/domus`, reusing existing calculations and access checks.
+- Keep the app-root `openapi.json` synchronized with API changes. `X-Domus-Team:
+  Personal` explicitly selects Personal; a Team ID selects that Team.
+
 ## Pull requests
 
 Summaries should describe the key behavioral or documentation changes and the manual checks performed.

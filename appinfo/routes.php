@@ -6,6 +6,10 @@
  */
 
 return [
+    'ocs' => [
+        ['name' => 'ocs#units', 'url' => '/api/v1/units', 'verb' => 'GET'],
+        ['name' => 'ocs#revenue', 'url' => '/api/v1/units/{id}/revenue', 'verb' => 'GET'],
+    ],
     'routes' => [
         ['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 
