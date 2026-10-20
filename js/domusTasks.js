@@ -621,7 +621,7 @@
                 '<div class="domus-form-actions"><button type="button" data-cancel>' + escape(t('domus', 'Cancel')) + '</button><button type="submit" class="primary">' + escape(t('domus', 'Save')) + '</button></div></form></div>'});
             modal.protectChanges();
             const form = modal.modalEl.querySelector('form');
-            form.querySelector('[data-cancel]').onclick = modal.requestClose;
+            modal.modalEl.querySelector('[data-cancel]').onclick = modal.requestClose;
             if (!reference) form.elements.choice.onchange = () => {
                 const custom = form.elements.choice.value === 'date';
                 form.querySelector('[data-date-row]').hidden = !custom;
@@ -630,7 +630,7 @@
             };
             form.onsubmit = async event => {
                 event.preventDefault();
-                const submit = form.querySelector('[type="submit"]');
+                const submit = modal.modalEl.querySelector('[type="submit"]');
                 submit.disabled = true;
                 try {
                     await Domus.Api.post(reference ? '/rules/tenancies/' + task.ruleTenancyId + '/reference' : task.stepId ? '/task-steps/' + task.stepId + '/remind' : '/tasks/' + task.taskId + '/remind',

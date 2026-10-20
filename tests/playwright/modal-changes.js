@@ -209,7 +209,7 @@ async function main() {
         });
         await page.locator('#domus-partner-form input[name="name"]').fill('New contact');
         await page.locator('#domus-partner-form input[name="city"]').fill('Hamburg');
-        await page.locator('#domus-partner-form').getByRole('button', {name: 'Save', exact: true}).click();
+        await page.locator('.domus-modal-footer button[form="domus-partner-form"]', {hasText: 'Save'}).click();
         await waitClosed(page);
         assert.equal(await confirmDialog(page).count(), 0);
         assert.equal(await page.evaluate(() => window.savedPartner.city), 'Hamburg');
@@ -227,7 +227,7 @@ async function main() {
         await page.keyboard.press('Escape');
         await confirmDialog(page).getByRole('button', {name: 'Keep editing'}).click();
         assert.equal(await page.locator('#domus-partner-relation-form select[name="partnerId"]').inputValue(), '2');
-        await page.locator('#domus-partner-relation-form').getByRole('button', {name: 'Save', exact: true}).click();
+        await page.locator('.domus-modal-footer button[form="domus-partner-relation-form"]', {hasText: 'Save'}).click();
         await waitClosed(page);
         assert.equal(await confirmDialog(page).count(), 0);
         assert.deepEqual(await page.evaluate(() => window.savedAssignment), {partnerId: '2'});

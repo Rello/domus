@@ -24,6 +24,7 @@ class ServiceChargeSettlementService {
         private DocumentService $documentService,
         private AccountService $accountService,
         private IL10N $l10n,
+        private DocumentTemplateService $documentTemplates,
     ) {
     }
 
@@ -82,7 +83,8 @@ class ServiceChargeSettlementService {
         return array_values($entries);
     }
 
-    public function createReport(string $userId, int $unitId, int $year, int $partnerId): array {
+    public function createReport(string $userId, int $unitId, int $year, int $partnerId, string $format = 'md'): array {
+        if (!in_array($format, ['md', 'docx'], true)) throw new \InvalidArgumentException($this->l10n->t('Invalid report format.'));
         $unit = $this->unitMapper->findForUser($unitId, $userId);
         if (!$unit) {
             throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
@@ -108,18 +110,44 @@ class ServiceChargeSettlementService {
 
         $content = $this->buildReportMarkdown($partner->getName(), $partner->getStreet(), $partner->getZip(), $partner->getCity(), $partner->getCountry(), $year, $entry);
 
+        if ($format === 'docx') {
+            $locale = $this->l10n->getLanguageCode();
+            $currency = new \NumberFormatter($locale, \NumberFormatter::CURRENCY);
+            $money = static fn(float $value): string => (string)$currency->formatCurrency($value, 'EUR');
+            $date = new \IntlDateFormatter($locale, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::NONE);
+            $balance = round((float)$entry['saldo'], 2);
+            $content = $this->documentTemplates->render($userId, [
+                'documentDate' => (string)$date->format(time()),
+                'recipientName' => $partner->getName(),
+                'recipientStreet' => $partner->getStreet(),
+                'recipientPostalCode' => $partner->getZip(),
+                'recipientCity' => $partner->getCity(),
+                'reportYear' => (string)$year,
+                'unitStreet' => $unit->getStreet(),
+                'prepaymentAmount' => $money((float)$entry['serviceCharge']),
+                'utilityCostAmount' => $money((float)$entry['houseFee']),
+                'propertyTaxAmount' => $money((float)$entry['propertyTax']),
+                'balanceLabel' => $balance > 0 ? $this->l10n->t('Credit') : ($balance < 0 ? $this->l10n->t('Payment due') : $this->l10n->t('Balanced')),
+                'balanceAmount' => $money(abs($balance)),
+                'ifPaymentDue' => $balance < 0,
+                'ifCredit' => $balance > 0,
+                'Iban' => $unit->getIban(),
+            ]);
+        }
+
         $targets = [
             ['entityType' => 'unit', 'entityId' => $unitId],
             ['entityType' => 'partner', 'entityId' => $partnerId],
         ];
-        foreach ($entry['tenancyIds'] as $tenancyId) {
+        foreach ($format === 'md' ? $entry['tenancyIds'] : [] as $tenancyId) {
             $targets[] = ['entityType' => 'tenancy', 'entityId' => $tenancyId];
         }
 
-        $fileName = sprintf('%s_%s_%d.md',
+        $fileName = sprintf('%s_%s_%d.%s',
             $unit->getLabel() ?: (string)$unit->getUnitNumber(),
             $partner->getName(),
-            $year
+            $year,
+            $format
         );
 
         $creation = $this->documentService->createContentForTargets(

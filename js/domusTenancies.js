@@ -79,14 +79,14 @@
                 const content = '<form id="domus-renter-correction-form"><p>' + escape(t('domus', 'Your property manager will review these changes before updating your contact details.')) + '</p>' +
                     Object.entries(labels).map(([field, label]) => '<label class="domus-renter-correction-field">' + escape(label) +
                         '<input name="' + field + '" value="' + escape(contact[field] || '') + '" maxlength="' + (field === 'zip' ? 32 : 190) + '"' + (field === 'email' ? ' type="email"' : '') + (field === 'name' ? ' required' : '') + '></label>').join('') +
-                    '<p data-correction-error role="alert"></p><button type="submit" class="primary">' + escape(t('domus', 'Submit for review')) + '</button></form>';
+                    '<p data-correction-error role="alert"></p><div class="domus-form-actions"><button type="submit" class="primary">' + escape(t('domus', 'Submit for review')) + '</button></div></form>';
                 const modal = Domus.UI.openModal({ title: t('domus', 'Request a correction'), content });
                 const form = modal.modalEl.querySelector('#domus-renter-correction-form');
                 modal.protectChanges();
                 form.addEventListener('submit', async event => {
                     event.preventDefault();
                     const proposed = Object.fromEntries(new FormData(form));
-                    const submit = form.querySelector('button[type="submit"]');
+                    const submit = modal.modalEl.querySelector('button[type="submit"]');
                     submit.disabled = true;
                     try {
                         await Domus.Api.post('/renter/teams/' + encodeURIComponent(teamId) + '/partners/' + contact.id + '/corrections', { proposed });

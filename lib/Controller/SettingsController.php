@@ -36,6 +36,7 @@ class SettingsController extends Controller {
         private IGroupManager $groupManager,
         private PortfolioSettingsService $portfolioSettings,
         private IAppManager $appManager,
+        private \OCA\Domus\Service\DocumentTemplateService $documentTemplates,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -44,6 +45,7 @@ class SettingsController extends Controller {
     public function show(): DataResponse {
         return new DataResponse([
             'settings' => $this->getSettings($this->getUserId()),
+            'utilityReportTemplate' => $this->documentTemplates->status($this->getUserId()),
             'requiredApps' => [
                 'circles' => $this->appManager->isEnabledForUser('circles', $this->userSession->getUser()),
                 'groupfolders' => $this->appManager->isEnabledForUser('groupfolders', $this->userSession->getUser()),
@@ -77,6 +79,17 @@ class SettingsController extends Controller {
             'settings' => $this->getSettings($userId),
             'updated' => $updated,
         ]);
+    }
+
+    #[NoAdminRequired]
+    public function templateStatus(): DataResponse {
+        return new DataResponse($this->documentTemplates->status($this->getUserId()));
+    }
+
+    #[NoAdminRequired]
+    public function assignTemplate(string $path = ''): DataResponse {
+        $this->documentTemplates->assign($this->getUserId(), $path);
+        return $this->templateStatus();
     }
 
     #[NoAdminRequired]

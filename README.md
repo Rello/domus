@@ -40,6 +40,60 @@ Entwickelt für Vermieter und kleine Hausverwaltungen, die einen klaren Überbli
 - Einzelne Aufgaben und mehrstufige Prozesse verfolgen.
 - Buchungen nach Jahr, Einheit und Konto auswerten.
 
+## Dokumentvorlagen für Nebenkostenabrechnungen
+
+Unter **Einstellungen → Dokumentvorlagen** zeigt jede Zeile die Datei, den Prozess
+und den Bereich mit einem Papierkorb zum Entfernen der Zuweisung. Über **+** wählen
+Sie eine vorhandene DOCX-Datei aus, beispielsweise aus `DomusApp/Templates`, und
+speichern die Prozesszuweisung. Die DOCX-Datei bleibt beim Entfernen erhalten.
+Die Zuweisung gilt für den aktuellen persönlichen oder Team-Bereich. Team-Mitglieder
+benötigen zusätzlich Zugriff auf die Datei in Nextcloud. Umbenennen und Verschieben
+sind möglich, da Domus die Datei-ID speichert.
+
+Die Vorlage enthält Layout, Absender, Unterschrift und eigene Texte. Unterstützt werden:
+
+```text
+${documentDate}          ${reportYear}
+${recipientName}         ${recipientStreet}
+${recipientPostalCode}   ${recipientCity}
+${unitStreet}           ${prepaymentAmount}
+${utilityCostAmount}    ${propertyTaxAmount}
+${balanceLabel}         ${balanceAmount}
+${Iban}
+```
+
+`${Iban}` stammt aus den Bankdaten der Einheit. `${balanceAmount}` ist immer positiv;
+`${balanceLabel}` unterscheidet Guthaben, Nachzahlung und ausgeglichene Abrechnungen.
+Vorauszahlungen werden wie bisher aus monatlichem Nebenkostenbetrag und Mietdauer
+berechnet, nicht aus eingegangenen Zahlungen. Datum, Beträge und Ergebnisbezeichnung
+verwenden die Sprache des erstellenden Benutzers. Wiederholte Tabellenzeilen
+sind in dieser ersten Version nicht enthalten.
+
+Für bedingte Absätze setzen Sie den Marker direkt vor den Text im selben Word-Absatz:
+
+```text
+${ifPaymentDue}Die ausstehenden Kosten bitte ich auf das Konto ${Iban} zu überweisen.
+${ifCredit}Die Rückerstattung wird in den nächsten Tagen überwiesen.
+```
+
+Domus entfernt den jeweils unzutreffenden Absatz und die Marker aus dem
+verbleibenden Text. Erforderliche leere Absätze für Abschnittsumbrüche und
+Tabellenzellen bleiben erhalten. Bei einem auf Cent gerundeten Saldo von null entfallen beide
+Absätze. Eine IBAN wird nur für tatsächlich ausgegebene Absätze benötigt.
+
+**Nebenkostenabrechnung erstellen** erzeugt eine neue, bearbeitbare DOCX-Datei.
+Prüfen Sie insbesondere den Absatz zur Zahlung oder Erstattung vor der Weitergabe.
+DOCX-Entwürfe werden der Einheit und dem Kontakt zugeordnet; eine Zuordnung zum
+Mietverhältnis erfolgt erst manuell, da dessen Dokumente im Mieterportal sichtbar sind.
+Die Vorlage und bestehende Berichte bleiben unverändert. PDF-Export erfolgt bei Bedarf
+im Office-Editor. Der Dialog zeigt die verwendete Vorlage. Vorlagen werden in den Einstellungen konfiguriert.
+Ohne nutzbare Vorlage wird automatisch die bisherige Markdown-Datei erstellt;
+ein Hinweis im Dialog kündigt dieses Standardverhalten an.
+
+Der Server benötigt die PHP-Erweiterungen ZIP, XML/DOM und Intl. Vorlagen dürfen
+höchstens 10 MB groß sein. Unbekannte Variablen und eine fehlende IBAN bei Verwendung
+von `${Iban}` werden als Fehler gemeldet.
+
 ## Sprachen
 - EN, DE
 

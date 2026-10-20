@@ -8,28 +8,26 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
-- Read-only OCS endpoints for unit master data and existing annual revenue tables, with explicit Personal/Team selection and OpenAPI documentation for external apps and LLM tools.
-- Portfolio analytics across all years, with rent, estimated net profit, weighted profitability, cumulative unit acquisition costs, and per-unit breakdowns based on each year's financial history.
-- Document dates and editable assignments to multiple tenancies.
+- Personal and Team DOCX templates for editable utility reports, with a Markdown fallback.
+- Read-only unit and annual revenue APIs with Personal/Team selection and OpenAPI documentation.
+- Multi-year portfolio analytics for rent, profit, profitability, and acquisition costs.
+- Document dates and assignments to multiple tenancies.
 
 ### Changed
-- Replace the unit detail New task quick action with Log Activity for recording calls and other activities.
-- Simplify document upload and editing, show filenames alongside editable titles, and store new booking documents directly in the year folder.
-- Open documents in a new tab using the Nextcloud viewer where available, with browser previews for renter PDFs and images.
-- Improve utility settlements with allocable maintenance subaccounts, tenancy and period selection, and a financial preview.
-- Check primary expense accounts before closing a financial year and provide booking review and confirmation steps.
-- Improve tenancy details with completion indicators, partner checklists, and the most recent periods first.
-- Show booking descriptions in unit details and simplify account names in booking forms.
-- Show attached documents and tenancy assignments in the booking editor, and allow linked bookings to be edited from documents.
+- Consistent dialog headers, spacing, and persistent action footers, including the welcome wizard.
+- Record activities directly from unit details.
+- Simplify document editing, previews, storage, and links to bookings and tenancies.
+- Improve utility settlement selection, expense allocation, and financial previews.
+- Add account checks and booking review before closing a financial year.
+- Improve tenancy checklists, period ordering, and booking descriptions.
 
 ### Fixed
-- Use the reminder date as the due date and keep deferred tasks and process steps in the normal task list.
-- Preserve booking and document edits across retries, nested dialogs, file selection, and allocation changes without creating duplicate bookings.
-- Keep bookings and their document links read-only in closed financial years.
-- Prevent duplicate document assignments and remove related tenancy and booking links when unlinking a unit document.
-- Restore booking deletion, allow clearing descriptions, and use the selected financial year for new booking dates.
-- Keep dashboard tiles and the task panel sized consistently when resizing the window.
-- Open the document picker in the selected unit's folder.
+- Use reminder dates as deadlines and keep deferred tasks and steps visible.
+- Preserve booking and document edits across retries and nested dialogs without duplicates.
+- Keep closed-year bookings and document links read-only.
+- Prevent duplicate document assignments and clean up links when unlinking documents.
+- Restore booking deletion, description clearing, and selected-year booking dates.
+- Fix dashboard resizing and open document pickers in the selected unit's folder.
 
 ## 1.2.0 - 2026-10-18
 ### Added

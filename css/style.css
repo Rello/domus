@@ -1532,12 +1532,11 @@
     font-size: 1rem;
 }
 
-#domus-task-templates-panel .domus-settings-section-header > .domus-icon-only-button,
-#domus-rules-panel .domus-settings-section-header > .domus-icon-only-button {
+.domus-settings .domus-settings-section-header > .domus-icon-only-button {
     width: 24px;
     min-width: 24px;
-    height: 24px;
-    min-height: 24px;
+    height: 22px;
+    min-height: 22px;
     margin: 0;
     padding: 4px;
     box-sizing: border-box;
@@ -1546,6 +1545,37 @@
 .domus-settings .domus-settings-section {
     padding: 8px 12px;
     margin-bottom: 12px;
+}
+
+#domus-template-list .domus-table {
+    table-layout: fixed;
+}
+
+#domus-template-list th,
+#domus-template-list td {
+    white-space: normal;
+}
+
+#domus-template-list th:first-child {
+    width: 40%;
+}
+
+#domus-template-list th:last-child,
+#domus-template-list td:last-child {
+    width: 44px;
+    padding-inline: 0;
+}
+
+#domus-template-delete {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    margin: 0;
+}
+
+#domus-template-selected {
+    display: block;
+    overflow-wrap: anywhere;
 }
 
 .domus-settings .domus-settings-section-body {
@@ -1657,6 +1687,7 @@
 }
 
 .domus-modal {
+    --domus-modal-inline-padding: 25px;
     background: var(--color-main-background);
     border-radius: var(--domus-border-radius);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
@@ -1674,6 +1705,94 @@
 
 .domus-modal-task-detail {
     max-width: 460px;
+}
+
+/* Dialog chrome stays outside the scrolling body and shares its inline spacing. */
+.domus-modal-header,
+.domus-modal-footer {
+    flex-shrink: 0;
+    padding: 12px var(--domus-modal-inline-padding);
+}
+
+.domus-modal-header {
+    display: flex;
+    align-items: center;
+    border-bottom: var(--domus-border);
+    gap: 10px;
+}
+
+.domus-modal-header h3 {
+    margin: 0;
+    color: var(--domus-theme);
+    min-width: 0;
+    flex: 1;
+    text-align: start;
+    overflow-wrap: anywhere;
+    font-size: 1.1em;
+}
+
+/* Keep the shared icon-button hit area, with the glyph aligned to the right edge. */
+.domus-modal .domus-modal-close {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    justify-content: flex-end;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--domus-theme);
+}
+
+.domus-modal .domus-modal-close:hover,
+.domus-modal .domus-modal-close:focus {
+    color: var(--color-primary);
+}
+
+.domus-modal-close:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.domus-modal-header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.domus-modal-header-actions:empty {
+    display: none;
+}
+
+.domus-modal-header button.domus-modal-action {
+    padding: 6px 10px;
+    border-radius: var(--domus-border-radius);
+    color: var(--domus-button-secondary-text);
+}
+
+.domus-modal-body {
+    min-height: 0;
+    padding: 25px var(--domus-modal-inline-padding);
+    overflow-y: auto;
+}
+
+.domus-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-top: var(--domus-border);
+}
+
+.domus-modal-footer button {
+    margin: 0;
+    border: var(--domus-border);
+    border-radius: var(--domus-border-radius);
+}
+
+.domus-modal-actions {
+    display: contents;
+}
+
+.domus-modal-footer [hidden] {
+    display: none;
 }
 
 .domus-collapsible {
@@ -1695,70 +1814,6 @@
 
 .domus-collapsible-body[hidden] {
     display: none;
-}
-
-.domus-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: relative;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--color-border-dark, #d8d8d8);
-    gap: 10px;
-}
-
-.domus-modal-header h3 {
-    margin: 0;
-    color: var(--domus-theme);
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    max-width: calc(100% - 140px);
-    pointer-events: none;
-}
-
-.domus-modal-close {
-    font-size: 20px;
-    line-height: 1;
-    color: var(--domus-theme);
-    border: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    outline: none;
-}
-
-.domus-modal-close:hover,
-.domus-modal-close:focus,
-.domus-modal-close:focus-visible {
-    color: var(--color-primary);
-    background: transparent !important;
-    box-shadow: none !important;
-    outline: none;
-}
-
-.domus-modal-header-actions {
-    display: flex;
-    gap: 8px;
-    margin-left: auto;
-}
-
-.domus-modal-header button.domus-modal-action {
-    padding: 6px 10px;
-    border-radius: var(--domus-border-radius);
-    border: var(--domus-border);
-    background: var(--domus-button-secondary-background);
-    color: var(--domus-button-secondary-text);
-    cursor: pointer;
-}
-
-.domus-modal-header button.domus-modal-action:hover {
-    background: var(--color-background-hover);
-}
-
-.domus-modal-body {
-    padding: 25px;
-    overflow-y: auto;
 }
 
 .domus-task-detail-card {
@@ -2081,14 +2136,6 @@
     margin-top: 16px;
 }
 
-.domus-modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 0 14px 14px;
-    flex-wrap: wrap;
-}
-
 .domus-year-status-form .domus-form-table {
     grid-template-columns: 1fr;
 }
@@ -2110,11 +2157,6 @@
 .domus-year-status-hint {
     margin-top: 8px;
     text-align: center;
-}
-
-.domus-year-status-form .domus-form-actions {
-    margin: 12px -11px 0;
-    padding: 0 14px;
 }
 
 .domus-detail-hero {
@@ -4597,26 +4639,40 @@
 }
 
 .domus-settlement-preview {
-    gap: 0;
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
 }
 
-.domus-settlement-preview .domus-info-row {
-    padding: 5px 0;
+.domus-settlement-preview th,
+.domus-settlement-preview td {
+    padding: 4px 0;
+    height: auto;
     line-height: 1.35;
+    border-bottom: var(--domus-border);
 }
 
-.domus-settlement-preview .domus-info-row dt {
+.domus-settlement-preview th {
+    text-align: left;
     font-weight: 400;
+    color: var(--color-text-maxcontrast);
+    padding-right: 16px;
 }
 
-.domus-settlement-preview .domus-info-row dd {
-    white-space: nowrap;
+.domus-settlement-preview td {
+    text-align: right;
     font-variant-numeric: tabular-nums;
 }
 
-.domus-settlement-preview .domus-info-row:last-child {
-    padding-top: 8px;
+.domus-settlement-preview tr:last-child th,
+.domus-settlement-preview tr:last-child td {
+    border-bottom: 0;
     font-weight: 600;
+}
+
+.domus-settlement-template-note {
+    margin: 12px 0 0;
+    overflow-wrap: anywhere;
 }
 
 .domus-settlement-report-row {
@@ -4634,12 +4690,6 @@
 .domus-settlement-report-row button {
     flex-shrink: 0;
     margin: 0;
-}
-
-.domus-settlement-review-actions {
-    align-items: center;
-    margin-top: 20px;
-    padding: 0;
 }
 
 .domus-icon-only-button,
@@ -4706,7 +4756,8 @@
     gap: 6px;
 }
 
-.app-domus .primary {
+.app-domus .primary,
+.domus-modal .primary {
     background: var(--domus-button-primary-background);
     color: var(--domus-button-primary-text);
     border: var(--domus-border);
@@ -5158,19 +5209,6 @@
     }
 }
 
-/* Keep booking actions outside the scrollable fields. */
-.domus-modal-header, .domus-modal > .domus-modal-footer {
-    flex-shrink: 0;
-}
-.domus-modal-body {
-    min-height: 0;
-}
-.domus-modal > .domus-modal-footer {
-    margin: 0;
-    padding: 12px 25px;
-    border-top: 1px solid var(--color-border);
-    background: var(--color-main-background);
-}
 .domus-booking-assignment-context {
     margin: 0;
     overflow-wrap: anywhere;
@@ -5189,19 +5227,6 @@
 }
 
 /* Process sequence and work stay in the same detail surface. */
-.domus-modal-process-detail .domus-modal-header h3 {
-    position: static;
-    transform: none;
-    max-width: none;
-    min-width: 0;
-    flex: 1;
-    text-align: start;
-    overflow-wrap: anywhere;
-    font-size: 1.1em;
-}
-.domus-modal-process-detail .domus-modal-header-actions:empty { display: none; }
-.domus-modal-process-detail .domus-modal-close { flex-shrink: 0; }
-
 .domus-process-detail { display: grid; gap: 16px; min-width: 0; }
 .domus-process-progress { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .domus-process-detail progress { width: 100%; accent-color: var(--color-primary); }
@@ -5445,7 +5470,6 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
 
 .domus-online-account { overflow-wrap: anywhere; }
 .domus-modal-online-access { width: 560px; max-width: 100%; }
-.domus-modal-online-access .domus-modal-header h3 { text-align: start; }
 .domus-online-access-modal-body { display: flex; flex-direction: column; gap: 20px; }
 .domus-online-access-modal-body p { margin: 0; line-height: 1.5; }
 .domus-online-access-intro { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }

@@ -368,7 +368,9 @@
                                 errorMessage = parsed.message;
                             }
                         } catch (error) {
-                            // Keep the raw response body when the server did not return JSON.
+                            if (/^\s*</.test(msg) || (response.headers.get('Content-Type') || '').includes('text/html')) {
+                                errorMessage = t('domus', 'Server request failed ({status}). Reload the page and try again.', {status: response.status});
+                            }
                         }
                     }
                     throw new Error(errorMessage);
@@ -853,15 +855,35 @@
 
             modal.appendChild(header);
             modal.appendChild(body);
-            if (options?.persistentFooter) {
-                const actions = body.querySelector('.domus-form-actions');
-                const form = actions?.closest('form');
-                if (actions && form?.id) {
-                    actions.querySelectorAll('button').forEach(button => button.setAttribute('form', form.id));
-                    actions.classList.add('domus-modal-footer');
-                    modal.appendChild(actions);
+            const footer = document.createElement('div');
+            footer.className = 'domus-modal-footer';
+            modal.appendChild(footer);
+
+            // Preserve native submission/validation after moving actions out of a form.
+            // Dynamic workflows call this after replacing their body content.
+            function refreshFooter() {
+                const actions = body.querySelector('.domus-modal-footer, .domus-form-actions');
+                footer.replaceChildren();
+                if (actions) {
+                    actions.querySelectorAll('button, input, select, textarea').forEach(control => {
+                        const form = control.form;
+                        if (form && !control.hasAttribute('form')) {
+                            if (!form.id) form.id = headingId + '-form';
+                            control.setAttribute('form', form.id);
+                        }
+                    });
+                    actions.classList.remove('domus-modal-footer', 'domus-form-actions');
+                    actions.classList.add('domus-modal-actions');
+                    footer.appendChild(actions);
+                } else {
+                    const closeButton = document.createElement('button');
+                    closeButton.type = 'button';
+                    closeButton.textContent = t('domus', 'Close');
+                    closeButton.addEventListener('click', requestClose);
+                    footer.appendChild(closeButton);
                 }
             }
+            refreshFooter();
             backdrop.appendChild(modal);
             document.body.appendChild(backdrop);
 
@@ -876,17 +898,18 @@
 
             // Call after applying defaults and mounting widgets. Custom readers cover
             // values held outside native controls and normalize dynamic form rows.
-            function protectChanges(getState = () => getFormState(body)) {
+            function protectChanges(getState = () => getFormState(modal)) {
                 readState = getState;
                 initialState = JSON.stringify(readState());
             }
 
-            function requestClose() {
+            function requestClose(reason) {
+                const closeReason = typeof reason === 'string' ? reason : 'close';
                 if (closed || discardPending || modalStack[modalStack.length - 1] !== stackEntry) {
                     return;
                 }
                 if (!readState || JSON.stringify(readState()) === initialState) {
-                    closeModal();
+                    closeModal(closeReason);
                     return;
                 }
                 discardPending = true;
@@ -900,14 +923,14 @@
                     discardPending = false;
                     discardModal = null;
                     if (discard) {
-                        closeModal();
+                        closeModal(closeReason);
                     }
                 });
             }
 
             // Completion path for successful saves, deletes and workflow transitions.
             // User dismissal must use requestClose instead.
-            function closeModal() {
+            function closeModal(reason = 'close') {
                 if (closed) {
                     return;
                 }
@@ -921,13 +944,13 @@
                 backdrop.remove();
                 if (wasTopModal) {
                     if (previousActiveElement && document.body.contains(previousActiveElement) && !previousActiveElement.closest('[inert]')) {
-                        previousActiveElement.focus({preventScroll: options?.persistentFooter === true});
+                        previousActiveElement.focus({preventScroll: true});
                     } else {
                         modalStack[modalStack.length - 1]?.modal.focus();
                     }
                 }
                 if (typeof onClose === 'function') {
-                    onClose();
+                    onClose(typeof reason === 'string' ? reason : 'close');
                 }
             }
 
@@ -960,7 +983,7 @@
                 if (event.key === 'Escape') {
                     event.preventDefault();
                     event.stopImmediatePropagation();
-                    requestClose();
+                    requestClose('escape');
                     return;
                 }
                 if (event.key !== 'Tab') {
@@ -995,12 +1018,12 @@
             closeBtn.addEventListener('click', requestClose);
             backdrop.addEventListener('click', function(e) {
                 if (e.target === backdrop) {
-                    requestClose();
+                    requestClose('backdrop');
                 }
             });
 
             modal.setAttribute('tabindex', '-1');
-            const bodyFocusableElements = getFocusableElements(body);
+            const bodyFocusableElements = [...getFocusableElements(body), ...getFocusableElements(footer)];
             if (bodyFocusableElements.length) {
                 const autofocusTarget = bodyFocusableElements.find(el => el.hasAttribute('autofocus'));
                 (autofocusTarget || bodyFocusableElements[0]).focus();
@@ -1008,7 +1031,7 @@
                 modal.focus();
             }
 
-            return { modalEl: modal, close: closeModal, requestClose, protectChanges };
+            return { modalEl: modal, close: closeModal, requestClose, protectChanges, refreshFooter };
         }
 
         function confirmAction(options = {}) {
@@ -2296,7 +2319,7 @@
                 event.preventDefault();
                 if (saving) return;
                 saving = true;
-                const submit = form.querySelector('[type="submit"]');
+                const submit = modal.modalEl.querySelector('[type="submit"]');
                 submit.disabled = true;
                 try {
                     if (actionInput.value === 'remove') await api.remove(entity.id);

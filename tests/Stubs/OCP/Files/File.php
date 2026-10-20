@@ -16,6 +16,8 @@ class File {
     ) {
     }
 
+    public function getContent(): string { return ''; }
+
     public function getMimeType(): string { return 'application/octet-stream'; }
 
     public function isReadable(): bool { return true; }

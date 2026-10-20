@@ -1115,7 +1115,7 @@
             }
 
             function renderStep(moveFocus = true) {
-                const focusedId = container.contains(document.activeElement) ? document.activeElement.id : null;
+                const focusedId = modal.modalEl.contains(document.activeElement) ? document.activeElement.id : null;
                 modal.modalEl.querySelector('.domus-modal-header h3').textContent = isOpen()
                     ? t('domus', 'Close year {year}', {year: selectedYear})
                     : t('domus', 'Reopen year {year}', {year: selectedYear});
@@ -1174,37 +1174,38 @@
                         ? button('submit', isOpen() ? t('domus', 'Close year') : t('domus', 'Reopen year'), !showCheckBookings, saving)
                         : button('next', t('domus', 'Next'), !showCheckBookings, !selectedYear || (currentStep === 1 && checkState !== 'ready'))) + '</div>';
                 container.innerHTML = Domus.UI.buildGuidedWorkflowLayout(steps, currentStep, '<div class="domus-form">' + content + '</div>');
-                container.querySelector('#domus-year-status-year')?.addEventListener('change', event => {
+                modal.refreshFooter();
+                modal.modalEl.querySelector('#domus-year-status-year')?.addEventListener('change', event => {
                     selectedYear = Number(event.target.value);
                     checkState = 'idle';
                     checks = [];
                     requestId++;
                     renderStep();
                 });
-                container.querySelector('#domus-year-status-check-bookings')?.addEventListener('click', () => {
+                modal.modalEl.querySelector('#domus-year-status-check-bookings')?.addEventListener('click', () => {
                     modal.close();
                     selectStatisticsYear(unitId, String(selectedYear), {
                         showLinkAction: Domus.Role.hasCapability('manageDocuments'),
                         focusBookings: true
                     });
                 });
-                container.querySelector('#domus-year-status-back')?.addEventListener('click', () => {
+                modal.modalEl.querySelector('#domus-year-status-back')?.addEventListener('click', () => {
                     requestId++;
                     currentStep--;
                     renderStep();
                     if (currentStep === 1) loadChecks();
                 });
-                container.querySelector('#domus-year-status-next')?.addEventListener('click', () => {
+                modal.modalEl.querySelector('#domus-year-status-next')?.addEventListener('click', () => {
                     currentStep++;
                     renderStep();
                     if (isOpen() && currentStep === 1) loadChecks();
                 });
-                container.querySelector('#domus-year-status-retry')?.addEventListener('click', loadChecks);
-                container.querySelector('#domus-year-status-submit')?.addEventListener('click', save);
+                modal.modalEl.querySelector('#domus-year-status-retry')?.addEventListener('click', loadChecks);
+                modal.modalEl.querySelector('#domus-year-status-submit')?.addEventListener('click', save);
                 if (moveFocus) {
-                    (container.querySelector('select') || container.querySelector('#domus-year-status-back'))?.focus();
+                    (modal.modalEl.querySelector('select') || modal.modalEl.querySelector('#domus-year-status-back'))?.focus();
                 } else if (focusedId) {
-                    container.querySelector('#' + focusedId)?.focus();
+                    modal.modalEl.querySelector('#' + focusedId)?.focus();
                 }
             }
 
@@ -2950,7 +2951,8 @@
             let availableYears = [];
             let isLoadingYears = false;
             let createdReportDocument = null;
-            let createdReportPath = '';
+            let templateStatus = null;
+            let isCreating = false;
             const steps = [
                 { label: t('domus', 'Select year') },
                 { label: t('domus', 'Tenancy') },
@@ -3113,33 +3115,41 @@
                     saldoText = t('domus', 'Pay back');
                 }
 
-                const info = Domus.UI.buildInfoList([
+                const previewRows = [
                     { label: t('domus', 'Tenant'), value: selected.partnerName || '' },
                     { label: t('domus', 'Prepayment'), value: Domus.Utils.formatCurrency(selected.serviceCharge) },
                     ...maintenanceItems(selected).map(item => ({label: item.label, value: Domus.Utils.formatCurrency(item.amount)})),
                     { label: t('domus', 'Property tax'), value: Domus.Utils.formatCurrency(selected.propertyTax) },
                     { label: saldoText, value: Domus.Utils.formatCurrency(selected.saldo) }
-                ], {className: 'domus-settlement-preview'});
-                return '<div class="domus-form">' + info + '</div>' +
+                ];
+                const info = '<table class="domus-settlement-preview"><tbody>' +
+                    previewRows.map(item => '<tr><th scope="row">' + Domus.Utils.escapeHtml(item.label) +
+                        '</th><td>' + Domus.Utils.escapeHtml(item.value) + '</td></tr>').join('') +
+                    '</tbody></table>';
+                const templateMessage = templateStatus === null ? t('domus', 'Loading…') :
+                    (templateStatus.ready
+                        ? t('domus', 'Template used: {name}', {name: templateStatus.name})
+                        : t('domus', 'No template is used. The default Markdown file will be created.'));
+                const templateControls = '<p class="domus-settlement-template-note" role="status">' +
+                    Domus.Utils.escapeHtml(templateMessage) + '</p>';
+                return '<div class="domus-form">' + info + templateControls + '</div>' +
                     '<div class="domus-modal-footer">' +
                     '<button id="domus-settlement-back">' + Domus.Utils.escapeHtml(t('domus', 'Back')) + '</button>' +
-                    '<button id="domus-create-settlement" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Create')) + '</button>' +
+                    '<button id="domus-create-settlement" class="primary"' + (templateStatus === null ? ' disabled' : '') + '>' + Domus.Utils.escapeHtml(t('domus', 'Create report')) + '</button>' +
                     '</div>';
             }
 
             function renderResultStep() {
                 const reportUrl = createdReportDocument?.fileUrl || '';
                 const reportLabel = createdReportDocument?.fileName || t('domus', 'Utility Bill Statement');
-                const previewMarkup = '<button type="button" id="domus-settlement-preview"' + (createdReportPath ? '' : ' disabled') + '>' +
-                    Domus.Utils.escapeHtml(t('domus', 'Preview')) + '</button>';
                 const openMarkup = '<button type="button" id="domus-settlement-open"' + (reportUrl ? '' : ' disabled') + '>' +
                     Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>';
 
                 return '<div class="domus-settlement-review">' +
                     '<div class="domus-settlement-report-row">' +
                     '<span class="domus-settlement-report-title">' + Domus.Utils.escapeHtml(reportLabel) + '</span>' +
-                    previewMarkup + openMarkup + '</div>' +
-                    '<div class="domus-modal-footer domus-settlement-review-actions">' +
+                    openMarkup + '</div>' +
+                    '<div class="domus-modal-footer">' +
                     '<button id="domus-settlement-close" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button>' +
                     '</div></div>';
             }
@@ -3157,16 +3167,18 @@
                     content = renderResultStep();
                 }
                 container.innerHTML = Domus.UI.buildGuidedWorkflowLayout(steps, currentStep, content);
+                modal.refreshFooter();
+
 
                 if (currentStep === 0) {
-                    const yearSelect = container.querySelector('#domus-settlement-year');
+                    const yearSelect = modal.modalEl.querySelector('#domus-settlement-year');
                     ensureYearOptions(yearSelect);
                     yearSelect.addEventListener('change', () => {
                         selectedYear = parseInt(yearSelect.value, 10);
                         updateTitle();
                     });
-                    container.querySelector('#domus-settlement-cancel')?.addEventListener('click', modal.close);
-                    container.querySelector('#domus-settlement-continue')?.addEventListener('click', () => {
+                    modal.modalEl.querySelector('#domus-settlement-cancel')?.addEventListener('click', modal.close);
+                    modal.modalEl.querySelector('#domus-settlement-continue')?.addEventListener('click', () => {
                         selectedYear = parseInt(yearSelect.value, 10);
                         currentStep = 1;
                         renderStep();
@@ -3175,13 +3187,13 @@
                 }
 
                 if (currentStep === 1) {
-                    const tableContainer = container.querySelector('#domus-settlement-table');
+                    const tableContainer = modal.modalEl.querySelector('#domus-settlement-table');
                     loadSettlements(tableContainer);
-                    container.querySelector('#domus-settlement-back')?.addEventListener('click', () => {
+                    modal.modalEl.querySelector('#domus-settlement-back')?.addEventListener('click', () => {
                         currentStep = 0;
                         renderStep();
                     });
-                    container.querySelector('#domus-settlement-next')?.addEventListener('click', () => {
+                    modal.modalEl.querySelector('#domus-settlement-next')?.addEventListener('click', () => {
                         if (!getSelectedSettlement()) {
                             Domus.UI.showNotification(t('domus', 'Select a partner first.'), 'error');
                             return;
@@ -3193,50 +3205,46 @@
                 }
 
                 if (currentStep === 3) {
-                    container.querySelector('#domus-settlement-preview')?.addEventListener('click', () => {
-                        if (!createdReportPath || !window?.OCA?.Viewer || typeof window.OCA.Viewer.open !== 'function') {
-                            Domus.UI.showNotification(t('domus', 'An error occurred'), 'error');
-                            return;
-                        }
-                        try {
-                            window.OCA.Viewer.open({ path: createdReportPath });
-                        } catch (error) {
-                            Domus.UI.showNotification(t('domus', 'An error occurred'), 'error');
-                        }
-                    });
-                    container.querySelector('#domus-settlement-open')?.addEventListener('click', () => {
+                    modal.modalEl.querySelector('#domus-settlement-open')?.addEventListener('click', () => {
                         const reportUrl = createdReportDocument?.fileUrl;
                         if (reportUrl) window.open(reportUrl, '_blank', 'noopener,noreferrer');
                     });
-                    container.querySelector('#domus-settlement-close')?.addEventListener('click', modal.close);
+                    modal.modalEl.querySelector('#domus-settlement-close')?.addEventListener('click', modal.close);
                     return;
                 }
 
-                container.querySelector('#domus-settlement-back')?.addEventListener('click', () => {
+                modal.modalEl.querySelector('#domus-settlement-back')?.addEventListener('click', () => {
                     currentStep = 1;
                     renderStep();
                 });
-                const createBtn = container.querySelector('#domus-create-settlement');
+                const createBtn = modal.modalEl.querySelector('#domus-create-settlement');
                 if (createBtn) {
                     createBtn.addEventListener('click', () => {
+                        if (isCreating || templateStatus === null) return;
+                        const reportFormat = templateStatus.ready ? 'docx' : 'md';
                         const selected = getSelectedSettlement();
                         if (!selected) {
                             Domus.UI.showNotification(t('domus', 'Select a partner first.'), 'error');
                             return;
                         }
-                        createBtn.disabled = true;
-                        Domus.Api.createUnitSettlementReport(unitId, {year: selectedYear, partnerId: selected.partnerId})
+                        isCreating = true;
+                        modal.modalEl.querySelectorAll('.domus-modal-body button, .domus-modal-body input, .domus-modal-footer button').forEach(control => { control.disabled = true; });
+                        Domus.Api.createUnitSettlementReport(unitId, {year: selectedYear, partnerId: selected.partnerId, format: reportFormat})
                             .then(result => {
                                 const createdDocuments = Array.isArray(result?.documents) ? result.documents : [];
                                 createdReportDocument = createdDocuments.find(document => document?.fileId || document?.fileUrl) || null;
-                                createdReportPath = result?.reportPath || '';
                                 Domus.UI.showNotification(t('domus', '{entity} created.', {entity: t('domus', 'Report')}), 'success');
                                 onComplete?.();
                                 currentStep = 3;
                                 renderStep();
                             })
-                            .catch(err => Domus.UI.showNotification(err.message, 'error'))
+                            .catch(err => {
+                                isCreating = false;
+                                Domus.UI.showNotification(err.message, 'error');
+                                renderStep();
+                            })
                             .finally(() => {
+                                isCreating = false;
                                 createBtn.disabled = false;
                             });
                     });
@@ -3244,6 +3252,10 @@
             }
 
             renderStep();
+            Domus.Api.get('/settings/utility-template')
+                .then(status => { templateStatus = status; })
+                .catch(error => { templateStatus = {ready: false, error: error.message}; })
+                .finally(() => { if (container.isConnected && currentStep === 2 && !isCreating) renderStep(); });
         }
 
         return {openModal};

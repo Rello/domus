@@ -1187,7 +1187,6 @@
                     const modal = Domus.UI.openModal({
                         title,
                         headerActions: readOnly ? ['<span class="domus-badge domus-badge-alert">' + Domus.Utils.escapeHtml(t('domus', 'Year already closed')) + '</span>'] : [],
-                        persistentFooter: true,
                         content: buildBookingForm({ accountOptions, propertyOptions, unitOptions }, defaults, {
                             multiEntry,
                             readOnly,

@@ -32,6 +32,23 @@ class PortfolioSettingsServiceTest extends TestCase {
         self::assertSame('0.20', $settings->getValue('alice', 'taxRate', '0'));
         self::assertCount(1, $db->tables['domus_team_settings']);
     }
+    public function testTemplateAssignmentIsSharedOnlyWithinItsTeam(): void {
+        $db = new TransferDatabase();
+        $db->tables['domus_team_settings'] = [];
+        $team = 'a';
+        $access = $this->createMock(ManagementAccessContext::class);
+        $access->method('activeTeamId')->willReturnCallback(static function () use (&$team) { return $team; });
+        $config = $this->createMock(IConfig::class);
+        $config->method('getUserValue')->with('alice', 'domus', 'utilityReportTemplate', '0')->willReturn('7');
+        $settings = new PortfolioSettingsService($access, $config, $db);
+        $settings->setValue('alice', 'utilityReportTemplate', '42');
+        self::assertSame('42', $settings->getValue('bob', 'utilityReportTemplate', '0'));
+        $team = 'b';
+        self::assertSame('0', $settings->getValue('bob', 'utilityReportTemplate', '0'));
+        $team = null;
+        self::assertSame('7', $settings->getValue('alice', 'utilityReportTemplate', '0'));
+    }
+
     public function testRequestCacheSeparatesTeamsAndDefaultsAndTracksWrites(): void {
         $db = new TransferDatabase();
         $db->tables['domus_team_settings'] = [

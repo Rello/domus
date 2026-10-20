@@ -130,7 +130,7 @@ async function main() {
         const dueDateLabel = await page.evaluate(() => Domus.Utils.formatDate('2017-01-01'));
         assert.deepEqual(await page.locator('#domus-rule-preview td').allTextContents(), ['Flat 7', 'Rent review due', dueDateLabel]);
         assert.equal(await page.locator('#domus-rule-preview').evaluate(el => el.scrollWidth <= el.clientWidth), true);
-        await page.locator('#domus-rule-form').getByRole('button', {name: 'Save', exact: true}).click();
+        await page.locator('.domus-modal-footer button[form="domus-rule-form"]', {hasText: 'Save'}).click();
         await page.locator('#domus-rule-list').getByText('Rental checks', {exact: true}).waitFor();
         const rule = await page.evaluate(() => rules[0]);
         assert.equal(rule.alertWarning, 'Please review after {months} months.'); assert.equal(rule.months, 48); assert.deepEqual(rule.scopeIds, [7]); assert.equal(rule.autoTask, true);
@@ -138,7 +138,7 @@ async function main() {
         assert.equal(await page.getByLabel('Threshold (months)', {exact: true}).inputValue(), '48');
         assert.equal(await page.getByLabel('Alert warning', {exact: true}).inputValue(), 'Please review after {months} months.');
         await page.getByLabel('Enable ruleset', {exact: true}).uncheck();
-        await page.locator('#domus-rule-form').getByRole('button', {name: 'Save', exact: true}).click();
+        await page.locator('.domus-modal-footer button[form="domus-rule-form"]', {hasText: 'Save'}).click();
         await page.locator('#domus-rule-list').getByText(/Disabled/).waitFor();
     }, 375);
     await browser.close();

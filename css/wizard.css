@@ -3,164 +3,13 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-.domus-guidance-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    background: rgba(21, 28, 40, 0.62);
-}
-
-.domus-guidance-dialog {
-    position: relative;
-    width: min(900px, calc(100vw - 48px));
-    color: #20293a;
-}
-
-.domus-guidance-shell {
-    overflow: hidden;
-    border-radius: var(--domus-border-radius);
-    background: #ffffff;
-    min-height: 600px;
-    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
-}
-
-.domus-guidance-header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 90px;
-    padding: 24px 32px;
-    background: var(--domus-theme);
-}
-
-.domus-guidance-brand {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-}
-
-.domus-guidance-brand-logo {
-    width: 74px;
-    height: 74px;
-    object-fit: contain;
-}
-
-.domus-guidance-brand-name {
-    font-size: 42px;
-    font-weight: 400;
-    letter-spacing: 0.02em;
-    color: #ffffff;
-}
-
-.domus-guidance-close {
-    position: absolute;
-    top: 22px;
-    right: 18px;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: 0;
-    border-radius: var(--domus-border-radius);
-    background: transparent;
-    color: #ffffff;
-    cursor: pointer;
-}
-
-.domus-guidance-close:hover,
-.domus-guidance-close:focus {
-    background: transparent;
-}
-
-.domus-guidance-close:focus-visible {
-    box-shadow: 0 0 0 2px rgba(18, 66, 110, 0.28);
-}
-
-.domus-guidance-close-icon {
-    position: relative;
-    display: block;
-    width: 18px;
-    height: 18px;
-}
-
-.domus-guidance-close-icon::before,
-.domus-guidance-close-icon::after {
-    content: "";
-    position: absolute;
-    top: 8px;
-    left: 1px;
-    width: 16px;
-    height: 2px;
-    background: currentColor;
-    border-radius: 999px;
-}
-
-.domus-guidance-close-icon::before {
-    transform: rotate(45deg);
-}
-
-.domus-guidance-close-icon::after {
-    transform: rotate(-45deg);
-}
-
-.domus-guidance-nav {
-    position: absolute;
-    top: 50%;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    margin-top: -14px;
-    border: 0;
-    border-radius: var(--domus-border-radius);
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-    color: var(--domus-theme);
-    cursor: pointer;
-}
-
-.domus-guidance-nav:hover,
-.domus-guidance-nav:focus {
-    background: #ffffff;
-}
-
-.domus-guidance-nav .domus-icon {
-    width: 22px;
-    height: 22px;
-    color: currentColor;
-}
-
-.domus-guidance-nav[hidden] {
-    display: none;
-}
-
-.domus-guidance-nav.is-disabled {
-    visibility: hidden;
-    pointer-events: none;
-}
-
-.domus-guidance-nav-previous {
-    left: -56px;
-}
-
-.domus-guidance-nav-next {
-    right: -56px;
-}
+.domus-modal-welcome { max-width: 1000px; }
 
 .domus-guidance-content {
     display: flex;
     align-items: center;
     min-height: 340px;
-    padding: 38px 42px 20px;
-    background: #ffffff;
+    padding: 12px 0 20px;
 }
 
 .domus-guidance-content > .domus-guidance-page {
@@ -331,37 +180,13 @@
     margin-top: 10px;
 }
 
-.domus-guidance-detail-actions {
-    margin-top: 24px;
-}
-
-.domus-guidance-detail-action {
-    min-height: 40px;
-    border-radius: var(--domus-border-radius);
-}
-
-.domus-guidance-detail-action.primary,
-.domus-guidance-detail-action.primary:hover,
-.domus-guidance-detail-action.primary:focus {
-    background: var(--domus-theme);
-    border-color: var(--domus-theme);
-    color: #ffffff;
-}
-
-.domus-guidance-footer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-    padding: 0 42px 22px;
-    background: #ffffff;
-}
-
 .domus-guidance-dots {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    flex-wrap: wrap;
+    margin-block-start: 16px;
 }
 
 .domus-guidance-dot {
@@ -379,38 +204,7 @@
     border-color: var(--domus-theme);
 }
 
-.domus-guidance-finish {
-    min-width: 180px;
-    min-height: 42px;
-    border: 0;
-    border-radius: var(--domus-border-radius);
-    padding: 0 20px;
-    background: var(--domus-theme);
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.domus-guidance-finish[hidden] {
-    display: none;
-}
-
-@media (max-width: 1220px) {
-    .domus-guidance-nav-previous {
-        left: 8px;
-    }
-
-    .domus-guidance-nav-next {
-        right: 8px;
-    }
-}
-
 @media (max-width: 920px) {
-    .domus-guidance-dialog {
-        width: min(100vw - 24px, 900px);
-    }
-
     .domus-guidance-content {
         min-height: 0;
         padding: 28px 24px 18px;
@@ -425,40 +219,9 @@
         grid-template-columns: 1fr;
         gap: 28px;
     }
-
-    .domus-guidance-footer {
-        padding: 0 24px 20px;
-    }
 }
 
 @media (max-width: 640px) {
-    .domus-guidance-backdrop {
-        padding: 12px;
-    }
-
-    .domus-guidance-header {
-        min-height: 88px;
-        padding: 20px;
-    }
-
-    .domus-guidance-brand-logo {
-        width: 46px;
-        height: 46px;
-    }
-
-    .domus-guidance-brand-name {
-        font-size: 28px;
-    }
-
-    .domus-guidance-nav {
-        top: auto;
-        bottom: 78px;
-        width: 44px;
-        height: 44px;
-        margin-top: 0;
-        font-size: 44px;
-    }
-
     .domus-guidance-page-overview,
     .domus-guidance-page-detail {
         gap: 24px;

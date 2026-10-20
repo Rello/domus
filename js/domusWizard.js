@@ -65,32 +65,16 @@
 
         let currentIndex = 0;
         let isOpen = false;
-        let backdrop = null;
+        let modal = null;
         let contentHost = null;
         let dotsHost = null;
         let previousButton = null;
         let nextButton = null;
         let finishButton = null;
-        let closeButton = null;
-        let previousActiveElement = null;
 
         function close(reason) {
-            if (!isOpen || !backdrop) {
-                return;
-            }
-
-            document.removeEventListener('keydown', onKeyDown);
-            backdrop.remove();
-            backdrop = null;
-            isOpen = false;
-
-            if (previousActiveElement && document.body.contains(previousActiveElement)) {
-                previousActiveElement.focus();
-            }
-
-            if (typeof options.onClose === 'function') {
-                options.onClose(reason || 'close', currentIndex, slides[currentIndex]);
-            }
+            if (!isOpen || !modal) return;
+            modal.close(reason || 'close');
         }
 
         function finish() {
@@ -174,17 +158,6 @@
             }
             textColumn.appendChild(bullets);
 
-            if (slide.primaryLabel) {
-                const actions = createElement('div', 'domus-guidance-detail-actions');
-                const primaryButton = createElement('button', 'domus-guidance-detail-action primary', slide.primaryLabel);
-                primaryButton.type = 'button';
-                primaryButton.addEventListener('click', function() {
-                    finish();
-                });
-                actions.appendChild(primaryButton);
-                textColumn.appendChild(actions);
-            }
-
             wrapper.appendChild(mediaColumn);
             wrapper.appendChild(textColumn);
             return wrapper;
@@ -213,11 +186,12 @@
         }
 
         function renderNavigation() {
-            previousButton.classList.toggle('is-disabled', currentIndex === 0);
-            previousButton.setAttribute('aria-disabled', currentIndex === 0 ? 'true' : 'false');
+            previousButton.disabled = currentIndex === 0;
             nextButton.hidden = currentIndex === slides.length - 1;
-            finishButton.hidden = true;
+            finishButton.hidden = currentIndex !== slides.length - 1 && !slides[currentIndex].primaryLabel;
             finishButton.textContent = slides[currentIndex].primaryLabel || options.finishLabel;
+            if (document.activeElement === nextButton && nextButton.hidden) finishButton.focus();
+            if (document.activeElement === previousButton && previousButton.disabled) nextButton.focus();
         }
 
         function render() {
@@ -228,12 +202,6 @@
 
         function onKeyDown(event) {
             if (!isOpen) {
-                return;
-            }
-
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                close('escape');
                 return;
             }
 
@@ -251,107 +219,47 @@
             }
         }
 
-        function buildHeader() {
-            const header = createElement('div', 'domus-guidance-header');
-            const brand = createElement('div', 'domus-guidance-brand');
-
-            if (options.brandLogo) {
-                const logo = createElement('img', 'domus-guidance-brand-logo');
-                logo.src = options.brandLogo;
-                logo.alt = options.brandName || '';
-                brand.appendChild(logo);
-            }
-
-            if (options.brandName) {
-                brand.appendChild(createElement('div', 'domus-guidance-brand-name', options.brandName));
-            }
-
-            header.appendChild(brand);
-            return header;
-        }
-
         function buildDialog() {
-            previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-
-            backdrop = createElement('div', 'domus-guidance-backdrop');
-            backdrop.setAttribute('role', 'presentation');
-
-            const dialog = createElement('div', 'domus-guidance-dialog');
-            dialog.setAttribute('role', 'dialog');
-            dialog.setAttribute('aria-modal', 'true');
-            dialog.setAttribute('aria-label', options.brandName || 'Domus');
-
-            closeButton = createElement('span', 'domus-guidance-close');
-            closeButton.setAttribute('role', 'button');
-            closeButton.setAttribute('tabindex', '0');
-            closeButton.setAttribute('aria-label', options.closeLabel);
-            closeButton.innerHTML = '<span class="domus-guidance-close-icon" aria-hidden="true"></span>';
-            closeButton.addEventListener('click', function() {
-                close('close');
-            });
-            closeButton.addEventListener('keydown', function(event) {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    close('close');
-                }
-            });
-
-            previousButton = createElement('button', 'domus-guidance-nav domus-guidance-nav-previous');
-            previousButton.type = 'button';
-            previousButton.setAttribute('aria-label', options.previousLabel);
-            previousButton.innerHTML = '<span class="domus-icon domus-icon-back" aria-hidden="true"></span>';
-            previousButton.addEventListener('click', function() {
-                if (currentIndex === 0) {
-                    return;
-                }
-                currentIndex -= 1;
-                render();
-            });
-
-            nextButton = createElement('button', 'domus-guidance-nav domus-guidance-nav-next');
-            nextButton.type = 'button';
-            nextButton.setAttribute('aria-label', options.nextLabel);
-            nextButton.innerHTML = '<span class="domus-icon domus-icon-arrow-right" aria-hidden="true"></span>';
-            nextButton.addEventListener('click', function() {
-                if (currentIndex >= slides.length - 1) {
-                    return;
-                }
-                currentIndex += 1;
-                render();
-            });
-
-            const shell = createElement('div', 'domus-guidance-shell');
-            shell.appendChild(buildHeader());
-
+            const content = createElement('div');
             contentHost = createElement('div', 'domus-guidance-content');
-            shell.appendChild(contentHost);
-
-            const footer = createElement('div', 'domus-guidance-footer');
             dotsHost = createElement('div', 'domus-guidance-dots');
-            finishButton = createElement('button', 'domus-guidance-finish');
+            content.appendChild(contentHost);
+            content.appendChild(dotsHost);
+
+            const actions = createElement('div', 'domus-form-actions');
+            const closeButton = createElement('button', '', options.closeLabel);
+            closeButton.type = 'button';
+            closeButton.addEventListener('click', () => close('close'));
+            previousButton = createElement('button', '', options.previousLabel);
+            previousButton.type = 'button';
+            previousButton.addEventListener('click', () => {
+                if (currentIndex > 0) { currentIndex--; render(); }
+            });
+            nextButton = createElement('button', 'primary', options.nextLabel);
+            nextButton.type = 'button';
+            nextButton.addEventListener('click', () => {
+                if (currentIndex < slides.length - 1) { currentIndex++; render(); }
+            });
+            finishButton = createElement('button', 'primary');
             finishButton.type = 'button';
             finishButton.addEventListener('click', finish);
-            footer.appendChild(dotsHost);
-            footer.appendChild(finishButton);
-            shell.appendChild(footer);
-
-            dialog.appendChild(closeButton);
-            dialog.appendChild(previousButton);
-            dialog.appendChild(shell);
-            dialog.appendChild(nextButton);
-            backdrop.appendChild(dialog);
-            document.body.appendChild(backdrop);
-
-            backdrop.addEventListener('click', function(event) {
-                if (event.target === backdrop) {
-                    close('backdrop');
-                }
-            });
-
-            document.addEventListener('keydown', onKeyDown);
+            actions.append(closeButton, previousButton, nextButton, finishButton);
+            content.appendChild(actions);
             isOpen = true;
             render();
-            closeButton.focus();
+            modal = Domus.UI.openModal({
+                title: options.brandName || t('domus', 'Domus'),
+                size: 'welcome',
+                content,
+                onClose: reason => {
+                    isOpen = false;
+                    modal = null;
+                    if (typeof options.onClose === 'function') {
+                        options.onClose(reason, currentIndex, slides[currentIndex]);
+                    }
+                }
+            });
+            modal.modalEl.addEventListener('keydown', onKeyDown);
         }
 
         return {

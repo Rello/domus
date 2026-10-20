@@ -116,6 +116,8 @@ return [
         ['name' => 'Dashboard#summary', 'url' => 'api/dashboard/summary', 'verb' => 'GET'],
 
         // Settings
+        ['name' => 'Settings#templateStatus', 'url' => '/api/settings/utility-template', 'verb' => 'GET'],
+        ['name' => 'Settings#assignTemplate', 'url' => '/api/settings/utility-template', 'verb' => 'PUT'],
         ['name' => 'Settings#show', 'url' => 'api/settings', 'verb' => 'GET'],
         ['name' => 'Settings#update', 'url' => 'api/settings', 'verb' => 'PUT'],
         ['name' => 'Settings#createDemoContent', 'url' => 'api/settings/demo-content', 'verb' => 'POST'],

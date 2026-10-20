@@ -51,6 +51,8 @@ GitHub Actions runs this same PHPUnit configuration and the browser wrapper on p
 The unit-workspace suite also checks year-closing account totals, advisory errors,
 confirmation, reopening, load retries, stale responses, failed saves, and phone layout.
 
+Run `PLAYWRIGHT_TEST=dialog-template ./tests/run-playwright.sh` for shared headers and persistent footers, native form validation and Enter submission, discard confirmations, focus restoration, and welcome navigation/completion at desktop and phone widths. Nextcloud file pickers retain their own dialogs.
+
 ## Welcome wizard screenshots
 - Run `./tests/capture-wizard-screenshots.sh` with the local NC35 stack running.
 - The script reads the local NC35 admin login from `nc35-app-1` and captures the
@@ -100,3 +102,10 @@ includes the four summary metrics, cumulative acquisition costs, all-year trends
 acquisition costs, provisional years, phone layout, retry, and obsolete responses.
 `PortfolioPerformanceTest` verifies shared finance formulas, weighted profitability,
 annual rent proration, annual rent totals, continuous years, acquisition cost accumulation by purchase year with history/current-year fallbacks, and exclusion of out-of-scope units.
+
+Run `PLAYWRIGHT_TEST=document-templates ./tests/run-playwright.sh` for utility-template assignment,
+document/process/scope rows, keyboard add and per-row removal, failed saves, readable HTTP errors,
+DOCX generation selection, missing/error states, explicit Markdown fallback, and narrow dialogs.
+The PHP template tests cover split Word text runs, XML escaping, unknown variables, missing IBANs,
+header/footer replacement, package preservation, actor file access and Personal/Team assignments.
+These fixtures do not prove office-editor rendering or permissions for a second real Team user.

@@ -118,6 +118,7 @@ async function main() {
     for (const viewport of [{width: 1280, height: 900}, {width: 390, height: 844}]) {
         await test(`utility report selects tenancy before compact preview at ${viewport.width}px`, async page => {
             await page.evaluate(() => {
+                Domus.Api.get = async () => ({ready: false, error: 'No document template configured.'});
                 Domus.Api.getUnitSettlements = async () => [{
                     groupId: 'partner-1', partnerId: 1, partnerName: 'Test renter', months: 12,
                     periods: [{startDate: '2025-01-01', endDate: null}],
@@ -140,7 +141,7 @@ async function main() {
             assert.ok(!(await table.innerText()).includes(await page.evaluate(() => Domus.Utils.formatCurrency(2400))));
             assert.equal(await dialog.getByRole('heading', {name: 'Create utility report – 2025', exact: true}).count(), 1);
             await dialog.locator('#domus-settlement-next').click();
-            assert.deepEqual(await dialog.locator('.domus-info-row dt').allTextContents(), ['Tenant', 'Prepayment', 'Maintenance fee', 'Additional <costs>', 'Property tax', 'Credit']);
+            assert.deepEqual(await dialog.locator('.domus-settlement-preview th').allTextContents(), ['Tenant', 'Prepayment', 'Maintenance fee', 'Additional <costs>', 'Property tax', 'Credit']);
             assert.equal(await dialog.locator('costs').count(), 0);
             assert.ok(!(await dialog.innerText()).includes(await page.evaluate(() => Domus.Utils.formatCurrency(1380))));
             assert.ok((await dialog.innerText()).includes(await page.evaluate(() => Domus.Utils.formatCurrency(780))));
@@ -157,13 +158,13 @@ async function main() {
             await dialog.locator('.domus-settlement-review').waitFor();
             assert.equal(await dialog.locator('.domus-guided-step.is-current').innerText(), 'Review');
             assert.equal(await dialog.locator('.domus-settlement-review dt').count(), 0);
-            assert.deepEqual(await dialog.locator('.domus-settlement-report-row button').allTextContents(), ['Preview', 'Open']);
+            assert.deepEqual(await dialog.locator('.domus-settlement-report-row button').allTextContents(), ['Open']);
             const centers = await dialog.locator('.domus-settlement-report-row').evaluate(el =>
                 [...el.children].map(child => { const rect = child.getBoundingClientRect(); return rect.top + rect.height / 2; })
             );
             assert.ok(Math.max(...centers) - Math.min(...centers) < 1, JSON.stringify(centers));
-            await dialog.locator('#domus-settlement-preview').click();
-            assert.equal(await page.evaluate(() => window.reviewedReportPath), '/Reports/utility-2025.md');
+            assert.equal(await dialog.locator('#domus-settlement-preview').count(), 0);
+            assert.equal(await dialog.locator(':scope > .domus-modal-footer #domus-settlement-close').count(), 1);
             await page.evaluate(() => { window.open = (...args) => { window.openedReport = args; }; });
             await dialog.getByRole('button', {name: 'Open', exact: true}).click();
             assert.deepEqual(await page.evaluate(() => window.openedReport), ['http://domus.test/report', '_blank', 'noopener,noreferrer']);
@@ -612,11 +613,11 @@ async function main() {
             if (confirmStep) {
                 await dialog.getByRole('button', {name: 'Next', exact: true}).click();
                 assert.equal(await dialog.getByRole('button', {name: 'Check bookings', exact: true}).count(), 0);
-                assert.deepEqual(await dialog.locator('.domus-form-actions button').allTextContents(), ['Back', 'Close year']);
-                assert.equal(await dialog.locator('.domus-form-actions button.primary').innerText(), 'Close year');
+                assert.deepEqual(await dialog.locator('.domus-modal-footer button').allTextContents(), ['Back', 'Close year']);
+                assert.equal(await dialog.locator('.domus-modal-footer button.primary').innerText(), 'Close year');
                 return;
             }
-            assert.equal(await dialog.locator('.domus-form-actions button.primary').innerText(), 'Check bookings');
+            assert.equal(await dialog.locator('.domus-modal-footer button.primary').innerText(), 'Check bookings');
             await dialog.getByRole('button', {name: 'Check bookings', exact: true}).click();
             await dialog.waitFor({state: 'detached'});
             await page.waitForFunction(() => {

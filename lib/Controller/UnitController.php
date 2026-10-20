@@ -145,8 +145,8 @@ class UnitController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function createSettlement(int $id, int $year, int $partnerId): DataResponse {
-        $result = $this->settlementService->createReport($this->getUserId(), $id, $year, $partnerId);
+    public function createSettlement(int $id, int $year, int $partnerId, string $format = 'md'): DataResponse {
+        $result = $this->settlementService->createReport($this->getUserId(), $id, $year, $partnerId, $format);
         return new DataResponse($result, Http::STATUS_CREATED);
     }
 

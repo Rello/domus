@@ -99,6 +99,113 @@
             });
         }
 
+        function templateScopeLabel() {
+            const teamId = Domus.state.managementContext?.activeTeamId;
+            if (!teamId) return t('domus', 'Personal');
+            const selector = document.getElementById('domus-context-select');
+            return Array.from(selector?.options || []).find(option => option.value === teamId)?.textContent || t('domus', 'Team');
+        }
+
+        function buildTemplateRows(status) {
+            const escape = Domus.Utils.escapeHtml;
+            if (!status?.fileId) return '<p class="domus-muted">' + escape(t('domus', 'No document template configured.')) + '</p>';
+            return Domus.UI.buildTable([t('domus', 'Document'), t('domus', 'Process'), t('domus', 'Scope'), ''], [[
+                escape(status.name || t('domus', 'Assigned template')) +
+                    (status.error ? '<div class="domus-error" role="status">' + escape(status.error) + '</div>' : ''),
+                escape(t('domus', 'Utility Bill Statement')),
+                escape(templateScopeLabel()),
+                Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove assignment'), {id: 'domus-template-delete'})
+            ]], {wrapPanel: false});
+        }
+
+        function buildTemplateSection(status) {
+            return buildSettingsSection({
+                id: 'domus-document-templates-panel',
+                title: t('domus', 'Document templates'),
+                headerActions: Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add template'), {id: 'domus-template-add'}),
+                body: '<div id="domus-template-list">' + buildTemplateRows(status) + '</div>'
+            });
+        }
+
+        function bindTemplateSection(initialStatus) {
+            const host = document.getElementById('domus-template-list');
+            const add = document.getElementById('domus-template-add');
+            let status = initialStatus;
+            const refresh = result => {
+                if (!host.isConnected) return;
+                status = result;
+                host.innerHTML = buildTemplateRows(status);
+                bindDelete();
+            };
+            const bindDelete = () => {
+                const remove = host.querySelector('#domus-template-delete');
+                if (!remove) return;
+                remove.onclick = async () => {
+                    remove.disabled = add.disabled = true;
+                    try {
+                        refresh(await Domus.Api.put('/settings/utility-template', {path: ''}));
+                    } catch (error) {
+                        if (host.isConnected) Domus.UI.showNotification(error.message, 'error');
+                    } finally { remove.disabled = add.disabled = false; }
+                };
+            };
+            bindDelete();
+            add.onclick = () => {
+                const escape = Domus.Utils.escapeHtml;
+                const modal = Domus.UI.openModal({
+                    title: t('domus', 'Add template'),
+                    content: '<form id="domus-template-form" class="domus-form">' + Domus.UI.buildFormTable([
+                        Domus.UI.buildFormRow({label: t('domus', 'Document'), content:
+                            '<button type="button" id="domus-template-pick">' + escape(t('domus', 'Select existing file')) + '</button>' +
+                            '<span id="domus-template-selected" class="domus-muted"></span>'}),
+                        Domus.UI.buildFormRow({label: t('domus', 'Process'), content:
+                            '<select name="process" aria-label="' + escape(t('domus', 'Process')) + '"><option value="utilityReport">' + escape(t('domus', 'Utility Bill Statement')) + '</option></select>'}),
+                        Domus.UI.buildFormRow({label: t('domus', 'Scope'), content: escape(templateScopeLabel())})
+                    ]) + (status?.fileId ? '<p>' + escape(t('domus', 'This replaces the template assigned to this process in the current scope.')) + '</p>' : '') +
+                    '<p id="domus-template-error" class="domus-error" role="alert"></p>' +
+                    '<div class="domus-form-actions"><button type="button" id="domus-template-cancel">' + escape(t('domus', 'Cancel')) + '</button>' +
+                    '<button type="submit" class="primary" disabled>' + escape(t('domus', 'Save')) + '</button></div></form>'
+                });
+                const form = modal.modalEl.querySelector('form');
+                const picker = form.querySelector('#domus-template-pick');
+                const save = modal.modalEl.querySelector('[type="submit"]');
+                const errorHost = form.querySelector('#domus-template-error');
+                let selectedPath = '';
+                modal.modalEl.querySelector('#domus-template-cancel').onclick = modal.close;
+                picker.onclick = () => {
+                    if (!window.OC?.dialogs?.filepicker) {
+                        errorHost.textContent = t('domus', 'File picker is unavailable.');
+                        return;
+                    }
+                    OC.dialogs.filepicker(t('domus', 'Select file'), path => {
+                        if (!form.isConnected || !path) return;
+                        selectedPath = String(Array.isArray(path) ? path[0] || '' : path);
+                        form.querySelector('#domus-template-selected').textContent = selectedPath.split('/').pop();
+                        save.disabled = !selectedPath;
+                        errorHost.textContent = '';
+                    }, false, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', true, 1, '/DomusApp/Templates');
+                };
+                form.onsubmit = async event => {
+                    event.preventDefault();
+                    if (!selectedPath || save.disabled) return;
+                    save.disabled = picker.disabled = true;
+                    errorHost.textContent = '';
+                    try {
+                        const result = await Domus.Api.put('/settings/utility-template', {path: selectedPath});
+                        modal.close();
+                        refresh(result);
+                        if (host.isConnected) {
+                            const panel = host.closest('.domus-settings-section');
+                            panel.classList.remove('domus-collapsed');
+                            panel.querySelector('.domus-section-header').setAttribute('aria-expanded', 'true');
+                        }
+                    } catch (error) {
+                        if (form.isConnected) errorHost.textContent = error.message;
+                    } finally { save.disabled = picker.disabled = false; }
+                };
+            };
+        }
+
         function buildDemoSection(role) {
             const showLandlord = role === 'landlord';
             const showBuilding = role === 'buildingMgmt';
@@ -250,6 +357,7 @@
                     toggleSection();
                 });
                 header.addEventListener('keydown', event => {
+                    if (event.target.closest('button')) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         toggleSection();
@@ -339,12 +447,12 @@
                 scope.onchange = renderScope;
                 renderScope();
                 modal.protectChanges();
-                form.querySelector('[data-rule-cancel]').onclick = modal.requestClose;
+                modal.modalEl.querySelector('[data-rule-cancel]').onclick = modal.requestClose;
                 const payload = () => ({name: form.elements.name.value, alertWarning: form.elements.alertWarning.value, months: Number(form.elements.months.value), dueDays: 0,
                     scope: scope.value, scopeIds: scope.value === 'allUnits' ? [] : Array.from(selected[scope.value]).map(Number), enabled: form.elements.enabled.checked, autoTask: true});
                 let revision = 0;
                 form.oninput = () => { revision++; form.querySelector('#domus-rule-preview').replaceChildren(); };
-                form.querySelector('[data-rule-preview]').onclick = async event => {
+                modal.modalEl.querySelector('[data-rule-preview]').onclick = async event => {
                     if (!form.reportValidity()) return;
                     const version = revision;
                     event.target.disabled = true;
@@ -363,7 +471,7 @@
                 };
                 form.onsubmit = async event => {
                     event.preventDefault();
-                    const button = form.querySelector('[type=submit]');
+                    const button = modal.modalEl.querySelector('[type=submit]');
                     button.disabled = true;
                     try {
                         if (rule) await Domus.Api.put('/rules/' + rule.id, payload());
@@ -375,7 +483,7 @@
             } catch (error) { if (host.isConnected) Domus.UI.showNotification(error.message, 'error'); }
         }
 
-        function render() {
+        function render(section = '') {
             const view = Domus.Router.beginView();
             Domus.UI.showLoading(t('domus', 'Loading…'));
             Domus.Api.getSettings()
@@ -387,6 +495,7 @@
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
                         buildTeamSection(response?.requiredApps) +
                         buildForm(settings) +
+                        buildTemplateSection(response?.utilityReportTemplate) +
                         buildIntroSection() +
                         buildRulesSection() +
                         Domus.TaskTemplates.renderSection() +
@@ -398,9 +507,16 @@
                         Domus.Router.navigate('renterPreview');
                     });
                     bindForm();
+                    bindTemplateSection(response?.utilityReportTemplate);
                     bindRestartIntroButton();
                     bindDemoButton();
                     bindSectionToggles();
+                    if (section === 'documentTemplates') {
+                        const panel = document.getElementById('domus-document-templates-panel');
+                        panel.classList.remove('domus-collapsed');
+                        panel.querySelector('.domus-section-header').setAttribute('aria-expanded', 'true');
+                        panel.scrollIntoView({block: 'nearest'});
+                    }
                     Domus.TaskTemplates.loadTemplates();
                     loadRules();
                     Domus.Accounts.loadSettingsSection();
