@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
+- Indicate tenancy-assigned documents with an icon in unit document lists.
 - Personal and Team DOCX templates for editable utility reports, with a Markdown fallback.
 - Read-only unit and annual revenue APIs with Personal/Team selection and OpenAPI documentation.
 - Multi-year portfolio analytics for rent, profit, profitability, and acquisition costs.

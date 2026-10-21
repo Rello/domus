@@ -58,6 +58,31 @@ class DocumentTeamScopeTest extends TestCase {
         return array_map(static fn($operation) => [$operation], ['upload', 'link', 'attach', 'content', 'unlink', 'unitUnlink']);
     }
 
+    public function testUnitDocumentListMarksOnlyTenancyAssignedFiles(): void {
+        $dependencies = [];
+        foreach ((new \ReflectionClass(DocumentService::class))->getConstructor()->getParameters() as $parameter) {
+            $dependencies[$parameter->getName()] = $this->createMock($parameter->getType()->getName());
+        }
+        $links = [];
+        foreach ([42, 43, null] as $index => $fileId) {
+            $link = new DocumentLink();
+            $link->setId($index + 1);
+            $link->setEntityType('unit');
+            $link->setEntityId(1);
+            $link->setFileId($fileId);
+            $links[] = $link;
+        }
+        $dependencies['documentLinkMapper']->method('findForEntity')->with('actor', 'unit', 1)->willReturn($links);
+        $dependencies['documentLinkMapper']->expects($this->once())->method('findTenancyAssignedFileIds')
+            ->with('actor', [42, 43])->willReturn([42]);
+        $dependencies['managementContext']->method('actorUserId')->willReturn('actor');
+        $folder = $this->createMock(Folder::class);
+        $folder->method('getById')->willReturn([]);
+        $dependencies['rootFolder']->method('getUserFolder')->willReturn($folder);
+        $result = (new DocumentService(...array_values($dependencies)))->listForEntity('actor', 'unit', 1);
+        self::assertSame([true, false, false], array_map(static fn($link) => $link->jsonSerialize()['assignedToTenancy'], $result));
+    }
+
     /** @dataProvider viewerAccess */
     public function testDocumentViewerRequiresReadableFileInActorFiles(bool $mounted, bool $readable, string $route): void {
         $dependencies = [];

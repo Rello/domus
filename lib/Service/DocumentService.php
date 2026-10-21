@@ -49,8 +49,17 @@ class DocumentService {
     public function listForEntity(string $userId, string $entityType, int $entityId): array {
         $this->assertEntityType($entityType);
         $links = $this->documentLinkMapper->findForEntity($userId, $entityType, $entityId);
+        $assignedFileIds = [];
+        if ($entityType === 'unit') {
+            $fileIds = array_values(array_unique(array_filter(array_map(
+                static fn(DocumentLink $link) => $link->getFileId(),
+                $links,
+            ))));
+            $assignedFileIds = array_fill_keys($this->documentLinkMapper->findTenancyAssignedFileIds($userId, $fileIds), true);
+        }
         foreach ($links as $link) {
             $this->hydrateLink($link);
+            $link->setAssignedToTenancy(isset($assignedFileIds[$link->getFileId()]));
         }
         return $links;
     }

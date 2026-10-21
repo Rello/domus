@@ -21,6 +21,7 @@ class DocumentLink extends Entity implements JsonSerializable {
     protected $createdAt;
     protected $documentDate;
 
+    private bool $assignedToTenancy = false;
     private ?string $fileUrl = null;
     private ?string $filePath = null;
 
@@ -44,7 +45,12 @@ class DocumentLink extends Entity implements JsonSerializable {
             'filePath' => $this->filePath,
             'createdAt' => $this->createdAt,
             'documentDate' => $this->documentDate,
+            'assignedToTenancy' => $this->assignedToTenancy,
         ];
+    }
+
+    public function setAssignedToTenancy(bool $assignedToTenancy): void {
+        $this->assignedToTenancy = $assignedToTenancy;
     }
 
     public function setFileUrl(?string $fileUrl): void {

@@ -6,6 +6,7 @@
 OC.L10N.register(
     "domus",
     {
+        "Assigned to a tenancy": "Einem Mietverhältnis zugewiesen",
         "Scope": "Bereich",
         "Team": "Team",
         "Assigned template": "Zugewiesene Vorlage",

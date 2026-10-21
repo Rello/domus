@@ -4966,6 +4966,21 @@
     white-space: normal;
 }
 
+.domus-documents-file-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.domus-documents-file-title .domus-documents-file-name {
+    min-width: 0;
+}
+
+.domus-document-tenancy-indicator {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
 .domus-documents-file-name {
     display: block;
     overflow-wrap: anywhere;

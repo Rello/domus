@@ -460,6 +460,25 @@ async function main() {
         ]);
     });
 
+    await test('unit documents indicate tenancy assignments beside the file name', async page => {
+        await page.evaluate(() => {
+            Domus.Api.getDocuments = async () => [
+                {id: 61, fileName: 'Lease.pdf', assignedToTenancy: true},
+                {id: 62, fileName: 'Invoice.pdf', assignedToTenancy: false}
+            ];
+        });
+        await page.getByRole('navigation', {name: 'Unit sections'}).getByRole('link', {name: 'Documents'}).click();
+        const indicator = page.getByRole('img', {name: 'Assigned to a tenancy'});
+        await indicator.waitFor();
+        assert.equal(await indicator.count(), 1);
+        assert.equal(await indicator.getAttribute('title'), 'Assigned to a tenancy');
+        assert.match(await indicator.locator('..').innerText(), /Lease.pdf/);
+        assert.equal(await page.locator('[data-doc-info="62"] .domus-document-tenancy-indicator').count(), 0);
+        const icon = indicator.locator('.domus-icon-tenancy');
+        assert.equal(await icon.count(), 1);
+        assert.ok((await icon.boundingBox()).width > 0);
+    });
+
     await test('unit tasks keep dashboard urgency and process identity', async page => {
         await page.evaluate(() => {
             const dueDate = offset => {

@@ -56,6 +56,28 @@ class DocumentLinkMapper extends TeamScopedMapper {
         return $this->findEntities($qb);
     }
 
+    /** Return tenancy-assigned file IDs within the active ownership context. */
+    public function findTenancyAssignedFileIds(string $userId, array $fileIds): array {
+        if ($fileIds === []) {
+            return [];
+        }
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('file_id')
+            ->from($this->getTableName())
+            ->where($this->ownerExpression($qb, $userId))
+            ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter('tenancy')))
+            ->andWhere($qb->expr()->in('file_id', $qb->createNamedParameter($fileIds, $qb::PARAM_INT_ARRAY)))
+            ->groupBy('file_id');
+
+        $result = $qb->executeQuery();
+        $ids = [];
+        while ($row = $result->fetch()) {
+            $ids[] = (int)$row['file_id'];
+        }
+        $result->closeCursor();
+        return $ids;
+    }
+
     /**
      * @throws Exception
      */

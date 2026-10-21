@@ -27,7 +27,12 @@
             const fileAction = safeFileUrl
                 ? '<a class="domus-documents-file-name domus-action-log-title-text" href="' + Domus.Utils.escapeHtml(safeFileUrl) + '" target="_blank" rel="noopener noreferrer">' + fileLabel + '</a>'
                 : '<span class="domus-documents-file-name domus-action-log-title-text">' + fileLabel + '</span>';
-            const fileCellContent = fileAction +
+            const tenancyIndicator = options.showTenancyIndicator && doc.assignedToTenancy
+                ? '<span class="domus-document-tenancy-indicator" role="img" aria-label="' +
+                    Domus.Utils.escapeHtml(t('domus', 'Assigned to a tenancy')) + '" title="' +
+                    Domus.Utils.escapeHtml(t('domus', 'Assigned to a tenancy')) + '"><span class="domus-icon domus-icon-tenancy" aria-hidden="true"></span></span>'
+                : '';
+            const fileCellContent = (tenancyIndicator ? '<div class="domus-documents-file-title">' + fileAction + tenancyIndicator + '</div>' : fileAction) +
                 (note ? '<div class="muted">' + Domus.Utils.escapeHtml(note) + '</div>' : '');
             const editAction = '<button type="button" class="domus-icon-only-button domus-document-edit" data-doc-edit="' + Domus.Utils.escapeHtml(doc.id) + '" aria-label="' +
                 Domus.Utils.escapeHtml(t('domus', 'Edit document {file}', { file: fileName })) + '" title="' +
@@ -97,7 +102,7 @@
                             return year === filterYear;
                         })
                         : (docs || []);
-                    const rows = filteredDocs.map(doc => buildDocumentRow(doc, { canManageDocuments, showNotes: options.showNotes, showUnlinkAction: options.showUnlinkAction, showEditAction: options.showEditAction }));
+                    const rows = filteredDocs.map(doc => buildDocumentRow(doc, { showTenancyIndicator: entityType === 'unit', canManageDocuments, showNotes: options.showNotes, showUnlinkAction: options.showUnlinkAction, showEditAction: options.showEditAction }));
                     const html = '<div id="' + containerId + '">' +
                         '<div class="domus-documents-table">' +
                         Domus.UI.buildTable([t('domus', 'File')], rows, { wrapPanel: false, showHeader: false }) +
@@ -169,7 +174,7 @@
             }
 
             function buildRows(docs) {
-                return docs.slice(0, visibleCount).map(doc => buildDocumentRow(doc, { showDate: true, canManageDocuments, showNotes: options.showNotes }));
+                return docs.slice(0, visibleCount).map(doc => buildDocumentRow(doc, { showTenancyIndicator: entityType === 'unit', showDate: true, canManageDocuments, showNotes: options.showNotes }));
             }
 
             function renderView(docs) {
