@@ -40,6 +40,7 @@ async function setup(page) {
         Domus.Api.getActionLogs = async () => [];
         Domus.Api.getDistributions = async () => [{ id: 2, name: 'Area', type: 'area' }];
         Domus.Api.createBooking = async () => ({ id: 1 });
+        Domus.Accounts.label = number => ({2000:'Allocatable costs',2100:'Non-allocatable costs',2200:'Reserve contribution'}[number] || '');
         Domus.Accounts.toOptions = () => [{ value: '', label: 'Select account' }, { value: '2000', label: 'Test account' }];
         window.openBooking = (defaults = {}, options = {}) => Domus.Bookings.openCreateModal(defaults, () => {}, options);
         document.querySelector('#launcher').addEventListener('click', () => window.openBooking());
@@ -61,6 +62,7 @@ async function main() {
         page.on('pageerror', error => errors.push(error.message));
         try {
             await setup(page);
+            await page.route('**/settings/ai-document-validation', route => route.fulfill({json:{available:true,enabled:/assignment preview|dashboard|unit Add document/.test(name)}}));
             await action(page);
             assert.deepEqual(errors, [], 'No browser errors');
             console.log(`PASS ${name}`);
@@ -71,6 +73,230 @@ async function main() {
             await page.close();
         }
     }
+
+    await test('disabled AI does not process selected PDFs or show a Test button', async page => {
+        let creates = 0;
+        await page.route('**/booking-assignment-preview**', route => {creates++; return route.fulfill({json:{taskId:1}});});
+        await page.evaluate(() => openBooking({}, {createContext:'document'}));
+        const dialog = bookingDialog(page);
+        await dialog.locator('input[type="file"]').setInputFiles({name:'statement.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
+        await page.waitForTimeout(200);
+        assert.equal(creates, 0);
+        assert.equal(await page.getByRole('dialog', {name:'Automatic assignment preview',exact:true}).count(), 0);
+        assert.equal(await dialog.locator('[data-role="assignment-preview"]').count(), 0);
+    });
+
+    await test('assignment preview starts for an initial dashboard dropped PDF', async page => {
+        await page.route('**/booking-assignment-preview**', route => route.fulfill({status:422,json:{message:'Automatic request received'}}));
+        await page.evaluate(() => openBooking({}, {createContext:'document',initialDocumentSelection:{type:'upload',file:new File(['%PDF-fixture'],'drop.pdf',{type:'application/pdf'})}}));
+        await page.getByRole('dialog',{name:'Automatic assignment preview',exact:true}).getByText('Automatic request received',{exact:true}).waitFor();
+    });
+
+    await test('assignment preview replaces inferred units but preserves manual choice', async page => {
+        let detected = 1;
+        await page.route('**/booking-assignment-preview**', route => {
+            if (route.request().method() === 'POST') return route.fulfill({json:{taskId:55}});
+            if (route.request().method() === 'DELETE') return route.fulfill({json:{}});
+            return route.fulfill({json:{status:'complete',result:{unitId:detected,period:{start:'2025-01-01',end:'2025-12-31'},accounts:[]}}});
+        });
+        await page.evaluate(() => {
+            Domus.Api.getUnits = async () => [{id:1,label:'First'},{id:2,label:'Second'}];
+            openBooking({}, {createContext:'document'});
+        });
+        const dialog = bookingDialog(page);
+        const unit = dialog.locator('[name="unitId"]');
+        const preview = page.getByRole('dialog',{name:'Automatic assignment preview',exact:true});
+        const select = async name => {
+            await dialog.locator('input[type="file"]').setInputFiles({name,mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
+            await preview.getByRole('table').waitFor();
+            await preview.getByRole('button',{name:'Close',exact:true}).click();
+        };
+        await select('first.pdf');
+        assert.equal(await unit.inputValue(), '1');
+        detected = 2;
+        await select('second.pdf');
+        assert.equal(await unit.inputValue(), '2');
+        await unit.selectOption('1');
+        await select('third.pdf');
+        assert.equal(await unit.inputValue(), '1');
+    });
+
+    await test('assignment preview does not inject landlord accounts into building management', async page => {
+        let requests = 0;
+        await page.route('**/booking-assignment-preview**', route => {requests++; return route.fulfill({json:{taskId:1}});});
+        await page.evaluate(() => {
+            Domus.Role.isBuildingMgmtView = () => true;
+            openBooking({}, {createContext:'document'});
+        });
+        await bookingDialog(page).locator('input[type="file"]').setInputFiles({name:'statement.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
+        await page.waitForTimeout(200);
+        assert.equal(requests, 0);
+    });
+
+    await test('dashboard identifies unit only after starting preview', async page => {
+        let calls = 0;
+        await page.route('**/booking-assignment-preview**', route => {
+            calls++;
+            if (route.request().method() === 'POST') return route.fulfill({json:{taskId:55}});
+            if (route.request().method() === 'DELETE') return route.fulfill({json:{}});
+            return route.fulfill({json:{status:'complete',result:{unitId:1,unitIdentification:{addresses:['Test street 4'],unitNumbers:['DH10']},period:{start:'2025-01-01',end:'2025-12-31'},accounts:[]}}});
+        });
+        await page.evaluate(() => openBooking({}, {createContext:'document',identifyDocumentUnit:true}));
+        const dialog = page.getByRole('dialog', {name:'Add document',exact:true});
+        await dialog.locator('input[type="file"]').setInputFiles({name:'statement.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
+        assert.equal(await dialog.locator('[name="unitId"]').inputValue(), '');
+        const preview = page.getByRole('dialog', {name:'Automatic assignment preview',exact:true});
+        await preview.getByText('Unit detection details', {exact:true}).waitFor();
+        assert.equal(await preview.locator('details').evaluate(node => node.open), false);
+        assert.equal(await preview.getByText('Test street 4', {exact:true}).isVisible(), false);
+        assert.doesNotMatch(await preview.innerText(), /statement\.pdf/);
+        const paragraphs = await preview.locator('[role="status"] > p').allTextContents();
+        assert.match(paragraphs[0], /^Reporting period:/);
+        assert.match(paragraphs[1], /^Unit:/);
+        await preview.getByText('Unit detection details', {exact:true}).click();
+        await preview.getByText('Test street 4', {exact:true}).waitFor();
+        assert.equal(await page.getByRole('dialog', {name:'Automatic assignment preview',exact:true}).getByText('DH10', {exact:true}).count(), 1);
+        assert.equal(await dialog.locator('[name="unitId"]').inputValue(), '1');
+    });
+
+    await test('dashboard Book transfers amounts without a matched unit', async page => {
+        await page.route('**/booking-assignment-preview**', route => {
+            if (route.request().method() === 'POST') return route.fulfill({json:{taskId:56}});
+            if (route.request().method() === 'DELETE') return route.fulfill({json:{}});
+            return route.fulfill({json:{status:'complete',result:{unitId:null,period:{start:'2025-01-01',end:'2025-12-31'},accounts:[{account:'2000',amount:123.45,confidence:'low',pages:[]}]}}});
+        });
+        await page.evaluate(() => openBooking({}, {createContext:'document',identifyDocumentUnit:true}));
+        const dialog = page.getByRole('dialog', {name:'Add document',exact:true});
+        await dialog.locator('input[type="file"]').setInputFiles({name:'statement.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
+        const preview = page.getByRole('dialog', {name:'Automatic assignment preview',exact:true});
+        await preview.getByRole('table').waitFor();
+        assert.equal(await preview.getByRole('button', {name:'Book',exact:true}).isEnabled(), true);
+        await preview.getByRole('button', {name:'Book',exact:true}).click();
+        assert.equal(await dialog.locator('[name="unitId"]').inputValue(), '');
+        assert.equal(await dialog.locator('[data-role="section-toggle"][data-section="booking"]').getAttribute('aria-expanded'), 'true');
+        assert.equal(await dialog.locator('.domus-booking-entry [data-role="amount"]').first().inputValue(), '123.45');
+        assert.equal(await dialog.locator('input[name="date"]').inputValue(), '2025-12-31');
+    });
+
+    await test('unit Add document offers assignment preview without a booking', async page => {
+        await page.evaluate(() => Domus.Documents.openLinkModal('unit', 1));
+        const dialog = page.getByRole('dialog', {name:'Add document',exact:true});
+        await page.route('**/booking-assignment-preview**', route => {
+            if (route.request().method() === 'POST') return route.fulfill({json:{taskId:55}});
+            if (route.request().method() === 'DELETE') return route.fulfill({json:{}});
+            return route.fulfill({json:{status:'complete',result:{period:{start:'2025-01-01',end:'2025-12-31'},accounts:[
+                {account:'2000',amount:1939.39,confidence:'low',pages:[1]},
+                {account:'2100',amount:0,confidence:'supported',pages:[1]},
+                {account:'2200',amount:null,confidence:null,pages:[]}
+            ]}}});
+        });
+        await dialog.locator('input[type="file"]').setInputFiles({name:'statement.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
+        const preview = page.getByRole('dialog', {name:'Automatic assignment preview',exact:true});
+        await preview.getByRole('table').waitFor();
+        await preview.getByRole('button', {name:'Book',exact:true}).click();
+        assert.equal(await dialog.locator('[data-role="section-toggle"][data-section="booking"]').getAttribute('aria-expanded'), 'true');
+        assert.equal(await dialog.locator('input[name="date"]').inputValue(), '2025-12-31');
+        assert.equal(await dialog.locator('input[name="deliveryDate"]').inputValue(), '2025-12-31');
+        assert.deepEqual(await dialog.locator('.domus-booking-entry [data-role="account"]').evaluateAll(nodes => nodes.map(node => node.value).filter(Boolean)), ['2000','2100']);
+        assert.deepEqual(await dialog.locator('.domus-booking-entry [data-role="amount"]').evaluateAll(nodes => nodes.map(node => node.value).filter(value => value !== '')), ['1939.39','0']);
+        assert.equal(await dialog.isVisible(), true);
+    });
+
+    for (const source of ['upload', 'Nextcloud']) {
+        await test(`assignment preview ${source}: empty fields, retry, evidence, focus and preserved draft`, async page => {
+            const calls = [];
+            let creates = 0;
+            await page.route('**/booking-assignment-preview**', async route => {
+                calls.push(route.request().method());
+                if (route.request().method() === 'POST') return route.fulfill({json: {taskId: ++creates}});
+                if (route.request().method() === 'DELETE') return route.fulfill({json: {}});
+                if (creates === 1) return route.fulfill({status: 422, json: {message: 'No AI chat provider is available.'}});
+                return route.fulfill({json: {status: 'complete', result: {
+                    period: {start:'2025-01-01',end:'2025-12-31',source:'Abrechnungsperiode 2025',status:'found'},
+                    accounts: ['2000','2100','2200'].map((account,index) => ({account,confidence:index===0?'supported':'low',pages:index===0?[2,3]:[],amount: index === 2 ? null : index === 1 ? 0 : 1939.39,source:'<b>Source evidence</b>',status:index===2?'not_found':'found'}))
+                }}});
+            });
+            await page.evaluate(() => openBooking({unitId:1}, {assignmentPreview:true, initialDocumentSelection: null}));
+            const booking = bookingDialog(page);
+            await booking.waitFor();
+            // The document section is optional in a new cost booking.
+            await booking.getByText('Attach document (optional)', {exact:true}).click();
+            await booking.getByRole('textbox',{name:'Description',exact:true}).fill('Keep this draft');
+            if (source === 'upload') {
+                await booking.locator('input[type="file"]').setInputFiles({name:'statement.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
+            } else await booking.getByRole('button',{name:'Select existing file',exact:true}).click();
+            const preview = page.getByRole('dialog',{name:'Automatic assignment preview',exact:true});
+            await preview.getByText('No AI chat provider is available.',{exact:true}).waitFor();
+            await preview.getByRole('button',{name:'Retry',exact:true}).click();
+            await preview.getByRole('table').waitFor();
+            assert.deepEqual(await preview.locator('tbody tr td:first-child').allTextContents(), ['Allocatable costs','Non-allocatable costs','Reserve contribution']);
+            assert.equal(await preview.locator('tbody tr').count(),3);
+            assert.equal(await preview.getByText('Evidence matched', {exact:true}).count(),1);
+            assert.equal(await preview.getByText('Low confidence', {exact:true}).count(),1);
+            assert.deepEqual(await preview.locator('tbody tr td:last-child').allTextContents(), ['2, 3', '—', '']);
+            assert.equal(await preview.locator('tbody tr').last().locator('td').last().textContent(),'');
+            assert.doesNotMatch(await preview.innerText(), /2000|2100|2200|Source evidence|Needs review|Building comparison|Not found/);
+            assert.equal(await preview.locator('blockquote b').count(),0);
+            assert.match(await preview.innerText(), /2025-01-01/);
+            await preview.getByRole('button',{name:'Close',exact:true}).click();
+            assert.equal(await booking.getByRole('textbox',{name:'Description',exact:true}).inputValue(),'Keep this draft');
+            assert.equal(creates,2);
+            await page.waitForTimeout(100);
+            assert.equal(calls.filter(method => method === 'DELETE').length,2);
+        });
+    }
+    await test('assignment preview shows queued and provider-reported running progress', async page => {
+        let phase = 'queued';
+        await page.route('**/booking-assignment-preview**', route => {
+            if (route.request().method() === 'POST') return route.fulfill({json:{taskId:24}});
+            if (route.request().method() === 'DELETE') return route.fulfill({json:{}});
+            return route.fulfill({json:{status:'processing',phase,progress:phase==='running'?0.35:null}});
+        });
+        await page.evaluate(() => openBooking({unitId:1}, {assignmentPreview:true}));
+        const booking = bookingDialog(page);
+        await booking.getByText('Attach document (optional)',{exact:true}).click();
+        await booking.getByRole('button',{name:'Select existing file',exact:true}).click();
+        const preview = page.getByRole('dialog',{name:'Automatic assignment preview',exact:true});
+        await preview.getByText('PDF text extracted. Waiting for the AI worker…',{exact:true}).waitFor();
+        phase = 'running';
+        await preview.getByText('AI is extracting the reporting period and suggested values… 35% complete',{exact:true}).waitFor();
+    });
+
+    await test('assignment preview reports the HTTP status for an HTML route error', async page => {
+        await page.route('**/booking-assignment-preview', route => route.fulfill({status:404,contentType:'text/html',body:'<html>Not found</html>'}));
+        await page.evaluate(() => openBooking({unitId:1}, {assignmentPreview:true}));
+        const booking = bookingDialog(page);
+        await booking.getByText('Attach document (optional)',{exact:true}).click();
+        await booking.getByRole('button',{name:'Select existing file',exact:true}).click();
+        await page.getByRole('dialog',{name:'Automatic assignment preview',exact:true})
+            .getByText('Server request failed (404). Reload the page and try again.',{exact:true}).waitFor();
+    });
+
+    await test('assignment preview discards late creation after closure and stops on Team changes', async page => {
+        let finish;
+        let deletes = 0;
+        await page.route('**/booking-assignment-preview**', async route => {
+            if (route.request().method() === 'DELETE') { deletes++; return route.fulfill({json:{}}); }
+            if (route.request().method() === 'POST') { await new Promise(resolve => {finish=resolve;}); return route.fulfill({json:{taskId:99}}); }
+            return route.fulfill({json:{status:'processing'}});
+        });
+        await page.evaluate(() => openBooking({unitId:1}, {assignmentPreview:true}));
+        const booking = bookingDialog(page);
+        await booking.getByText('Attach document (optional)',{exact:true}).click();
+        await booking.getByRole('button',{name:'Select existing file',exact:true}).click();
+        const preview=page.getByRole('dialog',{name:'Automatic assignment preview',exact:true});
+        await preview.getByText('Reading PDF and preparing AI request…',{exact:true}).waitFor();
+        await preview.getByRole('button',{name:'Close',exact:true}).click();
+        finish();
+        await page.waitForTimeout(150);
+        assert.equal(deletes,1);
+        await booking.locator('input[type="file"]').setInputFiles({name:'second.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
+        await preview.waitFor();
+        await page.evaluate(() => {Domus.state.managementContext={activeTeamId:'other-team'};});
+        await preview.waitFor({state:'detached'});
+        finish();
+        await page.waitForTimeout(150);
+    });
 
     for (const dismissal of ['Escape', 'Close', 'Cancel', 'Backdrop']) {
         await test(`booking ${dismissal}: keep, discard, reopen and focus return`, async page => {

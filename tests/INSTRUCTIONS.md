@@ -116,3 +116,38 @@ year selection, retry, empty state, and phone layout.
 The tax-report PHP tests cover Wiso amounts and control balance, separate tenant credits/payments, child accounts,
 unit/property year closure, year-scoped booking descriptions, and exclusion of foreign units. Rent and prepayments use existing
 tenancy proration; expense amounts use unit bookings.
+
+Automatic booking assignment preview checks:
+- Run `./tests/run-unit.sh --filter "BookingAssignment|AiDocumentValidation"` for strict JSON/evidence validation,
+  missing/ambiguous periods, explicit zero, rejection of building totals as supported individual evidence, optional Assistant,
+  scans, provider availability, inaccessible files and actor/unit/scope task binding.
+- Run `PLAYWRIGHT_TEST=modal-changes ./tests/run-playwright.sh` for PDF uploads and
+  Nextcloud selection, empty manual fields, retry/errors, preserved drafts, nested focus,
+  late task creation cleanup, Team changes, opt-out, initial dropped PDFs and replacement of inferred units.
+- Run `PLAYWRIGHT_TEST=renter-preview ./tests/run-playwright.sh` for the renamed
+  Nextcloud Integration Check and the AI settings toggle.
+- AI document validation is off by default. Enable it in Settings → Nextcloud Integration Check in the active
+  Personal/Team context. Assistant, task processing and a text provider must be available.
+  Selecting a PDF opens the preview automatically; there is no manual Test button.
+  Building Management forms are excluded because their account model differs.
+- Live model acceptance is separate: test the Hartmutstraße annual statement (2025,
+  2000 = 1939.39, 2100 = 579.48, 2200 missing), mixed actual/plan pages and columns,
+  and individual Ist-Zuführung versus Soll/balances/withdrawals/interest. Normalizer
+  fixtures do not establish model extraction accuracy. Use the configured provider
+  and a Nextcloud taskprocessing worker; do not change global AI configuration.
+- Compare booking and document-link counts before/after, check temporary file cleanup
+  and discarded task IDs. The preview only creates core taskprocessing tasks and
+  temporary upload files; it must never save a booking or document link.
+
+For newly added routes, verify the exact user-facing hostname. Nextcloud caches route
+collections by hostname; a successful test through host.docker.internal does not prove
+that an older localhost route cache contains the endpoint. Refresh the local web-server
+cache after route changes before checking the user-facing URL.
+
+Temporary preview timing diagnostics are opt-in via the Domus app configuration key
+`bookingPreviewTraceUntil` (Unix expiry timestamp). Logs use the message
+`Temporary booking preview timing` and include UTC timestamps, correlation/task IDs,
+PDF preparation/scheduling/validation durations and core task queue/execution times.
+Polling snapshots report the core worker timestamps; they are not provider-internal
+traces and cannot distinguish model loading from generation. Document text, paths and
+model output are excluded. Clear the key or let it expire to stop logging.

@@ -909,6 +909,231 @@
             }
         }
 
+        function mountAssignmentPreview(parent, widget, unitId, units, onBook) {
+            if (!widget) return () => {};
+            const scope = Domus.state.managementContext?.activeTeamId || 'Personal';
+            const route = window.location.href;
+            const current = () => parent.modalEl.isConnected
+                && (Domus.state.managementContext?.activeTeamId || 'Personal') === scope
+                && window.location.href === route
+                && (!unitId || String(parent.modalEl.querySelector('[name="unitId"]')?.value ?? unitId) === String(unitId));
+            const base = OC.generateUrl('/apps/domus/api/units/' + encodeURIComponent(unitId || 0) + '/booking-assignment-preview');
+            const request = async (method, suffix = '', body) => {
+                const response = await fetch(base + suffix, {
+                    method, body,
+                    headers: {'requesttoken': OC.requestToken, 'X-Domus-Team': scope}
+                });
+                const data = await response.json().catch(() => null);
+                if (!response.ok) throw new Error(data?.message || t('domus', 'Server request failed ({status}). Reload the page and try again.', {status: response.status}));
+                if (!data) throw new Error(t('domus', 'Preview processing failed. Please try again.'));
+                return data;
+            };
+            const discard = id => { if (id) request('DELETE', '/' + id).catch(() => {}); };
+            let preview = null;
+            let generation = 0;
+            let taskId = null;
+            let timer = null;
+            const stop = () => {
+                generation++;
+                clearTimeout(timer);
+                discard(taskId);
+                taskId = null;
+            };
+            const unitField = parent.modalEl.querySelector('[name="unitId"]');
+            let automaticUnit = '';
+            let applyingUnit = false;
+            let manualUnit = Boolean(unitField?.value);
+            const setAutomaticUnit = value => {
+                if (!unitField) return;
+                applyingUnit = true;
+                unitField.value = value;
+                unitField.dispatchEvent(new Event('change', {bubbles: true}));
+                applyingUnit = false;
+                automaticUnit = value;
+            };
+            if (!unitId) unitField?.addEventListener('change', () => {
+                if (!applyingUnit) { manualUnit = true; automaticUnit = ''; }
+            });
+            let lastSelection = null;
+            let selectionVersion = 0;
+            const selectionChanged = async () => {
+                const selection = widget.getSelection();
+                const identity = selection?.file || selection?.filePath || null;
+                if (identity === lastSelection) return;
+                lastSelection = identity;
+                if (!unitId && !manualUnit && automaticUnit) setAutomaticUnit('');
+                const version = ++selectionVersion;
+                preview?.close();
+                const name = selection?.file?.name || selection?.filePath || '';
+                if (!/\.pdf$/i.test(name) || !current()) return;
+                try {
+                    const response = await fetch(OC.generateUrl('/apps/domus/api/settings/ai-document-validation'), {
+                        headers: {requesttoken: OC.requestToken, 'X-Domus-Team': scope}
+                    });
+                    if (!response.ok) return;
+                    const status = await response.json();
+                    if (version !== selectionVersion || !current() || !status.available || !status.enabled) return;
+                    openPreview();
+                } catch (error) {
+                    // AI is optional; document entry remains available if the check fails.
+                }
+            };
+            const lifecycle = setInterval(() => {
+                if (!current()) {
+                    clearInterval(lifecycle);
+                    selectionVersion++;
+                    preview?.close();
+                    stop();
+                }
+            }, 200);
+            const openPreview = () => {
+                if (!current()) return;
+                const selection = widget.getSelection();
+                const content = document.createElement('div');
+                const result = document.createElement('div');
+                result.setAttribute('role', 'status');
+                result.setAttribute('aria-live', 'polite');
+                const footer = document.createElement('div');
+                footer.className = 'domus-form-actions';
+                const retry = document.createElement('button');
+                retry.type = 'button';
+                retry.textContent = t('domus', 'Retry');
+                const close = document.createElement('button');
+                close.type = 'button';
+                close.textContent = t('domus', 'Close');
+                const book = document.createElement('button');
+                book.type = 'button';
+                book.textContent = t('domus', 'Book');
+                book.disabled = true;
+                let suggestions = [];
+                let reportingPeriod = null;
+                book.addEventListener('click', () => {
+                    if (!current() || book.disabled) return;
+                    onBook(suggestions, reportingPeriod);
+                    preview?.close();
+                });
+                footer.append(retry, book, close);
+                content.append(result, footer);
+                preview = Domus.UI.openModal({title: t('domus', 'Automatic assignment preview'), content, onClose: () => {
+                    stop();
+                    preview = null;
+                }});
+                close.addEventListener('click', () => preview?.close());
+                const render = data => {
+                    if (!unitId) {
+                        const field = parent.modalEl.querySelector('[name="unitId"]');
+                        const matched = units.find(item => String(item.id) === String(data.unitId));
+                        if (matched && field && !manualUnit) setAutomaticUnit(String(matched.id));
+                    }
+                    reportingPeriod = data.period;
+                    suggestions = data.accounts.filter(row => row.amount !== null);
+                    book.disabled = !suggestions.length || !onBook;
+                    result.replaceChildren();
+                    let debug = null;
+                    if (!unitId && data.unitIdentification) {
+                        debug = document.createElement('details');
+                        const summary = document.createElement('summary');
+                        summary.textContent = t('domus', 'Unit detection details');
+                        debug.appendChild(summary);
+                        const identity = document.createElement('table');
+                        identity.className = 'domus-table';
+                        [
+                            [t('domus', 'PDF object address → Unit street'), data.unitIdentification.addresses],
+                            [t('domus', 'PDF unit number → Unit number'), data.unitIdentification.unitNumbers]
+                        ].forEach(([label, values]) => {
+                            const line = identity.insertRow();
+                            const heading = document.createElement('th');
+                            heading.scope = 'row';
+                            heading.textContent = label;
+                            line.appendChild(heading);
+                            line.insertCell().textContent = values?.length ? values.join(' · ') : t('domus', 'Not found');
+                        });
+                        debug.appendChild(identity);
+                    }
+                    const period = document.createElement('p');
+                    period.textContent = t('domus', 'Reporting period') + ': ' + [data.period.start, data.period.end].filter(Boolean).join(' – ');
+                    const table = document.createElement('table');
+                    table.className = 'domus-table';
+                    const header = table.createTHead().insertRow();
+                    [t('domus', 'Account'), t('domus', 'Suggested value'), t('domus', 'PDF page')].forEach(label => {
+                        const cell = document.createElement('th');
+                        cell.scope = 'col';
+                        cell.textContent = label;
+                        header.appendChild(cell);
+                    });
+                    const body = table.createTBody();
+                    data.accounts.forEach(row => {
+                        const line = body.insertRow();
+                        line.insertCell().textContent = Domus.Accounts.label(row.account);
+                        const value = line.insertCell();
+                        value.textContent = row.amount === null ? '' : Domus.Utils.formatCurrency(row.amount);
+                        if (row.amount !== null) {
+                            const confidence = document.createElement('small');
+                            confidence.textContent = row.confidence === 'supported'
+                                ? t('domus', 'Evidence matched')
+                                : t('domus', 'Low confidence');
+                            confidence.title = row.confidence === 'supported'
+                                ? t('domus', 'The source text, individual amount and reporting period passed validation. This is not a guarantee of correctness.')
+                                : t('domus', 'The individual amount or reporting period could not be verified. This may be a building total.');
+                            value.append(document.createElement('br'), confidence);
+                        }
+                        line.insertCell().textContent = row.amount === null ? '' : (row.pages?.join(', ') || '—');
+                    });
+                    const derivedUnit = document.createElement('p');
+                    const matchedUnit = units.find(item => String(item.id) === String(unitId || data.unitId));
+                    derivedUnit.textContent = t('domus', 'Unit') + ': ' + (matchedUnit?.label || t('domus', 'No unique unit match. Select the unit manually.'));
+                    result.append(period, derivedUnit, table);
+                    if (debug) result.appendChild(debug);
+                };
+                const run = async () => {
+                    book.disabled = true;
+                    suggestions = [];
+                    stop();
+                    const version = generation;
+                    const valid = () => version === generation && preview && current();
+                    result.textContent = t('domus', 'Reading PDF and preparing AI request…');
+                    const body = new FormData();
+                    if (selection.type === 'upload') body.append('file', selection.file);
+                    else body.append('filePath', selection.filePath);
+                    try {
+                        const created = await request('POST', '', body);
+                        if (!valid()) { discard(created.taskId); return; }
+                        taskId = created.taskId;
+                        result.textContent = t('domus', 'PDF text extracted. Waiting for the AI worker…');
+                        const poll = async () => {
+                            try {
+                                if (!valid()) return;
+                                const response = await request('GET', '/' + taskId);
+                                if (!valid()) return;
+                                if (response.status === 'complete') render(response.result);
+                                else {
+                                    let message = response.phase === 'running'
+                                        ? t('domus', 'AI is extracting the reporting period and suggested values…')
+                                        : response.phase === 'queued'
+                                            ? t('domus', 'PDF text extracted. Waiting for the AI worker…')
+                                            : t('domus', 'Waiting for task status…');
+                                    if (response.phase === 'running' && typeof response.progress === 'number' && Number.isFinite(response.progress)) {
+                                        message += ' ' + t('domus', '{progress}% complete', {progress: Math.round(Math.max(0, Math.min(1, response.progress)) * 100)});
+                                    }
+                                    if (result.textContent !== message) result.textContent = message;
+                                    timer = setTimeout(poll, 1500);
+                                }
+                            } catch (error) {
+                                if (valid()) result.textContent = error.message;
+                            }
+                        };
+                        await poll();
+                    } catch (error) {
+                        if (valid()) result.textContent = error.message;
+                    }
+                };
+                retry.addEventListener('click', run);
+                run();
+            };
+            Promise.resolve().then(selectionChanged);
+            return selectionChanged;
+        }
+
         function mountBookingDocumentWidget(modalEl, options = {}) {
             const placeholder = modalEl.querySelector('#domus-booking-documents');
             if (!placeholder) {
@@ -986,7 +1211,8 @@
                 title: t('domus', 'Document'),
                 subtitle: t('domus', 'Drop or select a file, or reuse one from Nextcloud.'),
                 showHeader: false,
-                largeDropZone: false
+                largeDropZone: false,
+                onSelectionChange: options.onSelectionChange
             });
             const titleField = widget.uploadNameInput?.closest('label');
             if (titleField) {
@@ -1199,7 +1425,9 @@
                             tenancyAssignment: formConfig.tenancyAssignment
                         })
                     });
+                    let selectionChanged = () => {};
                     const docWidget = readOnly && !documentEditMode ? null : mountBookingDocumentWidget(modal.modalEl, {
+                        onSelectionChange: () => selectionChanged(),
                         initialSelection: formConfig.initialDocumentSelection || null,
                         defaultDate: defaults.date,
                         lockSelection: formConfig.lockDocumentSelection === true,
@@ -1208,6 +1436,37 @@
                             return effectiveUnits.find(unit => String(unit.id) === String(unitId))?.documentPath;
                         }
                     });
+                    if (!Domus.Role.isBuildingMgmtView() && (defaults.unitId || createContext === 'document') && !bookingEditMode && !documentEditMode && !readOnly
+                        && (createContext === 'document' || (formConfig.assignmentPreview && !formConfig.omitBookingSection))) {
+                        selectionChanged = mountAssignmentPreview(modal, docWidget, defaults.unitId, effectiveUnits, formConfig.omitBookingSection ? null : (rows, period) => {
+                            const toggle = modal.modalEl.querySelector('[data-role="section-toggle"][data-section="booking"]');
+                            if (toggle?.getAttribute('aria-expanded') === 'false') toggle.click();
+                            const entries = modal.modalEl.querySelector('#domus-booking-entries');
+                            if (!entries) return;
+                            const invoiceDate = modal.modalEl.querySelector('input[name="date"]');
+                            const yearSource = period?.end || period?.start || invoiceDate?.value || '';
+                            const year = /^(\d{4})-\d{2}-\d{2}$/.exec(yearSource)?.[1];
+                            if (year) {
+                                ['date', 'deliveryDate'].forEach(name => {
+                                    const input = modal.modalEl.querySelector(`input[name="${name}"]`);
+                                    if (!input) return;
+                                    input.value = `${year}-12-31`;
+                                    input.dispatchEvent(new Event('input', {bubbles: true}));
+                                    input.dispatchEvent(new Event('change', {bubbles: true}));
+                                });
+                            }
+                            // Keep manually entered lines; replace only unused placeholder rows.
+                            entries.querySelectorAll('.domus-booking-entry').forEach(row => {
+                                const account = row.querySelector('[data-role="account"]');
+                                const amount = row.querySelector('[data-role="amount"]');
+                                if (!account?.value && (!amount?.value || amount.dataset.defaultAmount === '1')) row.remove();
+                            });
+                            rows.forEach(row => entries.appendChild(buildBookingEntryRow(accountOptions, {account: row.account, amount: row.amount}, multiEntry)));
+                            if (multiEntry) addTrailingBookingEntryIfNeeded(entries, accountOptions);
+                            updateRemoveButtons(entries);
+                            entries.dispatchEvent(new Event('input', {bubbles: true}));
+                        });
+                    }
                     bindBookingForm(modal, data => {
                         return saveBookingEntries(data, defaults, {...formConfig, editBookingId})
                             .then(async bookingIds => {

@@ -56,7 +56,9 @@ async function main() {
                 if (previewFailures.documents) throw new Error('Document failure');
                 return Number(id) === 10 ? [{ id: 50, fileName: 'Contract.pdf', fileUrl: 'https://example.test/contract.pdf', note: 'Internal document note', createdAt: 1700000000 }] : [];
             };
-            Domus.Api.getSettings = async () => ({ settings: {} });
+            Domus.Api.getSettings = async () => ({ settings: {}, aiDocumentValidation:{available:true,enabled:false,assistant:true,taskProcessing:true,chatProvider:true} });
+            window.aiUpdates = [];
+            Domus.Api.updateSettings = async data => {window.aiUpdates.push(data); return {settings:data};};
             const getPreviewData = Domus.Api.get;
             Domus.Api.get = async path => path === '/rules' ? [] : getPreviewData(path);
             Domus.TaskTemplates = { renderSection: () => '', loadTemplates: () => {} };
@@ -70,9 +72,17 @@ async function main() {
         });
         assert.equal(await page.getByRole('link', { name: 'Renter preview', exact: true }).count(), 0);
         await page.getByRole('link', { name: 'Settings', exact: true }).click();
-        await page.getByRole('heading', { name: 'Management Team', exact: true }).click();
+        await page.getByRole('heading', { name: 'Nextcloud Integration Check', exact: true }).click();
+        await page.getByRole('checkbox', {name:'AI document validation',exact:true}).check();
+        await page.waitForFunction(() => window.aiUpdates.length === 1);
+        assert.deepEqual(await page.evaluate(() => window.aiUpdates), [{aiDocumentValidation:'1'}]);
+
+        assert.equal(await page.locator('#domus-team-settings-panel .domus-required-app').count(), 6);
+        assert.equal(await page.locator('#domus-team-settings-panel .domus-required-app-enabled').count(), 3);
+        assert.equal(await page.locator('#domus-team-settings-panel').getByRole('checkbox', {name:'AI document validation',exact:true}).count(), 1);
+        assert.equal(await page.getByText('Manage Team membership in Nextcloud Teams.', {exact:true}).count(), 0);
         await page.locator('#domus-team-settings-panel').getByRole('button', { name: 'Renter preview', exact: true }).click();
-        console.log('PASS renter preview opens from Settings → Management Team without a navigation shortcut');
+        console.log('PASS renter preview opens from Settings → Nextcloud Integration Check without a navigation shortcut');
         await page.getByLabel('Simulate renter').selectOption('1');
         await page.getByRole('link', { name: 'Contract.pdf', exact: true }).waitFor();
         assert.equal(await page.locator('.domus-tenancy-detail h2').innerText(), 'Current home');

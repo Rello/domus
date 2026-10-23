@@ -89,6 +89,9 @@ return [
         ['name' => 'Tenancy#destroy', 'url' => 'api/tenancies/{id}', 'verb' => 'DELETE'],
 
         // Booking
+        ['name' => 'BookingAssignmentPreview#create', 'url' => '/api/units/{unitId}/booking-assignment-preview', 'verb' => 'POST'],
+        ['name' => 'BookingAssignmentPreview#show', 'url' => '/api/units/{unitId}/booking-assignment-preview/{taskId}', 'verb' => 'GET'],
+        ['name' => 'BookingAssignmentPreview#discard', 'url' => '/api/units/{unitId}/booking-assignment-preview/{taskId}', 'verb' => 'DELETE'],
         ['name' => 'Booking#index', 'url' => 'api/bookings', 'verb' => 'GET'],
         ['name' => 'Booking#show', 'url' => 'api/bookings/{id}', 'verb' => 'GET'],
         ['name' => 'Booking#create', 'url' => 'api/bookings', 'verb' => 'POST'],
@@ -119,6 +122,7 @@ return [
         // Settings
         ['name' => 'Settings#templateStatus', 'url' => '/api/settings/utility-template', 'verb' => 'GET'],
         ['name' => 'Settings#assignTemplate', 'url' => '/api/settings/utility-template', 'verb' => 'PUT'],
+        ['name' => 'Settings#aiStatus', 'url' => '/api/settings/ai-document-validation', 'verb' => 'GET'],
         ['name' => 'Settings#show', 'url' => 'api/settings', 'verb' => 'GET'],
         ['name' => 'Settings#update', 'url' => 'api/settings', 'verb' => 'PUT'],
         ['name' => 'Settings#createDemoContent', 'url' => 'api/settings/demo-content', 'verb' => 'POST'],

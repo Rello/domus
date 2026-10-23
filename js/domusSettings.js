@@ -343,27 +343,53 @@
             });
         }
 
-        function buildTeamSection(requiredApps) {
+        function buildAiControl(status) {
+            return '<label><input type="checkbox" id="domus-ai-validation"' + (status?.enabled ? ' checked' : '') + (!status?.available && !status?.enabled ? ' disabled' : '') + '> ' +
+                Domus.Utils.escapeHtml(t('domus', 'AI document validation')) + '</label><p>' +
+                Domus.Utils.escapeHtml(t('domus', 'Automatically preview selected PDFs using the configured AI provider. Extracted document text is sent to that provider.')) + '</p>';
+        }
+
+        function bindAiSection() {
+            const toggle = document.getElementById('domus-ai-validation');
+            toggle?.addEventListener('change', async () => {
+                const enabled = toggle.checked;
+                toggle.disabled = true;
+                try {
+                    await Domus.Api.updateSettings({aiDocumentValidation: enabled ? '1' : '0'});
+                    Domus.UI.showNotification(t('domus', 'Changes saved.'), 'success');
+                } catch (error) {
+                    toggle.checked = !enabled;
+                    Domus.UI.showNotification(error.message, 'error');
+                } finally { toggle.disabled = false; }
+            });
+        }
+
+        function buildTeamSection(requiredApps, aiStatus) {
             const apps = [
                 { id: 'circles', name: t('domus', 'Teams'), appUrl: '/apps/circles/teams/', storeUrl: '/settings/apps/organization/circles?q=teams' },
                 { id: 'groupfolders', name: t('domus', 'Team Folders'), appUrl: '/settings/admin/groupfolders', storeUrl: '/settings/apps/search/groupfolders?q=groupfolders' },
-                { id: 'guests', name: t('domus', 'Guests'), appUrl: '/settings/admin/guests', storeUrl: '/settings/apps/search/guests?q=guests' }
+                { id: 'guests', name: t('domus', 'Guests'), appUrl: '/settings/admin/guests', storeUrl: '/settings/apps/search/guests?q=guests' },
+                { name: t('domus', 'Assistant (PDF extraction)'), available: aiStatus?.assistant, appUrl: '/apps/assistant/', storeUrl: '/settings/apps/search/assistant' },
+                { name: t('domus', 'Nextcloud task processing'), available: aiStatus?.taskProcessing },
+                { name: t('domus', 'AI text provider'), available: aiStatus?.chatProvider }
             ];
             const rows = apps.map(app => {
-                const enabled = requiredApps?.[app.id] === true;
-                const status = enabled ? t('domus', 'Enabled') : t('domus', 'Not installed or disabled');
+                const enabled = app.id ? requiredApps?.[app.id] === true : app.available === true;
+                const status = app.id
+                    ? (enabled ? t('domus', 'Enabled') : t('domus', 'Not installed or disabled'))
+                    : (enabled ? t('domus', 'Available') : t('domus', 'Unavailable'));
                 const linkLabel = enabled ? t('domus', 'Open app') : t('domus', 'Open App Store');
                 return '<li class="domus-required-app">' +
                     '<span class="domus-required-app-status' + (enabled ? ' domus-required-app-enabled' : ' domus-required-app-unavailable') + '" aria-label="' + Domus.Utils.escapeHtml(status) + '" title="' + Domus.Utils.escapeHtml(status) + '">' + (enabled ? '✓' : 'X') + '</span>' +
-                    '<a href="' + Domus.Utils.escapeHtml(OC.generateUrl(enabled ? app.appUrl : app.storeUrl)) + '" target="_blank" rel="noopener noreferrer" title="' + Domus.Utils.escapeHtml(linkLabel) + '">' + Domus.Utils.escapeHtml(app.name) + '</a>' +
+                    (app.appUrl ? '<a href="' + Domus.Utils.escapeHtml(OC.generateUrl(enabled ? app.appUrl : app.storeUrl)) + '" target="_blank" rel="noopener noreferrer" title="' + Domus.Utils.escapeHtml(linkLabel) + '">' + Domus.Utils.escapeHtml(app.name) + '</a>' : '<span>' + Domus.Utils.escapeHtml(app.name) + '</span>') +
                     '<span class="domus-muted">' + Domus.Utils.escapeHtml(status) + '</span></li>';
             }).join('');
             return buildSettingsSection({
                 id: 'domus-team-settings-panel',
-                title: t('domus', 'Management Team'),
+                title: t('domus', 'Nextcloud Integration Check'),
                 body: '<div class="domus-form">' +
-                    '<p>' + Domus.Utils.escapeHtml(t('domus', 'Manage Team membership in Nextcloud Teams.')) + '</p>' +
                     '<ul class="domus-required-apps">' + rows + '</ul>' +
+                    buildAiControl(aiStatus) +
                     '<div class="domus-form-actions"><button type="button" class="secondary" id="domus-renter-preview-button">' +
                     Domus.Utils.escapeHtml(t('domus', 'Renter preview')) + '</button></div></div>'
             });
@@ -591,7 +617,7 @@
                     const currentRole = Domus.Role?.getCurrentRole?.() || Domus.state.role || 'landlord';
                     const content = '<div class="domus-settings">' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
-                        buildTeamSection(response?.requiredApps) +
+                        buildTeamSection(response?.requiredApps, response?.aiDocumentValidation) +
                         buildForm(settings) +
                         buildTaxSection() +
                         buildTemplateSection(response?.utilityReportTemplate) +
@@ -606,6 +632,7 @@
                         Domus.Router.navigate('renterPreview');
                     });
                     bindForm();
+                    bindAiSection();
                     document.getElementById('domus-tax-report-button').onclick = openTaxReport;
                     bindTemplateSection(response?.utilityReportTemplate);
                     bindRestartIntroButton();

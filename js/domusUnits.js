@@ -2162,6 +2162,7 @@
                 ['domus-add-unit-booking-inline', 'domus-unit-statistics-booking-create'].forEach(buttonId => {
                     document.getElementById(buttonId)?.addEventListener('click', () => {
                         Domus.Bookings.openCreateModal(getYearBookingDefaults(unit, id), () => refreshDetail(id), {
+                            assignmentPreview: true,
                             accountFilter: accountNumber => String(accountNumber).startsWith('2'),
                             hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
                         });
@@ -2319,6 +2320,7 @@
             });
             document.getElementById('domus-unit-direct-booking')?.addEventListener('click', () => {
                 Domus.Bookings.openCreateModal({propertyId: unit?.propertyId, unitId: id}, refreshCurrentSection, {
+                    assignmentPreview: true,
                     accountFilter: nr => String(nr).startsWith('2'),
                     hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
                 });
@@ -2378,18 +2380,21 @@
             });
             document.getElementById('domus-add-unit-booking')?.addEventListener('click', () => {
                 Domus.Bookings.openCreateModal({propertyId: unit?.propertyId, unitId: id}, () => refreshDetail(id), {
+                    assignmentPreview: true,
                     accountFilter: (nr) => String(nr).startsWith('2'),
                     hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
                 });
             });
             document.getElementById('domus-add-unit-booking-inline')?.addEventListener('click', () => {
                 Domus.Bookings.openCreateModal(getYearBookingDefaults(unit, id), () => refreshDetail(id), {
+                    assignmentPreview: true,
                     accountFilter: (nr) => String(nr).startsWith('2'),
                     hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
                 });
             });
             document.getElementById('domus-unit-statistics-booking-create')?.addEventListener('click', () => {
                 Domus.Bookings.openCreateModal(getYearBookingDefaults(unit, id), () => refreshDetail(id), {
+                    assignmentPreview: true,
                     accountFilter: (nr) => String(nr).startsWith('2'),
                     hidePropertyField: Domus.Role.getCurrentRole() === 'landlord'
                 });

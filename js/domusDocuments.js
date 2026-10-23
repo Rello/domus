@@ -346,6 +346,7 @@
                 onFileSelected: file => {
                     if (file) selectedPath = '';
                     syncUploadTitle(file);
+                    options.onSelectionChange?.();
                 }
             });
             if (largeDropZone) dropZone.element.classList.add('domus-dropzone-large');
@@ -380,6 +381,7 @@
                 dropZone.reset();
                 selectedPath = path || '';
                 dropZone.setFileName(String(selectedPath).split('/').pop());
+                options.onSelectionChange?.();
             }
 
             function getSelection(preferredType) {

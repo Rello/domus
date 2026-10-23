@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
+- Optional AI previews for annual-statement PDFs, with unit matching, confidence indicators, source pages, and editable booking suggestions dated at year-end.
 - Beta tax report in WISO Steuer layout, with itemized costs, subtotals, and year-closing badges.
 - Editable utility reports from Personal and Team DOCX templates, with a Markdown fallback.
 - Read-only unit and annual revenue APIs with OpenAPI documentation.
@@ -15,6 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Document dates, multiple tenancy assignments, and assignment indicators.
 
 ### Changed
+- Combine Nextcloud integration checks and the AI document-validation setting in one settings panel.
 - Consistent dialog headers and persistent action footers, including the welcome wizard.
 - Record activities directly from unit details.
 - Simplify document editing, previews, storage, and booking and tenancy links.

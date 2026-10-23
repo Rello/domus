@@ -37,6 +37,7 @@ class SettingsController extends Controller {
         private PortfolioSettingsService $portfolioSettings,
         private IAppManager $appManager,
         private \OCA\Domus\Service\DocumentTemplateService $documentTemplates,
+        private \OCA\Domus\Service\AiDocumentValidationService $aiValidation,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -46,12 +47,20 @@ class SettingsController extends Controller {
         return new DataResponse([
             'settings' => $this->getSettings($this->getUserId()),
             'utilityReportTemplate' => $this->documentTemplates->status($this->getUserId()),
+            'aiDocumentValidation' => $this->aiValidation->status(),
             'requiredApps' => [
                 'circles' => $this->appManager->isEnabledForUser('circles', $this->userSession->getUser()),
                 'groupfolders' => $this->appManager->isEnabledForUser('groupfolders', $this->userSession->getUser()),
                 'guests' => $this->appManager->isEnabledForUser('guests', $this->userSession->getUser()),
             ],
         ]);
+    }
+
+    #[NoAdminRequired]
+    public function aiStatus(): DataResponse {
+        $response = new DataResponse($this->aiValidation->status());
+        $response->addHeader('Cache-Control', 'private, no-store');
+        return $response;
     }
 
     #[NoAdminRequired]
@@ -111,6 +120,7 @@ class SettingsController extends Controller {
             self::CONFIG_TAX_RATE => [
                 'default' => '0',
             ],
+            \OCA\Domus\Service\AiDocumentValidationService::SETTING => ['default' => '0'],
             self::CONFIG_WIZARD => [
                 'default' => '0',
             ],
@@ -140,7 +150,7 @@ class SettingsController extends Controller {
             return (string)($percentage / 100);
         }
 
-        if ($key === self::CONFIG_WIZARD) {
+        if (in_array($key, [self::CONFIG_WIZARD, \OCA\Domus\Service\AiDocumentValidationService::SETTING], true)) {
             $normalized = $value === null ? '' : trim((string)$value);
             if ($normalized === '') {
                 return '0';
@@ -165,7 +175,7 @@ class SettingsController extends Controller {
             return (string)((float)$value * 100);
         }
 
-        if ($key === self::CONFIG_WIZARD) {
+        if (in_array($key, [self::CONFIG_WIZARD, \OCA\Domus\Service\AiDocumentValidationService::SETTING], true)) {
             return ($value === '1') ? '1' : '0';
         }
 

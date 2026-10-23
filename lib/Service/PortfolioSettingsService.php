@@ -22,7 +22,7 @@ class PortfolioSettingsService {
     }
 
     public function getValue(string $userId, string $key, string $default): string {
-        $teamId = in_array($key, ['taxRate', 'utilityReportTemplate'], true) ? $this->access->activeTeamId() : null;
+        $teamId = in_array($key, ['taxRate', 'utilityReportTemplate', AiDocumentValidationService::SETTING], true) ? $this->access->activeTeamId() : null;
         if ($teamId === null) {
             return $this->config->getUserValue($userId, 'domus', $key, $default);
         }
@@ -43,7 +43,7 @@ class PortfolioSettingsService {
     }
 
     public function setValue(string $userId, string $key, string $value): void {
-        $teamId = in_array($key, ['taxRate', 'utilityReportTemplate'], true) ? $this->access->activeTeamId() : null;
+        $teamId = in_array($key, ['taxRate', 'utilityReportTemplate', AiDocumentValidationService::SETTING], true) ? $this->access->activeTeamId() : null;
         if ($teamId === null) {
             $this->config->setUserValue($userId, 'domus', $key, $value);
             return;
