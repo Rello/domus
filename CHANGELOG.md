@@ -17,6 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Document dates, multiple tenancy assignments, and assignment indicators.
 
 ### Changed
+- Refresh the feature overview, app introduction, and welcome tour; move detailed guides into the new wiki.
 - Combine Nextcloud integration checks and the AI document-validation setting in one settings panel.
 - Consistent dialog headers and persistent action footers, including the welcome wizard.
 - Record activities directly from unit details.

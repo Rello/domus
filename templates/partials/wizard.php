@@ -22,26 +22,26 @@ $wizardConfig = [
         [
             'layout' => 'featureGrid',
             'title' => $l->t('Keep your rentals tidy and easy to manage'),
-            'intro' => $l->t('Domus helps you keep homes, tenants, payments, and documents together, so daily rental life feels less messy.'),
+            'intro' => $l->t('Manage properties, tenancies, finances, and everyday work together in your Nextcloud.'),
             'features' => [
                 [
                     'title' => $l->t('Homes and notes'),
-                    'body' => $l->t('Keep the important details for each home in one place.'),
+                    'body' => $l->t('Connect property details, documents, activities, and tasks.'),
                     'iconClass' => 'domus-icon-unit',
                 ],
                 [
                     'title' => $l->t('Money and paperwork'),
-                    'body' => $l->t('Save payments, invoices, and documents where you can find them quickly.'),
+                    'body' => $l->t('Track bookings, prepare utility reports, and compare annual results.'),
                     'iconClass' => 'domus-icon-booking',
                 ],
                 [
                     'title' => $l->t('Tenants and rental periods'),
-                    'body' => $l->t('See who lives where, since when, and what matters for each rental.'),
+                    'body' => $l->t('Follow rental history and give renters access through Teams.'),
                     'iconClass' => 'domus-icon-tenancy',
                 ],
                 [
                     'title' => $l->t('Dashboard'),
-                    'body' => $l->t('Get a quick overview of what is going on and what needs attention.'),
+                    'body' => $l->t('See upcoming tasks and explore your portfolio over several years.'),
                     'iconClass' => 'domus-icon-dashboard',
                 ],
             ],
@@ -52,8 +52,8 @@ $wizardConfig = [
             'intro' => $l->t('Keep each home easy to understand at a glance.'),
             'bullets' => [
                 $l->t('Save the key details for every home in one place'),
-                $l->t('Write down updates, repairs, and decisions as they happen'),
-                $l->t('Keep an eye on open tasks so nothing slips through'),
+                $l->t('Record repairs and decisions directly as unit activities'),
+                $l->t('Use tasks, process templates, and reminders for recurring work'),
             ],
             'mediaLabel' => $l->t('Homes and notes'),
             'mediaSrc' => $wizardPicture('unit'),
@@ -65,7 +65,7 @@ $wizardConfig = [
             'bullets' => [
                 $l->t('Track income and expenses without switching between tools'),
                 $l->t('Link bookings to invoices, contracts, and other documents'),
-                $l->t('See the financial story behind each home more clearly'),
+                $l->t('Create editable utility reports from your own DOCX templates'),
             ],
             'mediaLabel' => $l->t('Money and paperwork'),
             'mediaSrc' => $wizardPicture('booking'),
@@ -76,8 +76,8 @@ $wizardConfig = [
             'intro' => $l->t('Keep people, contracts, and rental periods easy to follow.'),
             'bullets' => [
                 $l->t('See who rents which home and for how long'),
-                $l->t('Keep important rental history easy to review later'),
-                $l->t('Prepare related reports with less searching and guessing'),
+                $l->t('Work in your Personal portfolio or a Nextcloud Team'),
+                $l->t('Link renter accounts in Teams and preview their document access'),
             ],
             'mediaLabel' => $l->t('Tenants and rental periods'),
             'mediaSrc' => $wizardPicture('tenancy'),
@@ -88,8 +88,8 @@ $wizardConfig = [
             'intro' => $l->t('Start your day with a simple overview instead of digging through records.'),
             'bullets' => [
                 $l->t('Open one screen for a quick status check'),
-                $l->t('See useful numbers without needing expert knowledge'),
-                $l->t('Spot what needs attention before it turns into a problem'),
+                $l->t('Compare rent, profit, and profitability across years'),
+                $l->t('Set rent-review rules that create tasks when a review is due'),
             ],
             'mediaLabel' => $l->t('Dashboard'),
             'mediaSrc' => $wizardPicture('dashboard'),

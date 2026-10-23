@@ -1,5 +1,17 @@
 {
     "translations": {
+        "Manage properties, tenancies, finances, and everyday work together in your Nextcloud.": "Verwalten Sie Immobilien, Mietverhältnisse, Finanzen und tägliche Aufgaben gemeinsam in Ihrer Nextcloud.",
+        "Connect property details, documents, activities, and tasks.": "Verknüpfen Sie Immobiliendaten, Dokumente, Aktivitäten und Aufgaben.",
+        "Track bookings, prepare utility reports, and compare annual results.": "Erfassen Sie Buchungen, erstellen Sie Nebenkostenberichte und vergleichen Sie Jahresergebnisse.",
+        "Follow rental history and give renters access through Teams.": "Verfolgen Sie den Mietverlauf und geben Sie Mietern über Teams Zugang.",
+        "See upcoming tasks and explore your portfolio over several years.": "Sehen Sie anstehende Aufgaben und werten Sie Ihr Portfolio über mehrere Jahre aus.",
+        "Record repairs and decisions directly as unit activities": "Erfassen Sie Reparaturen und Entscheidungen direkt als Aktivitäten der Einheit",
+        "Use tasks, process templates, and reminders for recurring work": "Nutzen Sie Aufgaben, Prozessvorlagen und Erinnerungen für wiederkehrende Arbeiten",
+        "Create editable utility reports from your own DOCX templates": "Erstellen Sie bearbeitbare Nebenkostenberichte aus eigenen DOCX-Vorlagen",
+        "Work in your Personal portfolio or a Nextcloud Team": "Arbeiten Sie in Ihrem persönlichen Bestand oder einem Nextcloud Team",
+        "Link renter accounts in Teams and preview their document access": "Verknüpfen Sie Mieterkonten in Teams und prüfen Sie deren Dokumentzugang in der Vorschau",
+        "Compare rent, profit, and profitability across years": "Vergleichen Sie Mieten, Gewinn und Rentabilität über mehrere Jahre",
+        "Set rent-review rules that create tasks when a review is due": "Richten Sie Mietprüfungsregeln ein, die bei fälliger Prüfung Aufgaben erstellen",
         "Domus tasks": "Domus-Aufgaben",
         "Open Domus": "Domus öffnen",
         "No upcoming tasks.": "Keine anstehenden Aufgaben.",

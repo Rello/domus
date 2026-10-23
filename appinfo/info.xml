@@ -6,26 +6,31 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 <info>
     <id>domus</id>
     <name>Domus</name>
-    <summary>Alles rund um Ihre Vermietung im Blick</summary>
+    <summary>Immobilien, Finanzen und Zusammenarbeit in Ihrer Nextcloud</summary>
     <description><![CDATA[
-Domus bündelt die Verwaltung Ihrer Mietobjekte in Nextcloud: von Objekten und Einheiten über Mietverhältnisse und Kontakte bis zu Buchungen, Dokumenten und Aufgaben.
+Domus bringt Ihre Vermietung in Nextcloud zusammen: Immobilien, Menschen, Finanzen und die Aufgaben dazwischen. Von der ersten Mietvereinbarung bis zur jährlichen Abrechnung bleiben alle Informationen miteinander verbunden.
 
-Ob einzelne Wohnung oder mehrere Objekte: Sie finden die zugehörigen Informationen an einem Ort und behalten anstehende Arbeiten im Blick.
+Für private Vermieter und kleine Hausverwaltungen, die ihre Immobilien selbst im Griff behalten möchten – mit den Dateien und Benutzerkonten ihrer eigenen Nextcloud.
 
-## Warum Sie es nutzen
-- Verknüpfen Sie Einheiten, Mietverhältnisse, Kontakte, Buchungen und Dokumente.
-- Vergleichen Sie vereinbarte Mieten mit erfassten Buchungen und sehen Sie offene Aufgaben.
-- Finden Sie Dokumente und Notizen im Zusammenhang mit dem jeweiligen Objekt wieder.
-- Nutzen Sie Dashboard und Auswertungen für den Überblick über Ihre Vermietungen.
+## Ihre Vermietung an einem Ort
 
-Entwickelt für Vermieter und kleine Hausverwaltungen, die einen klaren Überblick im Alltag wollen und ihre Daten trotzdem privat in Nextcloud behalten möchten.
+- **Immobilien mit Geschichte:** Objekte und Einheiten mit Stammdaten, Bildern, Kontakten, Dokumenten und Aktivitäten verwalten.
+- **Mietverhältnisse im Blick:** Mietzeiträume, Grundmieten, Vorauszahlungen und Änderungen nachvollziehen.
+- **Finanzen verstehen:** Einnahmen und Ausgaben buchen, Belege zuordnen, Jahreserträge vergleichen und Finanzjahre nach Prüfung abschließen.
+- **Abrechnungen vorbereiten:** Kosten verteilen, Nebenkosten abrechnen und bearbeitbare Berichte aus eigenen DOCX-Vorlagen erstellen.
+- **Portfolio entwickeln:** Mieten, Gewinn, Rentabilität und Anschaffungskosten über mehrere Jahre auswerten.
+- **Nichts vergessen:** Aufgaben, mehrstufige Prozesse und Vorlagen nutzen; Erinnerungen und Regeln für Mietprüfungen einrichten.
+- **Gemeinsam verwalten:** Zwischen persönlichem Bestand und Nextcloud Teams wechseln.
+- **Mieter einbeziehen:** Im Team-Bereich Konten verknüpfen und Mietern Zugang zu ihren Mietdaten und zugeordneten Dokumenten geben – inklusive Korrekturanfragen für Kontaktdaten.
+- **Dokumente schneller erfassen:** Optional unterstützt eine KI-Vorschau bei der Zuordnung von Jahresabrechnungs-PDFs und schlägt prüfbare Buchungen vor.
+- **Daten weiterverwenden:** Einheiten exportieren und importieren sowie Stammdaten und Jahreserträge über eine schreibgeschützte API abrufen.
 
-## Was Sie damit tun können
-- Für jedes Objekt oder jede Einheit eine klare Übersicht führen.
-- Mietverhältnisse, Kontakte und Mietzeiträume im Blick behalten.
-- Einnahmen und Ausgaben als Buchungen erfassen und Dokumente zuordnen.
-- Einzelne Aufgaben und mehrstufige Prozesse verfolgen.
-- Buchungen nach Jahr, Einheit und Konto auswerten.
+Das Dashboard und ein Nextcloud-Dashboard-Widget zeigen anstehende Aufgaben. Eine **Beta-Steuerübersicht im WISO-Aufbau** hilft, Jahreswerte und Einzelbuchungen zusammenzustellen.
+
+Die KI-Unterstützung ist optional und standardmäßig ausgeschaltet; sie benötigt eine eingerichtete Nextcloud-KI-Umgebung. DOCX-Berichte und Mieterzugang setzen passende Vorlagen beziehungsweise Team- und Kontoberechtigungen voraus.
+
+Anleitungen und Voraussetzungen: https://github.com/Rello/domus/wiki
+Die Übersicht beschreibt den aktuellen Entwicklungsstand; die Verfügbarkeit richtet sich nach der installierten Version.
 ]]></description>
     <version>1.3.0-beta.5</version>
     <licence>agpl</licence>
