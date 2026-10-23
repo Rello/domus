@@ -6,6 +6,9 @@
 OC.L10N.register(
     "domus",
     {
+        "Domus tasks": "Domus-Aufgaben",
+        "Open Domus": "Domus öffnen",
+        "No upcoming tasks.": "Keine anstehenden Aufgaben.",
         "Automatic assignment preview": "Vorschau der automatischen Zuordnung",
         "Found": "Gefunden",
         "Not found": "Nicht gefunden",

@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
+- Nextcloud dashboard task widget with unit names and coloured icons for overdue, today, and upcoming tasks.
 - Optional AI previews for annual-statement PDFs, with unit matching, confidence indicators, source pages, and editable booking suggestions dated at year-end.
 - Beta tax report in WISO Steuer layout, with itemized costs, subtotals, and year-closing badges.
 - Editable utility reports from Personal and Team DOCX templates, with a Markdown fallback.

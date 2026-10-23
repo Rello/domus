@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCP\AppFramework\Bootstrap;
 
 interface IRegistrationContext {
+    public function registerDashboardWidget(string $widgetClass): void;
     public function registerMiddleware(string $class, bool $global = false): void;
 
     public function registerEventListener(string $event, string $listener): void;
