@@ -99,6 +99,104 @@
             });
         }
 
+        function buildTaxSection() {
+            const escape = Domus.Utils.escapeHtml;
+            return buildSettingsSection({
+                id: 'domus-tax-declaration-panel',
+                title: t('domus', 'Tax declaration'),
+                body: '<p>' + escape(t('domus', 'Prepare the property overview for Wiso tax software.')) + '</p>' +
+                    '<div class="domus-form-actions"><button type="button" id="domus-tax-report-button">' +
+                    escape(t('domus', 'Tax report')) + '</button></div>'
+            });
+        }
+
+        function openTaxReport() {
+            const escape = Domus.Utils.escapeHtml;
+            // Wiso field names and their hierarchy intentionally stay in German in every locale.
+            const rows = [
+                {label: t('domus', 'Einnahmen'), group: true, key: 'totalIncome'},
+                {label: t('domus', 'Mieteinnahmen für Wohnungen'), depth: 1},
+                {label: t('domus', '1) Weitere Geschosse'), depth: 2},
+                {label: t('domus', 'Mieteinnahmen'), depth: 3, key: 'rent'},
+                {label: t('domus', 'Neben-/ Betriebskosten'), depth: 3, key: 'prepayments'},
+                {label: t('domus', 'Nachzahlung von NK vom Mieter'), depth: 3, key: 'tenantPayment'},
+                {label: t('domus', 'Erstattung von NK an den Mieter'), depth: 3, key: 'tenantCredit'},
+                {label: t('domus', 'Abschreibung'), group: true, key: 'depreciation'},
+                {label: t('domus', 'Betriebskosten und andere Ausgaben'), group: true, key: 'totalOperatingExpenses'},
+                {label: t('domus', 'Schuldzinsen'), depth: 1, key: 'interest'},
+                {label: t('domus', 'Sonstige Kosten'), depth: 1},
+                {label: t('domus', 'Umlagefähige Kosten laut Abrechnung'), depth: 2, key: 'allocable'},
+                {label: t('domus', 'Grundsteuer'), depth: 2, key: 'propertyTax'},
+                {label: t('domus', 'Nicht umlagefähige Kosten laut Abrechnung'), depth: 2, key: 'nonAllocable'},
+                {label: t('domus', 'Sonstige Kosten'), depth: 2, key: 'otherCosts'},
+                {label: t('domus', 'Status'), key: 'status'},
+                {label: t('domus', 'Kontroll-Saldo'), key: 'controlBalance'}
+            ];
+            const modal = Domus.UI.openModal({
+                title: t('domus', 'Tax report'),
+                size: 'tax-report',
+                content: '<div class="domus-tax-report">' +
+                    '<p role="note">' + escape(t('domus', 'This is beta. The report shows the data in the same input format as WISO Steuer for simple transfer.')) + '</p>' +
+                    '<details><summary>' + escape(t('domus', 'Calculation sources')) + '</summary><p>' + escape(t('domus', 'Rent and utility prepayments come from tenancy agreements, not recorded receipts. Costs use unit bookings for the selected year, including allocated property costs.')) + '</p>' +
+                    '<p>' + escape(t('domus', 'Utility payment and credit amounts are calculated from each renter’s settlement, not recorded payments. Other costs combine accounts 2300 and 2700, with the individual booking texts and amounts. Reserve allocations and unallocated property bookings are excluded.')) + '</p></details>' +
+                    '<div id="domus-tax-report-content" aria-live="polite"></div></div>' +
+                    '<div class="domus-form-actions"><button type="button" id="domus-tax-report-close">' + escape(t('domus', 'Close')) + '</button></div>'
+            });
+            const host = modal.modalEl.querySelector('#domus-tax-report-content');
+            modal.modalEl.querySelector('#domus-tax-report-close').onclick = modal.close;
+            let selectedYear = new Date().getFullYear() - 1;
+            let report;
+            function renderTable() {
+                const years = report.years;
+                const data = report.units;
+                host.innerHTML = '<label for="domus-tax-report-year">' + escape(t('domus', 'Year')) + '</label> ' +
+                    '<select id="domus-tax-report-year">' + years.map(year =>
+                        '<option value="' + year + '"' + (year === selectedYear ? ' selected' : '') + '>' + year + '</option>').join('') + '</select>' +
+                    '<div class="domus-tax-table-scroll" role="region" tabindex="0" aria-label="' + escape(t('domus', 'Objektdaten für Steuererklärung')) + '">' +
+                    '<table class="domus-tax-table"><caption>' + escape(t('domus', 'Objektdaten für Steuererklärung')) + '</caption>' +
+                    '<thead><tr><th scope="col">' + escape(t('domus', 'Objekt')) + '</th>' + data.map(unit =>
+                        '<th scope="col">' + escape(unit.label) + '</th>').join('') + '</tr></thead><tbody>' +
+                    rows.map(row => '<tr' + (row.group ? ' class="domus-tax-group"' : '') + '><th scope="row" class="domus-tax-depth-' + (row.depth || 0) + '">' + escape(row.label) + '</th>' +
+                        data.map(unit => {
+                            let value = row.key ? unit.amounts[row.key] : '';
+                            if (row.key === 'status') {
+                                const badgeClass = unit.closed ? 'domus-badge-success' : 'domus-badge-warning domus-badge-provisional';
+                                const label = unit.closed ? t('domus', 'Closed') : t('domus', 'Provisional');
+                                return '<td><span class="domus-badge ' + badgeClass + '">' + escape(label) + '</span></td>';
+                            }
+                            else if (value === null || value === undefined) value = '—';
+                            else if (typeof value === 'number') value = Domus.Utils.formatCurrency(value);
+                            const bookingDetails = row.key === 'otherCosts' && unit.otherCostBookings?.length
+                                ? '<ul class="domus-tax-booking-list">' + unit.otherCostBookings.map(booking =>
+                                    '<li><span>' + escape(booking.description || t('domus', 'Booking without description')) + '</span>' +
+                                    '<span>' + escape(Domus.Utils.formatCurrency(booking.amount)) + '</span></li>').join('') + '</ul>' : '';
+                            return '<td>' + (row.key === 'otherCosts' ? bookingDetails : escape(value)) + '</td>';
+                        }).join('') + '</tr>').join('') + '</tbody></table></div>';
+                host.querySelector('select').onchange = event => {
+                    selectedYear = Number(event.target.value);
+                    load();
+                };
+            }
+            async function load() {
+                host.textContent = t('domus', 'Loading…');
+                try {
+                    report = await Domus.Api.get('/tax-report/' + selectedYear);
+                    if (!host.isConnected) return;
+                    if (!report.units.length) {
+                        host.textContent = t('domus', 'No units available for this scope.');
+                        return;
+                    }
+                    if (host.isConnected) renderTable();
+                } catch (error) {
+                    if (!host.isConnected) return;
+                    host.innerHTML = '<p class="domus-error" role="alert">' + escape(error.message || t('domus', 'An error occurred')) + '</p>' +
+                        '<button type="button">' + escape(t('domus', 'Retry')) + '</button>';
+                    host.querySelector('button').onclick = load;
+                }
+            }
+            load();
+        }
+
         function templateScopeLabel() {
             const teamId = Domus.state.managementContext?.activeTeamId;
             if (!teamId) return t('domus', 'Personal');
@@ -495,6 +593,7 @@
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
                         buildTeamSection(response?.requiredApps) +
                         buildForm(settings) +
+                        buildTaxSection() +
                         buildTemplateSection(response?.utilityReportTemplate) +
                         buildIntroSection() +
                         buildRulesSection() +
@@ -507,6 +606,7 @@
                         Domus.Router.navigate('renterPreview');
                     });
                     bindForm();
+                    document.getElementById('domus-tax-report-button').onclick = openTaxReport;
                     bindTemplateSection(response?.utilityReportTemplate);
                     bindRestartIntroButton();
                     bindDemoButton();

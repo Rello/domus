@@ -5677,3 +5677,104 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
 .domus-year-check-status > span { font-weight: bold; }
 
 .domus-year-status-form .domus-guided-content > .domus-form > p:first-child { margin-top: 0; }
+
+/* Keep Wiso labels and unit headers visible while the report scrolls. */
+.domus-modal-tax-report {
+    max-width: 1200px;
+}
+
+.domus-tax-table-scroll {
+    overflow: auto;
+    max-height: 60vh;
+    margin-top: 16px;
+    border: var(--domus-border);
+}
+
+.domus-tax-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.domus-tax-table caption {
+    text-align: start;
+    padding: 12px;
+    font-weight: 600;
+}
+
+.domus-tax-table th,
+.domus-tax-table td {
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border-bottom: var(--domus-border);
+    min-width: 130px;
+    text-align: end;
+    vertical-align: top;
+}
+
+.domus-tax-table th:first-child {
+    position: sticky;
+    z-index: 1;
+    inset-inline-start: 0;
+    min-width: 260px;
+    max-width: 320px;
+    width: 320px;
+    white-space: normal;
+    text-align: start;
+    background: var(--color-main-background);
+    border-inline-end: var(--domus-border);
+    font-weight: normal;
+}
+
+.domus-tax-table thead th,
+.domus-tax-table .domus-tax-group th,
+.domus-tax-table .domus-tax-group td {
+    font-weight: 600;
+    background: var(--color-background-dark);
+}
+
+.domus-tax-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.domus-tax-table thead th:first-child {
+    z-index: 3;
+}
+
+.domus-tax-table th.domus-tax-depth-1 { padding-inline-start: 24px; }
+.domus-tax-table th.domus-tax-depth-2 { padding-inline-start: 36px; }
+.domus-tax-table th.domus-tax-depth-3 { padding-inline-start: 48px; }
+
+@media (max-width: 600px) {
+    .domus-tax-table th:first-child {
+        min-width: 180px;
+        max-width: 200px;
+        width: 200px;
+    }
+}
+
+.domus-tax-booking-list {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    min-width: 220px;
+    max-width: 320px;
+    text-align: start;
+    white-space: normal;
+}
+
+.domus-tax-booking-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 6px 0;
+    border-top: var(--domus-border);
+    overflow-wrap: anywhere;
+}
+
+.domus-tax-booking-list li > span:last-child {
+    white-space: nowrap;
+    text-align: end;
+}

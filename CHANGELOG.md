@@ -8,23 +8,22 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
-- Indicate tenancy-assigned documents with an icon in unit document lists.
-- Personal and Team DOCX templates for editable utility reports, with a Markdown fallback.
-- Read-only unit and annual revenue APIs with Personal/Team selection and OpenAPI documentation.
+- Beta tax report in WISO Steuer layout, with itemized costs, subtotals, and year-closing badges.
+- Editable utility reports from Personal and Team DOCX templates, with a Markdown fallback.
+- Read-only unit and annual revenue APIs with OpenAPI documentation.
 - Multi-year portfolio analytics for rent, profit, profitability, and acquisition costs.
-- Document dates and assignments to multiple tenancies.
+- Document dates, multiple tenancy assignments, and assignment indicators.
 
 ### Changed
-- Consistent dialog headers, spacing, and persistent action footers, including the welcome wizard.
+- Consistent dialog headers and persistent action footers, including the welcome wizard.
 - Record activities directly from unit details.
-- Simplify document editing, previews, storage, and links to bookings and tenancies.
-- Improve utility settlement selection, expense allocation, and financial previews.
-- Add account checks and booking review before closing a financial year.
-- Improve tenancy checklists, period ordering, and booking descriptions.
+- Simplify document editing, previews, storage, and booking and tenancy links.
+- Review account totals and bookings before closing a financial year.
+- Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
-- Use reminder dates as deadlines and keep deferred tasks and steps visible.
-- Preserve booking and document edits across retries and nested dialogs without duplicates.
+- Use reminder dates as deadlines and keep deferred tasks visible.
+- Preserve booking and document edits across retries and nested dialogs.
 - Keep closed-year bookings and document links read-only.
 - Prevent duplicate document assignments and clean up links when unlinking documents.
 - Restore booking deletion, description clearing, and selected-year booking dates.

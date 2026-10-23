@@ -109,3 +109,10 @@ DOCX generation selection, missing/error states, explicit Markdown fallback, and
 The PHP template tests cover split Word text runs, XML escaping, unknown variables, missing IBANs,
 header/footer replacement, package preservation, actor file access and Personal/Team assignments.
 These fixtures do not prove office-editor rendering or permissions for a second real Team user.
+
+Run `PLAYWRIGHT_TEST=tax-report ./tests/run-playwright.sh` for the Tax declaration settings entry,
+Wiso hierarchy and row order, fixed headers and row labels while scrolling, itemized booking texts and signed amounts, year-closing status,
+year selection, retry, empty state, and phone layout.
+The tax-report PHP tests cover Wiso amounts and control balance, separate tenant credits/payments, child accounts,
+unit/property year closure, year-scoped booking descriptions, and exclusion of foreign units. Rent and prepayments use existing
+tenancy proration; expense amounts use unit bookings.
