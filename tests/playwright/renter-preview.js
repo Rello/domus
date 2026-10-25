@@ -77,8 +77,8 @@ async function main() {
         await page.waitForFunction(() => window.aiUpdates.length === 1);
         assert.deepEqual(await page.evaluate(() => window.aiUpdates), [{aiDocumentValidation:'1'}]);
 
-        assert.equal(await page.locator('#domus-team-settings-panel .domus-required-app').count(), 6);
-        assert.equal(await page.locator('#domus-team-settings-panel .domus-required-app-enabled').count(), 3);
+        assert.equal(await page.locator('#domus-team-settings-panel .domus-required-app').count(), 5);
+        assert.equal(await page.locator('#domus-team-settings-panel .domus-required-app-enabled').count(), 2);
         assert.equal(await page.locator('#domus-team-settings-panel').getByRole('checkbox', {name:'AI document validation',exact:true}).count(), 1);
         assert.equal(await page.getByText('Manage Team membership in Nextcloud Teams.', {exact:true}).count(), 0);
         await page.locator('#domus-team-settings-panel').getByRole('button', { name: 'Renter preview', exact: true }).click();

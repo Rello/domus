@@ -5601,6 +5601,14 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
     padding: 0;
 }
 
+.domus-ai-control {
+    margin: 16px 0;
+}
+
+.domus-ai-control p {
+    margin: 8px 0 0;
+}
+
 .domus-required-app {
     display: flex;
     align-items: center;

@@ -18,7 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ### Changed
 - Refresh the feature overview, app introduction, and welcome tour; move detailed guides into the new wiki.
-- Combine Nextcloud integration checks and the AI document-validation setting in one settings panel.
+- Combine Nextcloud integration checks and the AI document-validation setting in one settings panel; simplify AI checks, link to OpenAI and LocalAI integration, and clarify AI document processing with a properly aligned Nextcloud checkbox.
 - Consistent dialog headers and persistent action footers, including the welcome wizard.
 - Record activities directly from unit details.
 - Simplify document editing, previews, storage, and booking and tenancy links.

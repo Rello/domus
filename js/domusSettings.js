@@ -344,9 +344,9 @@
         }
 
         function buildAiControl(status) {
-            return '<label><input type="checkbox" id="domus-ai-validation"' + (status?.enabled ? ' checked' : '') + (!status?.available && !status?.enabled ? ' disabled' : '') + '> ' +
-                Domus.Utils.escapeHtml(t('domus', 'AI document validation')) + '</label><p>' +
-                Domus.Utils.escapeHtml(t('domus', 'Automatically preview selected PDFs using the configured AI provider. Extracted document text is sent to that provider.')) + '</p>';
+            return '<div class="domus-ai-control"><input type="checkbox" class="checkbox" id="domus-ai-validation" aria-describedby="domus-ai-validation-description"' + (status?.enabled ? ' checked' : '') + (!status?.available && !status?.enabled ? ' disabled' : '') + '>' +
+                '<label for="domus-ai-validation">' + Domus.Utils.escapeHtml(t('domus', 'AI document validation')) + '</label>' +
+                '<p id="domus-ai-validation-description">' + Domus.Utils.escapeHtml(t('domus', 'Uploaded documents will be processed by the Nextcloud Assistant. From the document, bookings and unit information will be extracted and suggested for review.')) + '</p></div>';
         }
 
         function bindAiSection() {
@@ -370,8 +370,7 @@
                 { id: 'groupfolders', name: t('domus', 'Team Folders'), appUrl: '/settings/admin/groupfolders', storeUrl: '/settings/apps/search/groupfolders?q=groupfolders' },
                 { id: 'guests', name: t('domus', 'Guests'), appUrl: '/settings/admin/guests', storeUrl: '/settings/apps/search/guests?q=guests' },
                 { name: t('domus', 'Assistant (PDF extraction)'), available: aiStatus?.assistant, appUrl: '/apps/assistant/', storeUrl: '/settings/apps/search/assistant' },
-                { name: t('domus', 'Nextcloud task processing'), available: aiStatus?.taskProcessing },
-                { name: t('domus', 'AI text provider'), available: aiStatus?.chatProvider }
+                { name: t('domus', 'OpenAI and LocalAI integration'), available: aiStatus?.chatProvider, appUrl: '/settings/apps/search/integration_openai', storeUrl: '/settings/apps/search/integration_openai' }
             ];
             const rows = apps.map(app => {
                 const enabled = app.id ? requiredApps?.[app.id] === true : app.available === true;
@@ -387,10 +386,9 @@
             return buildSettingsSection({
                 id: 'domus-team-settings-panel',
                 title: t('domus', 'Nextcloud Integration Check'),
-                body: '<div class="domus-form">' +
-                    '<ul class="domus-required-apps">' + rows + '</ul>' +
+                body: '<ul class="domus-required-apps">' + rows + '</ul>' +
                     buildAiControl(aiStatus) +
-                    '<div class="domus-form-actions"><button type="button" class="secondary" id="domus-renter-preview-button">' +
+                    '<div class="domus-form"><div class="domus-form-actions"><button type="button" class="secondary" id="domus-renter-preview-button">' +
                     Domus.Utils.escapeHtml(t('domus', 'Renter preview')) + '</button></div></div>'
             });
         }
