@@ -1507,6 +1507,41 @@ async function main() {
         await waitClosed(page);
     });
 
+    for (const toUnit of [true, false]) {
+        await test(`editing allocation clears previous ${toUnit ? 'distribution key' : 'unit'}`, async page => {
+            await page.evaluate(toUnit => {
+                Domus.Role.setRoleInfo({currentRole: 'buildingMgmt', availableRoles: ['buildingMgmt']});
+                window.savedAllocation = null;
+                window.storedBooking = {
+                    id: 1, propertyId: 1, unitId: toUnit ? null : 1,
+                    distributionKeyId: toUnit ? 2 : null,
+                    date: '2026-01-01', deliveryDate: '2026-01-01', account: 2000, amount: 10
+                };
+                Domus.Api.getDocuments = async () => [];
+                Domus.Api.get = async path => path.endsWith('/tenancies') ? [] : storedBooking;
+                Domus.Api.updateBooking = async (id, payload) => {
+                    savedAllocation = payload;
+                    Object.assign(storedBooking, payload);
+                };
+                Domus.Bookings.openEditModal(1);
+            }, toUnit);
+            await bookingDialog(page).waitFor();
+            await page.waitForFunction(() => !document.querySelector('#domus-booking-distribution').disabled);
+            await bookingDialog(page).locator('#domus-booking-distribution').selectOption(toUnit ? 'unit-allocation' : '2');
+            if (toUnit) await bookingDialog(page).locator('select[name="unitId"]').selectOption('1');
+            await bookingDialog(page).getByRole('button', {name: 'Save', exact: true}).click();
+            await waitClosed(page);
+            const saved = await page.evaluate(() => savedAllocation);
+            assert.equal(saved.unitId, toUnit ? '1' : null);
+            assert.equal(saved.distributionKeyId, toUnit ? null : '2');
+            // Reload through the same API response to verify persisted form selection.
+            await page.evaluate(() => Domus.Bookings.openEditModal(1));
+            await bookingDialog(page).waitFor();
+            await page.waitForFunction(() => !document.querySelector('#domus-booking-distribution').disabled);
+            assert.equal(await bookingDialog(page).locator('#domus-booking-distribution').inputValue(), toUnit ? 'unit-allocation' : '2');
+        });
+    }
+
     await test('section toggle preserves selected allocation without reloading options', async page => {
         await page.evaluate(() => {
             window.distributionLoads = 0;

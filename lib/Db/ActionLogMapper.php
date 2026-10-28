@@ -128,22 +128,28 @@ class ActionLogMapper extends TeamScopedMapper {
      * @throws Exception
      */
     public function countAffectedByEntity(string $userId, string $entityType, int $entityId): int {
+        return $this->countAffectedByEntities($userId, [['entityType' => $entityType, 'entityId' => $entityId]]);
+    }
+
+    /** Count each action once, even if both ends belong to the deletion. */
+    public function countAffectedByEntities(string $userId, array $entities): int {
+        if ($entities === []) {
+            return 0;
+        }
         $qb = $this->db->getQueryBuilder();
+        $conditions = [];
+        foreach ($entities as $entity) {
+            foreach (['entity', 'linked_entity'] as $prefix) {
+                $conditions[] = $qb->expr()->andX(
+                    $qb->expr()->eq($prefix . '_type', $qb->createNamedParameter($entity['entityType'])),
+                    $qb->expr()->eq($prefix . '_id', $qb->createNamedParameter($entity['entityId'], $qb::PARAM_INT))
+                );
+            }
+        }
         $qb->selectAlias($qb->createFunction('COUNT(DISTINCT id)'), 'amount')
             ->from($this->getTableName())
             ->where($this->ownerExpression($qb, $userId))
-            ->andWhere(
-                $qb->expr()->orX(
-                    $qb->expr()->andX(
-                        $qb->expr()->eq('entity_type', $qb->createNamedParameter($entityType)),
-                        $qb->expr()->eq('entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT))
-                    ),
-                    $qb->expr()->andX(
-                        $qb->expr()->eq('linked_entity_type', $qb->createNamedParameter($entityType)),
-                        $qb->expr()->eq('linked_entity_id', $qb->createNamedParameter($entityId, $qb::PARAM_INT))
-                    )
-                )
-            );
+            ->andWhere($qb->expr()->orX(...$conditions));
 
         return (int)$qb->executeQuery()->fetchOne();
     }

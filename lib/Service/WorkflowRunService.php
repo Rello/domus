@@ -403,11 +403,9 @@ class WorkflowRunService {
             $steps = array_values(array_filter($steps, static fn(TaskStep $step) => ($step->getDeferredUntil() ?? 0) <= time()));
         }
         $runs = [];
-        foreach ($steps as $step) {
-            $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
-            if ($run) {
-                $runs[$run->getId()] = $run;
-            }
+        $runIds = array_values(array_unique(array_map(static fn(TaskStep $step) => $step->getWorkflowRunId(), $steps)));
+        foreach ($this->workflowRunMapper->findByIds($runIds) as $run) {
+            $runs[$run->getId()] = $run;
         }
 
         return array_map(function (TaskStep $step) use ($entityMap, $runs) {

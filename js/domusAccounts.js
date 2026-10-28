@@ -238,7 +238,8 @@
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Number'),
                     required: true,
-                    content: '<input name="number" required value="' + Domus.Utils.escapeHtml(account?.number || '') + '">'
+                    content: '<input name="number" required' + (account?.id ? ' readonly' : '') + ' value="' + Domus.Utils.escapeHtml(account?.number || '') + '">' +
+                        (account?.id ? '<p>' + Domus.Utils.escapeHtml(t('domus', 'Account numbers cannot be changed. Create a new account and reassign bookings before deleting the old account.')) + '</p>' : '')
                 }),
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Label (DE)'),

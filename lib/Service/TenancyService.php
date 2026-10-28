@@ -17,6 +17,7 @@ use OCA\Domus\Db\Tenancy;
 use OCA\Domus\Db\TenancyMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCP\IL10N;
+use OCP\IDBConnection;
 
 class TenancyService {
     public function __construct(
@@ -26,6 +27,7 @@ class TenancyService {
         private PartnerRelMapper $partnerRelMapper,
         private PermissionService $permissionService,
         private IL10N $l10n,
+        private IDBConnection $connection,
         private ?AuditService $audit = null,
     ) {
     }
@@ -98,8 +100,10 @@ class TenancyService {
             throw new \InvalidArgumentException($this->l10n->t('Start date is required.'));
         }
 
-        $this->closeOpenTenanciesForUnit((int)$data['unitId'], $startDate, $userId);
+        return $this->persistReplacement($data, $startDate, $userId, $role);
+    }
 
+    private function persistReplacement(array $data, \DateTimeImmutable $startDate, string $userId, string $role, ?Tenancy $reference = null): Tenancy {
         $now = time();
         $tenancy = new Tenancy();
         $tenancy->setUserId($userId);
@@ -113,8 +117,19 @@ class TenancyService {
         $tenancy->setCreatedAt($now);
         $tenancy->setUpdatedAt($now);
 
-        $inserted = $this->tenancyMapper->insert($tenancy);
-        $this->syncPartnerRelations($inserted, $data['partnerIds'] ?? [], $userId, $role);
+        $this->connection->beginTransaction();
+        try {
+            if ($reference !== null) {
+                $this->closeOverlappingTenancies($reference, $data['partnerIds'], $startDate, $userId);
+            }
+            $this->closeOpenTenanciesForUnit((int)$data['unitId'], $startDate, $userId);
+            $inserted = $this->tenancyMapper->insert($tenancy);
+            $this->syncPartnerRelations($inserted, $data['partnerIds'] ?? [], $userId, $role);
+            $this->connection->commit();
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+            throw $e;
+        }
         $this->audit?->relationships($inserted->getId(), $userId, $inserted->getTeamId(), null, $inserted->getUnitId(), [], $inserted->getPartnerIds() ?? []);
         $this->hydratePartners($inserted, $userId);
         return $inserted;
@@ -142,9 +157,7 @@ class TenancyService {
             throw new \InvalidArgumentException($this->l10n->t('Start date is required.'));
         }
 
-        $this->closeOverlappingTenancies($existing, $mergedData['partnerIds'], $startDate, $userId);
-
-        return $this->createTenancy($mergedData, $userId, $role);
+        return $this->persistReplacement($mergedData, $startDate, $userId, $role, $existing);
     }
 
     public function updateTenancy(int $id, array $data, string $userId, string $role): Tenancy {
@@ -249,7 +262,13 @@ class TenancyService {
             $required = $field === 'baseRent' && !$this->permissionService->isBuildingManagement($role);
             if ($required || (isset($data[$field]) && $data[$field] !== '')) {
                 InputValidation::assertMoney($data[$field] ?? null, $this->l10n->t('Amount must be a non-negative monetary value.'));
+                if (strlen((string)$data[$field]) > 32) {
+                    throw new \InvalidArgumentException($this->l10n->t('Amount must be a non-negative monetary value.'));
+                }
             }
+        }
+        if (isset($data['conditions']) && (!is_string($data['conditions']) || strlen($data['conditions']) > 65535)) {
+            throw new \InvalidArgumentException($this->l10n->t('Tenancy conditions exceed the storage limit.'));
         }
         $unit = $this->unitMapper->findForUser((int)$data['unitId'], $userId);
         if (!$unit) {

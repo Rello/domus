@@ -38,6 +38,7 @@ class TransferQuery {
     public function __construct(private TransferDatabase $db) {}
     public function createFunction(string $function): string { return $function; }
     public function select(...$columns): self { $this->columns = $columns; return $this; }
+    public function selectAlias(string $expression, string $alias): self { $this->columns[] = $expression; return $this; }
     public function from(string $table): self { $this->table = $table; return $this; }
     public function where(mixed $condition): self { $this->condition = $condition; return $this; }
     public function andWhere(mixed $condition): self { $this->condition = $this->condition === null ? $condition : ['and', [$this->condition, $condition]]; return $this; }
@@ -112,12 +113,14 @@ class TransferQuery {
 }
 
 class TransferResult {
+    private int $cursor = 0;
     public function __construct(private array $rows, private array $columns = []) {}
     public function fetchAll(): array { return $this->rows; }
-    public function fetch(): array|false { return $this->rows[0] ?? false; }
+    public function fetch(): array|false { return $this->rows[$this->cursor++] ?? false; }
     public function fetchOne(): mixed {
         $column = $this->columns[0] ?? 'id';
         if ($column === 'COUNT(*)') return count($this->rows);
+        if ($column === 'COUNT(DISTINCT id)') return count(array_unique(array_column($this->rows, 'id')));
         return $this->rows[0][$column] ?? false;
     }
     public function closeCursor(): void {}

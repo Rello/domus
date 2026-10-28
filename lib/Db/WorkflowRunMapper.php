@@ -16,6 +16,18 @@ class WorkflowRunMapper extends TeamScopedMapper {
         parent::__construct($db, 'domus_workflow_runs', WorkflowRun::class, $access);
     }
 
+    /** @param int[] $ids */
+    public function findByIds(array $ids): array {
+        if ($ids === []) {
+            return [];
+        }
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')->from($this->getTableName())
+            ->where($qb->expr()->in('id', $qb->createNamedParameter(array_values(array_unique($ids)), $qb::PARAM_INT_ARRAY)));
+        $this->applyScope($qb);
+        return $this->findEntities($qb);
+    }
+
     /**
      * @throws Exception
      */

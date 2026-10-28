@@ -604,6 +604,8 @@
             summaryList.className = 'domus-delete-summary';
             [
                 { label: t('domus', 'Units'), value: summary?.units },
+                { label: t('domus', 'Bookings'), value: summary?.bookings },
+                { label: t('domus', 'Year status'), value: summary?.yearStatus },
                 { label: t('domus', 'Tasks'), value: summary?.tasks },
                 { label: t('domus', 'Task steps'), value: summary?.taskSteps },
                 { label: t('domus', 'Workflow runs'), value: summary?.workflowRuns },

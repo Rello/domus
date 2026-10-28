@@ -30,6 +30,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
+- Roll back tenancy replacements and condition changes completely when saving fails, and validate storage limits before changing contracts.
+- Serialize year closure and reopening, and remove all matching closures when reopening years with legacy duplicates.
+- Preserve early process completion on unit import so the first skipped step can be reopened, including legacy archives.
+- Batch process enrichment on the dashboard to avoid a separate database query for every open step.
+- Clear the previous allocation when switching draft bookings between a unit and a distribution key, and reject incompatible allocations.
+- Delete property-only bookings, booking document and activity links, and year closures atomically with their property, and include financial records in the deletion summary.
+- Prevent account renumbering in the editor and API to preserve historical booking totals.
+- Keep browser saves and uploads in the tab’s Personal or Team context when another tab switches Teams.
 - Preserve custom accounts, process templates, and existing process schedules when upgrading from 1.2 or 1.3 betas.
 - Clean up deleted users’ Personal portfolios and move journals, preserve Team history, and continue Team rules through an authorized remaining member.
 - Isolate custom Personal accounts per user and protect shared system accounts from editing, including through the API.

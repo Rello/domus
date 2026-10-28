@@ -166,6 +166,70 @@ class BookingServiceTest extends TestCase {
         $service->deleteBooking(7, 'user1');
     }
 
+    public function testSwitchingAllocationClearsPreviousIdentifier(): void {
+        foreach ([true, false] as $toUnit) {
+            $booking = $this->createDraftBooking();
+            $booking->setPropertyId(9);
+            $booking->setUnitId($toUnit ? null : 4);
+            $booking->setDistributionKeyId($toUnit ? 2 : null);
+            $mapper = $this->createMock(BookingMapper::class);
+            $mapper->method('findForUser')->willReturn($booking);
+            $mapper->expects($this->once())->method('update')->willReturnArgument(0);
+            $service = $this->createService(bookingMapper: $mapper);
+            $updated = $service->updateBooking(7, [
+                'unitId' => $toUnit ? 4 : null,
+                'distributionKeyId' => $toUnit ? null : 2,
+            ], 'user1');
+            self::assertSame($toUnit ? 4 : null, $updated->getUnitId());
+            self::assertSame($toUnit ? null : 2, $updated->getDistributionKeyId());
+            // A later partial edit must retain the chosen allocation.
+            $mapper = $this->createMock(BookingMapper::class);
+            $mapper->method('findForUser')->willReturn($updated);
+            $mapper->method('update')->willReturnArgument(0);
+            $updated = $this->createService(bookingMapper: $mapper)->updateBooking(7, ['description' => 'Edited'], 'user1');
+            self::assertSame($toUnit ? 4 : null, $updated->getUnitId());
+            self::assertSame($toUnit ? null : 2, $updated->getDistributionKeyId());
+        }
+    }
+
+    public function testUpdateRejectsSwitchWithoutClearingPreviousAllocation(): void {
+        foreach ([true, false] as $toUnit) {
+            $booking = $this->createDraftBooking();
+            $booking->setPropertyId(9);
+            $booking->setUnitId($toUnit ? null : 4);
+            $booking->setDistributionKeyId($toUnit ? 2 : null);
+            $mapper = $this->createMock(BookingMapper::class);
+            $mapper->method('findForUser')->willReturn($booking);
+            $mapper->expects($this->never())->method('update');
+            try {
+                $this->createService(bookingMapper: $mapper)->updateBooking(7, $toUnit ? ['unitId' => 4] : ['distributionKeyId' => 2], 'user1');
+                self::fail('Expected incompatible allocation rejection');
+            } catch (\InvalidArgumentException $exception) {
+                self::assertSame('Choose either a unit or a distribution key.', $exception->getMessage());
+            }
+        }
+    }
+
+    public function testCreateRejectsBothAllocations(): void {
+        $mapper = $this->createMock(BookingMapper::class);
+        $mapper->expects($this->never())->method('insert');
+        $this->expectExceptionMessage('Choose either a unit or a distribution key.');
+        $this->createService(bookingMapper: $mapper)->createBooking([
+            'account' => 2100, 'date' => '2024-04-10', 'amount' => '10.00',
+            'propertyId' => 9, 'unitId' => 4, 'distributionKeyId' => 2,
+        ], 'user1');
+    }
+
+    public function testUpdateRejectsUnitOutsideProperty(): void {
+        $booking = $this->createDraftBooking();
+        $booking->setPropertyId(10);
+        $mapper = $this->createMock(BookingMapper::class);
+        $mapper->method('findForUser')->willReturn($booking);
+        $mapper->expects($this->never())->method('update');
+        $this->expectExceptionMessage('Unit does not belong to the property.');
+        $this->createService(bookingMapper: $mapper)->updateBooking(7, ['unitId' => 4], 'user1');
+    }
+
     private function createService(
         ?BookingMapper $bookingMapper = null,
         ?DocumentLinkMapper $documentLinkMapper = null,
@@ -179,6 +243,7 @@ class BookingServiceTest extends TestCase {
 
         $unit = new Unit();
         $unit->setId(4);
+        $unit->setPropertyId(9);
         $unitMapper = $this->createMock(UnitMapper::class);
         $unitMapper->method('findForUser')->willReturn($unit);
 
@@ -189,12 +254,19 @@ class BookingServiceTest extends TestCase {
         $l10n = $this->createMock(IL10N::class);
         $l10n->method('t')->willReturnCallback(fn(string $message) => $message);
 
+        $key = new \OCA\Domus\Db\DistributionKey();
+        $key->setId(2);
+        $key->setPropertyId(9);
+        $key->setValidFrom('2024-01-01');
+        $keyMapper = $this->createMock(DistributionKeyMapper::class);
+        $keyMapper->method('findForUser')->willReturn($key);
+
         return new BookingService(
             $bookingMapper ?? $this->createMock(BookingMapper::class),
             $documentLinkMapper ?? $this->createMock(DocumentLinkMapper::class),
             $propertyMapper,
             $unitMapper,
-            $this->createMock(DistributionKeyMapper::class),
+            $keyMapper,
             $actionLogMapper ?? $this->createMock(ActionLogMapper::class),
             $bookingYearService ?? $this->createConfiguredMock(BookingYearService::class, [
                 'isYearClosedForBookingScope' => false,

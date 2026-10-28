@@ -6,6 +6,11 @@
 OC.L10N.register(
     "domus",
     {
+    "Tenancy conditions exceed the storage limit." : "Die Mietbedingungen überschreiten die Speichergrenze.",
+    "Invalid workflow completion type." : "Ungültige Prozessabschlussart.",
+    "Choose either a unit or a distribution key." : "Wählen Sie entweder eine Einheit oder einen Verteilungsschlüssel.",
+    "Unit does not belong to the property." : "Die Einheit gehört nicht zum Objekt.",
+    "Account numbers cannot be changed. Create a new account and reassign bookings before deleting the old account." : "Kontonummern können nicht geändert werden. Erstellen Sie ein neues Konto und ordnen Sie die Buchungen neu zu, bevor Sie das alte Konto löschen.",
     "Another change is in progress. Try again." : "Eine andere Änderung wird gerade verarbeitet. Versuchen Sie es erneut.",
     "A Team account conflicts with an account used by this unit." : "Ein Team-Konto steht im Konflikt mit einem von dieser Einheit verwendeten Konto.",
     "A linked file is missing or unreadable." : "Eine verknüpfte Datei fehlt oder ist nicht lesbar.",

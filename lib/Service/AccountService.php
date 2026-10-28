@@ -93,16 +93,8 @@ class AccountService {
     public function updateAccount(int $id, array $data): Account {
         $account = $this->getAccount($id);
         $this->assertNotSystemAccount($account);
-        if (array_key_exists('number', $data)) {
-            $number = trim((string)$data['number']);
-            if ($number === '') {
-                throw new \InvalidArgumentException($this->l10n->t('Account number is required.'));
-            }
-            $existing = $this->accountMapper->findByNumber($number);
-            if ($existing && $existing->getId() !== $account->getId()) {
-                throw new \InvalidArgumentException($this->l10n->t('Account number already exists.'));
-            }
-            $account->setNumber($number);
+        if (array_key_exists('number', $data) && trim((string)$data['number']) !== (string)$account->getNumber()) {
+            throw new ConflictException($this->l10n->t('Account numbers cannot be changed. Create a new account and reassign bookings before deleting the old account.'));
         }
 
         if (array_key_exists('labelDe', $data)) {

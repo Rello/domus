@@ -27,30 +27,25 @@ class BookingYearService {
     public function closeYear(int $year, ?int $propertyId, ?int $unitId, string $userId): BookingYear {
         [$propertyId, $unitId] = $this->assertScope($propertyId, $unitId, $userId);
 
-        $existing = $this->bookingYearMapper->findClosed($year, $propertyId, $unitId);
-        if ($existing) {
-            return $existing;
-        }
+        return $this->bookingYearMapper->withScopeLock($propertyId, $unitId, $userId, function () use ($year, $propertyId, $unitId): BookingYear {
+            $existing = $this->bookingYearMapper->findClosed($year, $propertyId, $unitId);
+            if ($existing) {
+                return $existing;
+            }
 
-        $bookingYear = new BookingYear();
-        $bookingYear->setPropertyId($propertyId);
-        $bookingYear->setUnitId($unitId);
-        $bookingYear->setYear($year);
-        $bookingYear->setClosedAt(time());
-
-        return $this->bookingYearMapper->insert($bookingYear);
+            $bookingYear = new BookingYear();
+            $bookingYear->setPropertyId($propertyId);
+            $bookingYear->setUnitId($unitId);
+            $bookingYear->setYear($year);
+            $bookingYear->setClosedAt(time());
+            return $this->bookingYearMapper->insert($bookingYear);
+        });
     }
 
     public function reopenYear(int $year, ?int $propertyId, ?int $unitId, string $userId): bool {
         [$propertyId, $unitId] = $this->assertScope($propertyId, $unitId, $userId);
-
-        $existing = $this->bookingYearMapper->findClosed($year, $propertyId, $unitId);
-        if (!$existing) {
-            return false;
-        }
-
-        $this->bookingYearMapper->delete($existing);
-        return true;
+        return $this->bookingYearMapper->withScopeLock($propertyId, $unitId, $userId,
+            fn(): bool => $this->bookingYearMapper->deleteClosed($year, $propertyId, $unitId) > 0);
     }
 
     /**

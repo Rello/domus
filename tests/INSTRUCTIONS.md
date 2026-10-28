@@ -30,8 +30,9 @@ GitHub Actions runs this same PHPUnit configuration and the browser wrapper on p
   `PLAYWRIGHT_IMAGE` to use an existing compatible Playwright image.
 - Tests load the actual JavaScript modules and CSS in Chromium, with fixture API
   responses. They do not require a Nextcloud login or write server records.
-- The Team context fixture checks Personal and multiple Team choices after navigation refresh.
-  stale preview responses, and the management boundary for accounts without portfolio access.
+- The Team context fixture checks Personal and multiple Team choices after navigation refresh,
+  two-tab contact saves after another tab changes the persisted selection, explicit switch/reload
+  behavior, and tab-scoped headers on JSON requests and all document/image uploads.
 - Booking/document regressions in `modal-changes` cover partial-save retries, nested
   document editing without competing booking drafts, file-source switching/reset,
   property-scoped allocation defaults, disclosure state, and keyboard file picking.
@@ -230,3 +231,11 @@ Personal Domus data (including disabled accounts for later reactivation). Team-o
 users and future users receive no legacy copies. Original catalogue rows and
 process references remain intact; conflicting newer scoped definitions stop the
 upgrade with a diagnostic instead of overwriting either version.
+
+Run `./tests/run-unit.sh --filter 'TenancyService|BookingYearService|UnitTransferService|WorkflowRunService'`
+for tenancy replacement/condition-change rollback after insert or relation failures,
+pre-write storage limits, parent-lock ordering and failure rollback, duplicate-year
+reopening with Team/year isolation, early-completion export/import/reopen (including
+legacy archives), invalid completion markers, and bounded dashboard run retrieval
+at 1 and 1,000 open steps. Mapper fixtures verify query routing and operation counts;
+live concurrent requests across database backends remain a separate acceptance check.

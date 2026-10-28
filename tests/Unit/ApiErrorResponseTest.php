@@ -89,6 +89,18 @@ class ApiErrorResponseTest extends TestCase {
         self::assertSame(array_merge($booking->jsonSerialize(), ['yearClosed' => true]), $controller->show(402)->getData());
     }
 
+    public function testBookingUpdatePreservesExplicitClearsAndOmitsAbsentFields(): void {
+        foreach ([['unitId' => 4, 'distributionKeyId' => null], ['unitId' => null, 'distributionKeyId' => 2], ['description' => 'Updated']] as $payload) {
+            $request = $this->getMockBuilder(IRequest::class)->onlyMethods(['getHeader'])->addMethods(['getParams'])->getMock();
+            $request->method('getParams')->willReturn($payload);
+            $bookings = $this->createMock(BookingService::class);
+            $bookings->expects($this->once())->method('updateBooking')->with(7, $payload, 'alice')->willReturn(new \OCA\Domus\Db\Booking());
+            $context = $this->createMock(ManagementAccessContext::class);
+            $context->method('managementUserId')->willReturn('alice');
+            (new BookingController($request, $context, $bookings))->update(7, ...$payload);
+        }
+    }
+
     public function testControllerDoesNotMisreportDatabaseFailureAsMissingBooking(): void {
         $failure = new \RuntimeException('Database unavailable');
         $bookings = $this->createMock(BookingService::class);

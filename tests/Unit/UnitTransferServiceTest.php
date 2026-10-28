@@ -18,6 +18,57 @@ class UnitTransferServiceTest extends TestCase {
     private array $dependencies;
     private array $entries;
 
+    /** @dataProvider archiveVersions */
+    public function testEarlyCompletionAtFirstStepRoundTripsAndReopens(bool $legacy): void {
+        $transfer = $this->service();
+        $d = $this->dependencies;
+        $unit = new Unit(); $unit->setId(5); $unit->setLabel('Unit');
+        $d['unitMapper']->method('findForUser')->willReturn($unit);
+        $run = new \OCA\Domus\Db\WorkflowRun();
+        $run->setId(10); $run->setTemplateId(21); $run->setEntityType('unit'); $run->setEntityId(5); $run->setStatus('open');
+        $steps = [];
+        foreach (['open', 'new'] as $index => $status) {
+            $step = new \OCA\Domus\Db\TaskStep();
+            $step->setId($index + 1); $step->setWorkflowRunId(10); $step->setEntityType('unit'); $step->setEntityId(5);
+            $step->setSortOrder($index + 1); $step->setStatus($status); $step->setAllowEarlyCompletion(1); $step->setDefaultDueDaysOffset(0);
+            $steps[] = $step;
+        }
+        $d['workflowRunMapper']->method('findById')->willReturnCallback(function () use (&$run) { return $run; });
+        $d['workflowRunMapper']->method('findByEntity')->willReturnCallback(function () use (&$run) { return [$run]; });
+        $d['taskStepMapper']->method('findById')->willReturnCallback(function () use (&$steps) { return $steps[0]; });
+        $d['taskStepMapper']->method('findByRun')->willReturnCallback(function () use (&$steps) { return $steps; });
+        $workflow = new \OCA\Domus\Service\WorkflowRunService($d['workflowRunMapper'], $d['taskStepMapper'], $d['taskTemplateMapper'], $d['taskTemplateStepMapper'], $d['propertyMapper'], $d['unitMapper'], $this->createMock(\OCA\Domus\Service\EntityImageService::class), $d['connection'], $d['l10n']);
+        $workflow->closeEarly(1, 'source');
+        self::assertSame('early', $run->getCompletionType());
+        self::assertSame(['skipped', 'skipped'], array_map(fn($step) => $step->getStatus(), $steps));
+        $template = new \OCA\Domus\Db\TaskTemplate(); $template->setId(21); $template->setKey('custom');
+        $d['taskTemplateMapper']->method('findForRun')->willReturn($template);
+        $d['taskTemplateMapper']->method('insert')->willReturnCallback(function ($row) { $row->setId(121); return $row; });
+        $payload = $transfer->exportUnitDataset(5, 'source');
+        if ($legacy) unset($payload['workflowRuns'][0]['completionType']);
+        $d['workflowRunMapper']->method('insert')->willReturnCallback(function ($row) use (&$run) { $row->setId(119); $run = $row; return $row; });
+        $steps = [];
+        $d['taskStepMapper']->method('insert')->willReturnCallback(function ($row) use (&$steps) { $row->setId(count($steps) + 101); $steps[] = $row; return $row; });
+        $transfer->importUnitDataset($payload, 'target', 'landlord');
+        self::assertSame('early', $run->getCompletionType());
+        $workflow->reopenStep(101, 'target');
+        self::assertSame('open', $run->getStatus());
+        self::assertNull($run->getCompletionType());
+        self::assertSame(['open', 'new'], array_map(fn($step) => $step->getStatus(), $steps));
+    }
+
+    public static function archiveVersions(): array { return [[false], [true]]; }
+
+    public function testImportRejectsInvalidCompletionTypeAndRollsBack(): void {
+        $service = $this->service();
+        $template = new \OCA\Domus\Db\TaskTemplate(); $template->setId(21);
+        $this->dependencies['taskTemplateMapper']->method('findByKey')->willReturn($template);
+        $this->dependencies['connection']->expects(self::once())->method('rollBack');
+        $this->dependencies['connection']->expects(self::never())->method('commit');
+        $this->expectException(\InvalidArgumentException::class);
+        $service->importUnitDataset(['unit' => ['label' => 'Unit'], 'workflowRuns' => [['templateKey' => 'custom', 'completionType' => 'invalid']]], 'target', 'landlord');
+    }
+
     public function testImportAuditRunsOnlyAfterCommit(): void {
         $service = $this->service();
         $committed = false;

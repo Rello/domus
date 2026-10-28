@@ -178,8 +178,17 @@ class BookingService {
         if (isset($data['propertyId']) && !$this->propertyMapper->findForUser((int)$data['propertyId'], $userId)) {
             throw new ResourceNotFoundException($this->l10n->t('Property not found.'));
         }
-        if (isset($data['unitId']) && !$this->unitMapper->findForUser((int)$data['unitId'], $userId)) {
-            throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
+        if (isset($data['unitId'], $data['distributionKeyId'])) {
+            throw new \InvalidArgumentException($this->l10n->t('Choose either a unit or a distribution key.'));
+        }
+        if (isset($data['unitId'])) {
+            $unit = $this->unitMapper->findForUser((int)$data['unitId'], $userId);
+            if (!$unit) {
+                throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
+            }
+            if (isset($data['propertyId']) && (int)$unit->getPropertyId() !== (int)$data['propertyId']) {
+                throw new \InvalidArgumentException($this->l10n->t('Unit does not belong to the property.'));
+            }
         }
         $periodFrom = $data['periodFrom'] ?? $data['date'];
         $periodTo = $data['periodTo'] ?? $data['date'];

@@ -344,10 +344,17 @@
             return next;
         }
 
-        function request(method, path, data) {
+        // The visible tab owns its scope; another tab may change the saved preference.
+        function scopedHeaders(headers, teamScope = Domus.state.managementContext?.activeTeamId || 'Personal') {
+            return Object.assign({}, headers, {
+                'X-Domus-Team': teamScope
+            });
+        }
+
+        function request(method, path, data, teamScope) {
             const opts = {
                 method,
-                headers: Object.assign({}, baseJsonHeaders, { 'X-Domus-Role': Domus.Role?.getCurrentRole?.() || Domus.state.role })
+                headers: scopedHeaders(Object.assign({}, baseJsonHeaders, { 'X-Domus-Role': Domus.Role?.getCurrentRole?.() || Domus.state.role }), teamScope)
             };
 
             if (data) {
@@ -424,6 +431,8 @@
             post: (path, data) => request('POST', path, data),
             put: (path, data) => request('PUT', path, data),
             delete: path => request('DELETE', path),
+            // Scope switches resolve capabilities for the destination, even if old access was revoked.
+            selectTeam: teamId => request('POST', teamId ? '/teams/' + encodeURIComponent(teamId) + '/activate' : '/teams/deactivate', undefined, teamId || 'Personal'),
             getDashboardSummary: () => request('GET', '/dashboard/summary'),
             getSettings: () => request('GET', '/settings'),
             getGuestCreationContext: teamId => request('GET', `/teams/${encodeURIComponent(teamId)}/guest-creation`),
@@ -596,10 +605,10 @@
                 }
                 const opts = {
                     method: 'POST',
-                    headers: {
+                    headers: scopedHeaders({
                         'OCS-APIREQUEST': 'true',
                         requesttoken: OC.requestToken
-                    },
+                    }),
                     body: formData
                 };
                 return fetch(baseUrl + '/documents/attach', opts).then(handleResponse);
@@ -618,10 +627,10 @@
                 }
                 const opts = {
                     method: 'POST',
-                    headers: {
+                    headers: scopedHeaders({
                         'OCS-APIREQUEST': 'true',
                         requesttoken: OC.requestToken
-                    },
+                    }),
                     body: formData
                 };
                 return fetch(baseUrl + `/documents/${entityType}/${entityId}/upload`, opts).then(handleResponse);
@@ -631,11 +640,11 @@
                 formData.append('image', file);
                 return fetch(baseUrl + `/properties/${id}/image`, {
                     method: 'POST',
-                    headers: {
+                    headers: scopedHeaders({
                         'OCS-APIREQUEST': 'true',
                         requesttoken: OC.requestToken,
                         'X-Domus-Role': Domus.Role?.getCurrentRole?.() || Domus.state.role
-                    },
+                    }),
                     body: formData
                 }).then(handleResponse);
             },
@@ -645,11 +654,11 @@
                 formData.append('image', file);
                 return fetch(baseUrl + `/units/${id}/image`, {
                     method: 'POST',
-                    headers: {
+                    headers: scopedHeaders({
                         'OCS-APIREQUEST': 'true',
                         requesttoken: OC.requestToken,
                         'X-Domus-Role': Domus.Role?.getCurrentRole?.() || Domus.state.role
-                    },
+                    }),
                     body: formData
                 }).then(handleResponse);
             },
@@ -2916,7 +2925,7 @@
             select.addEventListener('change', async () => {
                 select.disabled = true;
                 try {
-                    await Domus.Api.post(select.value ? '/teams/' + encodeURIComponent(select.value) + '/activate' : '/teams/deactivate');
+                    await Domus.Api.selectTeam(select.value);
                     window.history.replaceState(null, '', Domus.Router.url('dashboard'));
                     window.location.reload();
                 } catch (error) {

@@ -73,6 +73,7 @@ class BookingController extends Controller {
         ?string $periodFrom = null,
         ?string $periodTo = null,
     ): DataResponse {
+        $params = $this->request->getParams();
         $data = array_filter([
             'account' => $account,
             'date' => $date,
@@ -84,7 +85,7 @@ class BookingController extends Controller {
             'distributionKeyId' => $distributionKeyId,
             'periodFrom' => $periodFrom,
             'periodTo' => $periodTo,
-        ], fn($value) => $value !== null);
+        ], fn($value, $key) => $value !== null || array_key_exists($key, $params), ARRAY_FILTER_USE_BOTH);
         return new DataResponse($this->bookingService->updateBooking($id, $data, $this->getUserId()));
     }
 

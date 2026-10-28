@@ -16,6 +16,41 @@ class BookingYearMapper extends TeamScopedMapper {
         parent::__construct($db, 'domus_booking_years', BookingYear::class, $access);
     }
 
+    /** Serialize year transitions on the parent row, including on SQLite.
+     * The UPDATE must precede closure reads so concurrent callers cannot both
+     * observe an absent closure. Reopening uses the same lock.
+     */
+    public function withScopeLock(?int $propertyId, ?int $unitId, string $userId, callable $operation): mixed {
+        $this->db->beginTransaction();
+        try {
+            $qb = $this->db->getQueryBuilder();
+            $qb->update($propertyId !== null ? 'domus_properties' : 'domus_units')
+                ->set('id', $qb->createNamedParameter($propertyId ?? $unitId, $qb::PARAM_INT))
+                ->where($qb->expr()->eq('id', $qb->createNamedParameter($propertyId ?? $unitId, $qb::PARAM_INT)))
+                ->andWhere($this->ownerExpression($qb, $userId));
+            $qb->executeStatement();
+            $result = $operation();
+            $this->db->commit();
+            return $result;
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /** Remove every matching closure, including duplicates from older versions. */
+    public function deleteClosed(int $year, ?int $propertyId, ?int $unitId): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)));
+        foreach (['property_id' => $propertyId, 'unit_id' => $unitId] as $column => $id) {
+            $qb->andWhere($id === null ? $qb->expr()->isNull($column)
+                : $qb->expr()->eq($column, $qb->createNamedParameter($id, $qb::PARAM_INT)));
+        }
+        $this->applyScope($qb);
+        return $qb->executeStatement();
+    }
+
     /**
      * @throws Exception
      */
@@ -117,4 +152,23 @@ class BookingYearMapper extends TeamScopedMapper {
         $this->applyScope($qb);
         $qb->executeStatement();
     }
+    /** @throws Exception */
+    public function countByProperty(int $propertyId): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectAlias($qb->createFunction('COUNT(*)'), 'amount')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
+        $this->applyScope($qb);
+        return (int)$qb->executeQuery()->fetchOne();
+    }
+
+    /** @throws Exception */
+    public function deleteByProperty(int $propertyId): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
+        $this->applyScope($qb);
+        $qb->executeStatement();
+    }
+
 }

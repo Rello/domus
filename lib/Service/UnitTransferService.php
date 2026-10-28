@@ -538,6 +538,17 @@ class UnitTransferService {
             $run->setName($runData['name'] ?? '');
             $run->setYear(isset($runData['year']) ? (int)$runData['year'] : null);
             $run->setStatus($runData['status'] ?? 'open');
+            $completionType = $runData['completionType'] ?? null;
+            if (!in_array($completionType, [null, 'early', 'standard'], true)) {
+                throw new \InvalidArgumentException($this->l10n->t('Invalid workflow completion type.'));
+            }
+            // Legacy archives predate the marker: skipped steps on a closed run
+            // identify early completion, including completion at the first step.
+            if (!array_key_exists('completionType', $runData) && $run->getStatus() === 'closed') {
+                $statuses = array_column($runData['steps'] ?? [], 'status');
+                $completionType = in_array('skipped', $statuses, true) ? 'early' : 'standard';
+            }
+            $run->setCompletionType($completionType);
             $run->setStartedAt($this->normalizeTimestamp($runData['startedAt'] ?? null, $now));
             $run->setClosedAt($this->normalizeNullableTimestamp($runData['closedAt'] ?? null));
             $run->setCreatedBy($userId);

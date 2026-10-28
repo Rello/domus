@@ -1919,9 +1919,9 @@
                                 Domus.UI.showNotification(t('domus', 'Select unit'), 'error');
                                 return;
                             }
-                            delete formData.distributionKeyId;
+                            formData.distributionKeyId = null;
                         } else if (selection) {
-                            delete formData.unitId;
+                            formData.unitId = null;
                         }
                     }
 

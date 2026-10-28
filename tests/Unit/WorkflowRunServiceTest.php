@@ -27,6 +27,30 @@ use OCP\IL10N;
 use PHPUnit\Framework\TestCase;
 
 class WorkflowRunServiceTest extends TestCase {
+    /** @dataProvider portfolioSizes */
+    public function testDashboardBatchesRunRetrieval(int $count): void {
+        $unit = new Unit(); $unit->setId(7);
+        $units = $this->createMock(UnitMapper::class); $units->method('findByUser')->willReturn([$unit]);
+        $rows = [];
+        for ($id = 1; $id <= $count; $id++) {
+            $step = new TaskStep(); $step->setId($id); $step->setWorkflowRunId($id);
+            $step->setEntityType('unit'); $step->setEntityId(7); $rows[] = $step;
+        }
+        $steps = $this->createMock(TaskStepMapper::class);
+        $steps->expects(self::once())->method('findOpenStepsByEntities')->willReturn($rows);
+        $run = new WorkflowRun(); $run->setId(1); $run->setName('Annual review'); $run->setYear(2026);
+        $runs = $this->createMock(WorkflowRunMapper::class);
+        $runs->expects(self::never())->method('findById');
+        $runs->expects(self::once())->method('findByIds')->with(range(1, $count))->willReturn([$run]);
+        $service = new WorkflowRunService($runs, $steps, $this->createMock(TaskTemplateMapper::class), $this->createMock(TaskTemplateStepMapper::class), $this->createMock(PropertyMapper::class), $units, $this->createMock(EntityImageService::class), $this->createMock(IDBConnection::class), $this->createMock(IL10N::class));
+        $result = $service->listOpenStepsForUser('alice', 'landlord');
+        self::assertCount($count, $result);
+        self::assertSame('Annual review', $result[0]['workflowName']);
+        self::assertSame(2026, $result[0]['year']);
+    }
+
+    public static function portfolioSizes(): array { return [[1], [1000]]; }
+
     /** @dataProvider reminderCases */
     public function testStepReminder(string $status, bool $authorized, string $choice): void {
         $step = new TaskStep();

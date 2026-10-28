@@ -10,6 +10,7 @@ namespace OCA\Domus\Service;
 use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\ActionLogMapper;
 use OCA\Domus\Db\BookingMapper;
+use OCA\Domus\Db\BookingYearMapper;
 use OCA\Domus\Db\DistributionKeyMapper;
 use OCA\Domus\Db\DistributionKeyUnitMapper;
 use OCA\Domus\Db\DocumentLinkMapper;
@@ -21,6 +22,7 @@ use OCA\Domus\Db\TaskStepMapper;
 use OCA\Domus\Db\UnitMapper;
 use OCA\Domus\Db\WorkflowRunMapper;
 use OCP\IL10N;
+use OCP\IDBConnection;
 
 class PropertyService {
     public function __construct(
@@ -41,6 +43,8 @@ class PropertyService {
         private PermissionService $permissionService,
         private EntityImageService $entityImageService,
         private IL10N $l10n,
+        private BookingYearMapper $bookingYearMapper,
+        private IDBConnection $connection,
         private ?AuditService $audit = null,
     ) {
     }
@@ -132,36 +136,54 @@ class PropertyService {
     }
 
     public function deleteProperty(int $id, string $userId): void {
-        $property = $this->getPropertyForUser($id, $userId);
-        $counts = $this->audit !== null ? $this->getDeletionSummary($id, $userId) : [];
-        $units = $this->unitMapper->findByUser($userId, $property->getId());
-        $distributionKeys = $this->distributionKeyMapper->findByProperty($property->getId(), $userId);
-        $distributionKeyIds = array_values(array_filter(array_map(fn($key) => $key->getId(), $distributionKeys)));
+        $this->connection->beginTransaction();
+        try {
+            $property = $this->getPropertyForUser($id, $userId);
+            $counts = $this->audit !== null ? $this->getDeletionSummary($id, $userId) : [];
+            $units = $this->unitMapper->findByUser($userId, $property->getId());
+            $distributionKeys = $this->distributionKeyMapper->findByProperty($property->getId(), $userId);
+            $distributionKeyIds = array_values(array_filter(array_map(fn($key) => $key->getId(), $distributionKeys)));
 
-        foreach ($units as $unit) {
-            $this->unitService->deleteUnit($unit->getId(), $userId);
-        }
-
-        if ($distributionKeyIds !== []) {
-            $this->distributionKeyUnitMapper->deleteForKeys($distributionKeyIds, $userId);
-        }
-        foreach ($distributionKeys as $key) {
-            $this->distributionKeyMapper->delete($key);
-        }
-
-        $this->partnerRelMapper->deleteForRelation('property', $property->getId(), $userId);
-        $this->actionLogMapper->deleteForEntity($userId, 'property', $property->getId());
-        $this->actionLogMapper->deleteForLinkedEntity($userId, 'property', $property->getId());
-        $this->documentLinkMapper->deleteForEntity($userId, 'property', $property->getId());
-        $workflowRuns = $this->workflowRunMapper->findByEntity('property', $property->getId());
-        foreach ($workflowRuns as $run) {
-            foreach ($this->taskStepMapper->findByRun($run->getId()) as $step) {
-                $this->taskStepMapper->delete($step);
+            $bookings = $this->bookingMapper->findByUser($userId, ['propertyId' => $id]);
+            foreach ($units as $unit) {
+                $this->unitService->deleteUnit($unit->getId(), $userId);
             }
-            $this->workflowRunMapper->delete($run);
+
+            foreach ($bookings as $booking) {
+                $this->actionLogMapper->deleteForEntity($userId, 'booking', $booking->getId());
+                $this->actionLogMapper->deleteForLinkedEntity($userId, 'booking', $booking->getId());
+                if ($booking->getUnitId() === null) {
+                    $this->documentLinkMapper->deleteForEntity($userId, 'booking', $booking->getId());
+                    $this->bookingMapper->delete($booking);
+                }
+            }
+            $this->bookingYearMapper->deleteByProperty($id);
+
+            if ($distributionKeyIds !== []) {
+                $this->distributionKeyUnitMapper->deleteForKeys($distributionKeyIds, $userId);
+            }
+            foreach ($distributionKeys as $key) {
+                $this->distributionKeyMapper->delete($key);
+            }
+
+            $this->partnerRelMapper->deleteForRelation('property', $property->getId(), $userId);
+            $this->actionLogMapper->deleteForEntity($userId, 'property', $property->getId());
+            $this->actionLogMapper->deleteForLinkedEntity($userId, 'property', $property->getId());
+            $this->documentLinkMapper->deleteForEntity($userId, 'property', $property->getId());
+            $workflowRuns = $this->workflowRunMapper->findByEntity('property', $property->getId());
+            foreach ($workflowRuns as $run) {
+                foreach ($this->taskStepMapper->findByRun($run->getId()) as $step) {
+                    $this->taskStepMapper->delete($step);
+                }
+                $this->workflowRunMapper->delete($run);
+            }
+            $this->taskMapper->deleteByEntity('property', $property->getId());
+            $this->propertyMapper->delete($property);
+            $this->connection->commit();
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+            throw $e;
         }
-        $this->taskMapper->deleteByEntity('property', $property->getId());
-        $this->propertyMapper->delete($property);
         $this->audit?->record('property.deleted', $id, $userId, $property->getTeamId(), $counts);
     }
 
@@ -173,13 +195,23 @@ class PropertyService {
             ? 0
             : $this->distributionKeyUnitMapper->countForKeys($distributionKeyIds, $userId);
 
+        $bookings = $this->bookingMapper->findByUser($userId, ['propertyId' => $id]);
+        $bookingIds = array_map(fn($booking) => $booking->getId(), $bookings);
+        $actionEntities = [['entityType' => 'property', 'entityId' => $id]];
+        foreach ($bookingIds as $bookingId) {
+            $actionEntities[] = ['entityType' => 'booking', 'entityId' => $bookingId];
+        }
+
         return [
+            'bookings' => count($bookings),
+            'yearStatus' => $this->bookingYearMapper->countByProperty($id),
             'units' => $this->unitMapper->countByProperty($property->getId(), $userId),
             'tasks' => $this->taskMapper->countByEntity('property', $property->getId()),
             'taskSteps' => $this->taskStepMapper->countByEntity('property', $property->getId()),
             'workflowRuns' => count($this->workflowRunMapper->findByEntity('property', $property->getId())),
-            'documentLinks' => $this->documentLinkMapper->countForEntity($userId, 'property', $property->getId()),
-            'actionLogs' => $this->actionLogMapper->countAffectedByEntity($userId, 'property', $property->getId()),
+            'documentLinks' => $this->documentLinkMapper->countForEntity($userId, 'property', $property->getId())
+                + $this->documentLinkMapper->countForEntities($userId, 'booking', $bookingIds),
+            'actionLogs' => $this->actionLogMapper->countAffectedByEntities($userId, $actionEntities),
             'distributionKeys' => count($distributionKeys),
             'distributionValues' => $distributionValues,
             'partnerRelations' => count($this->partnerRelMapper->findForProperty($property->getId(), $userId)),
