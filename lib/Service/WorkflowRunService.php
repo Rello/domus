@@ -93,6 +93,7 @@ class WorkflowRunService {
                 $taskStep->setSortOrder($order);
                 $taskStep->setTitle($stepTemplate->getTitle());
                 $taskStep->setDescription($stepTemplate->getDescription());
+                $taskStep->setDefaultDueDaysOffset((int)$stepTemplate->getDefaultDueDaysOffset());
                 $taskStep->setAllowEarlyCompletion((int)$stepTemplate->getAllowEarlyCompletion());
                 $taskStep->setActionType($stepTemplate->getActionType());
                 $taskStep->setActionUrl($stepTemplate->getActionUrl());
@@ -187,11 +188,7 @@ class WorkflowRunService {
             $next = $this->taskStepMapper->findNextNewStep($step->getWorkflowRunId(), (int)$step->getSortOrder());
             if ($next) {
                 $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
-                $offset = 0;
-                if ($run) {
-                    $templateStep = $this->templateStepMapper->findByTemplateAndSortOrder($run->getTemplateId(), (int)$next->getSortOrder());
-                    $offset = $templateStep ? (int)$templateStep->getDefaultDueDaysOffset() : 0;
-                }
+                $offset = (int)$next->getDefaultDueDaysOffset();
                 $next->setStatus(self::STEP_STATUS_OPEN);
                 $next->setOpenedAt($now);
                 $next->setDueDate($this->buildDueDate($offset, $now));
@@ -304,12 +301,7 @@ class WorkflowRunService {
                 $this->taskStepMapper->update($openStep);
             }
 
-            $offset = 0;
-            $run = $this->workflowRunMapper->findById($step->getWorkflowRunId());
-            if ($run) {
-                $templateStep = $this->templateStepMapper->findByTemplateAndSortOrder($run->getTemplateId(), (int)$step->getSortOrder());
-                $offset = $templateStep ? (int)$templateStep->getDefaultDueDaysOffset() : 0;
-            }
+            $offset = (int)$step->getDefaultDueDaysOffset();
             $step->setStatus(self::STEP_STATUS_OPEN);
             $step->setDeferredUntil(null);
             $step->setOpenedAt($now);

@@ -7,4 +7,5 @@ namespace OCP;
 interface IUserManager {
     public function getByEmail($email);
     public function get($uid);
+    public function callForSeenUsers(\Closure $callback);
 }

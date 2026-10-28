@@ -51,7 +51,8 @@ class TaskTemplateController extends Controller {
     public function update(int $id): DataResponse {
         $this->managementContext->managementUserId();
         $payload = $this->request->getParams();
-		return new DataResponse($this->taskTemplateService->updateTemplate($id, $payload));
+        unset($payload['id']);
+        return new DataResponse($this->taskTemplateService->updateTemplate($id, $payload));
     }
 
     #[NoAdminRequired]
@@ -97,5 +98,16 @@ class TaskTemplateController extends Controller {
         $this->managementContext->managementUserId();
         $this->taskTemplateService->deleteStep($stepId);
         return new DataResponse([], Http::STATUS_NO_CONTENT);
+    }
+    #[NoAdminRequired]
+    public function customize(int $id): DataResponse {
+        $this->managementContext->managementUserId();
+        return new DataResponse($this->taskTemplateService->customize($id));
+    }
+
+    #[NoAdminRequired]
+    public function reset(int $id): DataResponse {
+        $this->managementContext->managementUserId();
+        return new DataResponse($this->taskTemplateService->reset($id));
     }
 }

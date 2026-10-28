@@ -27,6 +27,7 @@ class PartnerRelationService {
         private PropertyMapper $propertyMapper,
         private IDBConnection $connection,
         private IL10N $l10n,
+        private ?AuditService $audit = null,
     ) {
     }
 
@@ -72,7 +73,7 @@ class PartnerRelationService {
                     throw new ResourceNotFoundException($this->l10n->t('Partner not found.'));
                 }
             } else {
-                $partner = $this->partnerService->createPartner($data, $userId, $role);
+                $partner = $this->partnerService->createPartner($data, $userId, $role, false);
             }
 
             if ($this->partnerRelMapper->relationExists($entityType, $entityId, $partner->getId(), $userId)) {
@@ -92,6 +93,7 @@ class PartnerRelationService {
             throw $e;
         }
 
+        if ($partnerId === null) $this->audit?->account($partner->getId(), $userId, $partner->getTeamId(), null, $partner->getNcUserId());
         return $partner;
     }
 

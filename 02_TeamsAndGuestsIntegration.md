@@ -46,7 +46,7 @@ Reuse `tenancyDetail` for the renter experience. Return only the linked tenancy'
 
 ## Current boundary
 
-The selected context is stored as a user preference. Every management request rechecks effective Team membership. Missing or revoked membership denies Team access. Existing personal rows remain personal, while Team rows are scoped by exact `team_id`; their historical `user_id` does not provide personal access. Accounts and task templates created within a Team receive its catalogue scope. System accounts may be read as defaults. Tax rate is shared for a Team; display preferences remain personal. Document and image access checks the linked record before resolving a file ID.
+The selected context is stored as a user preference. Every management request rechecks effective Team membership. Missing or revoked membership denies Team access. Existing personal rows remain personal, while Team rows are scoped by exact `team_id`; their historical `user_id` does not provide personal access. Accounts and task templates created within a Team receive its catalogue scope. Custom Personal accounts use `user:<uid>` and are readable and editable only in that user’s Personal context. Global system accounts remain shared and read-only. Process templates resolve a Personal (`user:<uid>`) or Team override before falling back to shared, read-only `system` definitions. Disabling creates an inactive override; reset archives the override and restores the default. Process steps snapshot due-date offsets so template changes cannot reschedule existing processes. Tax rate is shared for a Team; display preferences remain personal. Document and image access checks the linked record before resolving a file ID.
 
 There is no bulk conversion, migration preview, catalogue clone, Team folder prerequisite, or in-Domus membership administration. Team membership is managed in Nextcloud Teams. The legacy personal unit transfer does not handle Team units. User migration conservatively blocks an actor with Team records so it cannot include those rows by user ID.
 
@@ -84,3 +84,19 @@ Validation on local NC35 (2026-10-03): migration 0008 completed; the backend sui
 [guests-routes]: https://github.com/nextcloud/guests/blob/69232035e69df6a756d838b00d766cab6ec2fe9f/appinfo/routes.php
 [guests-users]: https://github.com/nextcloud/guests/blob/69232035e69df6a756d838b00d766cab6ec2fe9f/lib/Controller/UsersController.php
 [ocs-docs]: https://docs.nextcloud.com/server/latest/developer_manual/digging_deeper/rest_apis.html
+
+## System process templates
+
+The unreleased Team setup starts with canonical Year End and Dunning system
+process templates seeded by `FillDefaultAccountsRepairStep` on installation and upgrade.
+The initializer adds only missing system keys, even when other templates exist. Custom accounts and
+templates are created directly in the selected Personal or Team scope. No legacy
+catalogue copying, template matching, or process-data conversion is included.
+The consolidated migration contains only the required schema additions.
+
+Customize copies the entire definition and all steps into the selected scope. A
+system override retains its key; reset restores the current system definition and
+active state. Custom templates can be archived. Reset and deletion retain historical
+IDs and steps, and running processes use their own copied fields and due offsets.
+Personal-to-Team moves preserve the source process definitions as independent Team
+copies; imported templates never grant access to another user's catalogue.

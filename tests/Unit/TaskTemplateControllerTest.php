@@ -32,4 +32,16 @@ class TaskTemplateControllerTest extends TestCase {
         self::assertSame(201, $response->getStatus());
         self::assertSame($step, $response->getData());
     }
+    public function testSystemToggleDoesNotIncludeRouteIdInUpdatePayload(): void {
+        $request = $this->getMockBuilder(IRequest::class)
+            ->onlyMethods(['getHeader'])->addMethods(['getParams'])->getMock();
+        $request->method('getParams')->willReturn(['id' => 7, 'isActive' => false]);
+        $service = $this->createMock(TaskTemplateService::class);
+        $service->expects(self::once())->method('updateTemplate')->with(7, ['isActive' => false])
+            ->willReturn(new \OCA\Domus\Db\TaskTemplate());
+        $access = $this->createMock(ManagementAccessContext::class);
+        $access->expects(self::once())->method('managementUserId')->willReturn('owner');
+        $controller = new TaskTemplateController($request, $service, $this->createMock(IL10N::class), $access);
+        self::assertSame(200, $controller->update(7)->getStatus());
+    }
 }

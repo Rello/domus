@@ -26,6 +26,7 @@ class TenancyService {
         private PartnerRelMapper $partnerRelMapper,
         private PermissionService $permissionService,
         private IL10N $l10n,
+        private ?AuditService $audit = null,
     ) {
     }
 
@@ -114,6 +115,7 @@ class TenancyService {
 
         $inserted = $this->tenancyMapper->insert($tenancy);
         $this->syncPartnerRelations($inserted, $data['partnerIds'] ?? [], $userId, $role);
+        $this->audit?->relationships($inserted->getId(), $userId, $inserted->getTeamId(), null, $inserted->getUnitId(), [], $inserted->getPartnerIds() ?? []);
         $this->hydratePartners($inserted, $userId);
         return $inserted;
     }
@@ -147,6 +149,8 @@ class TenancyService {
 
     public function updateTenancy(int $id, array $data, string $userId, string $role): Tenancy {
         $tenancy = $this->getTenancyForUser($id, $userId);
+        $oldUnitId = $tenancy->getUnitId();
+        $oldPartners = $tenancy->getPartnerIds() ?? [];
         $data = $this->permissionService->guardTenancyFinancialFields($role, $data);
         $this->assertTenancyInput(array_merge($tenancy->jsonSerialize(), $data), $userId, $role);
         foreach (['unitId', 'startDate', 'endDate', 'baseRent', 'serviceCharge', 'deposit', 'conditions'] as $field) {
@@ -160,6 +164,7 @@ class TenancyService {
         if (isset($data['partnerIds'])) {
             $this->syncPartnerRelations($updated, $data['partnerIds'], $userId, $role);
         }
+        $this->audit?->relationships($id, $userId, $updated->getTeamId(), $oldUnitId, $updated->getUnitId(), $oldPartners, $updated->getPartnerIds() ?? []);
         $this->hydratePartners($updated, $userId);
         return $updated;
     }
@@ -168,6 +173,7 @@ class TenancyService {
         $tenancy = $this->getTenancyForUser($id, $userId);
         $this->partnerRelMapper->deleteForRelation('tenancy', $tenancy->getId(), $userId);
         $this->tenancyMapper->delete($tenancy);
+        $this->audit?->record('tenancy.deleted', $id, $userId, $tenancy->getTeamId(), ['partnerRelations' => count($tenancy->getPartnerIds() ?? [])]);
     }
 
     public function getStatus(Tenancy $tenancy, \DateTimeImmutable $today): string {

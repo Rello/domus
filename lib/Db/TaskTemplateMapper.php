@@ -1,14 +1,11 @@
 <?php
-
 /**
  * SPDX-FileCopyrightText: 2026 Marcel Scherello
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-
 namespace OCA\Domus\Db;
 
 use OCA\Domus\Service\ManagementAccessContext;
-use OCP\DB\Exception;
 use OCP\IDBConnection;
 
 class TaskTemplateMapper extends TeamScopedMapper {
@@ -16,68 +13,91 @@ class TaskTemplateMapper extends TeamScopedMapper {
         parent::__construct($db, 'domus_task_templates', TaskTemplate::class, $access);
     }
 
-    private function selectColumns(): array {
-        return [
-            'id',
-            'team_id',
-            'scope_key',
-            'key',
-            'name',
-            'description',
-            'applies_to',
-            'is_active',
-            'created_at',
-            'updated_at',
-        ];
+    public function currentScopeKey(): string {
+        if ($this->access === null) return 'global';
+        $teamId = $this->access->activeTeamId();
+        return $teamId === null ? 'user:' . $this->access->legacyOwnerUserId() : 'team:' . $teamId;
     }
 
-    /**
-     * @throws Exception
-     */
     public function findAll(?bool $activeOnly = null, ?string $appliesTo = null): array {
         $qb = $this->db->getQueryBuilder();
-        $qb->select(...$this->selectColumns())
-            ->from($this->getTableName())
-            ->orderBy('id', 'ASC');
-
-        if ($activeOnly !== null) {
-            $qb->andWhere($qb->expr()->eq('is_active', $qb->createNamedParameter($activeOnly ? 1 : 0, $qb::PARAM_INT)));
+        $qb->select('*')->from($this->getTableName());
+        $qb->where($qb->expr()->in('scope_key', $qb->createNamedParameter(['system', $this->currentScopeKey()], $qb::PARAM_STR_ARRAY)));
+        $templates = $this->findEntities($qb);
+        $effective = [];
+        foreach ($templates as $template) {
+            $key = $template->getKey();
+            if (!isset($effective[$key]) || $template->getScopeKey() !== 'system') $effective[$key] = $template;
         }
-        if ($appliesTo !== null && $appliesTo !== '') {
-            $qb->andWhere($qb->expr()->eq('applies_to', $qb->createNamedParameter($appliesTo)));
-        }
-
-        $this->applyCatalogueScope($qb, false);
-        return $this->findEntities($qb);
+        // Resolve overrides BEFORE filtering: a disabled/local property template must hide its default.
+        $effective = array_values($effective);
+        usort($effective, fn($a, $b) => (int)$a->getId() <=> (int)$b->getId());
+        return array_values(array_filter($effective, fn($template) =>
+            ($activeOnly === null || (bool)$template->getIsActive() === $activeOnly)
+            && ($appliesTo === null || $appliesTo === '' || $template->getAppliesTo() === $appliesTo)));
     }
 
-    /**
-     * @throws Exception
-     */
     public function findById(int $id): ?TaskTemplate {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select(...$this->selectColumns())
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)))
-            ->setMaxResults(1);
-
-        $this->applyCatalogueScope($qb, false);
-        $templates = $this->findEntities($qb);
-        return $templates[0] ?? null;
+        foreach ($this->findAll() as $template) if ((int)$template->getId() === $id) return $template;
+        return null;
     }
 
-    /**
-     * @throws Exception
-     */
     public function findByKey(string $key): ?TaskTemplate {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select(...$this->selectColumns())
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('key', $qb->createNamedParameter($key)))
-            ->setMaxResults(1);
+        foreach ($this->findAll() as $template) if ($template->getKey() === $key) return $template;
+        return null;
+    }
 
-        $this->applyCatalogueScope($qb, false);
-        $templates = $this->findEntities($qb);
-        return $templates[0] ?? null;
+    /** Historical definitions are readable only through an owned process, never by arbitrary template ID. */
+    public function findForRun(WorkflowRun $run): ?TaskTemplate {
+        if ($this->access === null) return $this->findById((int)$run->getTemplateId());
+        $teamId = $this->access->activeTeamId();
+        if ($run->getTeamId() !== $teamId) return null;
+        $table = match ($run->getEntityType()) {
+            'unit' => 'domus_units', 'property' => 'domus_properties', default => null,
+        };
+        if ($table === null) return null;
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('id')->from($table)
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($run->getEntityId())))
+            ->andWhere($this->ownerExpression($qb, $this->access->managementUserId()));
+        $result = $qb->executeQuery();
+        $owner = $result->fetchOne();
+        $result->closeCursor();
+        if ($owner === false) return null;
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('id')->from('domus_workflow_runs')
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($run->getId())))
+            ->andWhere($qb->expr()->eq('template_id', $qb->createNamedParameter($run->getTemplateId())))
+            ->andWhere($qb->expr()->eq('entity_type', $qb->createNamedParameter($run->getEntityType())))
+            ->andWhere($qb->expr()->eq('entity_id', $qb->createNamedParameter($run->getEntityId())));
+        $this->applyScope($qb);
+        $result = $qb->executeQuery();
+        $exists = $result->fetchOne();
+        $result->closeCursor();
+        if ($exists === false) return null;
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')->from($this->getTableName())
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($run->getTemplateId())));
+        return $this->findEntities($qb)[0] ?? null;
+    }
+
+    /** Only shared definitions, used to validate reset and reserved keys. */
+    public function findSystemByKey(string $key): ?TaskTemplate {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')->from($this->getTableName())
+            ->where($qb->expr()->eq('scope_key', $qb->createNamedParameter('system')))
+            ->andWhere($qb->expr()->eq('key', $qb->createNamedParameter($key)));
+        return $this->findEntities($qb)[0] ?? null;
+    }
+
+    /** Keep historical IDs and steps for already-created processes. */
+    public function archive(TaskTemplate $template): void {
+        if ($template->getScopeKey() !== $this->currentScopeKey()) throw new \DomainException('The record is not available to this owner.');
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('scope_key', $qb->createNamedParameter('archived:' . $template->getId()))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($template->getId())))
+            ->andWhere($qb->expr()->eq('scope_key', $qb->createNamedParameter($this->currentScopeKey())))
+            ->executeStatement();
     }
 }

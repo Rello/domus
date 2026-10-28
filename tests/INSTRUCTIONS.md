@@ -151,3 +151,54 @@ PDF preparation/scheduling/validation durations and core task queue/execution ti
 Polling snapshots report the core worker timestamps; they are not provider-internal
 traces and cannot distinguish model loading from generation. Document text, paths and
 model output are excluded. Clear the key or let it expire to stop logging.
+
+## Unit moves to Teams
+
+- Run `./tests/run-unit.sh --filter UnitMove` for full folder trees (including empty
+  folders and unlinked files), external images, duplicate document references,
+  interrupted-copy recovery, changed sources/destinations, ownership rollback,
+  account conflicts, authorization, cancellation and per-member folder resolution.
+- Run `PLAYWRIGHT_TEST=unit-workspace ./tests/run-playwright.sh` for the move preview,
+  explicit start, lost-response recovery, cancellation and phone layout.
+- Live acceptance requires a Personal fixture unit and a Team with its own folder.
+  Verify different source/destination storage IDs, new file IDs, retained originals,
+  and a new upload by a second Team member after completion. Also verify the exact
+  user-facing hostname's move routes, pending-write rejection and cancellation.
+- Migration copies current file contents and Domus metadata. File versions, shares,
+  comments and other Nextcloud metadata are not copied. Missing source folders are disclosed in the preview and recreated at the
+  destination; unreadable folders or missing/unreadable linked files stop the move. No source or staged files are deleted;
+  cancelling releases the write pause and retains destination copies for review.
+
+Run `./tests/run-unit.sh --filter 'TeamScopedMapper|AccountService|UnitMove'`
+for Personal account isolation, shared read-only system accounts, and Personal-to-Team
+account transfer.
+
+Run `./tests/run-unit.sh --filter 'SystemTaskTemplate|DefaultCatalogueInstall|TaskTemplate|WorkflowRun|DomusMigrationRoundTrip'`
+and `PLAYWRIGHT_TEST=system-templates ./tests/run-playwright.sh` for shared templates,
+override precedence, Personal/Team isolation, protected steps, customize/reset/disable,
+fresh-install account and template seeding, and portable imports.
+The browser fixture covers editing, scope switching, reset cancellation, request
+failures and phone layout. Live Nextcloud installation/route validation remains separate.
+
+## User deletion
+
+Run `./tests/run-unit.sh --filter 'UserCleanup|BackgroundRuleService|RenterAccess|ManagementAccessContext'`
+for transactional Personal-data cleanup, dependent records, Team/history preservation,
+repeated cleanup, failed cleanup rollback, renter UID reuse, Domus AI-task cancellation,
+and rule evaluation through an authorized remaining Team member. Team actor discovery
+uses Nextcloud's seen-user iterator only when persisted actors are no longer eligible;
+Teams without an eligible account remain untouched and are reconsidered on the next run.
+User deletion removes move journals but retains destination copies. Core handles user
+files and preferences; Domus does not delete generic Nextcloud metadata jobs.
+For live-test teardown, remove pending `UpdateSingleMetadata` jobs whose arguments
+match the exact temporary test UID through `IJobList` before deleting that test account.
+Never remove jobs based only on a UID prefix or remove jobs belonging to real users.
+
+## Admin audit events
+
+Run `./tests/run-unit.sh --filter 'Audit|UnitMove|UnitTransfer|UserCleanup'` for
+account changes, unchanged relationships, allowed event scope, deletion ordering,
+move retries/failures and import commit/rollback behavior. Full tests use a stub
+audit dispatcher. Live validation can resolve the affected services through
+Nextcloud's container without modifying records. End-to-end audit-file delivery
+requires an enabled/configured `admin_audit` app and separate fixture actions.

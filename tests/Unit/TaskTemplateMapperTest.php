@@ -40,6 +40,7 @@ class TaskTemplateMapperTest extends TestCase {
     public function testExistingTemplateLookupsReturnTheTemplate(): void {
         $template = new TaskTemplate();
         $template->setId(7);
+        $template->setKey('existing');
         $mapper = $this->mapper(null, [$template]);
         self::assertSame($template, $mapper->findByKey('existing'));
         self::assertSame($template, $mapper->findById(7));

@@ -176,7 +176,9 @@
                     iconClass: 'domus-icon-edit',
                     label: t('domus', 'Edit'),
                     action: 'edit',
-                    id: account.id
+                    id: account.id,
+                    disabled: cannotModify,
+                    title: cannotModify ? t('domus', 'System accounts cannot be modified.') : undefined
                 }),
                 buildAccountActionButton({
                     iconClass: isDisabled ? 'domus-icon-checkmark' : 'domus-icon-disable',

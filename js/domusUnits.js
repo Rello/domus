@@ -1730,6 +1730,10 @@
                     id: 'domus-unit-document-location',
                     className: 'domus-action-menu-item'
                 }),
+                !Domus.state.managementContext?.activeTeamId && !unit.propertyId ? Domus.UI.buildIconLabelButton('domus-icon-unit', t('domus', 'Move to Team…'), {
+                    id: 'domus-unit-move',
+                    className: 'domus-action-menu-item'
+                }) : '',
                 !Domus.state.managementContext?.activeTeamId ? Domus.UI.buildIconLabelButton('domus-icon-document', t('domus', 'Export data'), {
                     id: 'domus-unit-export',
                     className: 'domus-action-menu-item'
@@ -2308,6 +2312,7 @@
             const detailsBtn = document.getElementById('domus-unit-masterdata');
             const deleteBtn = document.getElementById('domus-unit-delete');
             const exportBtn = document.getElementById('domus-unit-export');
+            document.getElementById('domus-unit-move')?.addEventListener('click', () => openMoveModal(unit));
             const partnersToggleBtn = document.getElementById('domus-unit-toggle-partners');
             const partnersPanel = document.getElementById('domus-unit-partners-panel');
             const refreshCurrentSection = () => refreshDetail(id);
@@ -2496,6 +2501,133 @@
                         {requireProperty, mode, hidePropertyField});
                 })
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
+        }
+
+        async function openMoveModal(unit) {
+            const content = document.createElement('div');
+            const explanation = document.createElement('p');
+            explanation.textContent = t('domus', 'Move this unit and its related data to a Team. The complete folder tree and linked files will be copied. Original files are retained. Team members will gain access.');
+            content.appendChild(explanation);
+            const label = document.createElement('label');
+            label.htmlFor = 'domus-move-team';
+            label.textContent = t('domus', 'Destination Team');
+            const select = document.createElement('select');
+            select.id = 'domus-move-team';
+            select.disabled = true;
+            content.append(label, select);
+            const status = document.createElement('p');
+            status.setAttribute('role', 'status');
+            status.setAttribute('aria-live', 'polite');
+            status.textContent = t('domus', 'Loading…');
+            const summary = document.createElement('ul');
+            const hint = document.createElement('p');
+            hint.textContent = t('domus', 'While copying, your Domus changes are paused. You can close this dialog and resume from the unit menu. Cancel keeps any copies already created.');
+            const footer = document.createElement('div');
+            footer.className = 'domus-modal-footer';
+            const cancel = document.createElement('button');
+            cancel.type = 'button';
+            cancel.textContent = t('domus', 'Cancel move');
+            cancel.hidden = true;
+            const action = document.createElement('button');
+            action.type = 'button';
+            action.className = 'primary';
+            action.textContent = t('domus', 'Review move');
+            action.disabled = true;
+            footer.append(cancel, action);
+            content.append(status, summary, hint, footer);
+            let closed = false;
+            let busy = false;
+            let preview = null;
+            let job = null;
+            const modal = Domus.UI.openModal({title: t('domus', 'Move to Team…'), content, onClose: () => { closed = true; }});
+            const base = '/units/' + unit.id + '/move';
+            const render = () => {
+                if (closed) return;
+                const started = job?.status === 'copying';
+                const complete = job?.status === 'complete';
+                select.disabled = busy || started || complete || !select.options.length;
+                action.disabled = busy || (!started && !complete && !select.value);
+                cancel.hidden = !started;
+                cancel.disabled = busy;
+                action.textContent = complete ? t('domus', 'Open in Team') : started ? t('domus', 'Resume move') : preview ? t('domus', 'Move unit') : t('domus', 'Review move');
+                if (job?.destination && !preview) {
+                    const item = document.createElement('li');
+                    item.textContent = t('domus', 'Destination: {folder}', {folder: job.destination});
+                    summary.replaceChildren(item);
+                }
+                if (started) status.textContent = t('domus', 'Copied {copied} of {total} entries; verified {verified}.', job);
+                if (complete) status.textContent = t('domus', 'Unit moved. Original files retained.');
+            };
+            select.addEventListener('change', () => { preview = null; summary.replaceChildren(); status.textContent = ''; render(); });
+            action.addEventListener('click', async () => {
+                if (busy) return;
+                busy = true;
+                render();
+                try {
+                    if (job?.status === 'complete') {
+                        await Domus.Api.post('/teams/' + encodeURIComponent(job.teamId) + '/activate');
+                        window.history.replaceState(null, '', Domus.Router.url('unitDetail', [unit.id]));
+                        window.location.reload();
+                        return;
+                    }
+                    if (!job || job.status === 'cancelled') {
+                        if (!preview) {
+                            preview = await Domus.Api.post(base + '/preview', {teamId: select.value});
+                            if (closed) return;
+                            summary.replaceChildren();
+                            const details = [
+                                t('domus', 'Destination: {folder}', {folder: preview.destination}),
+                                t('domus', '{files} files and {folders} folders ({bytes} bytes).', preview),
+                                t('domus', '{tenancies} tenancies, {bookings} bookings and {contacts} contacts.', preview),
+                                t('domus', 'Standalone tasks: {tasks}. Processes: {workflowRuns}. Process steps: {taskSteps}.', preview),
+                                t('domus', 'Activities: {activities}.', preview)
+                            ];
+                            if (preview.sourceFolderMissing) details.push(t('domus', 'The configured source folder was not found. Check the document location before continuing. A new unit folder will be created and accessible linked files will be copied.'));
+                            details.forEach(text => { const li = document.createElement('li'); li.textContent = text; summary.appendChild(li); });
+                            status.textContent = t('domus', 'Ready to move.');
+                            return;
+                        }
+                        job = await Domus.Api.post(base + '/start', {teamId: select.value, token: preview.token});
+                    }
+                    while (!closed && job.status === 'copying') {
+                        render();
+                        job = await Domus.Api.post(base + '/advance');
+                    }
+                } catch (error) {
+                    // A start/advance response may be lost after the server saved its progress.
+                    try { const saved = await Domus.Api.get(base); if (saved.status !== 'new') job = saved; } catch (_) { /* Keep retry controls available. */ }
+                    render();
+                    status.textContent = error.message;
+                    preview = null;
+                } finally {
+                    busy = false;
+                    // Keep an actionable error visible instead of replacing it with progress.
+                    const message = status.textContent;
+                    render();
+                    if (job?.status !== 'complete' && message) status.textContent = message;
+                }
+            });
+            cancel.addEventListener('click', async () => {
+                if (busy) return;
+                busy = true;
+                render();
+                try {
+                    job = await Domus.Api.post(base + '/cancel');
+                    preview = null;
+                    status.textContent = t('domus', 'Move cancelled. Original files and any destination copies are retained.');
+                    summary.replaceChildren();
+                } catch (error) { status.textContent = error.message; }
+                finally { busy = false; render(); }
+            });
+            try {
+                const [teams, saved] = await Promise.all([Domus.Api.get('/teams'), Domus.Api.get(base)]);
+                if (closed) return;
+                (teams?.teams || []).forEach(team => select.add(new Option(team.displayName, team.teamId)));
+                job = saved.status === 'new' ? null : saved;
+                if (job && job.status !== 'cancelled') select.value = job.teamId;
+                status.textContent = select.options.length ? '' : t('domus', 'No Teams are available.');
+                render();
+            } catch (error) { if (!closed) status.textContent = error.message; }
         }
 
         function openExportModal(unitId) {

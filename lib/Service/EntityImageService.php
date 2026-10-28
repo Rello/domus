@@ -46,6 +46,7 @@ class EntityImageService {
         private IURLGenerator $urlGenerator,
         private IL10N $l10n,
         private LoggerInterface $logger,
+        private ?UnitFolderService $unitFolders = null,
     ) {
     }
 
@@ -107,6 +108,7 @@ class EntityImageService {
             throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
 
+        $this->unitFolders?->refreshPath($unit, $userId);
         $file = $this->storeUploadedImage($userId, $unit->getDocumentPath(), self::UNIT_FILE_BASENAME, $uploadedFile, $unit->getImageFileId());
         $unit->setImageFileId($file->getId());
         $unit->setImageFileName($file->getName());
@@ -123,6 +125,7 @@ class EntityImageService {
             throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
 
+        $this->unitFolders?->refreshPath($unit, $userId);
         $appPath = rtrim($this->appManager->getAppPath(Application::APP_ID), '/');
         if ($appPath === '') {
             throw new \RuntimeException($this->l10n->t('Unable to resolve app path.'));

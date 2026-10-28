@@ -14,6 +14,7 @@ class TaskTemplate extends Entity implements JsonSerializable {
     protected $teamId;
     protected $scopeKey;
     protected $sourceCatalogueId;
+    protected $systemTemplateId;
     protected $key;
     protected $name;
     protected $description;
@@ -28,6 +29,7 @@ class TaskTemplate extends Entity implements JsonSerializable {
 
     public function __construct() {
         $this->addType('id', 'int');
+        $this->addType('systemTemplateId', 'int');
         $this->addType('isActive', 'int');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
@@ -38,6 +40,9 @@ class TaskTemplate extends Entity implements JsonSerializable {
         return [
             'id' => $this->id,
             'key' => $this->key,
+            'isSystem' => $this->scopeKey === 'system',
+            'isOverride' => $this->systemTemplateId !== null,
+            'systemTemplateId' => $this->systemTemplateId,
             'name' => $this->name,
             'description' => $this->description,
             'appliesTo' => $this->appliesTo,

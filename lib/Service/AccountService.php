@@ -92,6 +92,7 @@ class AccountService {
 
     public function updateAccount(int $id, array $data): Account {
         $account = $this->getAccount($id);
+        $this->assertNotSystemAccount($account);
         if (array_key_exists('number', $data)) {
             $number = trim((string)$data['number']);
             if ($number === '') {
@@ -136,7 +137,7 @@ class AccountService {
             throw new \InvalidArgumentException($this->l10n->t('Invalid status.'));
         }
         $account = $this->getAccount($id);
-        $this->assertAccountToggleAllowed($account);
+        $this->assertNotSystemAccount($account);
         $account->setStatus($status);
         $account->setUpdatedAt(time());
         return $this->accountMapper->update($account);
@@ -213,15 +214,13 @@ class AccountService {
     }
 
     private function assertAccountMutable(Account $account, string $userId): void {
-        if ((int)$account->getIsSystem() === 1) {
-            throw new ConflictException($this->l10n->t('System accounts cannot be modified.'));
-        }
+        $this->assertNotSystemAccount($account);
         if ($this->bookingMapper->countByAccount($userId, (string)$account->getNumber()) > 0) {
             throw new ConflictException($this->l10n->t('Account is used in bookings and cannot be modified.'));
         }
     }
 
-    private function assertAccountToggleAllowed(Account $account): void {
+    private function assertNotSystemAccount(Account $account): void {
         if ((int)$account->getIsSystem() === 1) {
             throw new ConflictException($this->l10n->t('System accounts cannot be modified.'));
         }

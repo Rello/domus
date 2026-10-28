@@ -162,8 +162,14 @@ class WorkflowRunServiceTest extends TestCase {
         $this->assertSame('new', $insertedSteps[1]->getStatus());
         $this->assertSame(0, $insertedSteps[0]->getAllowEarlyCompletion());
         $this->assertSame(1, $insertedSteps[1]->getAllowEarlyCompletion());
+        $this->assertSame(2, $insertedSteps[1]->getDefaultDueDaysOffset());
+        $step2->setDefaultDueDaysOffset(99);
+        $this->assertSame(2, $insertedSteps[1]->getDefaultDueDaysOffset());
         $step2->setAllowEarlyCompletion(0);
         $this->assertSame(1, $insertedSteps[1]->getAllowEarlyCompletion());
+        $this->assertSame(2, $insertedSteps[1]->getDefaultDueDaysOffset());
+        $step2->setDefaultDueDaysOffset(99);
+        $this->assertSame(2, $insertedSteps[1]->getDefaultDueDaysOffset());
         $this->assertNotNull($insertedSteps[0]->getDueDate());
         $this->assertNull($insertedSteps[1]->getDueDate());
         $this->assertSame($run->getId(), $workflowRun->getId());
@@ -188,6 +194,7 @@ class WorkflowRunServiceTest extends TestCase {
         $nextStep->setEntityId(7);
         $nextStep->setSortOrder(2);
         $nextStep->setStatus('new');
+        $nextStep->setDefaultDueDaysOffset(5);
 
         $unitMapper = $this->createMock(UnitMapper::class);
         $unitMapper->method('findForUser')->willReturn($unit);
@@ -231,7 +238,7 @@ class WorkflowRunServiceTest extends TestCase {
 
         $this->assertSame('closed', $openStep->getStatus());
         $this->assertSame('open', $nextStep->getStatus());
-        $this->assertNotNull($nextStep->getDueDate());
+        $this->assertSame(date('Y-m-d', strtotime('+5 days')), $nextStep->getDueDate());
     }
 
     public function testReopenCompletedProcessWithoutAnOpenStep(): void {
@@ -244,6 +251,7 @@ class WorkflowRunServiceTest extends TestCase {
         $step->setEntityId(7);
         $step->setSortOrder(1);
         $step->setStatus('closed');
+        $step->setDefaultDueDaysOffset(7);
         $step->setClosedAt(100);
         $step->setClosedBy('user1');
         $run = new WorkflowRun();
@@ -290,7 +298,7 @@ class WorkflowRunServiceTest extends TestCase {
         $this->assertSame('open', $step->getStatus());
         $this->assertNull($step->getClosedAt());
         $this->assertNull($step->getClosedBy());
-        $this->assertNotNull($step->getDueDate());
+        $this->assertSame(date('Y-m-d', strtotime('+7 days')), $step->getDueDate());
         $this->assertSame('open', $run->getStatus());
         $this->assertNull($run->getClosedAt());
     }

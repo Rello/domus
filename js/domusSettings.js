@@ -87,24 +87,21 @@
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>';
 
-            return buildSettingsSection({
-                id: 'domus-general-settings-panel',
-                title: t('domus', 'General Settings'),
-                body: '<div class="domus-form">' +
+            return '<div class="domus-form">' +
                     '<form id="domus-settings-form">' +
                     Domus.UI.buildFormTable(rows) +
                     actions +
                     '</form>' +
-                    '</div>'
-            });
+                    '</div>';
         }
 
-        function buildTaxSection() {
+        function buildTaxSection(settings) {
             const escape = Domus.Utils.escapeHtml;
             return buildSettingsSection({
                 id: 'domus-tax-declaration-panel',
                 title: t('domus', 'Tax declaration'),
-                body: '<p>' + escape(t('domus', 'Prepare the property overview for Wiso tax software.')) + '</p>' +
+                body: buildForm(settings) +
+                    '<p>' + escape(t('domus', 'Prepare the property overview for Wiso tax software.')) + '</p>' +
                     '<div class="domus-form-actions"><button type="button" id="domus-tax-report-button">' +
                     escape(t('domus', 'Tax report')) + '</button></div>'
             });
@@ -616,8 +613,7 @@
                     const content = '<div class="domus-settings">' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
                         buildTeamSection(response?.requiredApps, response?.aiDocumentValidation) +
-                        buildForm(settings) +
-                        buildTaxSection() +
+                        buildTaxSection(settings) +
                         buildTemplateSection(response?.utilityReportTemplate) +
                         buildIntroSection() +
                         buildRulesSection() +

@@ -20,7 +20,7 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
     }
 
     public function getName(): string {
-        return 'Fill default install data';
+        return 'Ensure default accounts and system process templates';
     }
 
     public function run(IOutput $output): void {
@@ -32,16 +32,17 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
             return;
         }
 
-        if (
-            $this->countRows('domus_accounts') > 0
-            || $this->countRows('domus_task_templates') > 0
-            || $this->countRows('domus_task_tpl_steps') > 0
-        ) {
-            return;
+        if ($this->countRows('domus_accounts') === 0) {
+            $this->seedAccounts();
         }
-
-        $this->seedAccounts();
-        $this->seedTaskTemplates();
+        $this->connection->beginTransaction();
+        try {
+            $this->seedTaskTemplates();
+            $this->connection->commit();
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+            throw $e;
+        }
     }
 
     private function seedAccounts(): void {
@@ -86,100 +87,16 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
 
     private function seedTaskTemplates(): void {
         $now = time();
-        $templates = [
-            [
-                'key' => 'year_end',
-                'name' => 'Year End',
-                'description' => null,
-                'steps' => [
-                    [
-                        'title' => 'Invoice received',
-                        'description' => 'Collect all invoices that belong to the reporting period.',
-                        'defaultDueDaysOffset' => 0,
-                        'actionType' => 'document',
-                        'actionUrl' => null,
-                    ],
-                    [
-                        'title' => 'Book invoices',
-                        'description' => 'Record the invoices as bookings for the correct year.',
-                        'defaultDueDaysOffset' => 0,
-                        'actionType' => 'booking',
-                        'actionUrl' => null,
-                    ],
-                    [
-                        'title' => 'Create year end report',
-                        'description' => 'Generate the service charge report for the year.',
-                        'defaultDueDaysOffset' => 1,
-                        'actionType' => 'serviceChargeReport',
-                        'actionUrl' => null,
-                    ],
-                    [
-                        'title' => 'Send report to tenant',
-                        'description' => 'Send the completed report to the tenant or owner.',
-                        'defaultDueDaysOffset' => 0,
-                        'actionType' => null,
-                        'actionUrl' => null,
-                    ],
-                    [
-                        'title' => 'Check incoming payment',
-                        'description' => 'Verify that the settlement payment has been received.',
-                        'defaultDueDaysOffset' => 21,
-                        'actionType' => null,
-                        'actionUrl' => null,
-                    ],
-                    [
-                        'title' => 'Confirm completed',
-                        'description' => 'Close the booking year once everything is reconciled.',
-                        'defaultDueDaysOffset' => 0,
-                        'actionType' => 'closeBookingYear',
-                        'actionUrl' => null,
-                    ],
-                ],
-            ],
-            [
-                'key' => 'dunning',
-                'name' => 'Dunning',
-                'description' => null,
-                'steps' => [
-                    [
-                        'title' => 'Send reminder',
-                        'description' => 'Send the initial payment reminder to the tenant.',
-                        'defaultDueDaysOffset' => 0,
-                        'actionType' => null,
-                        'actionUrl' => null,
-                    ],
-                    [
-                        'title' => 'Second reminder',
-                        'allowEarlyCompletion' => true,
-                        'description' => 'Follow up with a second reminder after the grace period.',
-                        'defaultDueDaysOffset' => 0,
-                        'actionType' => null,
-                        'actionUrl' => null,
-                    ],
-                    [
-                        'title' => 'Court reminder',
-                        'allowEarlyCompletion' => true,
-                        'description' => 'Escalate to a formal court reminder if needed.',
-                        'defaultDueDaysOffset' => 0,
-                        'actionType' => null,
-                        'actionUrl' => null,
-                    ],
-                    [
-                        'title' => 'Start cancellation process',
-                        'allowEarlyCompletion' => true,
-                        'description' => 'Begin the cancellation process if no payment arrives.',
-                        'defaultDueDaysOffset' => 0,
-                        'actionType' => null,
-                        'actionUrl' => null,
-                    ],
-                ],
-            ],
-        ];
+        $templates = \OCA\Domus\Service\SystemTaskTemplates::definitions();
 
         foreach ($templates as $template) {
+            if ($this->findTaskTemplateIdByKey((string)$template['key']) > 0) {
+                continue;
+            }
             $insert = $this->connection->getQueryBuilder();
             $insert->insert('domus_task_templates')
                 ->values([
+                    'scope_key' => $insert->createNamedParameter('system'),
                     'key' => $insert->createNamedParameter($template['key']),
                     'name' => $insert->createNamedParameter($template['name']),
                     'description' => $insert->createNamedParameter($template['description']),
@@ -229,6 +146,7 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
         $qb->select('id')
             ->from('domus_task_templates')
             ->where($qb->expr()->eq('key', $qb->createNamedParameter($key)))
+            ->andWhere($qb->expr()->eq('scope_key', $qb->createNamedParameter('system')))
             ->setMaxResults(1);
         return (int)$qb->executeQuery()->fetchOne();
     }

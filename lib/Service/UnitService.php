@@ -43,6 +43,8 @@ class UnitService {
         private DocumentPathService $documentPathService,
         private EntityImageService $entityImageService,
         private IL10N $l10n,
+        private ?UnitFolderService $unitFolders = null,
+        private ?AuditService $audit = null,
     ) {
     }
 
@@ -56,6 +58,7 @@ class UnitService {
         }
         $tenanciesByUnit = $units === [] ? [] : $this->tenancyService->listTenanciesByUnit($userId);
         foreach ($units as $unit) {
+            $this->unitFolders?->refreshPath($unit, $userId);
             $property = $propertiesById[$unit->getPropertyId()] ?? null;
             $this->entityImageService->enrichUnit($unit, $property, $property !== null);
             $this->tenancyService->enrichUnitTenancies($unit, $tenanciesByUnit[$unit->getId()] ?? []);
@@ -69,6 +72,7 @@ class UnitService {
         if (!$unit) {
             throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }
+        $this->unitFolders?->refreshPath($unit, $userId);
         $this->entityImageService->enrichUnit($unit);
         $this->enrichWithTenancies($unit, $userId);
         $property = $unit->getPropertyId() !== null ? $this->propertyMapper->findForUser((int)$unit->getPropertyId(), $userId) : null;
@@ -124,6 +128,8 @@ class UnitService {
                 throw new \InvalidArgumentException($this->l10n->t('Document location is required.'));
             }
             $unit->setDocumentPath($documentPath);
+            $unit->setDocumentFolderId($unit->getTeamId() !== null && $this->unitFolders !== null
+                ? $this->unitFolders->selectedFolderId($userId, $documentPath) : null);
         }
         $fields = ['label', 'street', 'zip', 'city', 'country', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes'];
         foreach ($fields as $field) {
@@ -147,6 +153,7 @@ class UnitService {
 
     public function deleteUnit(int $id, string $userId): void {
         $unit = $this->getUnitForUser($id, $userId);
+        $counts = $this->audit !== null ? $this->getDeletionSummary($id, $userId) : [];
         $tenancies = $this->tenancyMapper->findByUser($userId, $unit->getId());
         $bookings = $this->bookingMapper->findByUser($userId, ['unitId' => $unit->getId()]);
         $tenancyIds = array_map(fn($tenancy) => $tenancy->getId(), $tenancies);
@@ -173,6 +180,7 @@ class UnitService {
         $this->actionLogMapper->deleteForEntity($userId, 'unit', $unit->getId());
         $this->actionLogMapper->deleteForLinkedEntity($userId, 'unit', $unit->getId());
         $this->unitMapper->delete($unit);
+        $this->audit?->record('unit.deleted', $id, $userId, $unit->getTeamId(), $counts);
     }
 
     public function getDeletionSummary(int $id, string $userId): array {

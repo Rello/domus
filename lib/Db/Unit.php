@@ -30,6 +30,7 @@ class Unit extends Entity implements JsonSerializable {
     protected $bic;
     protected $notes;
     protected $documentPath;
+    protected $documentFolderId;
     protected $imageFileId;
     protected $imageFileName;
     protected $createdAt;
@@ -48,6 +49,7 @@ class Unit extends Entity implements JsonSerializable {
         $this->addType('id', 'int');
         $this->addType('propertyId', 'int');
         $this->addType('imageFileId', 'int');
+        $this->addType('documentFolderId', 'int');
         $this->addType('createdAt', 'int');
         $this->addType('updatedAt', 'int');
     }

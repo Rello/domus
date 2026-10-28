@@ -113,4 +113,59 @@ class TeamScopedMapperTest extends TestCase {
         $method->invoke($mapper, $qb, true);
         self::assertSame([1, 3], array_column($qb->executeQuery()->fetchAll(), 'id'));
     }
+    public function testPersonalAccountCatalogueExcludesOtherUsersAndLegacyCustomAccounts(): void {
+        $db = new TransferDatabase();
+        $db->tables['domus_accounts'] = [
+            ['id' => 1, 'scope_key' => 'global', 'is_system' => 1],
+            ['id' => 2, 'scope_key' => 'global', 'is_system' => 0],
+            ['id' => 3, 'scope_key' => 'user:alice', 'is_system' => 0],
+            ['id' => 4, 'scope_key' => 'user:bob', 'is_system' => 0],
+            ['id' => 5, 'scope_key' => 'team:team-a', 'is_system' => 0],
+        ];
+        foreach (['alice' => [1, 3], 'bob' => [1, 4], 'new-user' => [1]] as $owner => $expected) {
+            $access = $this->createMock(ManagementAccessContext::class);
+            $access->method('activeTeamId')->willReturn(null);
+            $access->method('legacyOwnerUserId')->willReturn($owner);
+            $mapper = new AccountMapper($db, $access);
+            $qb = $db->getQueryBuilder();
+            $qb->select('id')->from('domus_accounts');
+            (new \ReflectionMethod($mapper, 'applyCatalogueScope'))->invoke($mapper, $qb, true);
+            self::assertSame($expected, array_column($qb->executeQuery()->fetchAll(), 'id'));
+        }
+    }
+
+    public function testAccountInsertStampsPersonalOrTeamScope(): void {
+        foreach ([null, 'team-a'] as $teamId) {
+            $access = $this->createMock(ManagementAccessContext::class);
+            $access->method('activeTeamId')->willReturn($teamId);
+            $access->method('legacyOwnerUserId')->willReturn('alice');
+            $mapper = new AccountMapper($this->createMock(IDBConnection::class), $access);
+            $account = new \OCA\Domus\Db\Account();
+            $account->setIsSystem(0);
+            $mapper->insert($account);
+            self::assertSame($teamId === null ? 'user:alice' : 'team:team-a', $account->getScopeKey());
+            self::assertSame($teamId, $account->getTeamId());
+            self::assertSame($account, $mapper->update($account));
+        }
+    }
+
+    public function testPersonalAccountWritesRejectForeignAndSharedAccounts(): void {
+        $access = $this->createMock(ManagementAccessContext::class);
+        $access->method('activeTeamId')->willReturn(null);
+        $access->method('legacyOwnerUserId')->willReturn('alice');
+        $mapper = new AccountMapper($this->createMock(IDBConnection::class), $access);
+        foreach (['user:bob', 'team:team-a', 'global'] as $scope) {
+            foreach (['update', 'delete'] as $method) {
+                $account = new \OCA\Domus\Db\Account();
+                $account->setScopeKey($scope);
+                $account->setIsSystem($scope === 'global' ? 1 : 0);
+                try {
+                    $mapper->$method($account);
+                    self::fail('Out-of-scope account write allowed');
+                } catch (\DomainException $e) {
+                    self::assertSame('The account is not editable in this portfolio.', $e->getMessage());
+                }
+            }
+        }
+    }
 }

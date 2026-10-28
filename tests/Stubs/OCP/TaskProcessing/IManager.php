@@ -6,6 +6,7 @@
 namespace OCP\TaskProcessing;
 interface IManager {
     public function getAvailableTaskTypeIds(bool $showDisabled = false, ?string $userId = null): array;
+    public function getUserTasksByApp(?string $userId, string $appId, ?string $customId = null): array;
     public function scheduleTask(Task $task): void;
     public function getUserTask(int $id, ?string $userId): Task;
     public function cancelTask(int $id): void;

@@ -10,7 +10,7 @@ use OCP\IL10N;
 
 /** Read renter records through the existing partner and tenancy relationships. */
 class RenterAccessMapper {
-    public function __construct(private IDBConnection $db, private IL10N $l10n) {
+    public function __construct(private IDBConnection $db, private IL10N $l10n, private ?\OCA\Domus\Service\AuditService $audit = null) {
     }
 
     private function select(string $table, array $filters): array {
@@ -52,15 +52,25 @@ class RenterAccessMapper {
     }
 
     /** Account deletion must not leave grants for a subsequently reused UID. */
-    public function unlinkDeletedUser(string $uid): void {
-        $qb = $this->db->getQueryBuilder();
-        $qb->update('domus_partners')->set('nc_user_id', $qb->createNamedParameter(null))
-            ->set('updated_at', $qb->createNamedParameter(time()))
-            ->where($qb->expr()->eq('nc_user_id', $qb->createNamedParameter($uid)));
-        $qb->executeStatement();
+    public function unlinkDeletedUser(string $uid, bool $audit = true): array {
+        $unlinked = [];
+        $partners = $this->select('domus_partners', ['nc_user_id' => $uid]);
+        foreach ($partners as $partner) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->update('domus_partners')->set('nc_user_id', $qb->createNamedParameter(null))
+                ->set('updated_at', $qb->createNamedParameter(time()))
+                ->where($qb->expr()->eq('nc_user_id', $qb->createNamedParameter($uid)));
+            $qb->andWhere($qb->expr()->eq('id', $qb->createNamedParameter((int)$partner['id'])));
+            if ($qb->executeStatement() === 1) {
+                $unlinked[] = $partner;
+                if ($audit) $this->audit?->account((int)$partner['id'], $partner['user_id'], $partner['team_id'] ?? null, $uid, null);
+            }
+        }
+        return $unlinked;
     }
 
     public function linkUser(string $teamId, int $partnerId, string $uid): void {
+        $partner = $this->partner($teamId, $partnerId);
         $qb = $this->db->getQueryBuilder();
         $qb->update('domus_partners')->set('nc_user_id', $qb->createNamedParameter($uid))
             ->set('updated_at', $qb->createNamedParameter(time()))
@@ -70,5 +80,6 @@ class RenterAccessMapper {
         if ($qb->executeStatement() !== 1) {
             throw new \DomainException($this->l10n->t('The contact changed. Reload and try again.'));
         }
+        $this->audit?->account($partnerId, $partner['user_id'] ?? '', $teamId, null, $uid);
     }
 }

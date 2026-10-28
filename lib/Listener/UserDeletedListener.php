@@ -5,20 +5,19 @@
  */
 namespace OCA\Domus\Listener;
 
-use OCA\Domus\Db\RenterAccessMapper;
+use OCA\Domus\Service\UserCleanupService;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
 use OCP\User\Events\UserDeletedEvent;
 
 /** @implements IEventListener<UserDeletedEvent> */
 class UserDeletedListener implements IEventListener {
-    public function __construct(private RenterAccessMapper $mapper) {
+    public function __construct(private UserCleanupService $cleanup) {
     }
 
     public function handle(Event $event): void {
         if ($event instanceof UserDeletedEvent) {
-            // Preserve business history and actor IDs; remove only the reusable login identity.
-            $this->mapper->unlinkDeletedUser($event->getUid());
+            $this->cleanup->cleanup($event->getUid());
         }
     }
 }

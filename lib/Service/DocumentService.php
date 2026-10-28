@@ -43,6 +43,7 @@ class DocumentService {
         private LoggerInterface $logger,
         private ManagementAccessContext $managementContext,
         private BookingService $bookingService,
+        private ?UnitFolderService $unitFolders = null,
     ) {
     }
 
@@ -497,7 +498,16 @@ class DocumentService {
         $context = $this->resolveStorageContext($userId, $entityType, $entityId, $year);
         $userFolder = $this->rootFolder->getUserFolder($userId);
 
-        $baseFolder = $this->getOrCreateFolderFromPath($userFolder, $context['basePath']);
+        $unitId = match ($entityType) {
+            'unit' => $entityId,
+            'tenancy' => $this->tenancyMapper->findForUser($entityId, $userId)?->getUnitId(),
+            'booking' => $this->bookingMapper->findForUser($entityId, $userId)?->getUnitId(),
+            default => null,
+        };
+        $unit = $unitId ? $this->unitMapper->findForUser($unitId, $userId) : null;
+        $baseFolder = $unit?->getDocumentFolderId() && $this->unitFolders !== null
+            ? $this->unitFolders->byId($userId, (int)$unit->getDocumentFolderId())
+            : $this->getOrCreateFolderFromPath($userFolder, $context['basePath']);
         $yearFolder = $this->getOrCreateFolder($baseFolder, (string)$context['year']);
 
         if (!$context['appendTypeFolder']) {

@@ -61,21 +61,22 @@ abstract class TeamScopedMapper extends QBMapper {
         }
         $teamId = $this->access->activeTeamId();
         if ($teamId === null) {
-            $this->access->legacyOwnerUserId();
-            $qb->andWhere($qb->expr()->eq('scope_key', $qb->createNamedParameter('global')));
-            return;
+            $owner = $this->access->legacyOwnerUserId();
+            $scopeKey = $includeSystemAccounts ? 'user:' . $owner : 'global';
+        } else {
+            $scopeKey = 'team:' . $teamId;
         }
-        $teamScope = $qb->expr()->eq('scope_key', $qb->createNamedParameter('team:' . $teamId));
+        $catalogueScope = $qb->expr()->eq('scope_key', $qb->createNamedParameter($scopeKey));
         if ($includeSystemAccounts) {
             $qb->andWhere($qb->expr()->orX(
-                $teamScope,
+                $catalogueScope,
                 $qb->expr()->andX(
                     $qb->expr()->eq('scope_key', $qb->createNamedParameter('global')),
                     $qb->expr()->eq('is_system', $qb->createNamedParameter(1, $qb::PARAM_INT)),
                 ),
             ));
         } else {
-            $qb->andWhere($teamScope);
+            $qb->andWhere($catalogueScope);
         }
     }
 
@@ -100,6 +101,9 @@ abstract class TeamScopedMapper extends QBMapper {
         }
         $teamId = $this->access->activeTeamId();
         if ($teamId === null) {
+            if (($entity instanceof Account || $entity instanceof TaskTemplate) && $entity->getTeamId() === null) {
+                $entity->setScopeKey('user:' . $this->access->legacyOwnerUserId());
+            }
             $this->assertEntityAccess($entity);
             return;
         }
@@ -117,6 +121,18 @@ abstract class TeamScopedMapper extends QBMapper {
             return;
         }
         $teamId = $this->access->activeTeamId();
+        if ($entity instanceof TaskTemplate) {
+            $scopeKey = $teamId === null ? 'user:' . $this->access->legacyOwnerUserId() : 'team:' . $teamId;
+            if ($entity->getScopeKey() !== $scopeKey) {
+                throw new \DomainException('The record is not available to this owner.');
+            }
+        }
+        if ($entity instanceof Account) {
+            $scopeKey = $teamId === null ? 'user:' . $this->access->legacyOwnerUserId() : 'team:' . $teamId;
+            if ((int)$entity->getIsSystem() === 1 || $entity->getScopeKey() !== $scopeKey) {
+                throw new \DomainException('The account is not editable in this portfolio.');
+            }
+        }
         if ($teamId !== null) {
             if ($entity->getTeamId() !== $teamId) {
                 throw new \DomainException('The record does not belong to the selected Team.');

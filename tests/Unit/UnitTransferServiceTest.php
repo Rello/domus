@@ -18,6 +18,24 @@ class UnitTransferServiceTest extends TestCase {
     private array $dependencies;
     private array $entries;
 
+    public function testImportAuditRunsOnlyAfterCommit(): void {
+        $service = $this->service();
+        $committed = false;
+        $this->dependencies['connection']->method('commit')->willReturnCallback(function () use (&$committed) { $committed = true; });
+        $this->dependencies['audit']->expects(self::once())->method('record')->with('unit.imported', self::anything(), 'target', null)
+            ->willReturnCallback(function () use (&$committed) { self::assertTrue($committed); });
+        $service->importUnitDataset(['unit' => ['label' => 'Unit']], 'target', 'landlord');
+    }
+
+    public function testFailedImportDoesNotAuditSuccess(): void {
+        $service = $this->service();
+        $this->dependencies['connection']->method('commit')->willThrowException(new \RuntimeException('Failed commit'));
+        $this->dependencies['connection']->expects(self::once())->method('rollBack');
+        $this->dependencies['audit']->expects(self::never())->method('record');
+        $this->expectException(\RuntimeException::class);
+        $service->importUnitDataset(['unit' => ['label' => 'Unit']], 'target', 'landlord');
+    }
+
     public function testSelectedTeamCannotUsePersonalUnitTransfer(): void {
         $service = $this->service(mapped: true);
         $this->expectException(\DomainException::class);

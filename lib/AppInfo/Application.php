@@ -26,6 +26,7 @@ class Application extends App implements IBootstrap {
     public function register(IRegistrationContext $context): void {
         $context->registerDashboardWidget(\OCA\Domus\Dashboard\TasksWidget::class);
         $context->registerMiddleware(ApiErrorMiddleware::class);
+        $context->registerMiddleware(\OCA\Domus\Middleware\UnitMoveMiddleware::class);
         $context->registerUserMigrator(DomusMigrator::class);
         $context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
     }

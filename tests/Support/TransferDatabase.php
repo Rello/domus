@@ -17,12 +17,14 @@ class TransferDatabase implements IDBConnection {
     public function beginTransaction(): void { $this->snapshot = $this->tables; }
     public function commit(): void { $this->commits++; }
     public function rollBack(): void { $this->tables = $this->snapshot; $this->rollbacks++; }
+    public function tableExists(string $table): bool { return isset($this->tables[$table]); }
     public function getQueryBuilder(): mixed { return new TransferQuery($this); }
 }
 
 class TransferQuery {
     public const PARAM_INT = 1;
     public const PARAM_INT_ARRAY = 101;
+    public const PARAM_STR_ARRAY = 102;
     private string $table;
     private string $mode = 'select';
     private array $columns = [];
@@ -32,6 +34,7 @@ class TransferQuery {
     private mixed $condition = null;
     private int $lastId = 100;
     public function __construct(private TransferDatabase $db) {}
+    public function createFunction(string $function): string { return $function; }
     public function select(...$columns): self { $this->columns = $columns; return $this; }
     public function from(string $table): self { $this->table = $table; return $this; }
     public function where(mixed $condition): self { $this->condition = $condition; return $this; }
@@ -43,6 +46,7 @@ class TransferQuery {
     public function isNull(string $column): array { return ['isNull', $column]; }
     public function isNotNull(string $column): array { return ['isNotNull', $column]; }
     public function groupBy(string $column): self { return $this; }
+    public function orderBy(string $column, string $direction): self { return $this; }
     public function orX(...$conditions): array { return ['or', $conditions]; }
     public function andX(...$conditions): array { return ['and', $conditions]; }
     public function createNamedParameter(mixed $value, mixed $type = null): mixed { return $value; }
@@ -52,10 +56,16 @@ class TransferQuery {
         return $this;
     }
     public function insert(string $table): self { $this->table = $table; $this->mode = 'insert'; return $this; }
+    public function delete(string $table): self { $this->table = $table; $this->mode = 'delete'; return $this; }
     public function update(string $table): self { $this->table = $table; $this->mode = 'update'; return $this; }
     public function set(string $column, mixed $value): self { $this->setValues[$column] = $value; return $this; }
     public function values(array $values): self { $this->values = $values; return $this; }
     public function executeStatement(): int {
+        if ($this->mode === 'delete') {
+            $rows = $this->db->tables[$this->table] ?? [];
+            $this->db->tables[$this->table] = array_values(array_filter($rows, fn($row) => !$this->matches($row, $this->condition)));
+            return count($rows) - count($this->db->tables[$this->table]);
+        }
         if ($this->mode === 'update') {
             $count = 0;
             if (!isset($this->db->tables[$this->table])) {
@@ -105,6 +115,7 @@ class TransferResult {
     public function fetch(): array|false { return $this->rows[0] ?? false; }
     public function fetchOne(): mixed {
         $column = $this->columns[0] ?? 'id';
+        if ($column === 'COUNT(*)') return count($this->rows);
         return $this->rows[0][$column] ?? false;
     }
     public function closeCursor(): void {}

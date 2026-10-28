@@ -42,6 +42,13 @@ return [
         ['name' => 'PartnerRelation#listByProperty', 'url' => 'api/properties/{propertyId}/partners', 'verb' => 'GET'],
         ['name' => 'PartnerRelation#createForProperty', 'url' => 'api/properties/{propertyId}/partners', 'verb' => 'POST'],
 
+        // Unit move: Personal source, explicitly authorized Team destination.
+        ['name' => 'UnitMove#status', 'url' => 'api/units/{id}/move', 'verb' => 'GET'],
+        ['name' => 'UnitMove#preview', 'url' => 'api/units/{id}/move/preview', 'verb' => 'POST'],
+        ['name' => 'UnitMove#start', 'url' => 'api/units/{id}/move/start', 'verb' => 'POST'],
+        ['name' => 'UnitMove#advance', 'url' => 'api/units/{id}/move/advance', 'verb' => 'POST'],
+        ['name' => 'UnitMove#cancel', 'url' => 'api/units/{id}/move/cancel', 'verb' => 'POST'],
+
         // Unit
         ['name' => 'Unit#index', 'url' => 'api/units', 'verb' => 'GET'],
         ['name' => 'Unit#listByProperty', 'url' => 'api/properties/{propertyId}/units', 'verb' => 'GET'],
@@ -153,6 +160,8 @@ return [
         ['name' => 'Rule#delete', 'url' => '/api/rules/{id}', 'verb' => 'DELETE'],
 
         // Task templates
+        ['name' => 'TaskTemplate#customize', 'url' => '/api/task-templates/{id}/customize', 'verb' => 'POST'],
+        ['name' => 'TaskTemplate#reset', 'url' => '/api/task-templates/{id}/reset', 'verb' => 'POST'],
         ['name' => 'TaskTemplate#index', 'url' => '/api/task-templates', 'verb' => 'GET'],
         ['name' => 'TaskTemplate#show', 'url' => '/api/task-templates/{id}', 'verb' => 'GET'],
         ['name' => 'TaskTemplate#create', 'url' => '/api/task-templates', 'verb' => 'POST'],

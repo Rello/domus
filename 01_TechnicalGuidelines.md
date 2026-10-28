@@ -39,3 +39,33 @@ You use Vanilla JS. You follow Nextcloud guidelines. You do not use webpack. You
   the same section invalidates its older requests.
 - Keep view coordinators short by separating data loading, display preparation,
   section rendering, and event binding within the existing feature modules.
+
+## Admin audit logging
+
+`AuditService` emits Nextcloud `CriticalActionPerformedEvent` events, following
+Analytics. Administrators must enable/configure Nextcloud's `admin_audit` app to
+retain them. Audit messages use stable English event names and are not UI strings.
+
+The audit scope is deliberately limited to:
+- Personal-to-Team unit moves: started, completed, failed attempts, cancelled.
+- Partner Nextcloud account links, replacements and unlinks, including account deletion cleanup.
+- Tenancy partner assignments and unit changes.
+- Successfully prepared unit dataset exports and committed imports.
+- Property, unit, tenancy and partner deletions, including deletion of a user's Personal records.
+
+Record actor UID, entity ID, owner UID and Personal/Team scope. Include source and
+destination identifiers for access changes and transfers. Deletion events include
+available dependency counts; cascaded unit/tenancy deletions have their own events.
+Never include document contents, financial values, contact details or secrets.
+Export means the dataset was prepared; it does not confirm client receipt.
+
+Emit after successful writes and outside transaction rollback handlers. Nested
+partner creation and account cleanup defer their events until the outer commit.
+Unchanged account/tenancy assignments and repeated completed/cancelled move
+requests produce no new success events. Each failed move attempt is recorded;
+copy progress and previews are not. Audit delivery failures are reported to the
+application logger without making committed operations appear to have failed.
+
+Year closing/reopening, booking changes, document attachments and correction
+request decisions belong in a future Activities implementation, not this audit
+log. Do not extend the audit allowlist for ordinary business activity.

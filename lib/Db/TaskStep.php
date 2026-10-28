@@ -20,6 +20,7 @@ class TaskStep extends Entity implements JsonSerializable {
     protected $description;
     protected $status;
     protected $dueDate;
+    protected $defaultDueDaysOffset;
     protected $deferredUntil;
     protected $openedAt;
     protected $closedAt;
@@ -36,6 +37,7 @@ class TaskStep extends Entity implements JsonSerializable {
 
     public function __construct() {
         $this->addType('id', 'int');
+        $this->addType('defaultDueDaysOffset', 'int');
         $this->addType('deferredUntil', 'int');
         $this->addType('allowEarlyCompletion', 'int');
         $this->addType('workflowRunId', 'int');
@@ -62,6 +64,7 @@ class TaskStep extends Entity implements JsonSerializable {
             'description' => $this->description,
             'status' => $this->status,
             'dueDate' => $this->getEffectiveDueDate(),
+            'defaultDueDaysOffset' => $this->defaultDueDaysOffset,
             'deferredUntil' => $this->deferredUntil,
             'openedAt' => $this->openedAt,
             'closedAt' => $this->closedAt,

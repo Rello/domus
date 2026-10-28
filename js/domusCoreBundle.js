@@ -440,6 +440,8 @@
                 activeOnly: activeOnly ? 1 : 0,
                 appliesTo
             }))),
+            customizeTaskTemplate: id => request('POST', `/task-templates/${id}/customize`),
+            resetTaskTemplate: id => request('POST', `/task-templates/${id}/reset`),
             getTaskTemplate: id => request('GET', `/task-templates/${id}`),
             createTaskTemplate: data => request('POST', '/task-templates', data),
             updateTaskTemplate: (id, data) => request('PUT', `/task-templates/${id}`, data),

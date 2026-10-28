@@ -96,7 +96,7 @@ class RenterAccessTest extends TestCase {
         $this->controller->link(2, 'b');
         $this->db->tables['domus_partners'][2]['nc_user_id'] = 'unrelated';
         $businessHistory = $this->db->tables['domus_tenancies'];
-        $listener = new \OCA\Domus\Listener\UserDeletedListener($this->mapper);
+        $listener = new \OCA\Domus\Listener\UserDeletedListener(new \OCA\Domus\Service\UserCleanupService($this->db, $this->mapper, $this->createMock(\OCA\Domus\Service\UnitMoveGuard::class), $this->createMock(\OCP\TaskProcessing\IManager::class)));
         $listener->handle(new \OCP\EventDispatcher\Event());
         self::assertSame('canonical-renter', $this->db->tables['domus_partners'][0]['nc_user_id']);
         $listener->handle(new \OCP\User\Events\UserDeletedEvent($this->users['canonical-renter']));

@@ -59,6 +59,7 @@ class UnitTransferService {
         private IL10N $l10n,
         private ActionLogMapper $actionLogMapper,
         private ManagementAccessContext $managementContext,
+        private ?AuditService $audit = null,
     ) {
     }
 
@@ -95,9 +96,9 @@ class UnitTransferService {
 
             $templateId = (int)$run->getTemplateId();
             if (!isset($templateMap[$templateId])) {
-                $template = $this->taskTemplateMapper->findById($templateId);
+                $template = $this->taskTemplateMapper->findForRun($run);
                 if ($template) {
-                    $template->setSteps($this->taskTemplateStepMapper->findByTemplate($templateId));
+                    $template->setSteps($this->taskTemplateStepMapper->findForRun($run));
                     $templateMap[$templateId] = $template;
                     $taskTemplates[] = $template;
                 }
@@ -132,6 +133,7 @@ class UnitTransferService {
             'taskTemplates' => array_map(fn(TaskTemplate $template) => $template->jsonSerialize(), $taskTemplates),
         ];
         PersonalArchiveValidation::assertPersonal($payload);
+        $this->audit?->record('unit.exported', $unitId, $userId, null);
         return $payload;
     }
 
@@ -212,6 +214,7 @@ class UnitTransferService {
             throw $e;
         }
 
+        $this->audit?->record('unit.imported', $unit->getId(), $userId, null);
         return [
             'unitId' => $unit->getId(),
             'warnings' => $warnings,
@@ -553,6 +556,12 @@ class UnitTransferService {
                 $step->setTitle($stepData['title'] ?? '');
                 $step->setDescription($stepData['description'] ?? null);
                 $step->setStatus($stepData['status'] ?? 'new');
+                $offset = $stepData['defaultDueDaysOffset'] ?? null;
+                if ($offset === null) {
+                    $sourceStep = $this->taskTemplateStepMapper->findByTemplateAndSortOrder($mappedTemplateId, (int)($stepData['sortOrder'] ?? 0));
+                    $offset = $sourceStep ? $sourceStep->getDefaultDueDaysOffset() : 0;
+                }
+                $step->setDefaultDueDaysOffset((int)$offset);
                 $step->setAllowEarlyCompletion(!empty($stepData['allowEarlyCompletion']) ? 1 : 0);
                 $step->setDueDate($stepData['dueDate'] ?? null);
                 $step->setOpenedAt($this->normalizeNullableTimestamp($stepData['openedAt'] ?? null));

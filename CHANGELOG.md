@@ -8,6 +8,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
+- Nextcloud admin audit logging for unit moves, renter access, tenancy relationships, unit imports and exports, and portfolio deletions.
+- Shared system process templates with Personal and Team customization, reset and disable options, and schedules preserved when templates change.
+- Move Personal units to Teams with their folders, documents, images, tasks, and processes, including a conflict preview and recovery from interruptions while retaining original files.
 - Nextcloud dashboard task widget with unit names and coloured icons for overdue, today, and upcoming tasks.
 - Optional AI previews for annual-statement PDFs, with unit matching, confidence indicators, source pages, and editable booking suggestions dated at year-end.
 - Beta tax report in WISO Steuer layout, with itemized costs, subtotals, and year-closing badges.
@@ -17,8 +20,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Document dates, multiple tenancy assignments, and assignment indicators.
 
 ### Changed
+- Move the tax rate setting into Tax declaration and remove the General Settings section.
 - Refresh the feature overview, app introduction, and welcome tour; move detailed guides into the new wiki.
-- Combine Nextcloud integration checks and the AI document-validation setting in one settings panel; simplify AI checks, link to OpenAI and LocalAI integration, and clarify AI document processing with a properly aligned Nextcloud checkbox.
+- Combine Nextcloud integration checks and AI document-validation settings in one panel, with clearer guidance and links to OpenAI and LocalAI integration.
 - Consistent dialog headers and persistent action footers, including the welcome wizard.
 - Record activities directly from unit details.
 - Simplify document editing, previews, storage, and booking and tenancy links.
@@ -26,6 +30,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
+- Clean up deleted users’ Personal portfolios and move journals, preserve Team history, and continue Team rules through an authorized remaining member.
+- Isolate custom Personal accounts per user and protect shared system accounts from editing, including through the API.
 - Use reminder dates as deadlines and keep deferred tasks visible.
 - Preserve booking and document edits across retries and nested dialogs.
 - Keep closed-year bookings and document links read-only.

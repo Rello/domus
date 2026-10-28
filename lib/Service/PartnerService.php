@@ -24,6 +24,7 @@ class PartnerService {
         private TenancyService $tenancyService,
         private PermissionService $permissionService,
         private IL10N $l10n,
+        private ?AuditService $audit = null,
     ) {
     }
 
@@ -40,7 +41,7 @@ class PartnerService {
         return $partner;
     }
 
-    public function createPartner(array $data, string $userId, string $role): Partner {
+    public function createPartner(array $data, string $userId, string $role, bool $auditAccount = true): Partner {
         $this->permissionService->assertPartnerTypeAllowed($data['partnerType'] ?? '');
         if (!isset($data['name']) || trim((string)$data['name']) === '') {
             throw new \InvalidArgumentException($this->l10n->t('Partner name is required.'));
@@ -61,7 +62,9 @@ class PartnerService {
         $partner->setNcUserId($data['ncUserId'] ?? null);
         $partner->setCreatedAt($now);
         $partner->setUpdatedAt($now);
-        return $this->partnerMapper->insert($partner);
+        $partner = $this->partnerMapper->insert($partner);
+        if ($auditAccount) $this->audit?->account($partner->getId(), $userId, $partner->getTeamId(), null, $partner->getNcUserId());
+        return $partner;
     }
 
     public function updatePartner(int $id, array $data, string $userId, string $role): Partner {
@@ -69,6 +72,7 @@ class PartnerService {
         if (isset($data['partnerType'])) {
             $this->permissionService->assertPartnerTypeAllowed($data['partnerType']);
         }
+        $oldUid = $partner->getNcUserId();
         $targetType = $data['partnerType'] ?? $partner->getPartnerType();
         $fields = ['partnerType', 'name', 'street', 'zip', 'city', 'country', 'email', 'phone', 'customerRef', 'notes', 'ncUserId'];
         foreach ($fields as $field) {
@@ -81,7 +85,9 @@ class PartnerService {
             throw new \InvalidArgumentException($this->l10n->t('Partner name is required.'));
         }
         $partner->setUpdatedAt(time());
-        return $this->partnerMapper->update($partner);
+        $partner = $this->partnerMapper->update($partner);
+        $this->audit?->account($id, $userId, $partner->getTeamId(), $oldUid, $partner->getNcUserId());
+        return $partner;
     }
 
     public function deletePartner(int $id, string $userId): void {
@@ -91,5 +97,6 @@ class PartnerService {
             throw new ConflictException($this->l10n->t('Partner is linked and cannot be deleted.'));
         }
         $this->partnerMapper->delete($partner);
+        $this->audit?->record('partner.deleted', $id, $userId, $partner->getTeamId(), ['partnerRelations' => 0]);
     }
 }

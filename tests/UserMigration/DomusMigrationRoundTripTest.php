@@ -65,9 +65,9 @@ class DomusMigrationRoundTripTest extends TestCase {
             'domus_docLinks' => [['id' => 13, 'user_id' => 'source', 'entity_type' => 'unit', 'entity_id' => 5, 'file_id' => 15]],
             'domus_tasks' => [['id' => 17, 'created_by' => 'source', 'entity_type' => 'unit', 'entity_id' => 5, 'title' => 'Task', 'closed_by' => 'source']],
             'domus_workflow_runs' => [['id' => 19, 'created_by' => 'source', 'entity_type' => 'unit', 'entity_id' => 5, 'template_id' => 21, 'closed_by' => 'source']],
-            'domus_task_steps' => [['id' => 23, 'workflow_run_id' => 19, 'entity_type' => 'unit', 'entity_id' => 5, 'allow_early_completion' => 1, 'closed_by' => 'source']],
+            'domus_task_steps' => [['id' => 23, 'sort_order' => 1, 'workflow_run_id' => 19, 'entity_type' => 'unit', 'entity_id' => 5, 'allow_early_completion' => 1, 'closed_by' => 'source']],
             'domus_task_templates' => [['id' => 21, 'key' => 'custom', 'name' => 'Custom process']],
-            'domus_task_tpl_steps' => [['id' => 25, 'template_id' => 21, 'title' => 'Custom step', 'allow_early_completion' => 1]],
+            'domus_task_tpl_steps' => [['id' => 25, 'sort_order' => 1, 'default_due_days_offset' => 8, 'template_id' => 21, 'title' => 'Custom step', 'allow_early_completion' => 1]],
         ];
         $links = ['document' => 13, 'partner' => 7, 'tenancy' => 9, 'booking' => 11, 'unit' => 5, 'property' => 99];
         foreach ($links as $type => $id) {
@@ -124,12 +124,13 @@ class DomusMigrationRoundTripTest extends TestCase {
         $this->assertSame('target', $db->tables['domus_workflow_runs'][0]['closed_by']);
         $this->assertSame(101, $db->tables['domus_task_steps'][0]['workflow_run_id']);
         $this->assertSame(1, $db->tables['domus_task_steps'][0]['allow_early_completion']);
+        $this->assertSame(8, $db->tables['domus_task_steps'][0]['default_due_days_offset']);
         $this->assertSame(101, $db->tables['domus_task_tpl_steps'][0]['template_id']);
     }
 
     public function testLegacyArchiveReusesTemplateByKey(): void {
         $db = new TransferDatabase();
-        $db->tables['domus_task_templates'] = [['id' => 77, 'key' => 'existing', 'scope_key' => 'global']];
+        $db->tables['domus_task_templates'] = [['id' => 77, 'key' => 'existing', 'scope_key' => 'user:target']];
         $payload = ['taskTemplates' => [['id' => 3, 'key' => 'existing']], 'units' => [['id' => 5, 'user_id' => 'source']],
             'workflowRuns' => [['id' => 9, 'template_id' => 3, 'entity_type' => 'unit', 'entity_id' => 5]]];
         $this->service($db)->import($this->user('target'), $this->source(json_encode($payload)), $this->createMock(OutputInterface::class));
@@ -145,7 +146,7 @@ class DomusMigrationRoundTripTest extends TestCase {
             ['bookingYears' => [['teamId' => 'team-b']]],
         ] as $payload) {
             $db = new TransferDatabase();
-            $db->tables['domus_task_templates'] = [['id' => 77, 'key' => 'existing', 'scope_key' => 'global']];
+            $db->tables['domus_task_templates'] = [['id' => 77, 'key' => 'existing', 'scope_key' => 'user:target']];
             $files = $this->createMock(DocumentFiles::class);
             $files->expects($this->never())->method('import');
             $config = $this->createMock(IConfig::class);
@@ -217,7 +218,7 @@ class DomusMigrationRoundTripTest extends TestCase {
         }
         self::assertSame('target', $db->tables['domus_properties'][0]['user_id']);
         self::assertSame('target', $db->tables['domus_units'][0]['user_id']);
-        self::assertSame('global', $db->tables['domus_task_templates'][0]['scope_key']);
+        self::assertSame('user:target', $db->tables['domus_task_templates'][0]['scope_key']);
         self::assertNull($db->tables['domus_task_templates'][0]['source_catalogue_id']);
     }
 

@@ -19,6 +19,7 @@ class RuleService {
         private TaskService $tasks,
         private IL10N $l10n,
         private \OCA\Domus\Db\PartnerRelMapper $relations,
+        private ?UnitMoveGuard $moveGuard = null,
     ) {
     }
 
@@ -123,6 +124,21 @@ class RuleService {
 
     /** Run on explicit page evaluation and by the scheduled background job. */
     public function evaluate(string $userId, ?int $unitId = null): array {
+        if ($this->moveGuard === null) return $this->evaluateUnlocked($userId, $unitId);
+        $this->moveGuard->acquire($userId);
+        try {
+            try {
+                $this->moveGuard->assertWritable($userId);
+            } catch (\OCA\Domus\Exception\ConflictException $e) {
+                return ['alerts' => [], 'createdTasks' => 0, 'checkedAt' => time()];
+            }
+            return $this->evaluateUnlocked($userId, $unitId);
+        } finally {
+            $this->moveGuard->release($userId);
+        }
+    }
+
+    private function evaluateUnlocked(string $userId, ?int $unitId): array {
         if ($unitId !== null && !$this->units->findForUser($unitId, $userId)) {
             throw new ResourceNotFoundException($this->l10n->t('Unit not found.'));
         }

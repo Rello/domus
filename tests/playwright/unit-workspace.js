@@ -761,6 +761,67 @@ async function main() {
         await dialog.waitFor({state: 'detached'});
     }, 'landlord', {width: 390, height: 844});
 
+    async function prepareMove(page, loseResponse = false) {
+        await page.evaluate(({unitData, loseResponse}) => {
+            let saved = {status: 'new'};
+            let lost = false;
+            window.moveCalls = [];
+            Domus.Api.get = async path => {
+                if (path === '/units/1') return {...unitData, propertyId: null};
+                if (path === '/teams') return {teams: [{teamId: 'team-a', displayName: 'Management'}]};
+                if (path === '/units/1/move') return saved;
+                return null;
+            };
+            Domus.Api.post = async (path, data) => {
+                window.moveCalls.push({path, data});
+                if (path === '/rules/evaluate') return {alerts: [], createdTasks: 0};
+                if (path.endsWith('/preview')) return {token: 'preview-token', destination: 'Management', files: 3, folders: 2, bytes: 100, tenancies: 1, bookings: 2, contacts: 1, tasks: 0, workflowRuns: 1, taskSteps: 4, activities: 2, sourceFolderMissing: true};
+                if (path.endsWith('/start')) {
+                    saved = {status: 'copying', teamId: 'team-a', copied: 1, total: 5, verified: 0};
+                    if (loseResponse && !lost) { lost = true; throw new Error('Connection lost'); }
+                    return saved;
+                }
+                if (path.endsWith('/advance')) return saved = {...saved, status: 'complete'};
+                if (path.endsWith('/cancel')) return saved = {...saved, status: 'cancelled'};
+                throw new Error('Unexpected request: ' + path);
+            };
+            Domus.Units.renderDetail(1);
+        }, {unitData: unit, loseResponse});
+        await page.locator('#domus-unit-move').waitFor({state: 'attached'});
+        await page.getByRole('button', {name: 'More actions', exact: true}).click();
+        await page.getByRole('button', {name: 'Move to Team…', exact: true}).click();
+        const dialog = page.getByRole('dialog', {name: 'Move to Team…', exact: true});
+        await dialog.getByRole('button', {name: 'Review move', exact: true}).click();
+        await dialog.getByText('3 files and 2 folders (100 bytes).', {exact: true}).waitFor();
+        await dialog.getByText('Standalone tasks: 0. Processes: 1. Process steps: 4.', {exact: true}).waitFor();
+        await dialog.getByText('Activities: 2.', {exact: true}).waitFor();
+        await dialog.getByText('The configured source folder was not found. Check the document location before continuing. A new unit folder will be created and accessible linked files will be copied.', {exact: true}).waitFor();
+        assert.equal(await page.evaluate(() => window.moveCalls.filter(call => call.path.endsWith('/start')).length), 0, 'Preview does not start a move');
+        return dialog;
+    }
+
+    await test('unit move reviews the destination and resumes a lost start response', async page => {
+        const dialog = await prepareMove(page, true);
+        await dialog.getByRole('button', {name: 'Move unit', exact: true}).click();
+        await dialog.getByText('Connection lost', {exact: true}).waitFor();
+        await dialog.getByRole('button', {name: 'Resume move', exact: true}).click();
+        await dialog.getByRole('button', {name: 'Open in Team', exact: true}).waitFor();
+        assert.equal(await page.evaluate(() => window.moveCalls.filter(call => call.path.endsWith('/start')).length), 1);
+        assert.equal(await page.evaluate(() => window.moveCalls.find(call => call.path.endsWith('/start')).data.token), 'preview-token');
+        await dialog.getByText('Unit moved. Original files retained.', {exact: true}).waitFor();
+    });
+
+    await test('unit move cancellation keeps copies and fits a phone', async page => {
+        const dialog = await prepareMove(page, true);
+        await dialog.getByRole('button', {name: 'Move unit', exact: true}).click();
+        await dialog.getByText('Connection lost', {exact: true}).waitFor();
+        await dialog.getByRole('button', {name: 'Cancel move', exact: true}).click();
+        await dialog.getByText('Move cancelled. Original files and any destination copies are retained.', {exact: true}).waitFor();
+        const size = await dialog.evaluate(el => ({width: el.clientWidth, scroll: el.scrollWidth}));
+        assert.ok(size.scroll <= size.width, JSON.stringify(size));
+        assert.equal(await page.evaluate(() => window.moveCalls.some(call => call.path.endsWith('/cancel'))), true);
+    }, 'landlord', {width: 390, height: 844});
+
     await browser.close();
     if (failures) process.exitCode = 1;
 }

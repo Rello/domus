@@ -41,6 +41,7 @@ class PropertyService {
         private PermissionService $permissionService,
         private EntityImageService $entityImageService,
         private IL10N $l10n,
+        private ?AuditService $audit = null,
     ) {
     }
 
@@ -132,6 +133,7 @@ class PropertyService {
 
     public function deleteProperty(int $id, string $userId): void {
         $property = $this->getPropertyForUser($id, $userId);
+        $counts = $this->audit !== null ? $this->getDeletionSummary($id, $userId) : [];
         $units = $this->unitMapper->findByUser($userId, $property->getId());
         $distributionKeys = $this->distributionKeyMapper->findByProperty($property->getId(), $userId);
         $distributionKeyIds = array_values(array_filter(array_map(fn($key) => $key->getId(), $distributionKeys)));
@@ -160,6 +162,7 @@ class PropertyService {
         }
         $this->taskMapper->deleteByEntity('property', $property->getId());
         $this->propertyMapper->delete($property);
+        $this->audit?->record('property.deleted', $id, $userId, $property->getTeamId(), $counts);
     }
 
     public function getDeletionSummary(int $id, string $userId): array {

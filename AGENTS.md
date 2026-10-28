@@ -21,6 +21,11 @@ Guidance for Codex and other agents working in this Nextcloud app. Follow the re
 
 ## Database migrations
 
+- Keep general migration guidance in this file. Do not add README files under `lib` or its subdirectories.
+- Consolidate local, unpushed migration iterations into one migration containing the final schema and required data updates. Keep migrations already pushed for users to run unchanged.
+- Reconcile development database migration records only after verifying that its schema and data match the consolidated migration.
+- Put guarded data updates in `postSchemaChange`. Preserve user-customized bundled defaults by matching their previous definitions before updating them; update `FillDefaultAccountsRepairStep` as well so fresh installations receive the same defaults.
+- Bump `appinfo/info.xml` for releases with new migrations so Nextcloud detects the upgrade. Validate both fresh installations and upgrades with existing data, including safe retries for data migrations.
 - When changing a column type in a database migration, pass a Doctrine `Type` object, for example `Type::getType(Types::TEXT)`, to `changeColumn()` or `setType()`. Passing a string such as `'text'` can cause a `TypeError` with the bundled Doctrine DBAL version.
 
 ## Changelog

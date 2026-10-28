@@ -1978,10 +1978,11 @@
             return {
                 cells: [
                     Domus.Utils.escapeHtml(templateName),
+                    '<span class="domus-badge domus-badge-muted">' + Domus.Utils.escapeHtml(template.isSystem ? t('domus', 'System') : template.isOverride ? t('domus', 'Customized') : t('domus', 'Custom')) + '</span>',
                     Domus.Utils.escapeHtml(String(template.stepsCount ?? 0)),
                     Domus.Utils.escapeHtml(statusLabel),
                     '<div class="domus-task-template-actions">' +
-                        Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), {
+                        Domus.UI.buildIconButton('domus-icon-edit', template.isSystem ? t('domus', 'Customize') : t('domus', 'Edit'), {
                             className: 'domus-task-template-edit',
                             dataset: { id: template.id }
                         }) +
@@ -1989,10 +1990,11 @@
                             className: 'domus-task-template-toggle',
                             dataset: { id: template.id }
                         }) +
-                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {
-                            className: 'domus-task-template-delete',
-                            dataset: { id: template.id }
-                        }) +
+                        (template.isOverride ? Domus.UI.buildIconButton('domus-icon-back', t('domus', 'Reset to system default'), {
+                            className: 'domus-task-template-reset', dataset: { id: template.id }
+                        }) : template.isSystem ? '' : Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {
+                            className: 'domus-task-template-delete', dataset: { id: template.id }
+                        })) +
                         '</div>'
                 ]
             };
@@ -2023,6 +2025,7 @@
                     const rows = (templates || []).map(buildTemplateRow);
                     container.innerHTML = Domus.UI.buildTable([
                         t('domus', 'Name'),
+                        '',
                         t('domus', 'Steps'),
                         t('domus', 'Status'),
                         ''
@@ -2327,9 +2330,25 @@
                 btn.addEventListener('click', () => {
                     const id = btn.getAttribute('data-id');
                     if (!id) return;
+                    btn.disabled = true;
                     Domus.Api.getTaskTemplate(id)
-                        .then(template => openTemplateModal(template, () => loadTemplates()))
-                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
+                        .then(template => template.isSystem ? Domus.Api.customizeTaskTemplate(id) : template)
+                        .then(template => { loadTemplates(); openTemplateModal(template, () => loadTemplates()); })
+                        .catch(err => Domus.UI.showNotification(err.message, 'error'))
+                        .finally(() => { btn.disabled = false; });
+                });
+            });
+            document.querySelectorAll('.domus-task-template-reset').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const confirmed = await Domus.UI.confirmAction({
+                        message: t('domus', 'Reset this template to the system default? Customizations and disabling for this portfolio will be removed. Existing processes are unchanged.'),
+                        confirmLabel: t('domus', 'Reset to system default')
+                    });
+                    if (!confirmed) return;
+                    btn.disabled = true;
+                    try { await Domus.Api.resetTaskTemplate(btn.dataset.id); loadTemplates(); }
+                    catch (err) { Domus.UI.showNotification(err.message, 'error'); }
+                    finally { btn.disabled = false; }
                 });
             });
             document.querySelectorAll('.domus-task-template-toggle').forEach(btn => {

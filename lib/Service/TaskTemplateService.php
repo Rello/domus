@@ -100,6 +100,14 @@ class TaskTemplateService {
             throw new ResourceNotFoundException($this->l10n->t('Task template not found.'));
         }
 
+        if ($template->getScopeKey() === 'system') {
+            if (array_keys($payload) === ['isActive']) return $this->customize($templateId, !empty($payload['isActive']));
+            throw new \InvalidArgumentException($this->l10n->t('Customize the system template before editing it.'));
+        }
+        if ($template->getSystemTemplateId() !== null && isset($payload['key']) && $payload['key'] !== $template->getKey()) {
+            throw new \InvalidArgumentException($this->l10n->t('The key of a customized system template cannot be changed.'));
+        }
+
         if (array_key_exists('key', $payload)) {
             $key = trim((string)$payload['key']);
             if ($key === '') {
@@ -148,13 +156,17 @@ class TaskTemplateService {
         if (!$template) {
             throw new ResourceNotFoundException($this->l10n->t('Task template not found.'));
         }
-        $this->templateMapper->delete($template);
+        if ($template->getScopeKey() === 'system' || $template->getSystemTemplateId() !== null) {
+            throw new \InvalidArgumentException($this->l10n->t('Disable this template for this portfolio, or reset its customization.'));
+        }
+        $this->templateMapper->archive($template);
     }
 
     /**
      * @throws DbException
      */
     public function reorderSteps(int $templateId, array $orderedStepIds): array {
+        $this->assertWritableTemplate($templateId);
         $existing = $this->stepMapper->findByTemplate($templateId);
         $existingIds = array_map(fn(TaskTemplateStep $step) => $step->getId(), $existing);
         $ordered = array_values(array_filter(array_map('intval', $orderedStepIds), fn($id) => in_array($id, $existingIds, true)));
@@ -185,6 +197,7 @@ class TaskTemplateService {
      * @throws DbException
      */
     public function addOrUpdateStep(int $templateId, array $payload): TaskTemplateStep {
+        $this->assertWritableTemplate($templateId);
         $title = trim((string)($payload['title'] ?? ''));
         if ($title === '') {
             throw new \InvalidArgumentException($this->l10n->t('Step title is required.'));
@@ -252,6 +265,62 @@ class TaskTemplateService {
         if (!$step) {
             throw new ResourceNotFoundException($this->l10n->t('Task step not found.'));
         }
+        $this->assertWritableTemplate((int)$step->getTemplateId());
         $this->stepMapper->delete($step);
+    }
+    private function assertWritableTemplate(int $templateId): TaskTemplate {
+        $template = $this->getTemplateWithSteps($templateId);
+        if ($template->getScopeKey() === 'system') {
+            throw new \InvalidArgumentException($this->l10n->t('Customize the system template before editing it.'));
+        }
+        return $template;
+    }
+
+    public function customize(int $templateId, ?bool $active = null): TaskTemplate {
+        $source = $this->templateMapper->findById($templateId);
+        if (!$source) throw new ResourceNotFoundException($this->l10n->t('Task template not found.'));
+        if ($source->getScopeKey() !== 'system') return $source;
+        $steps = $this->stepMapper->findByTemplate($templateId);
+        $this->connection->beginTransaction();
+        try {
+            $copy = new TaskTemplate();
+            foreach (['Key', 'Name', 'Description', 'AppliesTo', 'IsActive'] as $field) {
+                $copy->{'set' . $field}($source->{'get' . $field}());
+            }
+            $copy->setSystemTemplateId($templateId);
+            $copy->setCreatedAt(time());
+            $copy->setUpdatedAt(time());
+            if ($active !== null) $copy->setIsActive($active ? 1 : 0);
+            $copy = $this->templateMapper->insert($copy);
+            $copies = [];
+            foreach ($steps as $step) {
+                $newStep = new TaskTemplateStep();
+                foreach (['SortOrder', 'Title', 'Description', 'DefaultDueDaysOffset', 'AllowEarlyCompletion', 'ActionType', 'ActionUrl'] as $field) {
+                    $newStep->{'set' . $field}($step->{'get' . $field}());
+                }
+                $newStep->setTemplateId($copy->getId());
+                $newStep->setCreatedAt(time());
+                $newStep->setUpdatedAt(time());
+                $copies[] = $this->stepMapper->insert($newStep);
+            }
+            $copy->setSteps($copies);
+            $copy->setStepsCount(count($copies));
+            $this->connection->commit();
+            return $copy;
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+            throw $e;
+        }
+    }
+
+    public function reset(int $templateId): TaskTemplate {
+        $template = $this->getTemplateWithSteps($templateId);
+        if ($template->getScopeKey() === 'system') return $template;
+        $system = $this->templateMapper->findSystemByKey($template->getKey());
+        if (!$system || (int)$template->getSystemTemplateId() !== (int)$system->getId()) {
+            throw new \InvalidArgumentException($this->l10n->t('This template has no system default.'));
+        }
+        $this->templateMapper->archive($template);
+        return $this->getTemplateWithSteps((int)$system->getId());
     }
 }
