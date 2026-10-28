@@ -202,3 +202,31 @@ move retries/failures and import commit/rollback behavior. Full tests use a stub
 audit dispatcher. Live validation can resolve the affected services through
 Nextcloud's container without modifying records. End-to-end audit-file delivery
 requires an enabled/configured `admin_audit` app and separate fixture actions.
+
+## Consolidated 1.3 migration
+
+`Version0008Date20261028000000` contains the final schema additions since 1.2,
+replacing beta-only migrations 0006 and 0007. Migrations 0001–0005 shipped in
+1.2 and remain unchanged. The new ID also runs on beta installations; existing
+columns, tables and indexes are retained without rewriting migration records.
+The default-catalogue repair step remains registered for installation and upgrade.
+
+Run `docker exec nc35-app-1 php /var/tmp/own_apps/domus/tests/verify-migration-schema.php`
+for schema validation using Nextcloud's installed Doctrine/schema classes. The
+script does not bootstrap Nextcloud or connect to its database: it applies SQL
+only to in-memory SQLite. It checks fresh schema creation, a 1.2 upgrade with
+existing rows in every table, partial/completed beta schemas and safe retries.
+It also runs the consolidated data migration against separate 1.2 and beta.6
+SQLite schemas with custom account hierarchies, customized/disabled templates,
+Team records and existing processes. The query adapter uses real SQL and database
+constraints, while user/group lookup uses fixtures. Nextcloud's updater itself
+and older data migrations are outside this check.
+
+Run `./tests/run-unit.sh --filter 'ConsolidatedMigration|DefaultCatalogueInstall'`
+for catalogue visibility, unchanged defaults, guest/deleted-user exclusions,
+conflict rollback, retries and repair-step compatibility. Legacy global custom
+catalogues have no creator UID: copies go only to existing, non-guest users with
+Personal Domus data (including disabled accounts for later reactivation). Team-only
+users and future users receive no legacy copies. Original catalogue rows and
+process references remain intact; conflicting newer scoped definitions stop the
+upgrade with a diagnostic instead of overwriting either version.

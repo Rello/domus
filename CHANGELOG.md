@@ -30,6 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
+- Preserve custom accounts, process templates, and existing process schedules when upgrading from 1.2 or 1.3 betas.
 - Clean up deleted users’ Personal portfolios and move journals, preserve Team history, and continue Team rules through an authorized remaining member.
 - Isolate custom Personal accounts per user and protect shared system accounts from editing, including through the API.
 - Use reminder dates as deadlines and keep deferred tasks visible.
