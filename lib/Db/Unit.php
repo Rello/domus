@@ -22,6 +22,7 @@ class Unit extends Entity implements JsonSerializable {
     protected $unitNumber;
     protected $landRegister;
     protected $livingArea;
+    protected $constructionYear;
     protected $unitType;
     protected $buyDate;
     protected $totalCosts;
@@ -48,6 +49,7 @@ class Unit extends Entity implements JsonSerializable {
     public function __construct() {
         $this->addType('id', 'int');
         $this->addType('propertyId', 'int');
+        $this->addType('constructionYear', 'int');
         $this->addType('imageFileId', 'int');
         $this->addType('documentFolderId', 'int');
         $this->addType('createdAt', 'int');
@@ -67,6 +69,7 @@ class Unit extends Entity implements JsonSerializable {
             'unitNumber' => $this->unitNumber,
             'landRegister' => $this->landRegister,
             'livingArea' => $this->livingArea,
+            'constructionYear' => $this->constructionYear,
             'unitType' => $this->unitType,
             'buyDate' => $this->buyDate,
             'totalCosts' => $this->totalCosts,

@@ -43,7 +43,11 @@ class PortfolioSettingsServiceTest extends TestCase {
         $settings = new PortfolioSettingsService($access, $config, $db);
         $settings->setValue('alice', 'utilityReportTemplate', '42');
         self::assertSame('42', $settings->getValue('bob', 'utilityReportTemplate', '0'));
+        $settings->setValue('alice', 'rentIncreaseTemplate', '43');
+        self::assertSame('43', $settings->getValue('bob', 'rentIncreaseTemplate', '0'));
+        self::assertSame('42', $settings->getValue('bob', 'utilityReportTemplate', '0'));
         $team = 'b';
+        self::assertSame('0', $settings->getValue('bob', 'rentIncreaseTemplate', '0'));
         self::assertSame('0', $settings->getValue('bob', 'utilityReportTemplate', '0'));
         $team = null;
         self::assertSame('7', $settings->getValue('alice', 'utilityReportTemplate', '0'));

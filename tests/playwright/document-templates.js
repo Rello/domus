@@ -145,6 +145,31 @@ async function preview(page) {
         await page.locator('#domus-template-delete').click();
         assert.equal(await page.locator('#domus-template-list tbody tr').count(), 1);
     }, 390);
+    await test('rent increase template assignment and removal preserve the utility template', true, async page => {
+        await page.evaluate(() => {
+            Domus.Api.getSettings = async () => ({settings: {}, utilityReportTemplate: template, rentIncreaseTemplate: {fileId: null}});
+            Domus.Api.get = async () => [];
+            Domus.Api.put = async (path, payload) => {
+                calls.push({path, payload});
+                return {fileId: payload.path ? 43 : null, name: payload.path ? 'Rent.docx' : '', ready: !!payload.path};
+            };
+            Domus.TaskTemplates = {renderSection: () => '', loadTemplates: () => {}};
+            Domus.Accounts = {renderSettingsSection: () => '', loadSettingsSection: () => {}};
+            OC.dialogs = {filepicker: (title, callback) => callback('/DomusApp/Templates/Rent.docx')};
+            Domus.Settings.render('documentTemplates');
+        });
+        await page.locator('#domus-template-add').click();
+        await page.getByLabel('Process', {exact: true}).selectOption('rentIncrease');
+        await page.locator('#domus-template-pick').click();
+        await page.getByRole('dialog').getByRole('button', {name: 'Save', exact: true}).click();
+        await page.locator('#domus-template-list').getByText('Rent.docx', {exact: true}).waitFor();
+        assert.equal(await page.locator('#domus-template-list tbody tr').count(), 2);
+        assert.equal(await page.evaluate(() => calls[0].path), '/settings/rent-increase-template');
+        await page.locator('#domus-rent-template-delete').click();
+        assert.equal(await page.locator('#domus-template-list tbody tr').count(), 1);
+        assert.equal(await page.locator('#domus-template-list').getByText('Utility.docx', {exact: true}).count(), 1);
+        assert.equal(await page.evaluate(() => calls[1].path), '/settings/rent-increase-template');
+    }, 390);
     await test('HTML server errors are readable instead of displaying page markup', false, async page => {
         await page.route('http://domus.test/apps/domus/api/settings/utility-template', route => route.fulfill({status: 404, contentType: 'text/html', body: '<!DOCTYPE html><html>Not found</html>'}));
         const message = await page.evaluate(async () => {

@@ -22,11 +22,18 @@ Notes:
 GitHub Actions runs this same PHPUnit configuration and the browser wrapper on pull requests and pushes to `main`. These checks use fixtures; live Nextcloud checks remain separate.
 
 ## UI Tests (Playwright)
+- The wrapper uses a versioned Chromium-only runtime and reuses the installed
+  image when available, building it locally when missing.
+- Both full Chromium and its headless shell are included; Firefox and WebKit are not.
+- When changing the runtime, update the default image tag in the test wrapper
+  and any build helpers to avoid stale images.
+- `PLAYWRIGHT_IMAGE` can select a custom image. For a custom Playwright version,
+  build with `--build-arg PLAYWRIGHT_VERSION=<version>` and use a distinct image tag.
 - Run the modal/form, dashboard, unit-workspace, and process-detail behavioral regression suites: `./tests/run-playwright.sh`.
 - Run only renter access fixtures with `PLAYWRIGHT_TEST=renter-access ./tests/run-playwright.sh`.
   These cover partner account linking, standard Guests creation, lost-response retries,
   account status, Personal visibility and narrow layout. They do not prove live email delivery.
-- The wrapper builds `domus-playwright:local` when missing. Override with
+- The wrapper builds `nextcloud-playwright:1.58.2-chromium-v1` when missing. Override with
   `PLAYWRIGHT_IMAGE` to use an existing compatible Playwright image.
 - Tests load the actual JavaScript modules and CSS in Chromium, with fixture API
   responses. They do not require a Nextcloud login or write server records.
@@ -155,6 +162,14 @@ model output are excluded. Clear the key or let it expire to stop logging.
 
 ## Unit moves to Teams
 
+- NC34 resolves a Team folder through the optional Team folders app: exactly one
+  folder must be assigned exclusively to the Team's ID, with read permission.
+  Its mounted root must match and be readable and writable for the current user.
+  Multiple dedicated folders are ambiguous and are not selected automatically.
+  NC35 continues to use the native exclusive-Team-folder provider.
+- Run `./tests/run-unit.sh --filter 'TeamIntegrationService|UnitMove'` for native
+  and NC34 folder lookup, membership checks, ambiguous/shared folders, name
+  collisions, missing mounts and denied access, alongside move regressions.
 - Run `./tests/run-unit.sh --filter UnitMove` for full folder trees (including empty
   folders and unlinked files), external images, duplicate document references,
   interrupted-copy recovery, changed sources/destinations, ownership rollback,
@@ -239,3 +254,21 @@ reopening with Team/year isolation, early-completion export/import/reopen (inclu
 legacy archives), invalid completion markers, and bounded dashboard run retrieval
 at 1 and 1,000 open steps. Mapper fixtures verify query routing and operation counts;
 live concurrent requests across database backends remain a separate acceptance check.
+
+Run `PLAYWRIGHT_TEST=rent-increase ./tests/run-playwright.sh` for the active-tenancy
+rent calculator: range/cap intersection, price selection, invalid inputs, unit-load
+retry, missing area, role/status visibility, and desktop/phone layout.
+
+Run `PLAYWRIGHT_TEST=rent-increase-letter ./tests/run-playwright.sh` for the German
+Markdown rent-increase letter: substituted names/address and amounts, explicit
+current-tenancy adjustment dates and rent-index-year placeholders, editable review, upload targets, failed-save retries,
+duplicate-click prevention, permission visibility, and desktop/phone layout.
+The fixture uses the existing document attachment API contract; it does not prove
+live Nextcloud file creation or permissions.
+
+Rent-increase Word generation is covered by `RentIncreaseReportServiceTest`,
+`DocumentTemplateServiceTest`, `DocxTemplateProcessorTest` and
+`PortfolioSettingsServiceTest`: scoped/stale records, calculation bounds, dates,
+variable mapping and template isolation. The `rent-increase-letter` browser suite
+also covers required Word fields, retry and explicit Markdown fallback;
+`document-templates` covers independent assignment/removal of both processes.

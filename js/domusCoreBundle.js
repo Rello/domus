@@ -1027,8 +1027,25 @@
 
             document.addEventListener('keydown', onKeyDown);
             closeBtn.addEventListener('click', requestClose);
+            let backdropPress = false;
+            let backdropRelease = false;
+            backdrop.addEventListener('pointerdown', event => {
+                backdropPress = event.target === backdrop && event.button === 0;
+                backdropRelease = false;
+            });
+            backdrop.addEventListener('pointerup', event => {
+                backdropRelease = backdropPress && event.target === backdrop;
+            });
+            backdrop.addEventListener('pointercancel', () => {
+                backdropPress = false;
+                backdropRelease = false;
+            });
             backdrop.addEventListener('click', function(e) {
-                if (e.target === backdrop) {
+                // A selection dragged out of the dialog also produces a backdrop click.
+                const dismiss = backdropPress && backdropRelease && e.target === backdrop;
+                backdropPress = false;
+                backdropRelease = false;
+                if (dismiss) {
                     requestClose('backdrop');
                 }
             });

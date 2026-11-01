@@ -116,6 +116,23 @@ class DocxTemplateProcessorTest extends TestCase {
             $zip->close();
         } finally { unlink($path); }
     }
+    public function testRentVariablesAreReplacedAcrossRunsAndEscaped(): void {
+        $xml = $this->xml('<w:p><w:r><w:t>${newBase</w:t></w:r><w:r><w:t>Rent} / ${consentDeadline} / ${unitCity}</w:t></w:r></w:p>');
+        $result = $this->processor()->replaceXml($xml, ['newBaseRent' => '960,00', 'consentDeadline' => '31.01.2027', 'unitCity' => 'A & B']);
+        self::assertStringContainsString('960,00', $result);
+        self::assertStringContainsString('31.01.2027', $result);
+        self::assertStringContainsString('A &amp; B', $result);
+        self::assertStringNotContainsString('${', $result);
+    }
+    public function testServiceChargeVariablesRenderAndMissingCostsAreRejected(): void {
+        $xml = $this->xml('<w:p><w:r><w:t>${currentServiceCharge} / ${actualServiceCharge}</w:t></w:r></w:p>');
+        $result = $this->processor()->replaceXml($xml, ['currentServiceCharge' => '100,00', 'actualServiceCharge' => '116,67']);
+        self::assertStringContainsString('100,00 / 116,67', $result);
+        // Validation without values must still allow assigning a template.
+        $this->processor()->replaceXml($xml, []);
+        $this->expectException(\InvalidArgumentException::class);
+        $this->processor()->replaceXml($xml, ['actualServiceCharge' => '']);
+    }
     public function testNonDocxArchiveIsRejected(): void {
         $this->expectException(\InvalidArgumentException::class);
         $this->processor()->render('not a zip', []);

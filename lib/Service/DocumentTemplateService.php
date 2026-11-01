@@ -10,7 +10,13 @@ use OCP\Files\IRootFolder;
 use OCP\IL10N;
 
 class DocumentTemplateService {
-    private const KEY = 'utilityReportTemplate';
+    private function key(string $type): string {
+        return match ($type) {
+            'utility' => 'utilityReportTemplate',
+            'rentIncrease' => 'rentIncreaseTemplate',
+            default => throw new \InvalidArgumentException($this->l10n->t('Invalid report format.')),
+        };
+    }
     public function __construct(
         private PortfolioSettingsService $settings,
         private IRootFolder $rootFolder,
@@ -33,8 +39,8 @@ class DocumentTemplateService {
         return $file->getContent();
     }
 
-    public function status(string $userId): array {
-        $id = (int)$this->settings->getValue($userId, self::KEY, '0');
+    public function status(string $userId, string $type = 'utility'): array {
+        $id = (int)$this->settings->getValue($userId, $this->key($type), '0');
         if (!$id) return ['fileId' => null, 'name' => '', 'ready' => false, 'error' => $this->l10n->t('No document template configured.')];
         $name = '';
         try {
@@ -52,9 +58,9 @@ class DocumentTemplateService {
         }
     }
 
-    public function assign(string $userId, string $path): void {
+    public function assign(string $userId, string $path, string $type = 'utility'): void {
         if (trim($path) === '') {
-            $this->settings->setValue($userId, self::KEY, '0');
+            $this->settings->setValue($userId, $this->key($type), '0');
             return;
         }
         try {
@@ -66,11 +72,11 @@ class DocumentTemplateService {
             throw new \InvalidArgumentException($this->l10n->t('The assigned template is missing or inaccessible.'));
         }
         $this->processor->render($this->content($file), []);
-        $this->settings->setValue($userId, self::KEY, (string)$file->getId());
+        $this->settings->setValue($userId, $this->key($type), (string)$file->getId());
     }
 
-    public function render(string $userId, array $values): string {
-        $id = (int)$this->settings->getValue($userId, self::KEY, '0');
+    public function render(string $userId, array $values, string $type = 'utility'): string {
+        $id = (int)$this->settings->getValue($userId, $this->key($type), '0');
         if (!$id) throw new \InvalidArgumentException($this->l10n->t('No document template configured.'));
         return $this->processor->render($this->content($this->file($id)), $values);
     }

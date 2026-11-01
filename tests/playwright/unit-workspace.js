@@ -14,6 +14,7 @@ const unit = {
     street: 'Market Street 12',
     city: 'Sampletown',
     livingArea: 72,
+    constructionYear: 1984,
     activeTenancies: [{
         id: 3,
         startDate: '2025-01-01',
@@ -238,6 +239,14 @@ async function main() {
         await page.getByRole('dialog', {name: 'Unit details', exact: true}).waitFor();
         await page.getByRole('dialog', {name: 'Unit details', exact: true}).getByRole('button', {name: 'Edit', exact: true}).click();
         await page.getByRole('dialog', {name: 'Edit unit', exact: true}).waitFor();
+        const year = page.locator('#domus-unit-constructionYear');
+        assert.equal(await year.inputValue(), '1984');
+        await year.fill('1984.5');
+        assert.equal(await year.evaluate(el => el.checkValidity()), false);
+        await year.fill('');
+        assert.equal(await year.evaluate(el => el.checkValidity()), true);
+        await year.fill('1984');
+
         await page.getByRole('dialog', {name: 'Edit unit', exact: true}).getByRole('button', {name: 'Cancel'}).click();
         assert.equal(await page.getByRole('button', {name: 'Delete', exact: true}).isVisible(), false);
         await page.getByRole('button', {name: 'More actions'}).click();

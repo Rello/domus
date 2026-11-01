@@ -1521,6 +1521,7 @@
                 addField(unit?.landRegister);
             }
             addField(unit?.livingArea);
+            addField(unit?.constructionYear);
             addField(unit?.notes);
             if (includeManagementExcludedFields) {
                 addField(unit?.buyDate);
@@ -2968,6 +2969,8 @@
                     `id="${Domus.Utils.escapeHtml(id)}"`
                 ];
                 if (options.type) attrs.push(`type="${Domus.Utils.escapeHtml(options.type)}"`);
+                if (options.min) attrs.push('min="' + options.min + '"');
+                if (options.max) attrs.push('max="' + options.max + '"');
                 if (options.step) attrs.push(`step="${Domus.Utils.escapeHtml(options.step)}"`);
                 if (required) attrs.push('required');
                 if (isView) attrs.push('disabled');
@@ -3019,6 +3022,9 @@
             }
 
             rows.push(
+                inputField('constructionYear', t('domus', 'Construction year'), unit?.constructionYear ?? '', {
+                    type: 'number', step: '1', min: '1', max: '9999'
+                }),
                 inputField('livingArea', t('domus', 'Living area'), unit?.livingArea || '', {
                     type: 'number',
                     step: '0.01',

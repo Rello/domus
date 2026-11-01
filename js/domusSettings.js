@@ -201,48 +201,54 @@
             return Array.from(selector?.options || []).find(option => option.value === teamId)?.textContent || t('domus', 'Team');
         }
 
-        function buildTemplateRows(status) {
+        function buildTemplateRows(status, rentStatus) {
             const escape = Domus.Utils.escapeHtml;
-            if (!status?.fileId) return '<p class="domus-muted">' + escape(t('domus', 'No document template configured.')) + '</p>';
-            return Domus.UI.buildTable([t('domus', 'Document'), t('domus', 'Process'), t('domus', 'Scope'), ''], [[
-                escape(status.name || t('domus', 'Assigned template')) +
-                    (status.error ? '<div class="domus-error" role="status">' + escape(status.error) + '</div>' : ''),
-                escape(t('domus', 'Utility Bill Statement')),
-                escape(templateScopeLabel()),
-                Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove assignment'), {id: 'domus-template-delete'})
-            ]], {wrapPanel: false});
+            const rows = [
+                {status, type: 'utilityReport', title: t('domus', 'Utility Bill Statement'), id: 'domus-template-delete'},
+                {status: rentStatus, type: 'rentIncrease', title: t('domus', 'Rent increase letter'), id: 'domus-rent-template-delete'}
+            ].filter(item => item.status?.fileId).map(item => [
+                escape(item.status.name || t('domus', 'Assigned template')) +
+                    (item.status.error ? '<div class="domus-error" role="status">' + escape(item.status.error) + '</div>' : ''),
+                escape(item.title), escape(templateScopeLabel()),
+                Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove assignment'), {id: item.id})
+            ]);
+            return rows.length ? Domus.UI.buildTable([t('domus', 'Document'), t('domus', 'Process'), t('domus', 'Scope'), ''], rows, {wrapPanel: false})
+                : '<p class="domus-muted">' + escape(t('domus', 'No document template configured.')) + '</p>';
         }
 
-        function buildTemplateSection(status) {
+        function buildTemplateSection(status, rentStatus) {
             return buildSettingsSection({
                 id: 'domus-document-templates-panel',
                 title: t('domus', 'Document templates'),
                 headerActions: Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add template'), {id: 'domus-template-add'}),
-                body: '<div id="domus-template-list">' + buildTemplateRows(status) + '</div>'
+                body: '<div id="domus-template-list">' + buildTemplateRows(status, rentStatus) + '</div>'
             });
         }
 
-        function bindTemplateSection(initialStatus) {
+        function bindTemplateSection(initialStatus, initialRentStatus) {
             const host = document.getElementById('domus-template-list');
             const add = document.getElementById('domus-template-add');
             let status = initialStatus;
-            const refresh = result => {
+            let rentStatus = initialRentStatus;
+            const endpoint = type => type === 'rentIncrease' ? '/settings/rent-increase-template' : '/settings/utility-template';
+            const refresh = (result, type = 'utilityReport') => {
                 if (!host.isConnected) return;
-                status = result;
-                host.innerHTML = buildTemplateRows(status);
+                if (type === 'rentIncrease') rentStatus = result;
+                else status = result;
+                host.innerHTML = buildTemplateRows(status, rentStatus);
                 bindDelete();
             };
             const bindDelete = () => {
-                const remove = host.querySelector('#domus-template-delete');
-                if (!remove) return;
-                remove.onclick = async () => {
-                    remove.disabled = add.disabled = true;
-                    try {
-                        refresh(await Domus.Api.put('/settings/utility-template', {path: ''}));
-                    } catch (error) {
-                        if (host.isConnected) Domus.UI.showNotification(error.message, 'error');
-                    } finally { remove.disabled = add.disabled = false; }
-                };
+                for (const [id, type] of [['domus-template-delete', 'utilityReport'], ['domus-rent-template-delete', 'rentIncrease']]) {
+                    const remove = host.querySelector('#' + id);
+                    if (!remove) continue;
+                    remove.onclick = async () => {
+                        remove.disabled = add.disabled = true;
+                        try { refresh(await Domus.Api.put(endpoint(type), {path: ''}), type); }
+                        catch (error) { if (host.isConnected) Domus.UI.showNotification(error.message, 'error'); }
+                        finally { remove.disabled = add.disabled = false; }
+                    };
+                }
             };
             bindDelete();
             add.onclick = () => {
@@ -254,9 +260,9 @@
                             '<button type="button" id="domus-template-pick">' + escape(t('domus', 'Select existing file')) + '</button>' +
                             '<span id="domus-template-selected" class="domus-muted"></span>'}),
                         Domus.UI.buildFormRow({label: t('domus', 'Process'), content:
-                            '<select name="process" aria-label="' + escape(t('domus', 'Process')) + '"><option value="utilityReport">' + escape(t('domus', 'Utility Bill Statement')) + '</option></select>'}),
+                            '<select name="process" aria-label="' + escape(t('domus', 'Process')) + '"><option value="utilityReport">' + escape(t('domus', 'Utility Bill Statement')) + '</option><option value="rentIncrease">' + escape(t('domus', 'Rent increase letter')) + '</option></select>'}),
                         Domus.UI.buildFormRow({label: t('domus', 'Scope'), content: escape(templateScopeLabel())})
-                    ]) + (status?.fileId ? '<p>' + escape(t('domus', 'This replaces the template assigned to this process in the current scope.')) + '</p>' : '') +
+                    ]) + (status?.fileId || rentStatus?.fileId ? '<p>' + escape(t('domus', 'This replaces the template assigned to this process in the current scope.')) + '</p>' : '') +
                     '<p id="domus-template-error" class="domus-error" role="alert"></p>' +
                     '<div class="domus-form-actions"><button type="button" id="domus-template-cancel">' + escape(t('domus', 'Cancel')) + '</button>' +
                     '<button type="submit" class="primary" disabled>' + escape(t('domus', 'Save')) + '</button></div></form>'
@@ -286,9 +292,10 @@
                     save.disabled = picker.disabled = true;
                     errorHost.textContent = '';
                     try {
-                        const result = await Domus.Api.put('/settings/utility-template', {path: selectedPath});
+                        const type = form.elements.process.value;
+                        const result = await Domus.Api.put(endpoint(type), {path: selectedPath});
                         modal.close();
-                        refresh(result);
+                        refresh(result, type);
                         if (host.isConnected) {
                             const panel = host.closest('.domus-settings-section');
                             panel.classList.remove('domus-collapsed');
@@ -614,7 +621,7 @@
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
                         buildTeamSection(response?.requiredApps, response?.aiDocumentValidation) +
                         buildTaxSection(settings) +
-                        buildTemplateSection(response?.utilityReportTemplate) +
+                        buildTemplateSection(response?.utilityReportTemplate, response?.rentIncreaseTemplate) +
                         buildIntroSection() +
                         buildRulesSection() +
                         Domus.TaskTemplates.renderSection() +
@@ -628,7 +635,7 @@
                     bindForm();
                     bindAiSection();
                     document.getElementById('domus-tax-report-button').onclick = openTaxReport;
-                    bindTemplateSection(response?.utilityReportTemplate);
+                    bindTemplateSection(response?.utilityReportTemplate, response?.rentIncreaseTemplate);
                     bindRestartIntroButton();
                     bindDemoButton();
                     bindSectionToggles();

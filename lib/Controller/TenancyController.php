@@ -23,6 +23,7 @@ class TenancyController extends Controller {
         private ManagementAccessContext $managementContext,
         private TenancyService $tenancyService,
         private PermissionService $permissionService,
+        private \OCA\Domus\Service\RentIncreaseReportService $rentReports,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -59,6 +60,12 @@ class TenancyController extends Controller {
         $data = compact('startDate', 'endDate', 'baseRent', 'serviceCharge', 'deposit', 'conditions', 'partnerIds');
         $tenancy = $this->tenancyService->changeConditions($id, $data, $this->getUserId(), $this->getRole());
         return new DataResponse($tenancy, Http::STATUS_CREATED);
+    }
+
+    #[NoAdminRequired]
+    public function createRentReport(int $id, array $calculation, string $documentDate, string $consentDeadline, string $effectiveDate, int $rentIndexYear): DataResponse {
+        return new DataResponse($this->rentReports->createReport($this->getUserId(), $id, $calculation,
+            $documentDate, $consentDeadline, $effectiveDate, $rentIndexYear), Http::STATUS_CREATED);
     }
 
     #[NoAdminRequired]

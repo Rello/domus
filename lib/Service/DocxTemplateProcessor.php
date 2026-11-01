@@ -11,7 +11,11 @@ use OCP\IL10N;
 class DocxTemplateProcessor {
     public const VARIABLES = ['documentDate', 'recipientName', 'recipientStreet', 'recipientPostalCode',
         'recipientCity', 'reportYear', 'unitStreet', 'prepaymentAmount', 'utilityCostAmount',
-        'propertyTaxAmount', 'balanceLabel', 'balanceAmount', 'Iban'];
+        'propertyTaxAmount', 'balanceLabel', 'balanceAmount', 'Iban',
+        'unitPostalCode', 'unitCity', 'tenancyStartDate', 'lastRentAdjustmentDate', 'rentIndexYear',
+        'rentIndexLower', 'rentIndexUpper', 'rentIndexSpread', 'currentBaseRent', 'livingArea', 'currentBaseRentPerSquareMeter',
+        'newBaseRent', 'newBaseRentPerSquareMeter', 'increasePercent', 'newServiceCharge', 'newTotalRent', 'increaseLimit',
+        'consentDeadline', 'effectiveDate', 'currentServiceCharge', 'actualServiceCharge'];
     private const NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
     private const CONDITIONS = ['ifPaymentDue', 'ifCredit'];
 
@@ -98,6 +102,9 @@ class DocxTemplateProcessor {
                 [$token, $start] = $matches[0][$m];
                 $key = $matches[1][$m][0];
                 $value = in_array($key, self::CONDITIONS, true) ? '' : (string)($values[$key] ?? '');
+                if ($key === 'actualServiceCharge' && array_key_exists($key, $values) && trim($value) === '') {
+                    throw new \InvalidArgumentException($this->l10n->t('No cost report is available for the previous year.'));
+                }
                 if ($key === 'Iban' && array_key_exists($key, $values) && trim($value) === '') {
                     throw new \InvalidArgumentException($this->l10n->t('Enter an IBAN in the unit before using this template.'));
                 }

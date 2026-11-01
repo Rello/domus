@@ -298,6 +298,12 @@
             "type": "string",
             "nullable": true
           },
+          "constructionYear": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 1,
+            "maximum": 9999
+          },
           "livingArea": {
             "type": "string",
             "nullable": true,

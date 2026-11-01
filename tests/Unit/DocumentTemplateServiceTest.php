@@ -29,6 +29,14 @@ class DocumentTemplateServiceTest extends TestCase {
         $l10n->method('t')->willReturnArgument(0);
         return [new DocumentTemplateService($settings, $root, $access, $processor, $l10n), $settings];
     }
+    public function testRentTemplateHasIndependentAssignment(): void {
+        [$service, $settings] = $this->setupService([new File(42, 'Rent.docx')]);
+        $settings->expects(self::once())->method('setValue')->with('alice', 'rentIncreaseTemplate', '42');
+        $service->assign('alice', '/Rent.docx', 'rentIncrease');
+        self::assertTrue($service->status('alice', 'rentIncrease')['ready']);
+        self::assertSame('generated docx', $service->render('alice', [], 'rentIncrease'));
+    }
+
     public function testUnassignedTemplateHasExplicitStatus(): void {
         [$service] = $this->setupService([], '0');
         self::assertFalse($service->status('alice')['ready']);

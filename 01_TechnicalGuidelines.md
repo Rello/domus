@@ -69,3 +69,41 @@ application logger without making committed operations appear to have failed.
 Year closing/reopening, booking changes, document attachments and correction
 request decisions belong in a future Activities implementation, not this audit
 log. Do not extend the audit allowlist for ordinary business activity.
+
+
+## Document templates
+
+Settings assigns `utilityReportTemplate` and `rentIncreaseTemplate` independently
+through `DocumentTemplateService`. Both keys follow the selected Personal/Team
+scope in `PortfolioSettingsService`; file access resolves through the acting
+user's mounted files. The existing utility endpoint remains unchanged.
+Rent templates use GET/PUT `/api/settings/rent-increase-template`.
+
+POST `/api/tenancies/{id}/rent-increase-report` creates a DOCX linked to the unit
+and tenancy without changing the contract. `RentIncreaseReportService` reloads
+scoped records, checks active status and stale rent/area, recomputes the range and
+limit, and validates the chosen price, charge and dates before rendering. It
+receives `calculation` plus `documentDate`, `rentIndexYear`, `consentDeadline` and
+`effectiveDate`; dates are explicit inputs, not inferred from delivery.
+
+The calculator uses an assigned Word template when ready. With no assignment it
+opens the editable Markdown fallback. A broken assignment offers an explicit
+Markdown choice; a failed DOCX request never silently changes output format.
+
+Rent-increase placeholders use `${name}` syntax. German amounts have two decimal
+places without a currency suffix; dates use `DD.MM.YYYY`.
+
+| Group | Variables |
+| --- | --- |
+| Recipient | `recipientName`, `recipientStreet`, `recipientPostalCode`, `recipientCity` |
+| Unit | `unitStreet`, `unitPostalCode`, `unitCity`, `livingArea` |
+| Dates | `documentDate`, `tenancyStartDate`, `lastRentAdjustmentDate`, `consentDeadline`, `effectiveDate` |
+| Rent index | `rentIndexYear`, `rentIndexLower`, `rentIndexUpper`, `rentIndexSpread` (percentage without ± or %) |
+| Rent | `currentBaseRent`, `currentBaseRentPerSquareMeter`, `newBaseRent`, `newBaseRentPerSquareMeter`, `increasePercent`, `increaseLimit` |
+| Total | `currentServiceCharge`, `actualServiceCharge` (previous year’s allocable costs and property tax per month), `newServiceCharge`, `newTotalRent` |
+
+`lastRentAdjustmentDate` and `tenancyStartDate` use the current tenancy's start
+date. Multiple linked renter names are combined; the first renter supplies the
+postal address, falling back to the unit address. This workflow calculates and
+renders the selected values; it does not validate legal eligibility or send the
+letter. The user's Word template remains a separate file, outside app source.

@@ -47,6 +47,7 @@ class SettingsController extends Controller {
         return new DataResponse([
             'settings' => $this->getSettings($this->getUserId()),
             'utilityReportTemplate' => $this->documentTemplates->status($this->getUserId()),
+            'rentIncreaseTemplate' => $this->documentTemplates->status($this->getUserId(), 'rentIncrease'),
             'aiDocumentValidation' => $this->aiValidation->status(),
             'requiredApps' => [
                 'circles' => $this->appManager->isEnabledForUser('circles', $this->userSession->getUser()),
@@ -97,8 +98,27 @@ class SettingsController extends Controller {
 
     #[NoAdminRequired]
     public function assignTemplate(string $path = ''): DataResponse {
-        $this->documentTemplates->assign($this->getUserId(), $path);
+        try {
+            $this->documentTemplates->assign($this->getUserId(), $path);
+        } catch (\InvalidArgumentException $e) {
+            return new DataResponse(['status' => 'error', 'code' => 'VALIDATION_ERROR', 'message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        }
         return $this->templateStatus();
+    }
+
+    #[NoAdminRequired]
+    public function rentTemplateStatus(): DataResponse {
+        return new DataResponse($this->documentTemplates->status($this->getUserId(), 'rentIncrease'));
+    }
+
+    #[NoAdminRequired]
+    public function assignRentTemplate(string $path = ''): DataResponse {
+        try {
+            $this->documentTemplates->assign($this->getUserId(), $path, 'rentIncrease');
+        } catch (\InvalidArgumentException $e) {
+            return new DataResponse(['status' => 'error', 'code' => 'VALIDATION_ERROR', 'message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        }
+        return $this->rentTemplateStatus();
     }
 
     #[NoAdminRequired]

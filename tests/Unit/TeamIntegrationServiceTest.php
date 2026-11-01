@@ -29,6 +29,8 @@ class TeamIntegrationServiceTest extends TestCase {
         array $inviterGroups = [],
         string $allowlist = 'domus',
         ?ITeamManager $teamManager = null,
+        ?array $legacyFolders = null,
+        ?\OCP\Files\Folder $userFolder = null,
     ): TeamIntegrationService {
         $user = $this->createMock(IUser::class);
         $user->method('getUID')->willReturn('manager');
@@ -68,7 +70,7 @@ class TeamIntegrationServiceTest extends TestCase {
         $l10n = $this->createMock(IL10N::class);
         $l10n->method('t')->willReturnArgument(0);
 
-        return new TeamIntegrationService(
+        $arguments = [
             $teamManager,
             $userSession,
             $groupManager,
@@ -76,7 +78,15 @@ class TeamIntegrationServiceTest extends TestCase {
             $appManager,
             $appConfig,
             $l10n,
-        );
+        ];
+        if ($legacyFolders === null) return new TeamIntegrationService(...$arguments);
+        $service = $this->getMockBuilder(TeamIntegrationService::class)
+            ->setConstructorArgs($arguments)
+            ->onlyMethods(['hasTeamFolderProvider', 'legacyFolders', 'userFolder'])->getMock();
+        $service->method('hasTeamFolderProvider')->willReturn(false);
+        $service->method('legacyFolders')->willReturn($legacyFolders);
+        if ($userFolder !== null) $service->method('userFolder')->with('manager')->willReturn($userFolder);
+        return $service;
     }
 
     public function testSelectedTeamMemberGetsTemporaryAdminPermission(): void {
@@ -85,6 +95,68 @@ class TeamIntegrationServiceTest extends TestCase {
         self::assertSame([['teamId' => 'team-a', 'displayName' => 'Portfolio A', 'role' => 'admin']], $service->listTeams());
         $service->assertTeamAdmin('team-a');
         self::assertNull($service->getTeamFolder('team-a'));
+    }
+
+    public function testNativeProviderRemainsPreferred(): void {
+        $manager = $this->createMock(ITeamManager::class);
+        $manager->method('hasTeamSupport')->willReturn(true);
+        $manager->method('getTeamsForUser')->willReturn([new Team('team-a', 'A', null)]);
+        $provider = new class {
+            public function getTeamFolder(string $teamId): \JsonSerializable {
+                TestCase::assertSame('team-a', $teamId);
+                return new class implements \JsonSerializable {
+                    public function jsonSerialize(): array {
+                        return ['id' => 9, 'mountPoint' => 'Native folder'];
+                    }
+                };
+            }
+        };
+        $manager->method('getTeamFolderProvider')->willReturn($provider);
+        $service = $this->buildService(teamManager: $manager);
+        self::assertSame(['id' => 9, 'mountPoint' => 'Native folder'], $service->getTeamFolder('team-a'));
+    }
+
+    public function testLegacyLookupRequiresMembershipBeforeReadingFolders(): void {
+        $service = $this->buildService(legacyFolders: []);
+        $service->expects(self::never())->method('legacyFolders');
+        $this->expectException(\DomainException::class);
+        $service->getTeamFolder('team-a');
+    }
+
+    /** @dataProvider legacyFolderCases */
+    public function testLegacyFolderSelection(string $scenario, bool $expected): void {
+        $definition = (object)['id' => 7, 'rootId' => 42, 'mountPoint' => 'Wohnungen Team',
+            'groups' => ['team-a' => ['type' => 'circle', 'permissions' => 31]]];
+        if ($scenario === 'wrong team') $definition->groups = ['team-b' => ['type' => 'circle', 'permissions' => 31]];
+        if ($scenario === 'ordinary group') $definition->groups['team-a']['type'] = 'group';
+        if ($scenario === 'no read') $definition->groups['team-a']['permissions'] = 0;
+        if ($scenario === 'shared folder') $definition->groups['other'] = ['type' => 'group', 'permissions' => 31];
+        $folders = $scenario === 'missing' ? [] : [$definition];
+        if ($scenario === 'ambiguous') $folders[] = clone $definition;
+        $folder = $this->getMockBuilder(\OCP\Files\Folder::class)
+            ->addMethods(['getId', 'isReadable', 'isCreatable'])->getMock();
+        $folder->method('getId')->willReturn($scenario === 'name collision' ? 43 : 42);
+        $folder->method('isReadable')->willReturn($scenario !== 'unreadable');
+        $folder->method('isCreatable')->willReturn($scenario !== 'read only');
+        $root = $this->createMock(\OCP\Files\Folder::class);
+        if ($scenario === 'not mounted') {
+            $root->method('get')->willThrowException(new \OCP\Files\NotFoundException());
+        } else {
+            $root->method('get')->with('Wohnungen Team')->willReturn($folder);
+        }
+        $service = $this->buildService([new Team('team-a', 'Wohnungen', null)],
+            guestApp: $scenario !== 'disabled', legacyFolders: $folders, userFolder: $root);
+        self::assertSame($expected ? ['id' => 7, 'mountPoint' => 'Wohnungen Team'] : null,
+            $service->getTeamFolder('team-a'));
+    }
+
+    public static function legacyFolderCases(): array {
+        $cases = [];
+        foreach (['ready', 'wrong team', 'ordinary group', 'no read', 'shared folder', 'missing',
+            'ambiguous', 'name collision', 'unreadable', 'read only', 'not mounted', 'disabled'] as $case) {
+            $cases[$case] = [$case, $case === 'ready'];
+        }
+        return $cases;
     }
 
     public function testMembershipIsLoadedOncePerUserAndRecheckedOnTheNextRequest(): void {

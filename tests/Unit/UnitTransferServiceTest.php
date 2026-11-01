@@ -18,6 +18,21 @@ class UnitTransferServiceTest extends TestCase {
     private array $dependencies;
     private array $entries;
 
+    public function testConstructionYearRoundTrip(): void {
+        $service = $this->service();
+        $unit = new Unit();
+        $unit->setId(5);
+        $unit->setLabel('Unit');
+        $unit->setConstructionYear(1984);
+        $this->dependencies['unitMapper']->method('findForUser')->willReturn($unit);
+        $payload = $service->exportUnitDataset(5, 'source');
+        self::assertSame(1984, $payload['unit']['constructionYear']);
+        $this->dependencies['unitMapper']->expects(self::once())->method('insert')->with(
+            self::callback(fn(Unit $row) => $row->getConstructionYear() === 1984)
+        )->willReturn($unit);
+        $service->importUnitDataset($payload, 'target', 'landlord');
+    }
+
     /** @dataProvider archiveVersions */
     public function testEarlyCompletionAtFirstStepRoundTripsAndReopens(bool $legacy): void {
         $transfer = $this->service();

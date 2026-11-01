@@ -86,6 +86,7 @@ return [
         ['name' => 'Partner#destroy', 'url' => 'api/partners/{id}', 'verb' => 'DELETE'],
 
         // Tenancy
+        ['name' => 'Tenancy#createRentReport', 'url' => 'api/tenancies/{id}/rent-increase-report', 'verb' => 'POST'],
         ['name' => 'Tenancy#index', 'url' => 'api/tenancies', 'verb' => 'GET'],
         ['name' => 'Tenancy#show', 'url' => 'api/tenancies/{id}', 'verb' => 'GET'],
         ['name' => 'Tenancy#listByUnit', 'url' => 'api/units/{unitId}/tenancies', 'verb' => 'GET'],
@@ -127,6 +128,8 @@ return [
         ['name' => 'Dashboard#summary', 'url' => 'api/dashboard/summary', 'verb' => 'GET'],
 
         // Settings
+        ['name' => 'Settings#rentTemplateStatus', 'url' => '/api/settings/rent-increase-template', 'verb' => 'GET'],
+        ['name' => 'Settings#assignRentTemplate', 'url' => '/api/settings/rent-increase-template', 'verb' => 'PUT'],
         ['name' => 'Settings#templateStatus', 'url' => '/api/settings/utility-template', 'verb' => 'GET'],
         ['name' => 'Settings#assignTemplate', 'url' => '/api/settings/utility-template', 'verb' => 'PUT'],
         ['name' => 'Settings#aiStatus', 'url' => '/api/settings/ai-document-validation', 'verb' => 'GET'],

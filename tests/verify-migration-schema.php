@@ -155,3 +155,21 @@ foreach (['1.2' => $baseline, 'beta.6' => $beta6] as $version => $oldSchema) {
     $assert($snapshot() === $once, "$version: retry changed data");
     echo "PASS $version SQL schema + data upgrade: custom accounts, hierarchies, templates, steps, history and retries\n";
 }
+
+
+foreach (['fresh' => $final, 'upgrade' => $baseline] as $label => $yearSchema) {
+    $yearSchema = clone $yearSchema;
+    $db = new \PDO('sqlite::memory:');
+    foreach ($yearSchema->toSql($platform) as $sql) $db->exec($sql);
+    $db->exec("INSERT INTO domus_units (user_id, label, created_at, updated_at) VALUES ('year-test', 'Existing', 1, 1)");
+    $beforeYear = clone $yearSchema;
+    $apply(\OCA\Domus\Migration\Version0009Date20261030000000::class, $yearSchema);
+    foreach ($comparator->compareSchemas($beforeYear, $yearSchema)->toSaveSql($platform) as $sql) $db->exec($sql);
+    $assert($db->query('SELECT construction_year FROM domus_units')->fetchColumn() === null, "$label: existing year stays empty");
+    $db->exec('UPDATE domus_units SET construction_year = 1984');
+    $assert((int)$db->query('SELECT construction_year FROM domus_units')->fetchColumn() === 1984, "$label: year persists");
+    $beforeRetry = clone $yearSchema;
+    $apply(\OCA\Domus\Migration\Version0009Date20261030000000::class, $yearSchema);
+    $assert($comparator->compareSchemas($beforeRetry, $yearSchema)->toSaveSql($platform) === [], "$label: year migration is retry-safe");
+}
+echo "Construction year migration passed.\n";

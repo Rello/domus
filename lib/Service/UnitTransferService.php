@@ -180,6 +180,7 @@ class UnitTransferService {
             $unit->setUnitNumber($unitData['unitNumber'] ?? null);
             $unit->setLandRegister($unitData['landRegister'] ?? null);
             $unit->setLivingArea($unitData['livingArea'] ?? null);
+            $unit->setConstructionYear($this->validateConstructionYear($unitData['constructionYear'] ?? null));
             $unit->setUnitType($unitData['unitType'] ?? null);
             $unit->setBuyDate($unitData['buyDate'] ?? null);
             $unit->setTotalCosts($unitData['totalCosts'] ?? null);
@@ -633,4 +634,16 @@ class UnitTransferService {
             throw new \DomainException($this->l10n->t('Team units cannot use the personal unit transfer.'));
         }
     }
+    private function validateConstructionYear(mixed $value): ?int {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if ((!is_int($value) && !is_string($value))
+            || !preg_match('/^[0-9]{1,4}$/D', (string)$value)
+            || (int)$value < 1) {
+            throw new \InvalidArgumentException($this->l10n->t('Construction year must be a whole number between 1 and 9999.'));
+        }
+        return (int)$value;
+    }
+
 }

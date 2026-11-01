@@ -8,6 +8,9 @@
 namespace OCA\Domus\Service;
 
 use OCP\App\IAppManager;
+use OCP\Files\Folder;
+use OCP\Files\IRootFolder;
+use OCP\Files\NotFoundException;
 use OCP\Group\ISubAdmin;
 use OCP\IAppConfig;
 use OCP\IGroupManager;
@@ -70,13 +73,51 @@ class TeamIntegrationService {
 
     public function getTeamFolder(string $teamId): ?array {
         $this->assertTeamAdmin($teamId);
-        if (!method_exists($this->teamManager, 'getTeamFolderProvider')) {
-            return null;
+        if (!$this->hasTeamFolderProvider()) {
+            return $this->getLegacyTeamFolder($teamId);
         }
 
         $provider = $this->teamManager->getTeamFolderProvider();
         $folder = $provider?->getTeamFolder($teamId);
         return $folder?->jsonSerialize();
+    }
+
+    protected function hasTeamFolderProvider(): bool {
+        return method_exists($this->teamManager, 'getTeamFolderProvider');
+    }
+
+    /** NC34 has no public exclusive-Team-folder API; isolate the optional app adapter. */
+    protected function legacyFolders(): array {
+        return \OCP\Server::get(\OCA\GroupFolders\Folder\FolderManager::class)->getAllFolders();
+    }
+
+    protected function userFolder(string $uid): Folder {
+        return \OCP\Server::get(IRootFolder::class)->getUserFolder($uid);
+    }
+
+    private function getLegacyTeamFolder(string $teamId): ?array {
+        $user = $this->getStaffUser();
+        if (!$this->appManager->isEnabledForUser('groupfolders', $user)) return null;
+
+        // Match IDs, never names. Do not expose unit files to other assigned groups
+        // or choose arbitrarily when a Team has more than one dedicated folder.
+        $matches = array_filter($this->legacyFolders(), static function ($folder) use ($teamId): bool {
+            $mapping = $folder->groups[$teamId] ?? null;
+            return count($folder->groups) === 1 && ($mapping['type'] ?? null) === 'circle'
+                && ((int)($mapping['permissions'] ?? 0) & \OCP\Constants::PERMISSION_READ) !== 0;
+        });
+        if (count($matches) !== 1) return null;
+        $definition = reset($matches);
+        try {
+            $folder = $this->userFolder($user->getUID())->get($definition->mountPoint);
+        } catch (NotFoundException) {
+            return null;
+        }
+        // A personal folder with the same name must never become the destination.
+        if (!$folder instanceof Folder || $folder->getId() !== $definition->rootId
+            || !$folder->isReadable() || !$folder->isCreatable()) return null;
+
+        return ['id' => $definition->id, 'mountPoint' => $definition->mountPoint];
     }
 
     public function getGuestCreationContext(string $teamId): array {

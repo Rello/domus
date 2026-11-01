@@ -46,6 +46,7 @@ class OcsController extends BaseOCSController {
             'country' => $unit->getCountry(),
             'unitNumber' => $unit->getUnitNumber(),
             'unitType' => $unit->getUnitType(),
+            'constructionYear' => $unit->getConstructionYear(),
             'livingArea' => $unit->getLivingArea(),
             'buyDate' => $unit->getBuyDate(),
             'totalCosts' => $unit->getTotalCosts(),

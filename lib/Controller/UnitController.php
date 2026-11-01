@@ -77,9 +77,10 @@ class UnitController extends Controller {
         ?string $taxId = null,
         ?string $iban = null,
         ?string $bic = null,
-        ?string $notes = null
+        ?string $notes = null,
+        ?string $constructionYear = null
     ): DataResponse {
-        $data = compact('propertyId', 'label', 'street', 'zip', 'city', 'country', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes');
+        $data = compact('propertyId', 'label', 'street', 'zip', 'city', 'country', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes', 'constructionYear');
         $unit = $this->unitService->createUnit($data, $this->getUserId(), $this->getRole());
         return new DataResponse($unit, Http::STATUS_CREATED);
     }
@@ -103,7 +104,8 @@ class UnitController extends Controller {
         ?string $iban = null,
         ?string $bic = null,
         ?string $notes = null,
-        ?string $documentPath = null
+        ?string $documentPath = null,
+        ?string $constructionYear = null
     ): DataResponse {
         $data = array_filter([
             'propertyId' => $propertyId,
@@ -115,6 +117,7 @@ class UnitController extends Controller {
             'unitNumber' => $unitNumber,
             'landRegister' => $landRegister,
             'livingArea' => $livingArea,
+            'constructionYear' => $constructionYear,
             'unitType' => $unitType,
             'buyDate' => $buyDate,
             'totalCosts' => $totalCosts,

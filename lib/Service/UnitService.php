@@ -103,6 +103,7 @@ class UnitService {
         $unit->setUnitNumber($data['unitNumber'] ?? null);
         $unit->setLandRegister($data['landRegister'] ?? null);
         $unit->setLivingArea($data['livingArea'] ?? null);
+        $unit->setConstructionYear($this->validateConstructionYear($data['constructionYear'] ?? null));
         $unit->setUnitType($data['unitType'] ?? null);
         $unit->setBuyDate($data['buyDate'] ?? null);
         $unit->setTotalCosts($data['totalCosts'] ?? null);
@@ -119,6 +120,9 @@ class UnitService {
 
     public function updateUnit(int $id, array $data, string $userId, string $role): Unit {
         $unit = $this->getUnitForUser($id, $userId);
+        if (array_key_exists('constructionYear', $data)) {
+            $unit->setConstructionYear($this->validateConstructionYear($data['constructionYear']));
+        }
         if ($this->permissionService->isBuildingManagement($role) && $unit->getPropertyId() === null && !isset($data['propertyId'])) {
             throw new \InvalidArgumentException($this->l10n->t('Property is required for building management.'));
         }
@@ -210,6 +214,18 @@ class UnitService {
     private function enrichWithTenancies(Unit $unit, string $userId): void {
         $tenancies = $this->tenancyService->listTenancies($userId, $unit->getId());
         $this->tenancyService->enrichUnitTenancies($unit, $tenancies);
+    }
+
+    private function validateConstructionYear(mixed $value): ?int {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if ((!is_int($value) && !is_string($value))
+            || !preg_match('/^[0-9]{1,4}$/D', (string)$value)
+            || (int)$value < 1) {
+            throw new \InvalidArgumentException($this->l10n->t('Construction year must be a whole number between 1 and 9999.'));
+        }
+        return (int)$value;
     }
 
 }

@@ -8,6 +8,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
+- Generate rent-increase letters from Personal and Team Word templates or a German Markdown fallback, with calculated rents and an effective date carried into tenancy changes.
+- Interactive rent-increase calculator with rent-index ranges, configurable increase limits, service-charge recommendations, and prefilled tenancy condition changes.
+- Optional construction year in unit master data, including import, export and the read-only API.
 - Nextcloud admin audit logging for unit moves, renter access, tenancy relationships, unit imports and exports, and portfolio deletions.
 - Shared system process templates with Personal and Team customization, reset and disable options, and schedules preserved when templates change.
 - Move Personal units to Teams with their folders, documents, images, tasks, and processes, including a conflict preview and recovery from interruptions while retaining original files.
@@ -20,6 +23,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Document dates, multiple tenancy assignments, and assignment indicators.
 
 ### Changed
+- Show ten lines by default in the Conditions field when changing tenancy conditions.
 - Move the tax rate setting into Tax declaration and remove the General Settings section.
 - Refresh the feature overview, app introduction, and welcome tour; move detailed guides into the new wiki.
 - Combine Nextcloud integration checks and AI document-validation settings in one panel, with clearer guidance and links to OpenAI and LocalAI integration.
@@ -30,6 +34,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
+- Keep dialogs open when text selection is dragged outside the frame and confirm before discarding edited tenancy rent calculations.
+- Show rent-increase Word template validation errors on Nextcloud 34.
+- Resolve dedicated Team folders on Nextcloud 34 when moving Personal units to Teams.
 - Roll back tenancy replacements and condition changes completely when saving fails, and validate storage limits before changing contracts.
 - Serialize year closure and reopening, and remove all matching closures when reopening years with legacy duplicates.
 - Preserve early process completion on unit import so the first skipped step can be reopened, including legacy archives.

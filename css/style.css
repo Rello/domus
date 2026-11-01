@@ -5786,3 +5786,56 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
     white-space: nowrap;
     text-align: end;
 }
+
+/* Rent increase calculation: two inputs converge into one decision. */
+.domus-rent-calculator { display: grid; gap: 12px; }
+.domus-rent-step { position: relative; min-width: 0; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--border-radius-large, 12px); }
+.domus-rent-step h4 { margin: 0 0 8px; font-size: 1.1rem; font-weight: 600; }
+.domus-rent-step p { margin: 10px 0; color: var(--color-text-maxcontrast); }
+.domus-rent-branches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.domus-rent-value { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 6px 0; }
+.domus-rent-value strong { white-space: nowrap; }
+.domus-rent-result { border: 2px solid var(--color-primary); }
+.domus-rent-step::before { content: ''; position: absolute; height: 12px; border-inline-start: 2px solid var(--color-border); inset-block-start: -13px; inset-inline-start: 50%; }
+.domus-rent-step:first-of-type::before { display: none; }
+.domus-rent-branches .domus-rent-step::before { display: block; }
+@media (max-width: 600px) { .domus-rent-branches { grid-template-columns: 1fr; } }
+
+.domus-rent-step p:empty { display: none; }
+
+.domus-rent-inputs.domus-form-table {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 24px;
+}
+.domus-rent-inputs > .domus-form-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 90px);
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.domus-rent-inputs .domus-form-label label { margin-bottom: 0; }
+.domus-rent-inputs .domus-form-value input {
+    max-width: 180px;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.domus-rent-range-summary { display: grid; gap: 6px; text-align: center; }
+.domus-rent-range-summary strong { white-space: nowrap; font-weight: 400; }
+.domus-rent-result .domus-form-label label { margin-bottom: 0; }
+.domus-rent-result .domus-form-value input { min-width: 0; box-sizing: border-box; text-align: end; }
+
+.domus-rent-result .domus-rent-inputs { grid-template-columns: 1fr; }
+.domus-rent-result .domus-rent-inputs > .domus-form-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 180px); align-items: center; gap: 12px; }
+
+#rent-service-current, #rent-service-cost, #rent-range { font-weight: 400; }
+
+.domus-rent-warning { padding: 12px; border: 1px solid var(--color-warning); border-inline-start-width: 4px; border-radius: var(--border-radius-large, 12px); background: var(--color-background-hover); }
+
+@media (max-width: 600px) { .domus-rent-inputs.domus-form-table { grid-template-columns: 1fr; } }
+
+.domus-rent-calculator .domus-form-label,
+.domus-rent-calculator .domus-form-label label { font-weight: 400; }
+
+#rent-letter-text { width: 100%; box-sizing: border-box; }
