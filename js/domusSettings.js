@@ -273,10 +273,27 @@
                 const errorHost = form.querySelector('#domus-template-error');
                 let selectedPath = '';
                 modal.modalEl.querySelector('#domus-template-cancel').onclick = modal.close;
-                picker.onclick = () => {
+                picker.onclick = async () => {
                     if (!window.OC?.dialogs?.filepicker) {
                         errorHost.textContent = t('domus', 'File picker is unavailable.');
                         return;
+                    }
+                    let startPath = '/DomusApp/Templates';
+                    const teamId = Domus.state.managementContext?.activeTeamId;
+                    picker.disabled = true;
+                    errorHost.textContent = '';
+                    try {
+                        if (teamId) {
+                            const result = await Domus.Api.get('/teams/' + encodeURIComponent(teamId) + '/folder');
+                            if (!result?.folder?.mountPoint) throw new Error(t('domus', 'This Team has no accessible Team folder.'));
+                            startPath = '/' + result.folder.mountPoint.replace(/^\/+|\/+$/g, '') + '/Templates';
+                        }
+                        if (!form.isConnected || teamId !== Domus.state.managementContext?.activeTeamId) return;
+                    } catch (error) {
+                        if (form.isConnected) errorHost.textContent = error.message;
+                        return;
+                    } finally {
+                        picker.disabled = false;
                     }
                     OC.dialogs.filepicker(t('domus', 'Select file'), path => {
                         if (!form.isConnected || !path) return;
@@ -284,7 +301,7 @@
                         form.querySelector('#domus-template-selected').textContent = selectedPath.split('/').pop();
                         save.disabled = !selectedPath;
                         errorHost.textContent = '';
-                    }, false, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', true, 1, '/DomusApp/Templates');
+                    }, false, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', true, 1, startPath);
                 };
                 form.onsubmit = async event => {
                     event.preventDefault();

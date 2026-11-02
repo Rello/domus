@@ -124,7 +124,7 @@ async function preview(page) {
             const select = document.createElement('select'); select.id = 'domus-context-select';
             select.add(new Option('Example Team', 'team-a')); document.body.appendChild(select);
             Domus.Api.getSettings = async () => ({settings: {}, utilityReportTemplate: template});
-            Domus.Api.get = async () => [];
+            Domus.Api.get = async path => path === '/teams/team-a/folder' ? {folder: {mountPoint: 'Example Team'}} : [];
             Domus.Api.put = async () => { throw new Error('File is inaccessible'); };
             Domus.TaskTemplates = {renderSection: () => '', loadTemplates: () => {}};
             Domus.Accounts = {renderSettingsSection: () => '', loadSettingsSection: () => {}};
@@ -170,6 +170,27 @@ async function preview(page) {
         assert.equal(await page.locator('#domus-template-list').getByText('Utility.docx', {exact: true}).count(), 1);
         assert.equal(await page.evaluate(() => calls[1].path), '/settings/rent-increase-template');
     }, 390);
+    await test('template picker starts in the active Team and reports a missing Team folder', false, async page => {
+        await page.evaluate(() => {
+            Domus.state.managementContext = {activeTeamId: 'team-a'};
+            Domus.Api.getSettings = async () => ({settings: {}, utilityReportTemplate: template});
+            Domus.Api.get = async path => path === '/teams/team-a/folder'
+                ? {folder: window.missingFolder ? null : {mountPoint: '/Shared Team/'}} : [];
+            Domus.TaskTemplates = {renderSection: () => '', loadTemplates: () => {}};
+            Domus.Accounts = {renderSettingsSection: () => '', loadSettingsSection: () => {}};
+            OC.dialogs = {filepicker: (...args) => { window.pickerPaths = [...(window.pickerPaths || []), args[6]]; }};
+            Domus.Settings.render('documentTemplates');
+        });
+        await page.locator('#domus-template-add').click();
+        await page.locator('#domus-template-pick').click();
+        await page.waitForFunction(() => window.pickerPaths?.length === 1);
+        assert.deepEqual(await page.evaluate(() => pickerPaths), ['/Shared Team/Templates']);
+        await page.evaluate(() => { window.missingFolder = true; });
+        await page.locator('#domus-template-pick').click();
+        await page.getByText('This Team has no accessible Team folder.', {exact: true}).waitFor();
+        assert.equal(await page.evaluate(() => pickerPaths.length), 1);
+        assert.equal(await page.locator('#domus-template-pick').isEnabled(), true);
+    });
     await test('HTML server errors are readable instead of displaying page markup', false, async page => {
         await page.route('http://domus.test/apps/domus/api/settings/utility-template', route => route.fulfill({status: 404, contentType: 'text/html', body: '<!DOCTYPE html><html>Not found</html>'}));
         const message = await page.evaluate(async () => {

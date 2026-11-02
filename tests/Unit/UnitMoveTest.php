@@ -39,7 +39,7 @@ class UnitMoveTest extends TestCase {
         $this->root = $this->createMock(IRootFolder::class);
         $this->root->method('getUserFolder')->willReturnCallback(fn($uid) => $this->fs->nodes['/' . $uid . '/files']);
         $this->l10n = $this->createMock(IL10N::class);
-        $this->l10n->method('t')->willReturnArgument(0);
+        $this->l10n->method('t')->willReturnCallback(static fn(string $text, array $parameters = []) => $parameters ? vsprintf($text, $parameters) : $text);
         $this->access = $this->createMock(ManagementAccessContext::class);
         $this->access->method('legacyOwnerUserId')->willReturn('alice');
         $this->teams = $this->createMock(TeamIntegrationService::class);
@@ -200,7 +200,10 @@ class UnitMoveTest extends TestCase {
         $this->start();
         $this->fs->nodes['/alice/files/Unit/2025/receipt.pdf']->content = 'changed';
         try { $this->finish(); self::fail('Expected conflict'); }
-        catch (ConflictException $e) { self::assertStringContainsString('changed', $e->getMessage()); }
+        catch (ConflictException $e) {
+            self::assertStringContainsString('different ETag', $e->getMessage());
+            self::assertStringContainsString('2025/receipt.pdf', $e->getMessage());
+        }
         self::assertNull($this->db->tables['domus_units'][0]['team_id']);
         self::assertSame('cancelled', $this->service->cancel(10)['status']);
         self::assertSame('changed', $this->fs->nodes['/alice/files/Unit/2025/receipt.pdf']->content);
@@ -268,9 +271,37 @@ class UnitMoveTest extends TestCase {
     }
 
     public function testMissingLinkedFileCannotBeSilentlySkipped(): void {
+        unset($this->fs->nodes['/alice/files/cover.jpg']);
+        try {
+            $this->service->preview(10, 'team-a');
+            self::fail('Expected missing attachment conflict');
+        } catch (ConflictException $e) {
+            $response = \OCA\Domus\Http\ApiErrorResponse::fromException($e, $this->l10n, $this->createMock(\Psr\Log\LoggerInterface::class));
+            self::assertSame(409, $response->getStatus());
+            self::assertStringContainsString('Linked file ID ' . $this->image, $response->getData()['message']);
+            self::assertStringContainsString('unit image', $response->getData()['message']);
+        }
+        self::assertEmpty($this->db->tables['domus_unit_moves'] ?? []);
+    }
+
+    public function testMissingDocumentReferenceIncludesItsFileId(): void {
         $this->db->tables['domus_docLinks'][0]['file_id'] = 99999;
-        $this->expectException(\OCA\Domus\Exception\ResourceNotFoundException::class);
+        $this->expectException(ConflictException::class);
+        $this->expectExceptionMessage('Linked file ID 99999');
         $this->service->preview(10, 'team-a');
+    }
+
+    public function testStalePreviewExplainsHowToRetryWithoutAnExistingMove(): void {
+        $preview = $this->service->preview(10, 'team-a');
+        $this->db->tables['domus_units'][0]['label'] = 'Updated';
+        try {
+            $this->service->start(10, 'team-a', $preview['token']);
+            self::fail('Expected stale preview conflict');
+        } catch (ConflictException $e) {
+            self::assertStringContainsString('Review the move again before starting', $e->getMessage());
+            self::assertStringNotContainsString('Cancel', $e->getMessage());
+        }
+        self::assertEmpty($this->db->tables['domus_unit_moves'] ?? []);
     }
 
     public function testMissingSourceTreeIsDisclosedAndLinkedFilesStillMove(): void {

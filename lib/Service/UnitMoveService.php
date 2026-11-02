@@ -63,7 +63,7 @@ class UnitMoveService {
             $folder = $this->teamFolder($teamId, $userId);
             $entries = $this->inventoryFiles($graph, $userId, $folder);
             $name = $this->destinationName($graph, $folder);
-            if (!hash_equals($this->token($graph, $entries, $teamId, (int)$folder->getId(), $name), $token)) $this->changed();
+            if (!hash_equals($this->token($graph, $entries, $teamId, (int)$folder->getId(), $name), $token)) $this->failMove($this->l10n->t('The move preview no longer matches the unit, files or destination. Review the move again before starting.'));
             $free = $folder->getFreeSpace();
             if ($free >= 0 && $free < array_sum(array_column($entries, 'size'))) {
                 throw new ConflictException($this->l10n->t('The Team folder does not have enough free space.'));
@@ -92,7 +92,7 @@ class UnitMoveService {
             try {
                 $payload = json_decode($job['data'], true, 512, JSON_THROW_ON_ERROR);
                 $teamFolder = $this->teamFolder($job['team_id'], $userId);
-                if ((int)$teamFolder->getId() !== $payload['teamFolderId']) $this->changed();
+                if ((int)$teamFolder->getId() !== $payload['teamFolderId']) $this->failMove($this->l10n->t('The destination folder changed or is no longer writable. Cancel the move, check the Team folder and start again.'));
                 $target = $this->targetFolder($teamFolder, $payload);
                 $this->save($job, $payload);
                 $started = microtime(true);
@@ -109,11 +109,12 @@ class UnitMoveService {
                     $entry = $payload['entries'][$index];
                     $copy = $payload['copied'][$index];
                     $node = $entry['path'] === '' ? $target : $target->get($entry['path']);
-                    if ((int)$node->getId() !== $copy['id'] || !$node->isReadable()) $this->changed();
+                    if ((int)$node->getId() !== $copy['id'] || !$node->isReadable()) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
                     if (!$entry['folder']) {
                         $source = $this->sourceFile($userId, $entry['id']);
-                        if ((string)$source->getEtag() !== $entry['etag'] || !$node instanceof File || $this->hash($node) !== $copy['hash']) $this->changed();
-                    } elseif (!$node instanceof Folder) $this->changed();
+                        if ((string)$source->getEtag() !== $entry['etag']) $this->failMove($this->l10n->t('Source file "%s" (ID %s) has a different ETag. Cancel the move and review it again; file metadata may have changed without a content edit.', [$entry['path'], $entry['id']]));
+                        if (!$node instanceof File || $this->hash($node) !== $copy['hash']) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
+                    } elseif (!$node instanceof Folder) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
                     $payload['verified']++;
                     $this->save($job, $payload);
                     if (++$processed >= 10 || microtime(true) - $started > 8) return $this->summary($job);
@@ -121,13 +122,13 @@ class UnitMoveService {
                 $this->db->beginTransaction();
                 try {
                     $graph = $this->data->inventory($unitId, $userId);
-                    if ($this->data->fingerprint($graph) !== $this->data->fingerprint($payload['graph'])
-                        || $this->inventoryFiles($graph, $userId, $teamFolder) !== $payload['entries']) $this->changed();
+                    if ($this->data->fingerprint($graph) !== $this->data->fingerprint($payload['graph'])) $this->failMove($this->l10n->t('The unit or related records changed during the move. Cancel the move and review it again.'));
+                    if ($this->inventoryFiles($graph, $userId, $teamFolder) !== $payload['entries']) $this->failMove($this->l10n->t('The source file list or file metadata changed during the move. Cancel the move and review it again.'));
                     foreach ($payload['entries'] as $index => $entry) {
                         $node = $entry['path'] === '' ? $target : $target->get($entry['path']);
                         $copy = $payload['copied'][$index];
                         if ((int)$node->getId() !== $copy['id'] || !$node->isReadable()
-                            || (!$entry['folder'] && (string)$node->getEtag() !== $copy['etag'])) $this->changed();
+                            || (!$entry['folder'] && (string)$node->getEtag() !== $copy['etag'])) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
                     }
                     $this->teams->clearRequestCache();
                     $this->teams->assertTeamAdmin($job['team_id']);
@@ -212,7 +213,11 @@ class UnitMoveService {
     private function teamFolder(string $teamId, string $userId): Folder {
         $details = $this->teams->getTeamFolder($teamId);
         if (!$details || empty($details['mountPoint'])) throw new ConflictException($this->l10n->t('This Team has no accessible Team folder.'));
-        $folder = $this->root->getUserFolder($userId)->get(trim($details['mountPoint'], '/'));
+        try {
+            $folder = $this->root->getUserFolder($userId)->get(trim($details['mountPoint'], '/'));
+        } catch (\OCP\Files\NotFoundException $e) {
+            $this->failMove($this->l10n->t('Team folder "%s" was not found in your Files. Check that it is mounted and accessible to your account, then review the move again.', [$details['mountPoint']]));
+        }
         if (!$folder instanceof Folder || !$folder->isReadable() || !$folder->isCreatable()) {
             throw new ConflictException($this->l10n->t('This Team has no accessible Team folder.'));
         }
@@ -235,7 +240,7 @@ class UnitMoveService {
         $walk = function ($node, string $path) use (&$walk, &$entries, &$seen, &$seenFolders) {
             if (!$node->isReadable()) throw new ConflictException($this->l10n->t('The unit folder is not accessible.'));
             $folder = $node instanceof Folder;
-            if ($folder && isset($seenFolders[(int)$node->getId()])) $this->changed();
+            if ($folder && isset($seenFolders[(int)$node->getId()])) $this->failMove($this->l10n->t('Source folder "%s" appears more than once in the file tree. Check nested mounts before reviewing the move again.', [$path]));
             if ($folder) $seenFolders[(int)$node->getId()] = true;
             $entries[] = ['id' => (int)$node->getId(), 'path' => $path, 'folder' => $folder,
                 'size' => $folder ? 0 : (int)$node->getSize(), 'etag' => $folder ? '' : (string)$node->getEtag()];
@@ -271,16 +276,16 @@ class UnitMoveService {
         foreach ($this->root->getUserFolder($userId)->getById($id) as $file) {
             if ($file instanceof File && $file->isReadable()) return $file;
         }
-        throw new ResourceNotFoundException($this->l10n->t('A linked file is missing or unreadable.'));
+        $this->failMove($this->l10n->t('Linked file ID %s is missing or unreadable. Check the unit image and document attachments, including related tenancies and bookings. Restore access or remove the obsolete reference, then review the move again.', [$id]));
     }
 
     private function targetFolder(Folder $teamFolder, array &$payload): Folder {
         $name = $payload['targetName'];
-        if ($payload['targetId'] !== null && !$teamFolder->nodeExists($name)) $this->changed();
+        if ($payload['targetId'] !== null && !$teamFolder->nodeExists($name)) $this->failMove($this->l10n->t('The destination folder changed or is no longer writable. Cancel the move, check the Team folder and start again.'));
         // Never adopt or merge an existing folder that this move did not record.
-        if ($payload['targetId'] === null && $teamFolder->nodeExists($name)) $this->changed();
+        if ($payload['targetId'] === null && $teamFolder->nodeExists($name)) $this->failMove($this->l10n->t('The destination folder changed or is no longer writable. Cancel the move, check the Team folder and start again.'));
         $node = $teamFolder->nodeExists($name) ? $teamFolder->get($name) : $teamFolder->newFolder($name);
-        if (!$node instanceof Folder || !$node->isCreatable() || ($payload['targetId'] !== null && (int)$node->getId() !== $payload['targetId'])) $this->changed();
+        if (!$node instanceof Folder || !$node->isCreatable() || ($payload['targetId'] !== null && (int)$node->getId() !== $payload['targetId'])) $this->failMove($this->l10n->t('The destination folder changed or is no longer writable. Cancel the move, check the Team folder and start again.'));
         $payload['targetId'] = (int)$node->getId();
         return $node;
     }
@@ -289,35 +294,36 @@ class UnitMoveService {
         if ($entry['path'] === '') return ['id' => (int)$target->getId()];
         if ($entry['folder']) {
             $node = $target->nodeExists($entry['path']) ? $target->get($entry['path']) : $target->newFolder($entry['path']);
-            if (!$node instanceof Folder) $this->changed();
+            if (!$node instanceof Folder) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
             return ['id' => (int)$node->getId()];
         }
         $source = $this->sourceFile($userId, $entry['id']);
-        if ((string)$source->getEtag() !== $entry['etag']) $this->changed();
+        if ((string)$source->getEtag() !== $entry['etag']) $this->failMove($this->l10n->t('Source file "%s" (ID %s) has a different ETag. Cancel the move and review it again; file metadata may have changed without a content edit.', [$entry['path'], $entry['id']]));
         $hash = $this->hash($source);
         if ($target->nodeExists($entry['path'])) {
             $node = $target->get($entry['path']);
         } else {
             $stream = $source->fopen('rb');
-            if (!is_resource($stream)) $this->changed();
+            if (!is_resource($stream)) $this->failMove($this->l10n->t('Cannot read file "%s" (ID %s). Check its availability and read permissions before retrying.', [$entry['path'], $entry['id']]));
             try { $node = $target->newFile($entry['path'], $stream); }
             finally { if (is_resource($stream)) fclose($stream); }
         }
-        if (!$node instanceof File || (int)$node->getSize() !== $entry['size'] || $this->hash($node) !== $hash || (string)$source->getEtag() !== $entry['etag']) $this->changed();
+        if ((string)$source->getEtag() !== $entry['etag']) $this->failMove($this->l10n->t('Source file "%s" (ID %s) has a different ETag. Cancel the move and review it again; file metadata may have changed without a content edit.', [$entry['path'], $entry['id']]));
+        if (!$node instanceof File || (int)$node->getSize() !== $entry['size'] || $this->hash($node) !== $hash) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
         return ['id' => (int)$node->getId(), 'hash' => $hash, 'etag' => (string)$node->getEtag()];
     }
 
     private function hash(File $file): string {
         $stream = $file->fopen('rb');
-        if (!is_resource($stream)) $this->changed();
+        if (!is_resource($stream)) $this->failMove($this->l10n->t('Cannot read file "%s" (ID %s). Check its availability and read permissions before retrying.', [$file->getName(), $file->getId()]));
         try {
             $context = hash_init('sha256');
-            if (hash_update_stream($context, $stream) === false) $this->changed();
+            if (hash_update_stream($context, $stream) === false) $this->failMove($this->l10n->t('Cannot read file "%s" (ID %s). Check its availability and read permissions before retrying.', [$file->getName(), $file->getId()]));
             return hash_final($context);
         } finally { if (is_resource($stream)) fclose($stream); }
     }
 
-    private function changed(): never {
-        throw new ConflictException($this->l10n->t('The unit or its files changed. Cancel the move and start again.'));
+    private function failMove(string $message): never {
+        throw new ConflictException($message);
     }
 }

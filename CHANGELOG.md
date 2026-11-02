@@ -34,6 +34,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
+- Start the document-template picker in the active Team folder’s Templates subfolder.
+- Explain unit-move failures with missing file IDs, affected copy paths, distinct consistency checks and recovery guidance.
 - Keep dialogs open when text selection is dragged outside the frame and confirm before discarding edited tenancy rent calculations.
 - Show rent-increase Word template validation errors on Nextcloud 34.
 - Resolve dedicated Team folders on Nextcloud 34 when moving Personal units to Teams.
