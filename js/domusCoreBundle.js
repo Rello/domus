@@ -428,6 +428,16 @@
 
         return {
             get: path => request('GET', path),
+            getDocumentPdf: async (id, signal) => {
+                const response = await fetch(baseUrl + '/documents/' + encodeURIComponent(id) + '/content', {
+                    signal,
+                    headers: scopedHeaders({ requesttoken: OC.requestToken, 'X-Domus-Role': Domus.Role?.getCurrentRole?.() || Domus.state.role })
+                });
+                if (!response.ok || response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/pdf') {
+                    throw new Error(t('domus', 'PDF could not be loaded. Please try again.'));
+                }
+                return response.blob();
+            },
             post: (path, data) => request('POST', path, data),
             put: (path, data) => request('PUT', path, data),
             delete: path => request('DELETE', path),

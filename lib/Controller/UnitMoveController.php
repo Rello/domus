@@ -33,7 +33,7 @@ class UnitMoveController extends Controller {
     #[NoAdminRequired]
     public function preview(int $id, string $teamId): DataResponse { return $this->respond(fn() => $this->moves->preview($id, $teamId)); }
     #[NoAdminRequired]
-    public function start(int $id, string $teamId, string $token): DataResponse { return $this->respond(fn() => $this->moves->start($id, $teamId, $token)); }
+    public function start(int $id, string $teamId, string $token, bool $ignoreMissingDocuments = false, bool $removeMissingLinks = false): DataResponse { return $this->respond(fn() => $this->moves->start($id, $teamId, $token, $ignoreMissingDocuments, $removeMissingLinks)); }
     #[NoAdminRequired]
     public function advance(int $id): DataResponse { return $this->respond(fn() => $this->moves->advance($id)); }
     #[NoAdminRequired]

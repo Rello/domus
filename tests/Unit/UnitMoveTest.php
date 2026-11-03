@@ -284,11 +284,103 @@ class UnitMoveTest extends TestCase {
         self::assertEmpty($this->db->tables['domus_unit_moves'] ?? []);
     }
 
-    public function testMissingDocumentReferenceIncludesItsFileId(): void {
-        $this->db->tables['domus_docLinks'][0]['file_id'] = 99999;
+    public function testMissingDocumentShowsEveryAssignmentAndStoredTitle(): void {
+        foreach ($this->db->tables['domus_docLinks'] as &$link) {
+            $link['file_id'] = 11446;
+            $link['file_name'] = 'Rental contract.pdf';
+        }
+        unset($link);
+        $this->db->tables['domus_tenancies'][0]['start_date'] = '2025-01-01';
+        $preview = $this->service->preview(10, 'team-a');
+        self::assertSame(11446, $preview['missingDocuments'][0]['fileId']);
+        $references = $preview['missingDocuments'][0]['references'];
+        self::assertStringContainsString('Rental contract.pdf', $references);
+        self::assertStringContainsString('Unit "Apartment" (ID 10)', $references);
+        self::assertStringContainsString('Tenancy "2025-01-01" (ID 20)', $references);
+        self::assertStringContainsString('attachment ID 70', $references);
+        self::assertStringContainsString('attachment ID 71', $references);
         $this->expectException(ConflictException::class);
-        $this->expectExceptionMessage('Linked file ID 99999');
+        $this->expectExceptionMessage('Choose whether to continue');
+        $this->service->start(10, 'team-a', $preview['token']);
+    }
+
+    public function testIgnoringMissingDocumentsKeepsLinksUnlessRemovalWasRequested(): void {
+        $this->db->tables['domus_docLinks'][0]['file_id'] = 11446;
+        $preview = $this->service->preview(10, 'team-a');
+        $this->service->start(10, 'team-a', $preview['token'], true);
+        $this->finish();
+        self::assertSame(11446, $this->db->tables['domus_docLinks'][0]['file_id']);
+        self::assertSame('team-a', $this->db->tables['domus_docLinks'][0]['team_id']);
+        self::assertNotSame($this->receipt, $this->db->tables['domus_docLinks'][1]['file_id']);
+    }
+
+    public function testCleanupOnlyRemovesReviewedMissingLinksAtCompletion(): void {
+        $this->db->tables['domus_docLinks'][0]['file_id'] = 11446;
+        $preview = $this->service->preview(10, 'team-a');
+        $this->service->start(10, 'team-a', $preview['token'], true, true);
+        self::assertCount(2, $this->db->tables['domus_docLinks']);
+        $this->finish();
+        self::assertCount(1, $this->db->tables['domus_docLinks']);
+        self::assertSame(71, $this->db->tables['domus_docLinks'][0]['id']);
+        self::assertArrayHasKey('/alice/files/Unit/2025/receipt.pdf', $this->fs->nodes);
+    }
+
+    public function testCancellingDoesNotCleanUpLinks(): void {
+        $this->db->tables['domus_docLinks'][0]['file_id'] = 11446;
+        $preview = $this->service->preview(10, 'team-a');
+        $this->service->start(10, 'team-a', $preview['token'], true, true);
+        $this->service->cancel(10);
+        self::assertCount(2, $this->db->tables['domus_docLinks']);
+        self::assertNull($this->db->tables['domus_docLinks'][0]['team_id']);
+    }
+
+    public function testNewMissingFileAfterPreviewRequiresAnotherReview(): void {
+        $preview = $this->service->preview(10, 'team-a');
+        unset($this->fs->nodes['/alice/files/Unit/2025/receipt.pdf']);
+        $this->expectException(ConflictException::class);
+        $this->expectExceptionMessage('preview no longer matches');
+        $this->service->start(10, 'team-a', $preview['token'], true, true);
+    }
+
+    public function testRestoredFileDuringMoveIsNotCleanedUp(): void {
+        $this->db->tables['domus_docLinks'][0]['file_id'] = 11446;
+        $preview = $this->service->preview(10, 'team-a');
+        $this->service->start(10, 'team-a', $preview['token'], true, true);
+        $this->fs->nextId = 11446;
+        $this->fs->file('/alice/files/restored.pdf', 'restored');
+        try { $this->finish(); self::fail('Expected restored file conflict'); }
+        catch (ConflictException $e) {}
+        self::assertCount(2, $this->db->tables['domus_docLinks']);
+        self::assertNull($this->db->tables['domus_units'][0]['team_id']);
+    }
+
+    public function testFileDisappearingDuringCopyShowsItsPath(): void {
+        $this->start();
+        unset($this->fs->nodes['/alice/files/Unit/2025/receipt.pdf']);
+        $this->expectException(ConflictException::class);
+        $this->expectExceptionMessage('2025/receipt.pdf');
+        $this->finish();
+    }
+
+    public function testUnavailableContactIsNotReportedAsAnEditedUnit(): void {
+        $this->db->tables['domus_partners'][0]['team_id'] = 'another-team';
+        $this->expectException(ConflictException::class);
+        $this->expectExceptionMessage('Contact ID 60 linked to this unit');
         $this->service->preview(10, 'team-a');
+    }
+
+    public function testMissingTemplateIsNotReportedAsAnEditedUnit(): void {
+        $this->db->tables['domus_task_templates'] = [];
+        $this->expectException(ConflictException::class);
+        $this->expectExceptionMessage('Process template ID 120');
+        $this->service->preview(10, 'team-a');
+    }
+
+    public function testMissingTransferRowIdentifiesTheRecord(): void {
+        $data = new UnitMoveDataService($this->db, $this->l10n);
+        $this->expectException(ConflictException::class);
+        $this->expectExceptionMessage('Cannot transfer record domus_tenancies (ID 999)');
+        $data->update('domus_tenancies', 999, ['team_id' => 'team-a'], ['team_id' => null]);
     }
 
     public function testStalePreviewExplainsHowToRetryWithoutAnExistingMove(): void {

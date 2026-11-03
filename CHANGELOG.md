@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
+- Read linked PDFs in a Domus overlay with download and Open in Nextcloud actions.
 - Generate rent-increase letters from Personal and Team Word templates or a German Markdown fallback, with calculated rents and an effective date carried into tenancy changes.
 - Interactive rent-increase calculator with rent-index ranges, configurable increase limits, service-charge recommendations, and prefilled tenancy condition changes.
 - Optional construction year in unit master data, including import, export and the read-only API.
@@ -35,7 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ### Fixed
 - Start the document-template picker in the active Team folder’s Templates subfolder.
-- Explain unit-move failures with missing file IDs, affected copy paths, distinct consistency checks and recovery guidance.
+- Identify unavailable move attachments by title and assignment, allow explicitly skipping them with optional link cleanup after a successful move, and distinguish unavailable contacts or templates from changed records.
 - Keep dialogs open when text selection is dragged outside the frame and confirm before discarding edited tenancy rent calculations.
 - Show rent-increase Word template validation errors on Nextcloud 34.
 - Resolve dedicated Team folders on Nextcloud 34 when moving Personal units to Teams.

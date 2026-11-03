@@ -6,6 +6,25 @@
 OC.L10N.register(
     "domus",
     {
+    "Choose whether to continue without the listed documents before starting the move." : "Wählen Sie vor dem Verschieben, ob Sie ohne die aufgeführten Dokumente fortfahren möchten.",
+    "These documents are missing or unreadable:" : "Diese Dokumente fehlen oder sind nicht lesbar:",
+    "Continue without these document files" : "Ohne diese Dokumentdateien fortfahren",
+    "Remove their document links when the move completes" : "Die zugehörigen Dokumentverknüpfungen nach erfolgreichem Verschieben entfernen",
+    "Unless removal is selected, the links are kept in the Team. No files are deleted. Cancelling keeps all links." : "Ohne ausgewählte Entfernung bleiben die Verknüpfungen im Team erhalten. Es werden keine Dateien gelöscht. Beim Abbrechen bleiben alle Verknüpfungen erhalten.",
+    "File ID {fileId}: {references}" : "Datei-ID {fileId}: {references}",
+
+    "Linked file ID %s is missing or unreadable. Linked at: %s. Restore access or remove this attachment, then review the move again." : "Die verknüpfte Datei mit ID %s fehlt oder ist nicht lesbar. Verknüpft bei: %s. Stellen Sie den Zugriff wieder her oder entfernen Sie diesen Anhang und prüfen Sie das Verschieben erneut.",
+    "Unit \"%s\" (ID %s): unit image" : "Einheit „%s“ (ID %s): Einheitenbild",
+    "%s \"%s\" (ID %s), document \"%s\" (attachment ID %s)" : "%s „%s“ (ID %s), Dokument „%s“ (Anhang-ID %s)",
+    "Cannot transfer record %s (ID %s): it is missing or no longer belongs to the source scope." : "Datensatz %s (ID %s) kann nicht übertragen werden: Er fehlt oder gehört nicht mehr zum Quellbereich.",
+    "Contact ID %s linked to this unit or one of its tenancies is missing or is no longer in Personal. Check the contact assignments before moving." : "Der mit dieser Einheit oder einem ihrer Mietverhältnisse verknüpfte Kontakt mit ID %s fehlt oder ist nicht mehr im persönlichen Bereich. Prüfen Sie vor dem Verschieben die Kontaktzuordnungen.",
+    "Process template ID %s used by this unit is missing or is not accessible in Personal. Check the associated processes before moving." : "Die von dieser Einheit verwendete Prozessvorlage mit ID %s fehlt oder ist im persönlichen Bereich nicht zugänglich. Prüfen Sie vor dem Verschieben die zugehörigen Prozesse.",
+
+    "Loading PDF…" : "PDF wird geladen…",
+    "Open in Nextcloud" : "In Nextcloud öffnen",
+    "If the PDF is not displayed, download it to read it." : "Wenn die PDF nicht angezeigt wird, lade sie zum Lesen herunter.",
+    "PDF could not be loaded. Please try again." : "Die PDF konnte nicht geladen werden. Bitte versuche es erneut.",
+
     "Invalid rent increase calculation." : "Ungültige Berechnung der Mieterhöhung.",
     "Enter valid document, consent and effective dates." : "Bitte gültige Daten für das Schreiben, die Zustimmungsfrist und den Mietbeginn eingeben.",
     "The consent deadline must not precede the document date, and the effective date must follow the document date." : "Die Zustimmungsfrist darf nicht vor dem Briefdatum liegen. Das Wirksamkeitsdatum muss nach dem Briefdatum liegen.",

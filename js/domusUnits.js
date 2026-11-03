@@ -2521,6 +2521,22 @@
             status.setAttribute('aria-live', 'polite');
             status.textContent = t('domus', 'Loading…');
             const summary = document.createElement('ul');
+            const missingOptions = document.createElement('div');
+            missingOptions.hidden = true;
+            const missingList = document.createElement('ul');
+            const missingHeading = document.createElement('p');
+            missingHeading.textContent = t('domus', 'These documents are missing or unreadable:');
+            const ignoreLabel = document.createElement('label');
+            const ignoreMissing = document.createElement('input');
+            ignoreMissing.type = 'checkbox';
+            ignoreLabel.append(ignoreMissing, document.createTextNode(t('domus', 'Continue without these document files')));
+            const removeLabel = document.createElement('label');
+            const removeMissing = document.createElement('input');
+            removeMissing.type = 'checkbox';
+            removeLabel.append(removeMissing, document.createTextNode(t('domus', 'Remove their document links when the move completes')));
+            const keepHint = document.createElement('p');
+            keepHint.textContent = t('domus', 'Unless removal is selected, the links are kept in the Team. No files are deleted. Cancelling keeps all links.');
+            missingOptions.append(missingHeading, missingList, ignoreLabel, document.createElement('br'), removeLabel, keepHint);
             const hint = document.createElement('p');
             hint.textContent = t('domus', 'While copying, your Domus changes are paused. You can close this dialog and resume from the unit menu. Cancel keeps any copies already created.');
             const footer = document.createElement('div');
@@ -2535,7 +2551,7 @@
             action.textContent = t('domus', 'Review move');
             action.disabled = true;
             footer.append(cancel, action);
-            content.append(status, summary, hint, footer);
+            content.append(status, summary, missingOptions, hint, footer);
             let closed = false;
             let busy = false;
             let preview = null;
@@ -2547,7 +2563,10 @@
                 const started = job?.status === 'copying';
                 const complete = job?.status === 'complete';
                 select.disabled = busy || started || complete || !select.options.length;
-                action.disabled = busy || (!started && !complete && !select.value);
+                action.disabled = busy || (!started && !complete && (!select.value || (preview?.missingDocuments?.length > 0 && !ignoreMissing.checked)));
+                missingOptions.hidden = !preview?.missingDocuments?.length || started || complete;
+                ignoreMissing.disabled = busy || started || complete;
+                removeMissing.disabled = busy || started || complete || !ignoreMissing.checked;
                 cancel.hidden = !started;
                 cancel.disabled = busy;
                 action.textContent = complete ? t('domus', 'Open in Team') : started ? t('domus', 'Resume move') : preview ? t('domus', 'Move unit') : t('domus', 'Review move');
@@ -2559,6 +2578,7 @@
                 if (started) status.textContent = t('domus', 'Copied {copied} of {total} entries; verified {verified}.', job);
                 if (complete) status.textContent = t('domus', 'Unit moved. Original files retained.');
             };
+            ignoreMissing.addEventListener('change', () => { if (!ignoreMissing.checked) removeMissing.checked = false; render(); });
             select.addEventListener('change', () => { preview = null; summary.replaceChildren(); status.textContent = ''; render(); });
             action.addEventListener('click', async () => {
                 if (busy) return;
@@ -2576,6 +2596,14 @@
                             preview = await Domus.Api.post(base + '/preview', {teamId: select.value});
                             if (closed) return;
                             summary.replaceChildren();
+                            ignoreMissing.checked = false;
+                            removeMissing.checked = false;
+                            missingList.replaceChildren();
+                            (preview.missingDocuments || []).forEach(document => {
+                                const item = window.document.createElement('li');
+                                item.textContent = t('domus', 'File ID {fileId}: {references}', document);
+                                missingList.appendChild(item);
+                            });
                             const details = [
                                 t('domus', 'Destination: {folder}', {folder: preview.destination}),
                                 t('domus', '{files} files and {folders} folders ({bytes} bytes).', preview),
@@ -2588,7 +2616,7 @@
                             status.textContent = t('domus', 'Ready to move.');
                             return;
                         }
-                        job = await Domus.Api.post(base + '/start', {teamId: select.value, token: preview.token});
+                        job = await Domus.Api.post(base + '/start', {teamId: select.value, token: preview.token, ignoreMissingDocuments: ignoreMissing.checked, removeMissingLinks: ignoreMissing.checked && removeMissing.checked});
                     }
                     while (!closed && job.status === 'copying') {
                         render();

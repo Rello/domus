@@ -33,12 +33,13 @@ class UnitMoveService {
         $userId = $this->access->legacyOwnerUserId();
         $graph = $this->data->inventory($unitId, $userId);
         $folder = $this->teamFolder($teamId, $userId);
-        $entries = $this->inventoryFiles($graph, $userId, $folder);
+        $missing = [];
+        $entries = $this->inventoryFiles($graph, $userId, $folder, $missing);
         $name = $this->destinationName($graph, $folder);
         return [
-            'status' => 'preview', 'teamId' => $teamId,
+            'status' => 'preview', 'teamId' => $teamId, 'missingDocuments' => $missing,
             'sourceFolderMissing' => $entries[0]['id'] === 0,
-            'token' => $this->token($graph, $entries, $teamId, (int)$folder->getId(), $name),
+            'token' => $this->token($graph, $entries, $teamId, (int)$folder->getId(), $name, $missing),
             'destination' => $this->folders->path($userId, $folder) . '/' . $name,
             'files' => count(array_filter($entries, fn($entry) => !$entry['folder'])),
             'folders' => count(array_filter($entries, fn($entry) => $entry['folder'])),
@@ -50,8 +51,8 @@ class UnitMoveService {
         ];
     }
 
-    public function start(int $unitId, string $teamId, string $token): array {
-        return $this->locked(function (string $userId) use ($unitId, $teamId, $token) {
+    public function start(int $unitId, string $teamId, string $token, bool $ignoreMissingDocuments = false, bool $removeMissingLinks = false): array {
+        return $this->locked(function (string $userId) use ($unitId, $teamId, $token, $ignoreMissingDocuments, $removeMissingLinks) {
             $job = $this->job($unitId, $userId);
             if ($job && $job['status'] !== 'cancelled') {
                 if ($job['team_id'] !== $teamId) throw new ConflictException($this->l10n->t('Cancel the existing move before choosing another Team.'));
@@ -61,14 +62,16 @@ class UnitMoveService {
             $this->guard->assertWritable($userId);
             $graph = $this->data->inventory($unitId, $userId);
             $folder = $this->teamFolder($teamId, $userId);
-            $entries = $this->inventoryFiles($graph, $userId, $folder);
+            $missing = [];
+            $entries = $this->inventoryFiles($graph, $userId, $folder, $missing);
             $name = $this->destinationName($graph, $folder);
-            if (!hash_equals($this->token($graph, $entries, $teamId, (int)$folder->getId(), $name), $token)) $this->failMove($this->l10n->t('The move preview no longer matches the unit, files or destination. Review the move again before starting.'));
+            if (!hash_equals($this->token($graph, $entries, $teamId, (int)$folder->getId(), $name, $missing), $token)) $this->failMove($this->l10n->t('The move preview no longer matches the unit, files or destination. Review the move again before starting.'));
+            if ($missing && !$ignoreMissingDocuments) $this->failMove($this->l10n->t('Choose whether to continue without the listed documents before starting the move.'));
             $free = $folder->getFreeSpace();
             if ($free >= 0 && $free < array_sum(array_column($entries, 'size'))) {
                 throw new ConflictException($this->l10n->t('The Team folder does not have enough free space.'));
             }
-            $payload = ['graph' => $graph, 'entries' => $entries, 'copied' => [], 'verified' => 0,
+            $payload = ['missingDocuments' => $missing, 'removeMissingLinks' => $ignoreMissingDocuments && $removeMissingLinks, 'graph' => $graph, 'entries' => $entries, 'copied' => [], 'verified' => 0,
                 'teamFolderId' => (int)$folder->getId(), 'targetName' => $name, 'targetId' => null,
                 'destination' => $this->folders->path($userId, $folder) . '/' . $name];
             $values = ['unit_id' => $unitId, 'user_id' => $userId, 'team_id' => $teamId, 'status' => 'copying', 'data' => json_encode($payload, JSON_THROW_ON_ERROR)];
@@ -111,7 +114,7 @@ class UnitMoveService {
                     $node = $entry['path'] === '' ? $target : $target->get($entry['path']);
                     if ((int)$node->getId() !== $copy['id'] || !$node->isReadable()) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
                     if (!$entry['folder']) {
-                        $source = $this->sourceFile($userId, $entry['id']);
+                        $source = $this->sourceFile($userId, $entry['id'], $entry['path']);
                         if ((string)$source->getEtag() !== $entry['etag']) $this->failMove($this->l10n->t('Source file "%s" (ID %s) has a different ETag. Cancel the move and review it again; file metadata may have changed without a content edit.', [$entry['path'], $entry['id']]));
                         if (!$node instanceof File || $this->hash($node) !== $copy['hash']) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
                     } elseif (!$node instanceof Folder) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
@@ -123,7 +126,8 @@ class UnitMoveService {
                 try {
                     $graph = $this->data->inventory($unitId, $userId);
                     if ($this->data->fingerprint($graph) !== $this->data->fingerprint($payload['graph'])) $this->failMove($this->l10n->t('The unit or related records changed during the move. Cancel the move and review it again.'));
-                    if ($this->inventoryFiles($graph, $userId, $teamFolder) !== $payload['entries']) $this->failMove($this->l10n->t('The source file list or file metadata changed during the move. Cancel the move and review it again.'));
+                    $missing = [];
+                    if ($this->inventoryFiles($graph, $userId, $teamFolder, $missing) !== $payload['entries'] || $missing !== ($payload['missingDocuments'] ?? [])) $this->failMove($this->l10n->t('The source file list or file metadata changed during the move. Cancel the move and review it again.'));
                     foreach ($payload['entries'] as $index => $entry) {
                         $node = $entry['path'] === '' ? $target : $target->get($entry['path']);
                         $copy = $payload['copied'][$index];
@@ -135,7 +139,7 @@ class UnitMoveService {
                     $mapping = [];
                     foreach ($payload['entries'] as $index => $entry) if (!$entry['folder']) $mapping[$entry['id']] = $payload['copied'][$index]['id'];
                     $path = $this->folders->path($userId, $target);
-                    $this->data->transfer($graph, $job['team_id'], $userId, $mapping, (int)$target->getId(), $path);
+                    $this->data->transfer($graph, $job['team_id'], $userId, $mapping, (int)$target->getId(), $path, array_column($payload['missingDocuments'] ?? [], 'fileId'), $payload['removeMissingLinks'] ?? false);
                     $job['status'] = 'complete';
                     // Retain a compact audit journal, not a second copy of all personal data.
                     $payload = ['destination' => $path, 'targetId' => (int)$target->getId(), 'fileMap' => $mapping, 'completedAt' => time()];
@@ -196,8 +200,8 @@ class UnitMoveService {
             'total' => count($payload['entries'] ?? []), 'verified' => $payload['verified'] ?? 0];
     }
 
-    private function token(array $graph, array $entries, string $teamId, int $folderId, string $name): string {
-        return hash('sha256', json_encode([$graph, $entries, $teamId, $folderId, $name], JSON_THROW_ON_ERROR));
+    private function token(array $graph, array $entries, string $teamId, int $folderId, string $name, array $missing = []): string {
+        return hash('sha256', json_encode([$graph, $entries, $teamId, $folderId, $name, $missing], JSON_THROW_ON_ERROR));
     }
 
     private function destinationName(array $graph, Folder $folder): string {
@@ -224,7 +228,7 @@ class UnitMoveService {
         return $folder;
     }
 
-    private function inventoryFiles(array $graph, string $userId, Folder $destination): array {
+    private function inventoryFiles(array $graph, string $userId, Folder $destination, ?array &$missing = null): array {
         $unit = $graph['domus_units'][0];
         $userFolder = $this->root->getUserFolder($userId);
         $sourcePath = trim((string)$unit['document_path'], '/');
@@ -262,7 +266,14 @@ class UnitMoveService {
         while (in_array($externalFolder, $paths, true)) $externalFolder .= '-';
         foreach ($fileIds as $id) {
             if (isset($seen[$id])) continue;
-            $file = $this->sourceFile($userId, $id);
+            try {
+                $file = $this->sourceFile($userId, $id, $this->fileReferences($graph, $id));
+            } catch (ConflictException $e) {
+                // Images remain required. Only explicitly reviewed document attachments may be skipped.
+                if ($missing === null || (int)$unit['image_file_id'] === $id) throw $e;
+                $missing[] = ['fileId' => $id, 'references' => $this->fileReferences($graph, $id)];
+                continue;
+            }
             if (!in_array($externalFolder, array_column($entries, 'path'), true)) {
                 $entries[] = ['id' => 0, 'path' => $externalFolder, 'folder' => true, 'size' => 0, 'etag' => ''];
             }
@@ -272,11 +283,32 @@ class UnitMoveService {
         return $entries;
     }
 
-    private function sourceFile(string $userId, int $id): File {
+    private function fileReferences(array $graph, int $fileId): string {
+        $references = [];
+        $unit = $graph['domus_units'][0];
+        if ((int)$unit['image_file_id'] === $fileId) {
+            $references[] = $this->l10n->t('Unit "%s" (ID %s): unit image', [$unit['label'], $unit['id']]);
+        }
+        $types = ['unit' => ['domus_units', $this->l10n->t('Unit')],
+            'tenancy' => ['domus_tenancies', $this->l10n->t('Tenancy')],
+            'booking' => ['domus_bookings', $this->l10n->t('Booking')],
+            'partner' => ['domus_partners', $this->l10n->t('Contact')]];
+        foreach ($graph['domus_docLinks'] as $link) {
+            if ((int)$link['file_id'] !== $fileId) continue;
+            [$table, $type] = $types[$link['entity_type']];
+            $record = array_column($graph[$table], null, 'id')[$link['entity_id']] ?? [];
+            $label = $record['label'] ?? $record['name'] ?? $record['description'] ?? $record['start_date'] ?? '';
+            $references[] = $this->l10n->t('%s "%s" (ID %s), document "%s" (attachment ID %s)',
+                [$type, $label, $link['entity_id'], $link['file_name'] ?? '', $link['id']]);
+        }
+        return implode('; ', $references);
+    }
+
+    private function sourceFile(string $userId, int $id, string $context): File {
         foreach ($this->root->getUserFolder($userId)->getById($id) as $file) {
             if ($file instanceof File && $file->isReadable()) return $file;
         }
-        $this->failMove($this->l10n->t('Linked file ID %s is missing or unreadable. Check the unit image and document attachments, including related tenancies and bookings. Restore access or remove the obsolete reference, then review the move again.', [$id]));
+        $this->failMove($this->l10n->t('Linked file ID %s is missing or unreadable. Linked at: %s. Restore access or remove this attachment, then review the move again.', [$id, $context]));
     }
 
     private function targetFolder(Folder $teamFolder, array &$payload): Folder {
@@ -297,7 +329,7 @@ class UnitMoveService {
             if (!$node instanceof Folder) $this->failMove($this->l10n->t('Verification failed for destination "%s". Its type, size, contents or identity no longer match the expected copy. Cancel the move and check the destination before restarting.', [$entry['path']]));
             return ['id' => (int)$node->getId()];
         }
-        $source = $this->sourceFile($userId, $entry['id']);
+        $source = $this->sourceFile($userId, $entry['id'], $entry['path']);
         if ((string)$source->getEtag() !== $entry['etag']) $this->failMove($this->l10n->t('Source file "%s" (ID %s) has a different ETag. Cancel the move and review it again; file metadata may have changed without a content edit.', [$entry['path'], $entry['id']]));
         $hash = $this->hash($source);
         if ($target->nodeExists($entry['path'])) {

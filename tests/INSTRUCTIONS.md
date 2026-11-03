@@ -182,7 +182,7 @@ model output are excluded. Clear the key or let it expire to stop logging.
   user-facing hostname's move routes, pending-write rejection and cancellation.
 - Migration copies current file contents and Domus metadata. File versions, shares,
   comments and other Nextcloud metadata are not copied. Missing source folders are disclosed in the preview and recreated at the
-  destination; unreadable folders or missing/unreadable linked files stop the move. No source or staged files are deleted;
+  destination; unreadable folders or missing unit images stop the move. Missing/unreadable document attachments are listed for explicit skip consent; optional link cleanup runs only in the successful ownership transaction. Cancellation retains links, and changed availability requires another review. No source or staged files are deleted;
   cancelling releases the write pause and retains destination copies for review.
 
 Run `./tests/run-unit.sh --filter 'TeamScopedMapper|AccountService|UnitMove'`
@@ -272,3 +272,9 @@ Rent-increase Word generation is covered by `RentIncreaseReportServiceTest`,
 variable mapping and template isolation. The `rent-increase-letter` browser suite
 also covers required Word fields, retry and explicit Markdown fallback;
 `document-templates` covers independent assignment/removal of both processes.
+
+Run `PLAYWRIGHT_TEST=pdf-reader ./tests/run-playwright.sh` for the embedded PDF reader:
+Personal/Team request scope, desktop and phone layout, download, Files fallback,
+failed or non-PDF responses, close-during-load cleanup and keyboard focus restoration.
+The fixture uses full Chromium with native PDF support; live Nextcloud delivery and
+Safari/Firefox PDF rendering remain separate manual checks.

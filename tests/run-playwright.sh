@@ -8,7 +8,7 @@ playwrightImage="${PLAYWRIGHT_IMAGE:-nextcloud-playwright:1.58.2-chromium-v1}"
 if ! docker image inspect "$playwrightImage" >/dev/null 2>&1; then
     docker build -t "$playwrightImage" "$rootDir/tests/playwright"
 fi
-suites=(rent-increase-letter rent-increase system-templates dialog-template routing modal-changes dashboard unit-workspace process-detail task-creation analytics contacts renter-preview team-context renter-access renter-portal view-lifecycle ui-reuse rules document-templates tax-report)
+suites=(pdf-reader rent-increase-letter rent-increase system-templates dialog-template routing modal-changes dashboard unit-workspace process-detail task-creation analytics contacts renter-preview team-context renter-access renter-portal view-lifecycle ui-reuse rules document-templates tax-report)
 if [[ -n "${PLAYWRIGHT_TEST:-}" ]]; then
     [[ "$PLAYWRIGHT_TEST" =~ ^[a-z-]+$ ]] || exit 2
     suites=("$PLAYWRIGHT_TEST")

@@ -645,10 +645,11 @@ async function main() {
         assert.equal(await page.locator('input[type="file"]').evaluate(el => el.files[0].name), 'test.txt');
     });
 
-    await test('document filenames open directly; details use a separate keyboard action', async page => {
+    await test('PDF filenames open the reader; details use a separate keyboard action', async page => {
         await page.context().route('https://files.example.test/**', route => route.fulfill({body: 'Fixture file'}));
         await page.evaluate(() => {
             window.detailReads = 0;
+            Domus.Api.getDocumentPdf = async () => new Blob(['%PDF-fixture'], {type: 'application/pdf'});
             Domus.Api.getDocuments = async () => [{id: 7, fileName: 'Invoice.pdf', fileUrl: 'https://files.example.test/f/8', note: 'Existing note'}];
             Domus.Api.getDocumentDetail = async () => {
                 window.detailReads++;
@@ -667,12 +668,10 @@ async function main() {
         assert.equal(await edit.evaluate(el => getComputedStyle(el).opacity), '1');
         await page.getByText('Existing note', {exact: true}).click();
         assert.equal(await page.locator('.domus-modal').count(), 0);
-        const popupPromise = page.waitForEvent('popup');
         await file.press('Enter');
-        const popup = await popupPromise;
-        await popup.waitForLoadState();
-        assert.equal(popup.url(), 'https://files.example.test/f/8');
-        await popup.close();
+        const reader = page.getByRole('dialog', {name: 'Invoice.pdf', exact: true});
+        await reader.getByRole('link', {name: 'Download', exact: true}).waitFor();
+        await reader.getByRole('button', {name: 'Close modal'}).click();
         assert.equal(await page.evaluate(() => window.detailReads), 0);
         assert.equal(await page.locator('.domus-modal').count(), 0);
         await page.getByRole('button', {name: 'Edit document Invoice.pdf'}).press('Space');

@@ -1173,6 +1173,12 @@
                             '<strong>' + Domus.Utils.escapeHtml(previewTitle) + '</strong>' +
                             '</div>' +
                             '</a>';
+                        Domus.Documents.bindPdfLink(card.querySelector('a'), {
+                            id: lockedSelection.sourceLinkId,
+                            fileName: previewTitle,
+                            filePath: previewPath,
+                            fileUrl: previewUrl
+                        });
                     } else {
                         card.innerHTML = '' +
                             '<div class="domus-booking-document-preview">' +

@@ -770,8 +770,8 @@ async function main() {
         await dialog.waitFor({state: 'detached'});
     }, 'landlord', {width: 390, height: 844});
 
-    async function prepareMove(page, loseResponse = false) {
-        await page.evaluate(({unitData, loseResponse}) => {
+    async function prepareMove(page, loseResponse = false, missingDocuments = []) {
+        await page.evaluate(({unitData, loseResponse, missingDocuments}) => {
             let saved = {status: 'new'};
             let lost = false;
             window.moveCalls = [];
@@ -784,7 +784,7 @@ async function main() {
             Domus.Api.post = async (path, data) => {
                 window.moveCalls.push({path, data});
                 if (path === '/rules/evaluate') return {alerts: [], createdTasks: 0};
-                if (path.endsWith('/preview')) return {token: 'preview-token', destination: 'Management', files: 3, folders: 2, bytes: 100, tenancies: 1, bookings: 2, contacts: 1, tasks: 0, workflowRuns: 1, taskSteps: 4, activities: 2, sourceFolderMissing: true};
+                if (path.endsWith('/preview')) return {missingDocuments, token: 'preview-token', destination: 'Management', files: 3, folders: 2, bytes: 100, tenancies: 1, bookings: 2, contacts: 1, tasks: 0, workflowRuns: 1, taskSteps: 4, activities: 2, sourceFolderMissing: true};
                 if (path.endsWith('/start')) {
                     saved = {status: 'copying', teamId: 'team-a', copied: 1, total: 5, verified: 0};
                     if (loseResponse && !lost) { lost = true; throw new Error('Connection lost'); }
@@ -795,7 +795,7 @@ async function main() {
                 throw new Error('Unexpected request: ' + path);
             };
             Domus.Units.renderDetail(1);
-        }, {unitData: unit, loseResponse});
+        }, {unitData: unit, loseResponse, missingDocuments});
         await page.locator('#domus-unit-move').waitFor({state: 'attached'});
         await page.getByRole('button', {name: 'More actions', exact: true}).click();
         await page.getByRole('button', {name: 'Move to Team…', exact: true}).click();
@@ -819,6 +819,30 @@ async function main() {
         assert.equal(await page.evaluate(() => window.moveCalls.find(call => call.path.endsWith('/start')).data.token), 'preview-token');
         await dialog.getByText('Unit moved. Original files retained.', {exact: true}).waitFor();
     });
+
+    await test('missing move documents require explicit consent and optional cleanup', async page => {
+        const dialog = await prepareMove(page, false, [{fileId: 11446, references: 'Tenancy "2025-01-01" (ID 20), document "Contract.pdf" (attachment ID 71)'}]);
+        await dialog.getByText(/File ID 11446:.*Contract.pdf/).waitFor();
+        const move = dialog.getByRole('button', {name: 'Move unit', exact: true});
+        const ignore = dialog.getByRole('checkbox', {name: 'Continue without these document files', exact: true});
+        const cleanup = dialog.getByRole('checkbox', {name: 'Remove their document links when the move completes', exact: true});
+        assert.equal(await move.isEnabled(), false);
+        assert.equal(await cleanup.isEnabled(), false);
+        await ignore.check();
+        assert.equal(await move.isEnabled(), true);
+        assert.equal(await cleanup.isChecked(), false);
+        await cleanup.check();
+        await ignore.uncheck();
+        assert.equal(await cleanup.isChecked(), false);
+        assert.equal(await move.isEnabled(), false);
+        await ignore.check();
+        await cleanup.check();
+        await move.click();
+        await dialog.getByRole('button', {name: 'Open in Team', exact: true}).waitFor();
+        const request = await page.evaluate(() => window.moveCalls.find(call => call.path.endsWith('/start')).data);
+        assert.equal(request.ignoreMissingDocuments, true);
+        assert.equal(request.removeMissingLinks, true);
+    }, 'landlord', {width: 390, height: 844});
 
     await test('unit move cancellation keeps copies and fits a phone', async page => {
         const dialog = await prepareMove(page, true);

@@ -17,6 +17,7 @@ use OCA\Viewer\Event\LoadViewer;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IConfig;
@@ -81,10 +82,14 @@ class PageController extends Controller {
             $this->initialState->provideInitialState('managementContext', $managementCapabilities);
         }
 
-        return new TemplateResponse(Application::APP_ID, 'main', [
+        $response = new TemplateResponse(Application::APP_ID, 'main', [
             'accounts' => !$isRenter && $managementUserId !== null ? $this->accountService->getHierarchyForUser($managementUserId, $this->l10n) : [],
             'roleInfo' => $isStaff ? $this->permissionService->getRoleInfoForCurrentUser() : ['currentRole' => 'tenant', 'availableRoles' => ['tenant']],
             'urlGenerator' => $this->urlGenerator,
         ]);
+        $policy = new ContentSecurityPolicy();
+        $policy->addAllowedFrameDomain('blob:');
+        $response->setContentSecurityPolicy($policy);
+        return $response;
     }
 }

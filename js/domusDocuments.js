@@ -9,6 +9,84 @@
     window.Domus = window.Domus || {};
 
     Domus.Documents = (function() {
+        function bindPdfLink(link, doc) {
+            if (!link || link.tagName !== 'A' || !doc || !Number.isInteger(Number(doc.id)) || Number(doc.id) <= 0
+                || !/\.pdf$/i.test(String(doc.filePath || doc.fileName || ''))) return;
+            link.addEventListener('click', event => {
+                if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                event.preventDefault();
+                event.stopPropagation();
+                openPdf(doc);
+            });
+        }
+
+        function openPdf(doc) {
+            const name = String(doc.fileName || doc.filePath?.split('/').pop() || t('domus', 'Document'));
+            const controller = new AbortController();
+            let objectUrl = null;
+            let closed = false;
+            const content = document.createElement('div');
+            content.className = 'domus-pdf-reader';
+            const status = document.createElement('p');
+            status.setAttribute('role', 'status');
+            status.textContent = t('domus', 'Loading PDF…');
+            content.appendChild(status);
+            const frame = document.createElement('iframe');
+            frame.title = name;
+            frame.tabIndex = 0;
+            frame.hidden = true;
+            content.appendChild(frame);
+            const hint = document.createElement('p');
+            hint.className = 'muted';
+            hint.textContent = t('domus', 'If the PDF is not displayed, download it to read it.');
+            content.appendChild(hint);
+            const actions = document.createElement('div');
+            actions.className = 'domus-form-actions';
+            const download = document.createElement('a');
+            download.className = 'button';
+            download.textContent = t('domus', 'Download');
+            download.hidden = true;
+            download.download = /\.pdf$/i.test(name) ? name : name + '.pdf';
+            actions.appendChild(download);
+            try {
+                const url = new URL(doc.fileUrl, window.location.href);
+                // The service only supplies a Files URL when the actor has a readable mount.
+                if (url.origin === window.location.origin && /\/(?:f\/|apps\/files(?:\/|$))/.test(url.pathname)) {
+                    const nextcloud = document.createElement('a');
+                    nextcloud.className = 'button';
+                    nextcloud.href = url.href;
+                    nextcloud.target = '_blank';
+                    nextcloud.rel = 'noopener noreferrer';
+                    nextcloud.textContent = t('domus', 'Open in Nextcloud');
+                    actions.appendChild(nextcloud);
+                }
+            } catch (error) { /* No Files action for an unavailable destination. */ }
+            content.appendChild(actions);
+            const modal = Domus.UI.openModal({title: name, content, size: 'pdf', onClose: () => {
+                closed = true;
+                controller.abort();
+                frame.removeAttribute('src');
+                if (objectUrl) URL.revokeObjectURL(objectUrl);
+            }});
+            Domus.Api.getDocumentPdf(doc.id, controller.signal).then(blob => {
+                if (closed) return;
+                objectUrl = URL.createObjectURL(blob);
+                download.href = objectUrl;
+                download.hidden = false;
+                status.hidden = true;
+                if (navigator.pdfViewerEnabled !== false) {
+                    frame.src = objectUrl;
+                    frame.hidden = false;
+                }
+            }).catch(error => {
+                if (closed) return;
+                status.setAttribute('role', 'alert');
+                status.textContent = t('domus', 'PDF could not be loaded. Please try again.');
+                hint.hidden = true;
+            });
+            return modal;
+        }
+
         function buildDocumentRow(doc, options = {}) {
             const fileName = doc.fileName || doc.fileUrl || doc.fileId || '';
             const note = options.showNotes === false ? '' : String(doc?.note || '').trim();
@@ -109,6 +187,7 @@
                         '</div>' +
                         '</div>';
                     updateContainer(html);
+                    bindPdfRows(containerId, filteredDocs);
                     options.onLoaded?.(filteredDocs, document.getElementById(containerId));
                     bindDocumentActions(containerId, documentId => openDetailModal(documentId, {
                         entityType,
@@ -198,6 +277,7 @@
                     '</div>'
                     : '';
                 updateContainer('<div id="' + containerId + '">' + table + moreButton + '</div>');
+                bindPdfRows(containerId, docs.slice(0, visibleCount));
                 bindDocumentActions(containerId, documentId => openDetailModal(documentId, {
                     entityType,
                     entityId,
@@ -438,6 +518,11 @@
                     if (uploadYearInput) uploadYearInput.value = defaultYear;
                 }
             };
+        }
+
+        function bindPdfRows(containerId, docs) {
+            const links = document.getElementById(containerId)?.querySelectorAll('.domus-documents-file-name');
+            links?.forEach((link, index) => bindPdfLink(link, docs[index]));
         }
 
         function bindDocumentActions(containerId, onOpenDocument) {
@@ -718,7 +803,7 @@
                 .catch(err => Domus.UI.showNotification(err.message, 'error'));
         }
 
-        return { renderList, renderLatestList, loadLatestList, openLinkModal, createAttachmentWidget, createMetadataFields, buildTenancyAssignment };
+        return { bindPdfLink, openPdf, renderList, renderLatestList, loadLatestList, openLinkModal, createAttachmentWidget, createMetadataFields, buildTenancyAssignment };
     })();
 
     /**

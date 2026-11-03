@@ -30,7 +30,7 @@ class UnitMoveDataService {
             $qb->andWhere($value === null ? $qb->expr()->isNull($column) : $qb->expr()->eq($column, $qb->createNamedParameter($value)));
         }
         foreach ($values as $key => $value) $qb->set($key, $qb->createNamedParameter($value));
-        if ($qb->executeStatement() === 0 && !$this->rows($table, ['id' => $id] + $scope)) throw new ConflictException($this->l10n->t('The unit changed. Cancel the move and start again.'));
+        if ($qb->executeStatement() === 0 && !$this->rows($table, ['id' => $id] + $scope)) throw new ConflictException($this->l10n->t('Cannot transfer record %s (ID %s): it is missing or no longer belongs to the source scope.', [$table, $id]));
     }
 
     public function insert(string $table, array $row): int {
@@ -68,7 +68,7 @@ class UnitMoveDataService {
         $graph['domus_partners'] = [];
         foreach (array_unique(array_column($graph['domus_partner_rel'], 'partner_id')) as $id) {
             $partner = $this->rows('domus_partners', ['id' => (int)$id] + $owner)[0] ?? null;
-            if (!$partner) throw new ConflictException($this->l10n->t('The unit changed. Cancel the move and start again.'));
+            if (!$partner) throw new ConflictException($this->l10n->t('Contact ID %s linked to this unit or one of its tenancies is missing or is no longer in Personal. Check the contact assignments before moving.', [$id]));
             $graph['domus_partners'][] = $partner;
         }
         // The supported move is a self-contained unit, including its related contacts.
@@ -90,7 +90,7 @@ class UnitMoveDataService {
         foreach (array_unique(array_column($graph['domus_workflow_runs'], 'template_id')) as $id) {
             $template = $this->rows('domus_task_templates', ['id' => (int)$id, 'team_id' => null])[0] ?? null;
             if ($template && !in_array($template['scope_key'], ['global', 'system', 'user:' . $userId, 'archived:' . $id], true)) $template = null;
-            if (!$template) throw new ConflictException($this->l10n->t('The unit changed. Cancel the move and start again.'));
+            if (!$template) throw new ConflictException($this->l10n->t('Process template ID %s used by this unit is missing or is not accessible in Personal. Check the associated processes before moving.', [$id]));
             $graph['templates'][] = $template;
             array_push($graph['templateSteps'], ...$this->rows('domus_task_tpl_steps', ['template_id' => (int)$id, 'team_id' => null]));
         }
@@ -112,7 +112,7 @@ class UnitMoveDataService {
     }
 
     /** Caller owns the move lock and transaction. */
-    public function transfer(array $graph, string $teamId, string $userId, array $files, int $folderId, string $path): void {
+    public function transfer(array $graph, string $teamId, string $userId, array $files, int $folderId, string $path, array $ignoredFileIds = [], bool $removeMissingLinks = false): void {
         $this->copyAccounts($graph['accounts'], $graph['domus_bookings'], $teamId);
         $templateMap = [];
         foreach ($graph['templates'] as $row) {
@@ -150,7 +150,22 @@ class UnitMoveDataService {
                     $values += ['document_path' => $path, 'document_folder_id' => $folderId, 'updated_at' => time()];
                     if ($row['image_file_id']) $values['image_file_id'] = $files[(int)$row['image_file_id']];
                 }
-                if ($table === 'domus_docLinks') $values['file_id'] = $files[(int)$row['file_id']];
+                if ($table === 'domus_docLinks') {
+                    if (in_array((int)$row['file_id'], $ignoredFileIds, true)) {
+                        if ($removeMissingLinks) {
+                            $qb = $this->db->getQueryBuilder();
+                            $qb->delete('domus_docLinks')
+                                ->where($qb->expr()->eq('id', $qb->createNamedParameter((int)$row['id'])))
+                                ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+                                ->andWhere($qb->expr()->isNull('team_id'));
+                            $qb->executeStatement();
+                            continue;
+                        }
+                        // Keep the original reference when cleanup was not requested.
+                    } else {
+                        $values['file_id'] = $files[(int)$row['file_id']];
+                    }
+                }
                 if ($table === 'domus_workflow_runs') $values['template_id'] = $templateMap[(int)$row['template_id']];
                 if ($table === 'domus_tasks' && $row['rule_id']) $values['rule_id'] = $ruleMap[(int)$row['rule_id']] ?? null;
                 $scope = ['team_id' => null];
