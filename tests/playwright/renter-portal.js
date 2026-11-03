@@ -11,7 +11,16 @@ const { chromium } = require('playwright');
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     try {
-        await page.context().route('https://domus.test/**', route => route.fulfill({ contentType: 'text/html', body: 'Authenticated document fixture' }));
+        const documentRequests = [];
+        await page.context().route('https://domus.test/**', route => {
+            const path = new URL(route.request().url()).pathname;
+            if (path.endsWith('/content')) {
+                documentRequests.push(path);
+                return route.fulfill({status: path === '/apps/domus/api/renter/documents/51/content' ? 200 : 403,
+                    contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF'});
+            }
+            return route.fulfill({ contentType: 'text/html', body: 'Authenticated document fixture' });
+        });
         await page.goto('https://domus.test/apps/domus/');
         await page.setContent('<div id="domus-top-nav-primary"></div><div id="domus-top-nav-secondary"></div><div id="app-content"><div id="domus-content"></div></div>');
         await page.addStyleTag({ content: '*, *::before, *::after { box-sizing: border-box } dl { display:flex; flex-wrap:wrap } dt, dd { display:inline; width:33% } .domus-panel dl { padding:12px 0 } .domus-panel dt, .domus-panel dd { padding:12px; text-align:end }' });
@@ -67,12 +76,12 @@ const { chromium } = require('playwright');
         assert.equal(await documentPanel.locator('.domus-documents-table .domus-documents-row').count(), 1);
         assert.equal(await documentPanel.locator('.domus-documents-date-cell').innerText(), await page.evaluate(() => Domus.Utils.formatDate(1700000000 * 1000)));
         assert.equal(await documentPanel.locator('a').getAttribute('target'), '_blank');
-        const openedDocument = page.waitForEvent('popup');
         await documentPanel.getByRole('link', { name: 'Contract.pdf' }).click();
-        const documentPage = await openedDocument;
-        await documentPage.waitForLoadState();
-        assert.match(documentPage.url(), /\/api\/renter\/documents\/51\/content$/);
-        await documentPage.close();
+        const reader = page.getByRole('dialog', { name: 'Contract.pdf', exact: true });
+        await reader.getByRole('link', { name: 'Download', exact: true }).waitFor();
+        assert.deepEqual(documentRequests, ['/apps/domus/api/renter/documents/51/content']);
+        assert.equal(await reader.getByRole('link', { name: 'Open in Nextcloud' }).count(), 0);
+        await reader.getByRole('button', { name: 'Close modal', exact: true }).click();
         await page.evaluate(() => {
             window.originalDocuments = renterDocuments;
             renterDocuments = Array.from({ length: 11 }, (_, index) => ({ id: 100 + index, fileName: `Document ${index}.pdf`, fileUrl: `/apps/domus/api/renter/documents/${100 + index}/content`, createdAt: 1700000000 + index }));

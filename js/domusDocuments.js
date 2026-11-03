@@ -68,7 +68,8 @@
                 frame.removeAttribute('src');
                 if (objectUrl) URL.revokeObjectURL(objectUrl);
             }});
-            Domus.Api.getDocumentPdf(doc.id, controller.signal).then(blob => {
+            const renterDocument = /\/renter\/documents\/\d+\/content(?:[?#]|$)/.test(String(doc.fileUrl || ''));
+            Domus.Api.getDocumentPdf(doc.id, controller.signal, renterDocument).then(blob => {
                 if (closed) return;
                 objectUrl = URL.createObjectURL(blob);
                 download.href = objectUrl;

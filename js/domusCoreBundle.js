@@ -428,8 +428,8 @@
 
         return {
             get: path => request('GET', path),
-            getDocumentPdf: async (id, signal) => {
-                const response = await fetch(baseUrl + '/documents/' + encodeURIComponent(id) + '/content', {
+            getDocumentPdf: async (id, signal, renterDocument = false) => {
+                const response = await fetch(baseUrl + (renterDocument ? '/renter/documents/' : '/documents/') + encodeURIComponent(id) + '/content', {
                     signal,
                     headers: scopedHeaders({ requesttoken: OC.requestToken, 'X-Domus-Role': Domus.Role?.getCurrentRole?.() || Domus.state.role })
                 });
