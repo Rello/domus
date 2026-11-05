@@ -25,6 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Document dates, multiple tenancy assignments, and assignment indicators.
 
 ### Changed
+- Suggest the adjusted rent-index mean, limited by the increase cap, instead of the upper range value in the rent-increase calculator.
 - Show ten lines by default in the Conditions field when changing tenancy conditions.
 - Move the tax rate setting into Tax declaration and remove the General Settings section.
 - Refresh the feature overview, app introduction, and welcome tour; move detailed guides into the new wiki.

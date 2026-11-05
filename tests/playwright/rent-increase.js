@@ -83,23 +83,26 @@ const {chromium} = require('playwright');
             assert.equal(await page.locator('#rent-service-status').innerText(), '');
             assert.equal(await page.locator('#rent-range').count(), 1);
             assert.match(await page.locator('#rent-range').innerText(), /–/);
-            assert.match(await page.locator('#rent-increase').innerText(), /201[.,]67/);
-            assert.match(await page.locator('#rent-combined-total').innerText(), /1[.,]?101[.,]67/);
+            assert.match(await page.locator('#rent-increase').innerText(), /121[.,]67/);
+            assert.match(await page.locator('#rent-combined-total').innerText(), /1[.,]?021[.,]67/);
             await page.locator('#rent-service-selected').fill('160');
-            assert.match(await page.locator('#rent-combined-total').innerText(), /1[.,]?120/);
-            assert.match(await page.locator('#rent-increase').innerText(), /220/);
+            assert.match(await page.locator('#rent-combined-total').innerText(), /1[.,]?040/);
+            assert.match(await page.locator('#rent-increase').innerText(), /140/);
             await page.locator('#rent-service-selected').fill('-1');
             assert.equal(await page.locator('#rent-combined-total').innerText(), '—');
             await page.locator('#rent-service-selected').fill('0');
-            assert.match(await page.locator('#rent-combined-total').innerText(), /960/);
+            assert.match(await page.locator('#rent-combined-total').innerText(), /880/);
             await page.locator('#rent-service-selected').fill('160');
             assert.equal(await selected.getAttribute('min'), '10.00');
             assert.equal(await selected.getAttribute('max'), '12.00');
-            assert.equal(await selected.inputValue(), '12.00');
+            assert.equal(await selected.inputValue(), '11.00');
 
             assert.equal(await page.locator('#rent-limit').inputValue(), '20');
             await page.locator('#rent-limit').fill('15');
-            assert.equal(await selected.inputValue(), '11.50');
+            assert.equal(await selected.inputValue(), '11.00');
+            await page.locator('#rent-limit').fill('5');
+            assert.equal(await selected.inputValue(), '10.50');
+            await page.locator('#rent-limit').fill('15');
 
             for (const value of ['', '-1', '0']) {
                 await page.locator('#rent-limit').fill(value);
@@ -108,7 +111,7 @@ const {chromium} = require('playwright');
                 assert.equal(await page.locator('#rent-combined-total').innerText(), '—');
             }
             await page.locator('#rent-limit').fill('20');
-            assert.equal(await selected.inputValue(), '12.00');
+            assert.equal(await selected.inputValue(), '11.00');
             assert.equal(await page.locator('#rent-result-status').innerText(), '');
             assert.equal(await page.locator('.domus-rent-inputs').first().locator('input').count(), 4);
             for (const input of await page.locator('.domus-rent-calculator input').all()) {
@@ -218,6 +221,11 @@ const {chromium} = require('playwright');
                 await page.waitForFunction(() => document.querySelector('#rent-year').textContent === '1980');
                 await page.locator('#rent-index').fill(index);
                 await page.locator('#rent-adjustment').fill(adjustment);
+                if (index === '7.5') {
+                    assert.equal(await selected.inputValue(), '');
+                    assert.equal(await page.locator('#rent-continue').isDisabled(), true);
+                    await selected.fill('8.50');
+                }
                 await page.locator('#rent-continue').click();
                 await conditions.waitFor();
                 const explanation = await conditions.locator('[name="conditions"]').inputValue();

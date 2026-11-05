@@ -1014,7 +1014,10 @@
                 selected.min = (singleValue ? Math.ceil((current - 1e-9) * 100) / 100 : minimum).toFixed(2);
                 selected.max = maximum.toFixed(2);
                 selected.step = '0.01';
-                if (!selectedManually) selected.value = selected.max;
+                if (!selectedManually) {
+                    const suggested = Math.floor((Math.min(mean, cap) + 1e-9) * 100) / 100;
+                    selected.value = suggested > current ? suggested.toFixed(2) : '';
+                }
                 const price = number('selected');
                 if (!Number.isFinite(price)) {
                     show('result-status', t('domus', 'The selected price must be within the possible range.'));
