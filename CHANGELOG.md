@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
+- Separate multiline unit notes for meter numbers and other master data, preserved on import/export and omitted from the detail header.
 - Read linked PDFs in a Domus overlay with download and Open in Nextcloud actions.
 - Generate rent-increase letters from Personal and Team Word templates or a German Markdown fallback, with calculated rents and an effective date carried into tenancy changes.
 - Interactive rent-increase calculator with rent-index ranges, configurable increase limits, service-charge recommendations, and prefilled tenancy condition changes.

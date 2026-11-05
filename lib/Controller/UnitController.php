@@ -78,9 +78,10 @@ class UnitController extends Controller {
         ?string $iban = null,
         ?string $bic = null,
         ?string $notes = null,
-        ?string $constructionYear = null
+        ?string $constructionYear = null,
+        ?string $additionalNotes = null
     ): DataResponse {
-        $data = compact('propertyId', 'label', 'street', 'zip', 'city', 'country', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes', 'constructionYear');
+        $data = compact('propertyId', 'label', 'street', 'zip', 'city', 'country', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes', 'constructionYear', 'additionalNotes');
         $unit = $this->unitService->createUnit($data, $this->getUserId(), $this->getRole());
         return new DataResponse($unit, Http::STATUS_CREATED);
     }
@@ -105,7 +106,8 @@ class UnitController extends Controller {
         ?string $bic = null,
         ?string $notes = null,
         ?string $documentPath = null,
-        ?string $constructionYear = null
+        ?string $constructionYear = null,
+        ?string $additionalNotes = null
     ): DataResponse {
         $data = array_filter([
             'propertyId' => $propertyId,
@@ -125,6 +127,7 @@ class UnitController extends Controller {
             'iban' => $iban,
             'bic' => $bic,
             'notes' => $notes,
+            'additionalNotes' => $additionalNotes,
             'documentPath' => $documentPath,
         ], fn($value) => $value !== null);
         return new DataResponse($this->unitService->updateUnit($id, $data, $this->getUserId(), $this->getRole()));

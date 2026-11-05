@@ -50,6 +50,7 @@ class OcsControllerTest extends TestCase {
         $unit->setIban('private');
         $unit->setTaxId('private');
         $unit->setNotes('private');
+        $unit->setAdditionalNotes('Meter 12345');
         $this->units->expects(self::once())->method('listUnitsForUser')
             ->with('owner', null, 'landlord')->willReturn([$unit]);
         $data = $this->controller->units()->getData();
@@ -57,7 +58,7 @@ class OcsControllerTest extends TestCase {
         self::assertSame(7, $data[0]['id']);
         $schema = $this->schema()['components']['schemas']['Unit'];
         self::assertSame(array_keys($schema['properties']), array_keys($data[0]));
-        foreach (['iban', 'taxId', 'notes', 'partners', 'userId'] as $key) {
+        foreach (['iban', 'taxId', 'notes', 'additionalNotes', 'partners', 'userId'] as $key) {
             self::assertArrayNotHasKey($key, $data[0]);
         }
     }

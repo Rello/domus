@@ -3063,6 +3063,9 @@
             rows.push(
                 inputField('notes', t('domus', 'Description'), unit?.notes || '', {
                     isTextarea: true
+                }),
+                inputField('additionalNotes', t('domus', 'Notes'), unit?.additionalNotes || '', {
+                    isTextarea: true
                 })
             );
 

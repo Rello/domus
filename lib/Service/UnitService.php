@@ -111,6 +111,7 @@ class UnitService {
         $unit->setIban($data['iban'] ?? null);
         $unit->setBic($data['bic'] ?? null);
         $unit->setNotes($data['notes'] ?? null);
+        $unit->setAdditionalNotes($data['additionalNotes'] ?? null);
         $unit->setDocumentPath($this->documentPathService->buildUnitPath($unit->getLabel(), $unit->getUnitNumber(), $propertyName));
         $unit->setCreatedAt($now);
         $unit->setUpdatedAt($now);
@@ -135,7 +136,7 @@ class UnitService {
             $unit->setDocumentFolderId($unit->getTeamId() !== null && $this->unitFolders !== null
                 ? $this->unitFolders->selectedFolderId($userId, $documentPath) : null);
         }
-        $fields = ['label', 'street', 'zip', 'city', 'country', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes'];
+        $fields = ['label', 'street', 'zip', 'city', 'country', 'unitNumber', 'landRegister', 'livingArea', 'unitType', 'buyDate', 'totalCosts', 'taxId', 'iban', 'bic', 'notes', 'additionalNotes'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
                 $setter = 'set' . ucfirst($field);

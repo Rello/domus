@@ -477,6 +477,7 @@ OC.L10N.register(
         "Demo unit": "Demo-Einheit",
         "Deposit": "Kaution",
         "Description": "Beschreibung",
+        "Notes": "Notizen",
         "Details": "Details",
         "Disable": "Deaktivieren",
         "Disabled": "Deaktiviert",

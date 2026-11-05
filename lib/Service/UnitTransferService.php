@@ -188,6 +188,7 @@ class UnitTransferService {
             $unit->setIban($unitData['iban'] ?? null);
             $unit->setBic($unitData['bic'] ?? null);
             $unit->setNotes($unitData['notes'] ?? null);
+            $unit->setAdditionalNotes($unitData['additionalNotes'] ?? null);
             $unit->setDocumentPath($this->documentPathService->buildUnitPath($unit->getLabel(), $unit->getUnitNumber(), $propertyName));
             $unit->setCreatedAt($this->normalizeTimestamp($unitData['createdAt'] ?? null, $now));
             $unit->setUpdatedAt($this->normalizeTimestamp($unitData['updatedAt'] ?? null, $now));

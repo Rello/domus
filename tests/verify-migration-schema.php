@@ -173,3 +173,21 @@ foreach (['fresh' => $final, 'upgrade' => $baseline] as $label => $yearSchema) {
     $assert($comparator->compareSchemas($beforeRetry, $yearSchema)->toSaveSql($platform) === [], "$label: year migration is retry-safe");
 }
 echo "Construction year migration passed.\n";
+
+foreach (['fresh' => $final, 'upgrade' => $baseline] as $label => $notesSchema) {
+    $notesSchema = clone $notesSchema;
+    $db = new \PDO('sqlite::memory:');
+    foreach ($notesSchema->toSql($platform) as $sql) $db->exec($sql);
+    $db->exec("INSERT INTO domus_units (user_id, label, notes, created_at, updated_at) VALUES ('notes-test', 'Existing', 'Description', 1, 1)");
+    $beforeNotes = clone $notesSchema;
+    $apply(\OCA\Domus\Migration\Version0010Date20261105000000::class, $notesSchema);
+    foreach ($comparator->compareSchemas($beforeNotes, $notesSchema)->toSaveSql($platform) as $sql) $db->exec($sql);
+    $assert($db->query('SELECT additional_notes FROM domus_units')->fetchColumn() === null, "$label: new notes stay empty");
+    $db->exec("UPDATE domus_units SET additional_notes = 'Meter 12345'");
+    $assert($db->query('SELECT notes FROM domus_units')->fetchColumn() === 'Description', "$label: description preserved");
+    $assert($db->query('SELECT additional_notes FROM domus_units')->fetchColumn() === 'Meter 12345', "$label: notes persist");
+    $beforeRetry = clone $notesSchema;
+    $apply(\OCA\Domus\Migration\Version0010Date20261105000000::class, $notesSchema);
+    $assert($comparator->compareSchemas($beforeRetry, $notesSchema)->toSaveSql($platform) === [], "$label: notes migration is retry-safe");
+}
+echo "Unit notes migration passed.\n";

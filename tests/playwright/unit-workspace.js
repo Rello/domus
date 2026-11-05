@@ -15,6 +15,7 @@ const unit = {
     city: 'Sampletown',
     livingArea: 72,
     constructionYear: 1984,
+    additionalNotes: 'Meter 12345\nBasement',
     activeTenancies: [{
         id: 3,
         startDate: '2025-01-01',
@@ -235,10 +236,12 @@ async function main() {
     await test('unit details opens viewing and editing while delete stays secondary', async page => {
         assert.equal(await page.locator('#domus-unit-edit, #domus-unit-details').count(), 0);
         assert.match(await page.locator('#domus-unit-masterdata').innerText(), /Unit details/);
+        assert.equal((await page.locator('#app-content').innerText()).includes('Meter 12345'), false);
         await page.locator('#domus-unit-masterdata').click();
         await page.getByRole('dialog', {name: 'Unit details', exact: true}).waitFor();
         await page.getByRole('dialog', {name: 'Unit details', exact: true}).getByRole('button', {name: 'Edit', exact: true}).click();
         await page.getByRole('dialog', {name: 'Edit unit', exact: true}).waitFor();
+        assert.equal(await page.locator('#domus-unit-additionalNotes').inputValue(), 'Meter 12345\nBasement');
         const year = page.locator('#domus-unit-constructionYear');
         assert.equal(await year.inputValue(), '1984');
         await year.fill('1984.5');

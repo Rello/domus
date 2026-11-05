@@ -18,17 +18,20 @@ class UnitTransferServiceTest extends TestCase {
     private array $dependencies;
     private array $entries;
 
-    public function testConstructionYearRoundTrip(): void {
+    public function testUnitMasterDataRoundTrip(): void {
         $service = $this->service();
         $unit = new Unit();
         $unit->setId(5);
         $unit->setLabel('Unit');
         $unit->setConstructionYear(1984);
+        $unit->setNotes('Description');
+        $unit->setAdditionalNotes("Meter 12345\nBasement");
         $this->dependencies['unitMapper']->method('findForUser')->willReturn($unit);
         $payload = $service->exportUnitDataset(5, 'source');
         self::assertSame(1984, $payload['unit']['constructionYear']);
+        self::assertSame("Meter 12345\nBasement", $payload['unit']['additionalNotes']);
         $this->dependencies['unitMapper']->expects(self::once())->method('insert')->with(
-            self::callback(fn(Unit $row) => $row->getConstructionYear() === 1984)
+            self::callback(fn(Unit $row) => $row->getConstructionYear() === 1984 && $row->getNotes() === 'Description' && $row->getAdditionalNotes() === "Meter 12345\nBasement")
         )->willReturn($unit);
         $service->importUnitDataset($payload, 'target', 'landlord');
     }
