@@ -13,13 +13,11 @@ use OCA\Domus\Service\PermissionService;
 use OCA\Domus\Service\ManagementAccessContext;
 use OCA\Domus\Service\RenterAccessService;
 use OCA\Domus\AppInfo\Application;
-use OCA\Viewer\Event\LoadViewer;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Services\IInitialState;
-use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IConfig;
 use OCP\IGroupManager;
 use OCP\IRequest;
@@ -34,7 +32,6 @@ class PageController extends Controller {
         private AccountService $accountService,
         private DemoContentService $demoContentService,
         private PermissionService $permissionService,
-        private IEventDispatcher $eventDispatcher,
         private IConfig $config,
         private IURLGenerator $urlGenerator,
         private IUserSession $userSession,
@@ -50,10 +47,6 @@ class PageController extends Controller {
     #[NoAdminRequired]
         #[NoCSRFRequired]
     public function index(): TemplateResponse {
-        if (class_exists(LoadViewer::class)) {
-            $this->eventDispatcher->dispatchTyped(new LoadViewer());
-        }
-
         $user = $this->userSession->getUser();
         $isStaff = $user !== null && $user->isEnabled()
             && !$this->groupManager->isInGroup($user->getUID(), 'guest_app');

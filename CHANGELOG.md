@@ -37,6 +37,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
+- Remove unused legacy Viewer loading and the missing Chart.js source-map reference from the Domus page.
 - Allow demo content creation in the selected Team while retaining management access checks.
 - Start the document-template picker in the active Team folder’s Templates subfolder.
 - Identify unavailable move attachments by title and assignment, allow explicitly skipping them with optional link cleanup after a successful move, and distinguish unavailable contacts or templates from changed records.
