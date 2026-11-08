@@ -128,7 +128,7 @@ class SettingsController extends Controller {
             throw new \DomainException($this->l10n->t('A staff account is required for management access.'));
         }
         $role = $this->permissionService->getRoleFromRequest($this->request);
-        $data = $this->demoContentService->createDemoContent($this->managementContext->legacyOwnerUserId(), $role);
+        $data = $this->demoContentService->createDemoContent($this->managementContext->managementUserId(), $role);
         return new DataResponse([
             'status' => 'success',
             'data' => $data,

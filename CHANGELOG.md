@@ -37,6 +37,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
+- Allow demo content creation in the selected Team while retaining management access checks.
 - Start the document-template picker in the active Team folder’s Templates subfolder.
 - Identify unavailable move attachments by title and assignment, allow explicitly skipping them with optional link cleanup after a successful move, and distinguish unavailable contacts or templates from changed records.
 - Keep dialogs open when text selection is dragged outside the frame and confirm before discarding edited tenancy rent calculations.
