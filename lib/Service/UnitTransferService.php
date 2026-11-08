@@ -138,7 +138,7 @@ class UnitTransferService {
     }
 
     public function importUnitDataset(array $payload, string $userId, string $role, ?int $propertyId = null): array {
-        $this->assertLegacyUnmapped($userId);
+        // Imported records receive the selected portfolio through TeamScopedMapper.
         PersonalArchiveValidation::assertPersonal($payload);
         if (!isset($payload['unit']) || !is_array($payload['unit'])) {
             throw new \InvalidArgumentException($this->l10n->t('Import data is missing.'));
@@ -216,7 +216,7 @@ class UnitTransferService {
             throw $e;
         }
 
-        $this->audit?->record('unit.imported', $unit->getId(), $userId, null);
+        $this->audit?->record('unit.imported', $unit->getId(), $userId, $this->managementContext->activeTeamId());
         return [
             'unitId' => $unit->getId(),
             'warnings' => $warnings,

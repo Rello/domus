@@ -858,6 +858,28 @@ async function main() {
         assert.equal(await page.evaluate(() => window.moveCalls.some(call => call.path.endsWith('/cancel'))), true);
     }, 'landlord', {width: 390, height: 844});
 
+    await test('selected Team offers unit import', async page => {
+        let imported;
+        await page.route('**/units/import', async route => {
+            imported = {headers: route.request().headers(), body: route.request().postDataJSON()};
+            await route.fulfill({contentType: 'application/json', body: JSON.stringify({unitId: 1, warnings: []})});
+        });
+        await page.evaluate(() => {
+            Domus.state.managementContext = {activeTeamId: 'team-a'};
+            Domus.Api.getUnitsStatisticsOverview = async () => ({rows: []});
+            Domus.Units.renderList();
+        });
+        await page.locator('#domus-unit-import').click();
+        await page.locator('#domus-unit-import-file').setInputFiles({
+            name: 'unit.json', mimeType: 'application/json',
+            buffer: Buffer.from(JSON.stringify({unit: {label: 'Imported unit'}}))
+        });
+        await page.locator('#domus-unit-import-submit').click();
+        await page.locator('#domus-unit-import-form').waitFor({state: 'detached'});
+        assert.equal(imported.headers['x-domus-team'], 'team-a');
+        assert.equal(imported.body.payload.unit.label, 'Imported unit');
+    });
+
     await browser.close();
     if (failures) process.exitCode = 1;
 }

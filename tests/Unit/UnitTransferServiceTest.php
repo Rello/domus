@@ -111,6 +111,15 @@ class UnitTransferServiceTest extends TestCase {
         $service->exportUnitDataset(5, 'source');
     }
 
+    public function testSelectedTeamCanImportPersonalArchive(): void {
+        $service = $this->service(mapped: true);
+        $this->dependencies['connection']->expects(self::once())->method('commit');
+        $this->dependencies['audit']->expects(self::once())->method('record')
+            ->with('unit.imported', 105, 'target', 'team-a');
+        $result = $service->importUnitDataset(['unit' => ['label' => 'Imported unit']], 'target', 'landlord');
+        self::assertSame(105, $result['unitId']);
+    }
+
     public function testPersonalImportRejectsTeamMarkersBeforeStartingTransaction(): void {
         foreach ([
             ['unit' => ['label' => 'Unit', 'teamId' => 'a']],

@@ -690,7 +690,7 @@
         }
 
         function renderListContent() {
-            const canImport = !Domus.Role.isTenantView() && !Domus.state.managementContext?.activeTeamId;
+            const canImport = !Domus.Role.isTenantView();
             const importButton = canImport
                 ? Domus.UI.createIconButton('domus-icon-add', t('domus', 'Import'), {
                     id: 'domus-unit-import',
