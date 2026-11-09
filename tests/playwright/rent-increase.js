@@ -40,6 +40,28 @@ const {chromium} = require('playwright');
                 window.render = () => Domus.Tenancies.renderDetail(1, {isCurrent: () => true});
                 return render();
             });
+            await page.locator('#domus-tenancy-change .domus-icon-cycle').waitFor();
+            await page.locator('#domus-tenancy-rent-increase .domus-icon-calculator').waitFor();
+            await page.locator('#domus-tenancy-change').click();
+            await page.getByRole('dialog').waitFor();
+            assert.match(await page.locator('.domus-modal-header').innerText(), /creates a continuation.*previous tenancy period ends/s);
+            await page.getByRole('button', {name: 'Close modal', exact: true}).click();
+            // Cleanup is optional, happens after tenancy deletion, and errors still allow navigation.
+            await page.evaluate(() => {
+                window.removedContacts = [];
+                window.backCalls = 0;
+                Domus.Router.back = () => { backCalls++; };
+                Domus.Api.deleteTenancy = async () => ({unlinkedPartners: [{id: 3, name: 'Tenant Three'}]});
+                Domus.Api.deletePartner = async id => { removedContacts.push(id); };
+            });
+            for (const keep of [true, false]) {
+                await page.evaluate(() => document.getElementById('domus-tenancy-delete').click());
+                await page.getByRole('dialog').getByRole('button', {name: 'Delete', exact: true}).click();
+                await page.getByText('Tenant Three has no remaining relations.', {exact: false}).waitFor();
+                await page.getByRole('dialog').getByRole('button', {name: keep ? 'Keep contact' : 'Delete', exact: true}).click();
+                await page.waitForFunction(expected => backCalls === expected, keep ? 1 : 2);
+            }
+            assert.deepEqual(await page.evaluate(() => removedContacts), [3]);
             await page.clock.setFixedTime(new Date('2026-10-30T12:00:00Z'));
             // Loaded defaults remain clean; all user dismissal paths protect edits.
             await page.locator('#domus-tenancy-rent-increase').click();

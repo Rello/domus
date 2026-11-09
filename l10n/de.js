@@ -6,6 +6,10 @@
 OC.L10N.register(
     "domus",
     {
+    "This creates a continuation of the existing tenancy from the selected start date. The previous tenancy period ends the day before; its conditions remain unchanged." : "Dies erstellt eine Fortsetzung des bestehenden Mietverhältnisses ab dem gewählten Startdatum. Der bisherige Mietzeitraum endet am Vortag; seine Konditionen bleiben unverändert.",
+    "{name} has no remaining relations. Also delete this Domus contact? A linked Nextcloud account will be kept." : "{name} hat keine weiteren Verknüpfungen. Diesen Domus-Kontakt ebenfalls löschen? Ein verknüpftes Nextcloud-Konto bleibt erhalten.",
+    "Keep contact" : "Kontakt behalten",
+
     "Choose whether to continue without the listed documents before starting the move." : "Wählen Sie vor dem Verschieben, ob Sie ohne die aufgeführten Dokumente fortfahren möchten.",
     "These documents are missing or unreadable:" : "Diese Dokumente fehlen oder sind nicht lesbar:",
     "Continue without these document files" : "Ohne diese Dokumentdateien fortfahren",

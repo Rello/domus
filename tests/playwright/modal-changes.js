@@ -409,7 +409,7 @@ async function main() {
         assert.equal(await page.evaluate(() => window.savedPartner.city), 'Hamburg');
     });
 
-    await test('contact details opens viewing and editing while delete stays secondary', async page => {
+    await test('contact details opens viewing and editing with a directly available delete action', async page => {
         await page.evaluate(() => {
             Domus.Api.get = async () => ({id: 1, name: 'Demo renter', partnerType: 'tenant', phone: '12345', tenancies: []});
             Domus.Api.getDocuments = async () => [];
@@ -422,8 +422,7 @@ async function main() {
         await page.getByRole('dialog', {name: 'Contact details', exact: true}).getByRole('button', {name: 'Edit', exact: true}).click();
         await page.getByRole('dialog', {name: 'Edit contact', exact: true}).waitFor();
         await page.getByRole('dialog', {name: 'Edit contact', exact: true}).getByRole('button', {name: 'Cancel'}).click();
-        assert.equal(await page.getByRole('button', {name: 'Delete', exact: true}).isVisible(), false);
-        await page.getByRole('button', {name: 'More actions'}).click();
+        assert.equal(await page.getByRole('button', {name: 'More actions'}).count(), 0);
         assert.equal(await page.getByRole('button', {name: 'Delete', exact: true}).isVisible(), true);
         assert.equal(await page.locator('#domus-partner-masterdata').count(), 1);
     });

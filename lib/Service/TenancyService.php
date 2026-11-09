@@ -182,11 +182,18 @@ class TenancyService {
         return $updated;
     }
 
-    public function deleteTenancy(int $id, string $userId): void {
+    public function deleteTenancy(int $id, string $userId): array {
         $tenancy = $this->getTenancyForUser($id, $userId);
         $this->partnerRelMapper->deleteForRelation('tenancy', $tenancy->getId(), $userId);
         $this->tenancyMapper->delete($tenancy);
         $this->audit?->record('tenancy.deleted', $id, $userId, $tenancy->getTeamId(), ['partnerRelations' => count($tenancy->getPartnerIds() ?? [])]);
+        $unlinkedPartners = [];
+        foreach ($tenancy->getPartners() ?? [] as $partner) {
+            if ($this->partnerRelMapper->findForPartner($partner->getId(), $userId) === []) {
+                $unlinkedPartners[] = ['id' => $partner->getId(), 'name' => $partner->getName()];
+            }
+        }
+        return $unlinkedPartners;
     }
 
     public function getStatus(Tenancy $tenancy, \DateTimeImmutable $today): string {

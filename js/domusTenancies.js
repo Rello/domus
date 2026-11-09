@@ -401,6 +401,7 @@
                     const wrappedContent = typeof modalOptions.wrapContent === 'function' ? modalOptions.wrapContent(content) : content;
                     const modal = Domus.UI.openModal({
                         title: effectiveTitle,
+                        description: modalOptions.description,
                         content: wrappedContent,
                         size: modalOptions.size
                     });
@@ -717,11 +718,11 @@
                         hero +
                         (canManageTenancies ? '<div class="domus-tenancy-direct-actions">' +
                         Domus.UI.buildQuickActionCard({
-                            iconClass: 'domus-icon-edit', title: t('domus', 'Change conditions'),
+                            iconClass: 'domus-icon-cycle', title: t('domus', 'Change conditions'),
                             id: 'domus-tenancy-change', compact: true
                         }) +
                         (String(tenancy.status).toLowerCase() === 'active' ? Domus.UI.buildQuickActionCard({
-                            iconClass: 'domus-icon-edit', title: t('domus', 'Calculate rent increase'),
+                            iconClass: 'domus-icon-calculator', title: t('domus', 'Calculate rent increase'),
                             id: 'domus-tenancy-rent-increase', compact: true
                         }) : '') +
                         '</div>' : '') +
@@ -766,7 +767,21 @@
                         return;
                     }
                     Domus.Api.deleteTenancy(id)
-                        .then(() => {
+                        .then(async result => {
+                            for (const partner of result?.unlinkedPartners || []) {
+                                const remove = await Domus.UI.confirmAction({
+                                    message: t('domus', '{name} has no remaining relations. Also delete this Domus contact? A linked Nextcloud account will be kept.', { name: partner.name }),
+                                    confirmLabel: t('domus', 'Delete'),
+                                    cancelLabel: t('domus', 'Keep contact')
+                                });
+                                if (remove) {
+                                    try {
+                                        await Domus.Api.deletePartner(partner.id);
+                                    } catch (error) {
+                                        Domus.UI.showNotification(error.message, 'error');
+                                    }
+                                }
+                            }
                             Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: Domus.Role.getTenancyLabels().singular }), 'success');
                             Domus.Router.back('tenancies');
                         })
@@ -1354,6 +1369,7 @@
                 hidePartnerField: true,
                 lockPartnerIds: true,
                 requireAssignmentFields: false,
+                description: t('domus', 'This creates a continuation of the existing tenancy from the selected start date. The previous tenancy period ends the day before; its conditions remain unchanged.'),
                 conditionsRows: 10,
                 useGuidedWorkflow: false
             });

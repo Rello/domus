@@ -11,6 +11,34 @@ use OCP\IL10N;
 use PHPUnit\Framework\TestCase;
 
 class TenancyServiceTest extends TestCase {
+    public function testDeletionOffersOnlyContactsWithoutRemainingRelations(): void {
+        $tenancy = new Tenancy(); $tenancy->setId(1); $tenancy->setUnitId(7);
+        $mapper = $this->createMock(TenancyMapper::class);
+        $mapper->method('findForUser')->willReturn($tenancy);
+        $mapper->expects(self::once())->method('delete')->with($tenancy);
+        $relations = $this->createMock(PartnerRelMapper::class);
+        $partners = $this->createMock(PartnerMapper::class);
+        $rows = []; $contacts = [];
+        foreach ([3, 4] as $id) {
+            $row = new PartnerRel(); $row->setPartnerId($id); $rows[] = $row;
+            $contact = new Partner(); $contact->setId($id); $contact->setName('Contact ' . $id); $contacts[] = $contact;
+        }
+        $relations->method('findForTenancy')->willReturn($rows);
+        $partners->method('findForUserByIds')->willReturn($contacts);
+        $partners->expects(self::never())->method('delete');
+        $deleted = false;
+        $relations->expects(self::once())->method('deleteForRelation')->with('tenancy', 1, 'alice')
+            ->willReturnCallback(function () use (&$deleted) { $deleted = true; });
+        $relations->method('findForPartner')->willReturnCallback(function ($id, $user) use (&$deleted, $rows) {
+            self::assertTrue($deleted);
+            self::assertSame('alice', $user);
+            return $id === 3 ? [] : [$rows[1]];
+        });
+        $service = new TenancyService($mapper, $this->createMock(UnitMapper::class), $partners, $relations,
+            $this->createMock(PermissionService::class), $this->createMock(IL10N::class), $this->createMock(\OCP\IDBConnection::class));
+        self::assertSame([['id' => 3, 'name' => 'Contact 3']], $service->deleteTenancy(1, 'alice'));
+    }
+
     /** @dataProvider replacementFailures */
     public function testReplacementRollsBackAllWrites(bool $conditions, string $failure): void {
         $db = new \OCA\Domus\Tests\Support\TransferDatabase();

@@ -113,6 +113,15 @@ class UnitTransferServiceTest extends TestCase {
 
     public function testSelectedTeamCanImportPersonalArchive(): void {
         $service = $this->service(mapped: true);
+        $this->dependencies['unitFolders']->expects(self::once())->method('initialize')
+            ->with(self::isInstanceOf(Unit::class), 'target')
+            ->willReturnCallback(function (Unit $unit) {
+                $unit->setDocumentPath('Team files/DomusApp/Imported unit');
+                $unit->setDocumentFolderId(42);
+            });
+        $this->dependencies['unitMapper']->expects(self::once())->method('insert')
+            ->with(self::callback(fn(Unit $unit) => $unit->getDocumentFolderId() === 42
+                && $unit->getDocumentPath() === 'Team files/DomusApp/Imported unit'));
         $this->dependencies['connection']->expects(self::once())->method('commit');
         $this->dependencies['audit']->expects(self::once())->method('record')
             ->with('unit.imported', 105, 'target', 'team-a');

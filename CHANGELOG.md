@@ -25,6 +25,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Document dates, multiple tenancy assignments, and assignment indicators.
 
 ### Changed
+- Show a single available header action as an icon-only link instead of hiding it in More actions; keep multiple actions grouped.
+- Clarify tenancy continuations with cyclic arrows and a dialog hint, and use a calculator icon for rent increases.
+- Offer to delete contacts with no remaining relations after deleting a tenancy, while retaining linked Nextcloud accounts.
+- Match the unit's empty documents panel to the compact task panel design.
 - Allow unit JSON imports directly into the selected Team portfolio.
 - Suggest the adjusted rent-index mean, limited by the increase cap, instead of the upper range value in the rent-increase calculator.
 - Show ten lines by default in the Conditions field when changing tenancy conditions.
@@ -38,6 +42,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
+- Store newly created and imported Team units’ documents in dedicated folders inside the assigned Team folder.
 - Remove unused legacy Viewer loading and the missing Chart.js source-map reference from the Domus page.
 - Allow demo content creation in the selected Team while retaining management access checks.
 - Start the document-template picker in the active Team folder’s Templates subfolder.

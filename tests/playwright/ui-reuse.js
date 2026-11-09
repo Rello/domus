@@ -71,6 +71,36 @@ async function main() {
             console.error('FAIL ' + name + '\n' + error.stack);
         } finally { await page.close(); }
     }
+    await test('shared action menu exposes one action directly and keeps multiple actions grouped', async page => {
+        await page.evaluate(() => {
+            const action = (id, label) => Domus.UI.buildIconLabelButton('domus-icon-delete', label, {id, className: 'domus-action-menu-item'});
+            document.getElementById('domus-content').innerHTML =
+                '<div id="empty-actions">' + Domus.UI.buildActionMenu([null, '', false]) + '</div>' +
+                '<div id="single-action">' + Domus.UI.buildActionMenu(['', action('single-delete', 'Delete'), null]) + '</div>' +
+                '<div id="multiple-actions">' + Domus.UI.buildActionMenu([action('multi-delete', 'Delete'), action('multi-edit', 'Edit')]) + '</div>';
+            window.actionClicks = 0;
+            document.getElementById('single-delete').addEventListener('click', () => actionClicks++);
+            Domus.UI.bindActionMenus();
+        });
+        assert.equal(await page.locator('#empty-actions').innerHTML(), '');
+        assert.equal(await page.locator('#single-action .domus-action-menu-toggle').count(), 0);
+        assert.equal(await page.locator('#single-delete.domus-action-menu-item').count(), 0);
+        assert.equal(await page.locator('#single-delete').innerText(), '');
+        assert.equal(await page.locator('#single-delete').getAttribute('title'), 'Delete');
+        assert.equal(await page.locator('#single-delete').evaluate(element => getComputedStyle(element).backgroundColor), 'rgba(0, 0, 0, 0)');
+        await page.getByRole('button', {name: 'Delete', exact: true}).click();
+        assert.equal(await page.evaluate(() => actionClicks), 1);
+        await page.locator('#single-delete').focus();
+        await page.keyboard.press('Enter');
+        assert.equal(await page.evaluate(() => actionClicks), 2);
+        assert.equal(await page.locator('#multi-delete').isVisible(), false);
+        await page.getByRole('button', {name: 'More actions', exact: true}).click();
+        assert.equal(await page.locator('#multi-delete').isVisible(), true);
+        assert.equal(await page.locator('#multi-edit').isVisible(), true);
+        await page.keyboard.press('Escape');
+        assert.equal(await page.locator('#multi-delete').isVisible(), false);
+    });
+
     await test('shared KPI types preserve zero, escape text and handle missing values consistently', async page => {
         const values = await page.evaluate(() => {
             const read = html => {

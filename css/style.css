@@ -4135,6 +4135,13 @@
     outline-offset: 2px;
 }
 
+.domus-unit-landlord-panels .domus-unit-documents-panel:has(.domus-empty-state) {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+}
+
+.domus-unit-documents-panel:has(.domus-empty-state),
 .domus-upcoming-card-shell {
     border: 0;
     box-shadow: none;
@@ -5869,3 +5876,8 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
 .domus-modal-pdf .domus-modal-actions {
     flex-wrap: wrap;
 }
+
+.domus-icon-cycle { background-image: url(../img/cycle.svg); }
+.domus-icon-calculator { background-image: url(../img/calculator.svg); }
+.domus-modal-title-group { flex: 1; min-width: 0; }
+.domus-modal-title-group p { margin: 6px 0 0; font-size: 14px; font-weight: normal; }

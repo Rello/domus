@@ -113,6 +113,7 @@ class UnitService {
         $unit->setNotes($data['notes'] ?? null);
         $unit->setAdditionalNotes($data['additionalNotes'] ?? null);
         $unit->setDocumentPath($this->documentPathService->buildUnitPath($unit->getLabel(), $unit->getUnitNumber(), $propertyName));
+        $this->unitFolders?->initialize($unit, $userId);
         $unit->setCreatedAt($now);
         $unit->setUpdatedAt($now);
 

@@ -862,7 +862,18 @@
             closeBtn.className = 'domus-modal-close domus-icon-only-button';
             closeBtn.setAttribute('aria-label', t('domus', 'Close modal'));
             closeBtn.innerHTML = '&times;';
-            header.appendChild(heading);
+            if (options.description) {
+                const titleGroup = document.createElement('div');
+                titleGroup.className = 'domus-modal-title-group';
+                const description = document.createElement('p');
+                description.id = headingId + '-description';
+                description.textContent = options.description;
+                modal.setAttribute('aria-describedby', description.id);
+                titleGroup.append(heading, description);
+                header.appendChild(titleGroup);
+            } else {
+                header.appendChild(heading);
+            }
             header.appendChild(actionsEl);
             header.appendChild(closeBtn);
 
@@ -1259,8 +1270,19 @@
         }
 
         function buildActionMenu(actions, options = {}) {
-            if (!actions || actions.length === 0) {
+            actions = (actions || []).filter(action => typeof action === 'string' && action.trim() !== '');
+            if (actions.length === 0) {
                 return '';
+            }
+            if (actions.length === 1) {
+                const template = document.createElement('template');
+                template.innerHTML = actions[0];
+                template.content.querySelectorAll('.domus-action-menu-item').forEach(action => {
+                    action.classList.remove('domus-action-menu-item');
+                    action.classList.add('domus-icon-only-link');
+                    action.querySelectorAll('.domus-button-label').forEach(label => label.remove());
+                });
+                return template.innerHTML;
             }
             const label = options.label || t('domus', 'More actions');
             const ariaLabel = options.ariaLabel || t('domus', 'More actions');

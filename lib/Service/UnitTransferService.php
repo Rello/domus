@@ -60,6 +60,7 @@ class UnitTransferService {
         private ActionLogMapper $actionLogMapper,
         private ManagementAccessContext $managementContext,
         private ?AuditService $audit = null,
+        private ?UnitFolderService $unitFolders = null,
     ) {
     }
 
@@ -190,6 +191,7 @@ class UnitTransferService {
             $unit->setNotes($unitData['notes'] ?? null);
             $unit->setAdditionalNotes($unitData['additionalNotes'] ?? null);
             $unit->setDocumentPath($this->documentPathService->buildUnitPath($unit->getLabel(), $unit->getUnitNumber(), $propertyName));
+            $this->unitFolders?->initialize($unit, $userId);
             $unit->setCreatedAt($this->normalizeTimestamp($unitData['createdAt'] ?? null, $now));
             $unit->setUpdatedAt($this->normalizeTimestamp($unitData['updatedAt'] ?? null, $now));
             $unit = $this->unitMapper->insert($unit);

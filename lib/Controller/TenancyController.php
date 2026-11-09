@@ -85,8 +85,8 @@ class TenancyController extends Controller {
 
     #[NoAdminRequired]
     public function destroy(int $id): DataResponse {
-        $this->tenancyService->deleteTenancy($id, $this->getUserId());
-        return new DataResponse([], Http::STATUS_NO_CONTENT);
+        $unlinkedPartners = $this->tenancyService->deleteTenancy($id, $this->getUserId());
+        return new DataResponse(['unlinkedPartners' => $unlinkedPartners]);
     }
 
     private function getUserId(): string {
