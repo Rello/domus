@@ -136,13 +136,16 @@ class BookingMapper extends TeamScopedMapper {
 
         $qb = $this->db->getQueryBuilder();
         $qb->select('year')
-            ->addSelect('account')
+            ->addSelect('account', 'unit_id', 'property_id')
+            ->selectAlias($qb->createFunction('COUNT(*)'), 'booking_count')
             ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
             ->from($this->getTableName())
             ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->in('account', $qb->createNamedParameter($accounts, $qb::PARAM_INT_ARRAY)))
             ->groupBy('year')
             ->addGroupBy('account')
+            ->addGroupBy('unit_id')
+            ->addGroupBy('property_id')
             ->orderBy('year', 'ASC');
 
         if ($propertyId !== null) {

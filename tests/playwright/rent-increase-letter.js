@@ -160,7 +160,7 @@ const {chromium} = require('playwright');
             assert.equal(await page.locator('#rent-selected').inputValue(), '11.00');
             assert.equal(await page.locator('#rent-continue').innerText(), 'Apply changes to tenancy');
             await page.locator('#rent-continue').click();
-            const conditions = page.getByRole('dialog', {name: 'Change conditions', exact: true});
+            const conditions = page.getByRole('dialog', {name: 'Change conditions from date…', exact: true});
             await conditions.locator('[name="startDate"]').waitFor();
             assert.equal(await conditions.locator('[name="startDate"]').inputValue(), '2027-02-01');
             assert.equal(await conditions.locator('[name="baseRent"]').inputValue(), '880');

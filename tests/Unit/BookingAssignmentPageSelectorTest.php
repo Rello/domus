@@ -9,7 +9,7 @@ use OCA\Domus\Service\BookingAssignmentPageSelector;
 use PHPUnit\Framework\TestCase;
 
 class BookingAssignmentPageSelectorTest extends TestCase {
-    public function testSelectsCostsAndContributionsButNotPlanningHeadings(): void {
+    public function testSelectsCostsButNotReservesOrPlanningHeadings(): void {
         $pages = [
             "[DOMUS PDF PAGE 1 ]\nInvitation",
             "[DOMUS PDF PAGE 3 ]\nAbrechnungsperiode 2025\nKosten nichtumlagefähig 500 50",
@@ -18,7 +18,7 @@ class BookingAssignmentPageSelectorTest extends TestCase {
             "[DOMUS PDF PAGE 12 ]\nW I R T S C H A F T S P L A N 2027\numlagefähig\nZuführung Rücklage",
             "[DOMUS PDF PAGE 13 ]\nRücklage Endstand 1000",
         ];
-        self::assertSame(implode("\n", array_slice($pages, 1, 3)), BookingAssignmentPageSelector::select(implode("\n", $pages)));
+        self::assertSame($pages[1], BookingAssignmentPageSelector::select(implode("\n", $pages)));
     }
     public function testRetainsContinuationSubtotalWithRepeatedHeader(): void {
         $text = "[DOMUS PDF PAGE 2 ]\nKosten nicht umlagefähige Beträge\nIhr Betrag\nReparatur 123,75\n"
@@ -35,6 +35,6 @@ class BookingAssignmentPageSelectorTest extends TestCase {
     }
     public function testUmlautAlternativesAndHyphenatedWords(): void {
         $text = "[DOMUS PDF PAGE 2 ]\nNicht umlagefaehige Kosten\n[DOMUS PDF PAGE 4 ]\nZufuehrung Erhaltungsruecklage";
-        self::assertStringContainsString('[DOMUS PDF PAGE 4 ]', BookingAssignmentPageSelector::select($text));
+        self::assertStringNotContainsString('[DOMUS PDF PAGE 4 ]', BookingAssignmentPageSelector::select($text));
     }
 }

@@ -49,12 +49,10 @@ class FillDefaultAccountsRepairStep implements IRepairStep {
         $defaults = [
             [Accounts::ALLOCABLE_MAINTENANCE, 'Maintenance fee (allocable)', 'Nebenkosten (umlagefähig)'],
             ['2100', 'Maintenance fee (non-allocable)', 'Nebenkosten (nicht umlagefähig)'],
-            ['2200', 'Reserve fund allocation', 'Zuführung Rücklage'],
             ['2300', 'Other costs', 'Sonstige Kosten'],
             [Accounts::PROPERTY_TAX, 'Property tax', 'Grundsteuer'],
             ['2500', 'Loan interest', 'Darlehenszinsen'],
             ['2600', 'Depreciation', 'Abschreibung'],
-            ['2700', 'Other tax deductions', 'Sonstige Steuerabzüge'],
             ['3000', 'Total cost', 'Herstellungskosten'],
             ['4000', 'Maintenance1', 'Maintenance1'],
             ['4001', 'Maintenance2', 'Maintenance2'],

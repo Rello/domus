@@ -16,6 +16,7 @@ use OCA\Domus\Db\PartnerMapper;
 use OCA\Domus\Db\PartnerRelMapper;
 use OCA\Domus\Service\TenancyService;
 use OCP\IL10N;
+use OCP\IDBConnection;
 
 class PartnerService {
     public function __construct(
@@ -24,6 +25,7 @@ class PartnerService {
         private TenancyService $tenancyService,
         private PermissionService $permissionService,
         private IL10N $l10n,
+        private IDBConnection $connection,
         private ?AuditService $audit = null,
     ) {
     }
@@ -90,7 +92,35 @@ class PartnerService {
         return $partner;
     }
 
-    public function deletePartner(int $id, string $userId): void {
+    public function getDeletionSummary(int $id, string $userId): array {
+        $partner = $this->getPartnerForUser($id, $userId);
+        $relations = $this->partnerRelMapper->findForPartner($id, $userId);
+        $tenancy = null;
+        if ($partner->getPartnerType() === 'tenant' && count($relations) === 1 && $relations[0]->getType() === 'tenancy') {
+            $linked = $this->tenancyService->getTenancyForUser($relations[0]->getRelationId(), $userId);
+            $tenancy = ['id' => $linked->getId(), 'unitLabel' => $linked->getUnitLabel(), 'startDate' => $linked->getStartDate()];
+        }
+        return ['relationCount' => count($relations), 'tenancy' => $tenancy];
+    }
+
+    public function deletePartner(int $id, string $userId, ?int $tenancyId = null): void {
+        if ($tenancyId !== null) {
+            $this->connection->beginTransaction();
+            try {
+                $summary = $this->getDeletionSummary($id, $userId);
+                if (($summary['tenancy']['id'] ?? null) !== $tenancyId) {
+                    throw new ConflictException($this->l10n->t('Partner is linked and cannot be deleted.'));
+                }
+                $this->tenancyService->deleteTenancy($tenancyId, $userId);
+                // Recheck remaining links before deleting the renter.
+                $this->deletePartner($id, $userId);
+                $this->connection->commit();
+            } catch (\Throwable $e) {
+                $this->connection->rollBack();
+                throw $e;
+            }
+            return;
+        }
         $partner = $this->getPartnerForUser($id, $userId);
         $relations = $this->partnerRelMapper->findForPartner($partner->getId(), $userId);
         if (count($relations) > 0) {

@@ -38,7 +38,7 @@ class TaxReportServiceTest extends TestCase {
             ['unit_id' => 1, 'year' => 2025, 'account' => '9000', 'total' => 543],
             ['unit_id' => 1, 'year' => 2025, 'account' => '9001', 'total' => 20],
             ['unit_id' => 1, 'year' => 2025, 'account' => '2200', 'total' => 500],
-            ['unit_id' => 1, 'year' => 2025, 'account' => '2700', 'total' => 500],
+            ['unit_id' => 1, 'year' => 2025, 'account' => '2300', 'total' => 500],
             ['unit_id' => 1, 'year' => 2024, 'account' => '2300', 'total' => 8000],
             ['unit_id' => 99, 'year' => 2001, 'account' => '2300', 'total' => 999999],
             ['unit_id' => null, 'year' => 2002, 'account' => '2300', 'total' => 999999],
@@ -46,8 +46,8 @@ class TaxReportServiceTest extends TestCase {
         $deps['bookingService']->expects(self::once())->method('listBookings')->with('alice', self::anything())->willReturnCallback(static function ($user, $filter) {
             $rows = $filter['year'] === 2025 ? [
                 [1, 2300, 5900, 'Administration <office>'], [1, 2300, 20, 'Postage'],
-                [1, 2300, -10, 'Refund'], [1, 2700, 500, null],
-                [99, 2300, 99999, 'Foreign unit'], [null, 2700, 99999, 'Unallocated property'],
+                [1, 2300, -10, 'Refund'], [1, 2300, 500, null],
+                [99, 2300, 99999, 'Foreign unit'], [null, 2300, 99999, 'Unallocated property'],
                 [1, 2000, 1509, 'Allocable fee'],
             ] : [[1, 2300, 8000, 'Prior year']];
             return array_map(static function ($row) {

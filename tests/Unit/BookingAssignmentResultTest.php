@@ -15,7 +15,6 @@ class BookingAssignmentResultTest extends TestCase {
         $text = "[DOMUS PDF PAGE 1 ]\nCover\n[DOMUS PDF PAGE 2 ]\n" . $this->text();
         $result = (new BookingAssignmentResult())->normalize(json_encode($data), $text);
         self::assertSame([2], $result['accounts'][0]['pages']);
-        self::assertSame([], $result['accounts'][2]['pages']);
         $data['accounts'][0]['source'] = 'Invented evidence';
         $result = (new BookingAssignmentResult())->normalize(json_encode($data), $text);
         self::assertSame([], $result['accounts'][0]['pages']);
@@ -54,28 +53,25 @@ class BookingAssignmentResultTest extends TestCase {
         return ['period' => ['start' => '2025-01-01', 'end' => '2025-12-31', 'source' => 'Abrechnungsperiode 01.01.2025 - 31.12.2025', 'status' => 'found'], 'accounts' => [
             ['account' => '2000', 'amount' => 1939.39, 'source' => 'umlagefähig Ihr Anteil 1.939,39', 'status' => 'found'],
             ['account' => '2100', 'amount' => 579.48, 'source' => 'nicht umlagefähig Ihr Betrag 579,48', 'status' => 'found'],
-            ['account' => '2200', 'amount' => null, 'source' => '', 'status' => 'not_found'],
         ]];
     }
     private function text(): string {
         return "Abrechnungsperiode 01.01.2025 - 31.12.2025\numlagefähig Ihr Anteil\n1.939,39\nnicht umlagefähig Ihr Betrag 579,48\nWirtschaftsplan 2026 Plan 9999\nIst-Zuführung Ihr Anteil 0,00 Soll 500 Bestand 2000 Entnahme 100 Zinsen 20";
     }
-    public function testSupportedAmountsAndMissingReserveWithFence(): void {
+    public function testSupportedCostAmountsWithFence(): void {
         $result = (new BookingAssignmentResult())->normalize("```json\n" . json_encode($this->fixture()) . "\n```", $this->text());
         self::assertSame(1939.39, $result['accounts'][0]['amount']);
         self::assertSame('found', $result['accounts'][0]['status']);
         self::assertSame('supported', $result['accounts'][0]['confidence']);
         self::assertSame(579.48, $result['accounts'][1]['amount']);
-        self::assertNull($result['accounts'][2]['amount']);
-        self::assertSame('not_found', $result['accounts'][2]['status']);
     }
     public function testExplicitZeroIsPreservedAndLegacyBuildingAmountIsOmitted(): void {
         $data = $this->fixture();
-        $data['accounts'][2] = ['account'=>'2200','amount'=>0,'buildingAmount'=>500,'source'=>'Ist-Zuführung Ihr Anteil 0,00','status'=>'found'];
-        $result = (new BookingAssignmentResult())->normalize(json_encode($data), $this->text());
-        self::assertSame(0, $result['accounts'][2]['amount']);
-        self::assertSame('found', $result['accounts'][2]['status']);
-        self::assertArrayNotHasKey('buildingAmount', $result['accounts'][2]);
+        $data['accounts'][1] = ['account'=>'2100','amount'=>0,'buildingAmount'=>500,'source'=>'nicht umlagefähig Ihr Betrag 0,00','status'=>'found'];
+        $result = (new BookingAssignmentResult())->normalize(json_encode($data), $this->text() . "\nnicht umlagefähig Ihr Betrag 0,00");
+        self::assertSame(0, $result['accounts'][1]['amount']);
+        self::assertSame('found', $result['accounts'][1]['status']);
+        self::assertArrayNotHasKey('buildingAmount', $result['accounts'][1]);
     }
     public function testUnsupportedEvidenceAndAmbiguousPeriodRequireReview(): void {
         $data = $this->fixture(); $data['accounts'][0]['source'] = 'invented';

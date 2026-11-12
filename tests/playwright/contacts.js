@@ -111,6 +111,64 @@ async function main() {
         assert.deepEqual(tableStyles.actionFocus, Array(4).fill(tableStyles.contactFocus));
         assert.deepEqual(tableStyles.rowCursors, ['pointer', 'pointer', 'pointer', 'pointer', 'auto']);
         console.log('PASS contact, booking, tenancy, finance and document tables share primary-action styles');
+
+        await page.evaluate(() => {
+            window.deletionFixture = { summary: { relationCount: 1, tenancy: { id: 12, unitLabel: 'Flat A', startDate: '2026-01-01' } }, calls: [], notices: [], fail: false };
+            Domus.Documents = { renderLatestList: () => '' };
+            Domus.Tenancies = { renderInline: () => '' };
+            Domus.ActionLog = { renderList: () => '', bindCreateButtons: () => {} };
+            Domus.UI.showNotification = (message, type) => deletionFixture.notices.push({ message, type });
+            Domus.Router.back = () => { deletionFixture.back = true; };
+            window.fetch = async (url, options = {}) => {
+                deletionFixture.calls.push({ url, method: options.method });
+                let data = { id: 1, name: 'Tenant contact', partnerType: 'tenant', tenancies: [] };
+                let status = 200;
+                if (url.endsWith('/deletion-summary')) data = deletionFixture.summary;
+                if (options.method === 'DELETE') {
+                    data = deletionFixture.fail ? { message: 'Links changed. Please try again.' } : {};
+                    status = deletionFixture.fail ? 409 : 200;
+                }
+                return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
+            };
+            Domus.Partners.renderDetail(1);
+        });
+        const remove = page.locator('#domus-partner-delete');
+        const dialog = page.getByRole('dialog');
+        await remove.click();
+        await dialog.getByRole('button', { name: 'Delete renter and tenancy', exact: true }).waitFor();
+        assert.match(await dialog.innerText(), /Flat A · 2026-01-01/);
+        assert.match(await dialog.innerText(), /Other contacts will remain/);
+        await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+        assert.equal(await page.evaluate(() => deletionFixture.calls.filter(call => call.method === 'DELETE').length), 0);
+        await remove.click();
+        await dialog.getByRole('button', { name: 'Delete renter and tenancy', exact: true }).click();
+        await page.waitForFunction(() => deletionFixture.back);
+        assert.deepEqual(await page.evaluate(() => deletionFixture.calls.filter(call => call.method === 'DELETE').map(call => call.url)), ['/apps/domus/api/partners/1?tenancyId=12']);
+        console.log('PASS renter deletion confirms the single tenancy and cancellation performs no delete');
+
+        await page.evaluate(() => { deletionFixture.calls = []; deletionFixture.notices = []; deletionFixture.back = false; deletionFixture.fail = true; });
+        await remove.click();
+        await dialog.getByRole('button', { name: 'Delete renter and tenancy', exact: true }).click();
+        await page.waitForFunction(() => deletionFixture.notices.some(notice => notice.type === 'error'));
+        assert.equal(await page.evaluate(() => deletionFixture.back), false);
+        assert.equal(await remove.isEnabled(), true);
+        console.log('PASS changed dependencies show the server error and allow retry');
+
+        await page.evaluate(() => { deletionFixture.summary = { relationCount: 2, tenancy: null }; deletionFixture.calls = []; deletionFixture.notices = []; });
+        await remove.click();
+        await page.waitForFunction(() => deletionFixture.notices.length > 0);
+        assert.equal(await dialog.count(), 0);
+        assert.equal(await page.evaluate(() => deletionFixture.calls.filter(call => call.method === 'DELETE').length), 0);
+        assert.match(await page.evaluate(() => deletionFixture.notices[0].message), /linked and cannot be deleted/);
+        console.log('PASS additional dependencies block renter deletion without a cascade offer');
+
+        await page.evaluate(() => { deletionFixture.summary = { relationCount: 0, tenancy: null }; deletionFixture.calls = []; deletionFixture.fail = false; });
+        await remove.click();
+        await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+        await page.waitForFunction(() => deletionFixture.back);
+        assert.deepEqual(await page.evaluate(() => deletionFixture.calls.filter(call => call.method === 'DELETE').map(call => call.url)), ['/apps/domus/api/partners/1']);
+        assert.deepEqual(errors, []);
+        console.log('PASS unlinked contacts retain the normal deletion flow');
     } finally {
         await browser.close();
     }

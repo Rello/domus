@@ -64,8 +64,13 @@ class PartnerController extends Controller {
     }
 
     #[NoAdminRequired]
-    public function destroy(int $id): DataResponse {
-        $this->partnerService->deletePartner($id, $this->getUserId());
+    public function deletionSummary(int $id): DataResponse {
+        return new DataResponse($this->partnerService->getDeletionSummary($id, $this->getUserId()));
+    }
+
+    #[NoAdminRequired]
+    public function destroy(int $id, ?int $tenancyId = null): DataResponse {
+        $this->partnerService->deletePartner($id, $this->getUserId(), $tenancyId);
         return new DataResponse([], Http::STATUS_NO_CONTENT);
     }
 

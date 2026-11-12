@@ -13,6 +13,7 @@
     --domus-kpi-tile-background: #ffffff;
     --domus-kpi-detail-background: #ffffff;
     --domus-panel-background: var(--color-main-background);
+    --domus-completion-color: #51885f;
     --domus-nextcloud-body-background: #0f6b2f;
     --domus-table-header-color: #7b8794;
     --domus-table-separator-color: #e5e7eb;
@@ -2836,7 +2837,7 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: conic-gradient(var(--color-element-success) 0 var(--domus-completion-progress, 0%), var(--color-border) var(--domus-completion-progress, 0%) 100%);
+    background: conic-gradient(var(--domus-completion-color) 0 var(--domus-completion-progress, 0%), var(--color-border) var(--domus-completion-progress, 0%) 100%);
     display: inline-flex;
     align-items: center;
     justify-content: center;

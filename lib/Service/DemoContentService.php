@@ -350,12 +350,6 @@ class DemoContentService {
                 'description' => $this->l10n->t('Elevator service contract'),
             ],
             [
-                'account' => 2200,
-                'monthDay' => '03-05',
-                'baseAmount' => 135.00,
-                'description' => $this->l10n->t('Reserve fund contribution'),
-            ],
-            [
                 'account' => 2300,
                 'monthDay' => '04-08',
                 'baseAmount' => 70.00,
@@ -374,7 +368,7 @@ class DemoContentService {
                 'description' => $this->l10n->t('Annual depreciation booking'),
             ],
             [
-                'account' => 2700,
+                'account' => 2300,
                 'monthDay' => '07-18',
                 'baseAmount' => 50.00,
                 'description' => $this->l10n->t('Tax advisor fees'),

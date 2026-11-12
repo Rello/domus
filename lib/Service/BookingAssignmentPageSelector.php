@@ -24,14 +24,12 @@ class BookingAssignmentPageSelector {
                 continue;
             }
             $costs = preg_match('/umlagef(?:ä|ae)hig/u', $normalized);
-            $reserve = preg_match('/r(?:ü|ue)cklag/u', $normalized)
-                && preg_match('/zufuhr|zuf(?:ü|ue)hrung|r(?:ü|ue)cklagenzahlungen/u', $normalized);
             // Keep one following table page even if it omits the category keyword.
             $continuation = $previousMatched
                 && preg_match('/Ihr\s+(?:Betrag|Beitrag|Anteil)/iu', $page)
                 && preg_match('/\d+,\d{2}/u', $page);
-            if ($costs || $reserve || $continuation) $selected[] = rtrim($page);
-            $previousMatched = (bool)($costs || $reserve);
+            if ($costs || $continuation) $selected[] = rtrim($page);
+            $previousMatched = (bool)($costs);
         }
         // Unknown terminology must not silently remove all document evidence.
         return $selected ? implode("\n", $selected) : $text;

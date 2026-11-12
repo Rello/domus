@@ -282,6 +282,7 @@
                                 partnerLabel || Domus.Utils.escapeHtml(''),
                                 Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(tn.baseRent) || '—'),
                                 Domus.Utils.escapeHtml(formatRentPerSquareMeter(tn)),
+                                Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(tn.serviceCharge) || '—'),
                                 Domus.Utils.escapeHtml(formatStatusLabel(tn.status))
                             ],
                             dataset: { navigate: 'tenancyDetail', args: tn.id }
@@ -289,7 +290,7 @@
                     });
                     const hasRows = rows.length > 0;
                     const table = Domus.UI.buildTable([
-                        t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Base rent'), t('domus', 'Base rent per m²'), t('domus', 'Status')
+                        t('domus', 'Unit'), t('domus', 'Partner'), t('domus', 'Base rent'), t('domus', 'Base rent per m²'), t('domus', 'Service charge'), t('domus', 'Status')
                     ], rows);
                     const emptyState = Domus.UI.buildEmptyStateAction(
                         t('domus', 'There is no {entity} yet. Create the first one', {
@@ -329,7 +330,7 @@
             if (!hideRentPerSquareMeter) {
                 headers.push(t('domus', 'Base rent per m²'));
             }
-            headers.push(t('domus', 'Status'), t('domus', 'Period'));
+            headers.push(t('domus', 'Service charge'), t('domus', 'Status'), t('domus', 'Period'));
 
             const rows = sortByStartDate(tenancies).map(tn => {
                 const navigation = options.navigation ? options.navigation(tn) : { navigate: 'tenancyDetail', args: tn.id };
@@ -353,6 +354,7 @@
                     cells.push(Domus.Utils.escapeHtml(formatRentPerSquareMeter(tn)));
                 }
                 cells.push(
+                    Domus.Utils.escapeHtml(Domus.Utils.formatCurrency(tn.serviceCharge) || '—'),
                     hideUnitColumn && hidePartnersColumn ? buildTenancyLink(tn, statusContent, options.navigation ? navigation : null) : statusContent,
                     Domus.Utils.escapeHtml([Domus.Utils.formatDate(tn.startDate), tn.endDate ? Domus.Utils.formatDate(tn.endDate) : t('domus', 'Ongoing')].filter(Boolean).join(' – '))
                 );
@@ -433,8 +435,19 @@
                 hideField: true,
                 disabled: true
             };
-            Domus.Api.getPartners(partnerType)
-                .then(partners => {
+            Promise.all([
+                Domus.Api.getPartners(partnerType),
+                partnerType === 'tenant' && prefill?.unitId ? Domus.Api.getUnits() : Promise.resolve([])
+            ])
+                .then(([partners, units]) => {
+                    const unit = (units || []).find(unit => String(unit.id) === String(prefill?.unitId));
+                    const newPartner = {
+                        partnerType,
+                        street: unit?.street || '',
+                        zip: unit?.zip || '',
+                        city: unit?.city || '',
+                        country: unit?.country || ''
+                    };
                     const existingPartners = (partners || []).filter(partner => partner.partnerType === partnerType);
                     const existingSelect = '<select name="existingPartnerId">' +
                         '<option value="">' + Domus.Utils.escapeHtml(t('domus', 'Create new {partnerType}', { partnerType: partnerTypeLabel })) + '</option>' +
@@ -445,7 +458,7 @@
                         content: existingSelect
                     });
                     const fields = Domus.Partners.buildPartnerFields(
-                        { partnerType },
+                        newPartner,
                         {
                             mode: 'edit',
                             rowClassName: 'domus-guided-partner-field',
@@ -496,11 +509,19 @@
                 }
             }
 
+            let newPartnerDraft = {};
+            let showingExistingPartner = false;
+
             function toggleFields() {
                 const selectedId = String(existingSelect?.value || '');
                 const selectedPartner = existingPartnersById[selectedId];
                 const hasExisting = Boolean(selectedPartner);
 
+                if (!showingExistingPartner) {
+                    partnerFields.forEach(field => {
+                        if (field.name) newPartnerDraft[field.name] = field.value;
+                    });
+                }
                 if (hasExisting) {
                     setFieldValue('name', selectedPartner.name);
                     setFieldValue('street', selectedPartner.street);
@@ -509,7 +530,10 @@
                     setFieldValue('country', selectedPartner.country);
                     setFieldValue('email', selectedPartner.email);
                     setFieldValue('phone', selectedPartner.phone);
+                } else if (showingExistingPartner) {
+                    Object.entries(newPartnerDraft).forEach(([name, value]) => setFieldValue(name, value));
                 }
+                showingExistingPartner = hasExisting;
 
                 partnerFields.forEach(field => {
                     if (hasExisting) {
@@ -718,7 +742,11 @@
                         hero +
                         (canManageTenancies ? '<div class="domus-tenancy-direct-actions">' +
                         Domus.UI.buildQuickActionCard({
-                            iconClass: 'domus-icon-cycle', title: t('domus', 'Change conditions'),
+                            iconClass: 'domus-icon-edit', title: t('domus', 'Edit tenancy'),
+                            id: 'domus-tenancy-edit', compact: true
+                        }) +
+                        Domus.UI.buildQuickActionCard({
+                            iconClass: 'domus-icon-cycle', title: t('domus', 'Change conditions from date…'),
                             id: 'domus-tenancy-change', compact: true
                         }) +
                         (String(tenancy.status).toLowerCase() === 'active' ? Domus.UI.buildQuickActionCard({
@@ -754,6 +782,7 @@
         }
 
         function bindDetailActions(id, tenancy) {
+            document.getElementById('domus-tenancy-edit')?.addEventListener('click', () => openTenancyModal(id, tenancy, 'edit'));
             document.getElementById('domus-tenancy-details')?.addEventListener('click', event => {
                 event.preventDefault();
                 openTenancyModal(id, tenancy, 'view');
@@ -887,6 +916,7 @@
 
                     modal = Domus.UI.openModal({
                         title: mode === 'view' ? t('domus', 'Tenancy details') : t('domus', 'Edit {entity}', { entity: Domus.Role.getTenancyLabels().singular }),
+                        description: mode === 'edit' ? t('domus', 'Updates this tenancy directly. No new tenancy period is created.') : undefined,
                         content: buildTenancyForm(unitOptions, partnerOptions, tenancy, { mode, hideFinancialFields: Domus.Permission.hideTenancyFinancialFields() }),
                         headerActions
                     });
@@ -1364,7 +1394,7 @@
             openCreateModal(prefill, created => {
                 const targetId = created?.id || tenancy.id;
                 renderDetail(targetId);
-            }, data => Domus.Api.changeTenancyConditions(tenancy.id, data), t('domus', 'Change conditions'), t('domus', 'Conditions changed.'), {
+            }, data => Domus.Api.changeTenancyConditions(tenancy.id, data), t('domus', 'Change conditions from date…'), t('domus', 'Conditions changed.'), {
                 hideUnitField: true,
                 hidePartnerField: true,
                 lockPartnerIds: true,

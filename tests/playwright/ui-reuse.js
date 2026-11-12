@@ -95,10 +95,16 @@ async function main() {
         assert.equal(await page.evaluate(() => actionClicks), 2);
         assert.equal(await page.locator('#multi-delete').isVisible(), false);
         await page.getByRole('button', {name: 'More actions', exact: true}).click();
+        assert.equal(await page.getByRole('menu').count(), 0);
+        assert.equal(await page.getByRole('button', {name: 'More actions', exact: true}).getAttribute('aria-haspopup'), null);
         assert.equal(await page.locator('#multi-delete').isVisible(), true);
         assert.equal(await page.locator('#multi-edit').isVisible(), true);
+        await page.keyboard.press('Tab');
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'multi-delete');
         await page.keyboard.press('Escape');
         assert.equal(await page.locator('#multi-delete').isVisible(), false);
+        assert.equal(await page.evaluate(() => document.activeElement.classList.contains('domus-action-menu-toggle')), true);
+        assert.equal(await page.getByRole('button', {name: 'More actions', exact: true}).getAttribute('aria-expanded'), 'false');
     });
 
     await test('shared KPI types preserve zero, escape text and handle missing values consistently', async page => {

@@ -138,11 +138,11 @@ class FinancialDomainTest extends TestCase {
     }
 
     public function testInlineRevenueRulesCalculateFinancialValues(): void {
-        $metrics = StatisticCalculations::calculateValues(StatisticCalculations::unitRevenue(), ['1000' => 12000, '2100' => 1000, '2300' => 500, '2500' => 1000, '2600' => 2000, '2700' => 500, '3000' => 100000, 'taxRate' => 0.3]);
-        self::assertSame(9500.0, $metrics['grossProfit']);
+        $metrics = StatisticCalculations::calculateValues(StatisticCalculations::unitRevenue(), ['1000' => 12000, '2100' => 1000, '2300' => 1000, '2500' => 1000, '2600' => 2000, '3000' => 100000, 'taxRate' => 0.3]);
+        self::assertSame(9000.0, $metrics['grossProfit']);
         self::assertSame(2100.0, $metrics['estimatedTaxes']);
-        self::assertSame(7400.0, $metrics['netProfit']);
-        self::assertSame(0.074, $metrics['netRentability']);
+        self::assertSame(6900.0, $metrics['netProfit']);
+        self::assertSame(0.069, $metrics['netRentability']);
     }
 
     public function testStatisticsRoundOnlyDisplayedValues(): void {

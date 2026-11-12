@@ -80,6 +80,7 @@ return [
 
         // Partner
         ['name' => 'Partner#index', 'url' => 'api/partners', 'verb' => 'GET'],
+        ['name' => 'Partner#deletionSummary', 'url' => 'api/partners/{id}/deletion-summary', 'verb' => 'GET'],
         ['name' => 'Partner#show', 'url' => 'api/partners/{id}', 'verb' => 'GET'],
         ['name' => 'Partner#create', 'url' => 'api/partners', 'verb' => 'POST'],
         ['name' => 'Partner#update', 'url' => 'api/partners/{id}', 'verb' => 'PUT'],

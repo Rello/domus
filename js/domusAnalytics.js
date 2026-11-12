@@ -16,7 +16,7 @@
         let units = [];
         let properties = [];
         let stateRole = null;
-        let state = { preset: 'annual', year: '', unitId: '', propertyId: '', accounts: [], search: '', metric: 'baseRent' };
+        let state = { preset: 'annual', year: '', unitId: '', propertyId: '', accounts: [], account: '', search: '', metric: 'baseRent' };
         const escape = value => Domus.Utils.escapeHtml(String(value));
         const normalize = value => String(value).replace(/^0+/, '') || '0';
         const presets = () => [
@@ -32,13 +32,13 @@
             { value: 'acquisitionCosts', label: t('domus', 'Total acquisition costs') }
         ];
         const option = (value, label) => '<option value="' + escape(value) + '">' + escape(label) + '</option>';
-        const filter = (id, label, html) => '<label class="domus-analytics-filter"><span>' + escape(label) + '</span><select id="domus-analytics-' + id + '">' + html + '</select></label>';
+        const filter = (id, label, html) => '<label class="domus-analytics-filter"><span id="domus-analytics-' + id + '-label">' + escape(label) + '</span><select aria-labelledby="domus-analytics-' + id + '-label" id="domus-analytics-' + id + '">' + html + '</select></label>';
         const element = id => document.getElementById('domus-analytics-' + id);
 
         function render() {
             const role = Domus.Role.isBuildingMgmtView() ? 'management' : 'landlord';
             if (stateRole !== role) {
-                state = { preset: 'annual', year: '', unitId: '', propertyId: '', accounts: [], search: '', metric: 'baseRent' };
+                state = { preset: 'annual', year: '', unitId: '', propertyId: '', accounts: [], account: '', search: '', metric: 'baseRent' };
                 stateRole = role;
             }
             view = Domus.Router.beginView();
@@ -50,6 +50,7 @@
             Domus.UI.renderContent(buildLayout());
             Domus.UI.onContentDispose(destroyChart);
             element('preset').value = state.preset;
+            element('account').value = state.account;
             element('search').value = state.search;
             bindControls();
             showCustomAccounts();
@@ -60,6 +61,7 @@
             return '<div class="domus-analytics-layout"><div class="domus-analytics-panel">' +
                 filter('preset', t('domus', 'View'), presets().map(p => option(p.value, p.label)).join('')) +
                 (Domus.Role.isBuildingMgmtView() ? filter('property', t('domus', 'Property'), option('', t('domus', 'All properties'))) : '') +
+                filter('account', t('domus', 'Account'), option('', t('domus', 'All accounts')) + [...new Map(options.map(o => [normalize(o.value), o])).values()].map(o => option(normalize(o.value), o.label)).join('')) +
                 filter('unit', t('domus', 'Unit'), option('', t('domus', 'All units'))) +
                 filter('year', t('domus', 'Year'), option('', t('domus', 'Latest year with bookings'))) +
                 '<div id="domus-analytics-portfolio-controls" hidden>' +
@@ -80,6 +82,10 @@
             element('preset').addEventListener('change', event => {
                 state.preset = event.target.value;
                 showCustomAccounts();
+                updateChart();
+            });
+            element('account').addEventListener('change', event => {
+                state.account = event.target.value;
                 updateChart();
             });
             element('year').addEventListener('change', event => {
@@ -112,6 +118,7 @@
         }
 
         function showCustomAccounts() {
+            element('account').closest('label').hidden = state.preset === 'portfolio' || state.preset === 'custom';
             element('custom').hidden = state.preset !== 'custom';
             element('portfolio-controls').hidden = state.preset !== 'portfolio';
             element('values').classList.toggle('domus-analytics-performance', state.preset === 'portfolio');
@@ -179,7 +186,7 @@
         }
 
         function getSelectedAccounts() {
-            const selected = state.preset === 'custom' ? options.filter(o => state.accounts.includes(normalize(o.value))) : options;
+            const selected = state.preset === 'custom' ? options.filter(o => state.accounts.includes(normalize(o.value))) : options.filter(o => !state.account || normalize(o.value) === state.account);
             // Totals are direct postings, not rollups. Request each number exactly once.
             return [...new Map(selected.map(o => [normalize(o.value), { number: normalize(o.value), label: o.label }])).values()];
         }
@@ -326,7 +333,8 @@
             const accounts = getSelectedAccounts();
             const rows = accounts.map(account => ({ ...account, values: shownYears.map(year => Number(data.series[account.number]?.[years.indexOf(year)] || 0)) }));
             // Hide inactive accounts in presets; retain explicit custom selections, even at zero.
-            const visible = state.preset === 'custom' ? rows : rows.filter(row => row.values.some(value => value !== 0));
+            const visible = state.preset === 'custom' ? rows : rows.filter(row => row.values.some(value => value !== 0) ||
+                (data.breakdown || []).some(item => String(item.account) === row.number && shownYears.includes(String(item.year)) && item.bookingCount > 0));
             const values = element('values');
             values.innerHTML = Domus.UI.buildTable(
                 [t('domus', 'Account'), ...shownYears],
@@ -344,6 +352,7 @@
                     ]
                 }
             );
+            drawBookingDetails(shownYears, accounts);
             element('status').textContent = visible.length ? '' : t('domus', 'Recorded bookings have a net total of zero for this period.');
             if (!visible.length) return;
             if (!window.Chart) {
@@ -364,6 +373,38 @@
                 },
                 options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: !annual, position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
             });
+        }
+
+        function drawBookingDetails(shownYears, accounts) {
+            const labels = new Map(accounts.map(account => [account.number, account.label]));
+            const rows = (data.breakdown || []).filter(row => shownYears.includes(String(row.year)) && labels.has(String(row.account)));
+            if (!rows.length) return;
+            const currency = value => escape(Domus.Utils.formatCurrency(value));
+            const details = shownYears.map(year => {
+                const groups = new Map();
+                rows.filter(row => String(row.year) === year).forEach(row => {
+                    // Keep property postings separate: they must not be attributed to a unit.
+                    const key = row.unitId ? 'unit:' + row.unitId : 'property:' + (row.propertyId || '');
+                    if (!groups.has(key)) groups.set(key, []);
+                    groups.get(key).push(row);
+                });
+                if (!groups.size) return '';
+                return '<details><summary>' + escape(year) + '</summary>' + [...groups.values()].map(group => {
+                    const first = group[0];
+                    const unit = units.find(item => String(item.id) === String(first.unitId));
+                    const property = properties.find(item => String(item.id) === String(first.propertyId));
+                    const label = first.unitId ? (unit?.label || unit?.name || String(first.unitId)) :
+                        t('domus', 'Property bookings without a unit') + (property ? ' · ' + property.name : '');
+                    const total = group.reduce((sum, row) => sum + Number(row.total), 0);
+                    return '<details><summary>' + escape(label) + ' · ' + currency(total) + '</summary>' +
+                        Domus.UI.buildTable([t('domus', 'Account'), t('domus', 'Amount'), t('domus', 'Bookings')], group.map(row => ({
+                            cells: [{content: escape(labels.get(String(row.account))), rowHeader: true}, currency(row.total), escape(row.bookingCount)],
+                            ...(first.unitId ? {dataset: {navigate: 'unitDetail', args: first.unitId}} : {})
+                        })), {wrapPanel: false, caption: label + ' · ' + year}) + '</details>';
+                }).join('') + '</details>';
+            }).join('');
+            element('values').insertAdjacentHTML('beforeend', '<details><summary>' + escape(t('domus', 'Details by unit and year')) + '</summary>' + details + '</details>');
+            Domus.UI.bindRowNavigation();
         }
 
         function clearResults() {

@@ -217,7 +217,7 @@ const {chromium} = require('playwright');
             await selected.fill('9');
             await page.locator('#rent-service-selected').fill('160');
             await page.locator('#rent-continue').click();
-            const conditions = page.getByRole('dialog', {name: 'Change conditions', exact: true});
+            const conditions = page.getByRole('dialog', {name: 'Change conditions from date…', exact: true});
             await conditions.waitFor();
             assert.equal(await conditions.locator('[name="baseRent"]').inputValue(), '720');
             assert.equal(await conditions.locator('[name="serviceCharge"]').inputValue(), '160');

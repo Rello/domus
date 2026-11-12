@@ -25,7 +25,7 @@ const { chromium } = require('playwright');
         await page.evaluate(() => {
             Domus.Role.setRoleInfo({availableRoles: ['buildingMgmt'], currentRole: 'buildingMgmt'});
             document.getElementById('app-content').dataset.accounts = JSON.stringify([]);
-            Domus.Accounts.toOptions = () => [{value:'02000',label:'2000 Parent'}, {value:'2000',label:'2000 Duplicate'}, {value:'2001',label:'— 2001 Child'}, {value:'4000',label:'4000 Other'}];
+            Domus.Accounts.toOptions = () => [{value:'02000',label:'2000 Parent'}, {value:'2000',label:'2000 Duplicate'}, {value:'2001',label:'— 2001 Child'}, {value:'4000',label:'4000 Other'}, {value:'2300',label:'2300 Other costs'}];
             window.calls = [];
             window.fail = false;
             window.empty = false;
@@ -35,16 +35,42 @@ const { chromium } = require('playwright');
                 calls.push({accounts,filters});
                 if (window.fail) throw new Error('fixture failure');
                 if (window.empty) return {years:[],series:{}};
-                return {years:[2024,2025],series:{2000:[10,100],2001:[20,200],4000:[0,0]}};
+                return {years:[2024,2025],series:{2000:[10,100],2001:[20,200],4000:[0,0],2300:[0,0]},breakdown: accounts.includes('2300') ? [
+                    {year:2025,account:'2300',unitId:1,propertyId:2,total:75,bookingCount:1},
+                    {year:2025,account:'2300',unitId:3,propertyId:4,total:-75,bookingCount:1},
+                    {year:2025,account:'2300',unitId:null,propertyId:2,total:0,bookingCount:2}
+                ] : []};
             };
             Domus.Analytics.render();
         });
         await page.locator('#domus-analytics-values tbody tr').first().waitFor();
-        assert.deepEqual(await page.evaluate(() => calls[0].accounts), ['2000','2001','4000']);
+        assert.deepEqual(await page.evaluate(() => calls[0].accounts), ['2000','2001','4000','2300']);
         assert.match(await page.locator('#domus-analytics-values tfoot').innerText(), /300/);
         assert.equal(await page.locator('#domus-analytics-year').inputValue(), '2025');
         assert.equal(await page.locator('canvas').isVisible(), true);
         console.log('PASS default latest-year chart, normalized accounts and parent/child totals');
+        await page.getByLabel('Account', {exact:true}).selectOption('2300');
+        await page.waitForFunction(() => calls.at(-1).accounts.length === 1 && document.querySelector('#domus-analytics-values details'));
+        assert.deepEqual(await page.evaluate(() => calls.at(-1).accounts), ['2300']);
+        await page.getByText('Details by unit and year', {exact:true}).click();
+        await page.locator('#domus-analytics-values > details > details > summary').click();
+        const unitDetails = page.locator('#domus-analytics-values > details > details > details');
+        assert.equal(await unitDetails.count(), 3);
+        await unitDetails.nth(0).locator('summary').click();
+        assert.match(await unitDetails.nth(0).innerText(), /Unit one/);
+        assert.match(await unitDetails.nth(0).innerText(), /75/);
+        assert.match(await unitDetails.nth(0).locator('tbody th a').getAttribute('href'), /unit/);
+        await unitDetails.nth(2).locator('summary').click();
+        assert.match(await unitDetails.nth(2).innerText(), /Property bookings without a unit/);
+        assert.equal(await unitDetails.nth(2).locator('tbody td').last().innerText(), '2');
+        await page.setViewportSize({width:390,height:844});
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        await page.setViewportSize({width:1280,height:900});
+        await page.evaluate(() => {Domus.UI.renderContent('Other page'); Domus.Analytics.render();});
+        await page.locator('#domus-analytics-values > details').waitFor();
+        assert.equal(await page.getByLabel('Account', {exact:true}).inputValue(), '2300');
+        await page.getByLabel('Account', {exact:true}).selectOption('');
+        console.log('PASS account filtering, zero-net activity, year/unit drilldowns, property postings and filter continuity');
         await page.locator('#domus-analytics-preset').selectOption('trend');
         await page.waitForFunction(() => document.querySelector('#domus-analytics-values thead').textContent.includes('2024'));
         assert.match(await page.locator('#domus-analytics-values tfoot').innerText(), /30/);

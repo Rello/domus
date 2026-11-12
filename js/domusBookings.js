@@ -36,14 +36,14 @@
         }
 
         function buildBookingEditButton(booking) {
-            const date = Domus.Utils.escapeHtml(Domus.Utils.formatDate(booking.date));
+            const date = Domus.Utils.formatDate(booking.date);
             if (!booking.id) {
-                return date;
+                return Domus.Utils.escapeHtml(date);
             }
             const label = t('domus', 'Edit {entity}', { entity: t('domus', 'Booking') }) + ' #' + booking.id;
             return '<button type="button" class="domus-table-action-button" data-domus-booking-edit aria-label="' +
-                Domus.Utils.escapeHtml(label) + '">' +
-                date + '</button>';
+                Domus.Utils.escapeHtml(label + ': ' + date) + '">' +
+                Domus.Utils.escapeHtml(date) + '</button>';
         }
 
         function buildBookingListAccountCell(booking) {
@@ -2154,6 +2154,7 @@
             const accountSelect = document.createElement('select');
             accountSelect.name = 'account[]';
             accountSelect.dataset.role = 'account';
+            accountSelect.setAttribute('aria-label', t('domus', 'Account'));
             accountOptions.forEach(opt => {
                 const option = document.createElement('option');
                 option.value = opt.value;
@@ -2176,6 +2177,7 @@
             amountInput.step = '0.01';
             amountInput.name = 'amount[]';
             amountInput.dataset.role = 'amount';
+            amountInput.setAttribute('aria-label', t('domus', 'Amount'));
             if (entry.amount || entry.amount === 0) {
                 amountInput.value = entry.amount;
                 if (entry.isDefaultAmount) {

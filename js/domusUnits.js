@@ -920,7 +920,7 @@
                         return {
                             content: '<span class="domus-statistics-year-value">' + yearContent + '</span>' +
                                 '<button type="button" class="domus-badge domus-badge-warning domus-badge-provisional" data-year-status-open="1" aria-label="' +
-                                Domus.Utils.escapeHtml(t('domus', 'Close or open year') + ' ' + formatted.content) + '">' +
+                                Domus.Utils.escapeHtml(t('domus', 'Provisional') + ': ' + t('domus', 'Close or open year') + ' ' + formatted.content) + '">' +
                                 badgeLabel +
                                 '</button>',
                             alignRight: false,

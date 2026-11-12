@@ -8,6 +8,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ## Unreleased
 
 ### Added
+- Filter booking analytics by account and expand year/unit details, including booking counts and zero-net activity.
+- Show service charges in tenancy lists alongside base rent.
 - Separate multiline unit notes for meter numbers and other master data, preserved on import/export and omitted from the detail header.
 - Read linked PDFs in a Domus overlay with download and Open in Nextcloud actions.
 - Generate rent-increase letters from Personal and Team Word templates or a German Markdown fallback, with calculated rents and an effective date carried into tenancy changes.
@@ -25,6 +27,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Document dates, multiple tenancy assignments, and assignment indicators.
 
 ### Changed
+- Make tenancy corrections accessible through an Edit tenancy action and clarify the separate dated condition-change workflow.
+- Use a muted green with improved contrast for completion indicator circles.
+- Offer to delete a renter together with their tenancy when that tenancy is their only relation, with confirmation and atomic deletion.
+- Prefill new tenants’ addresses from the selected unit when creating a tenancy, while keeping the address editable.
+- Migrate bookings from account 2700 to 2300 while preserving linked documents and activities, then remove account 2700; remove legacy account 2200 and its bookings from setup and AI previews.
 - Show a single available header action as an icon-only link instead of hiding it in More actions; keep multiple actions grouped.
 - Clarify tenancy continuations with cyclic arrows and a dialog hint, and use a calculator icon for rent increases.
 - Offer to delete contacts with no remaining relations after deleting a tenancy, while retaining linked Nextcloud accounts.
@@ -42,6 +49,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
 
 ### Fixed
+- Label booking account and amount fields, preserve visible date and year-status text in accessible names, and correct action disclosure semantics and Escape focus return.
 - Store newly created and imported Team units’ documents in dedicated folders inside the assigned Team folder.
 - Remove unused legacy Viewer loading and the missing Chart.js source-map reference from the Domus page.
 - Allow demo content creation in the selected Team while retaining management access checks.

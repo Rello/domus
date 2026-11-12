@@ -40,7 +40,7 @@ async function setup(page) {
         Domus.Api.getActionLogs = async () => [];
         Domus.Api.getDistributions = async () => [{ id: 2, name: 'Area', type: 'area' }];
         Domus.Api.createBooking = async () => ({ id: 1 });
-        Domus.Accounts.label = number => ({2000:'Allocatable costs',2100:'Non-allocatable costs',2200:'Reserve contribution'}[number] || '');
+        Domus.Accounts.label = number => ({2000:'Allocatable costs',2100:'Non-allocatable costs'}[number] || '');
         Domus.Accounts.toOptions = () => [{ value: '', label: 'Select account' }, { value: '2000', label: 'Test account' }];
         window.openBooking = (defaults = {}, options = {}) => Domus.Bookings.openCreateModal(defaults, () => {}, options);
         document.querySelector('#launcher').addEventListener('click', () => window.openBooking());
@@ -186,8 +186,7 @@ async function main() {
             if (route.request().method() === 'DELETE') return route.fulfill({json:{}});
             return route.fulfill({json:{status:'complete',result:{period:{start:'2025-01-01',end:'2025-12-31'},accounts:[
                 {account:'2000',amount:1939.39,confidence:'low',pages:[1]},
-                {account:'2100',amount:0,confidence:'supported',pages:[1]},
-                {account:'2200',amount:null,confidence:null,pages:[]}
+                {account:'2100',amount:0,confidence:'supported',pages:[1]}
             ]}}});
         });
         await dialog.locator('input[type="file"]').setInputFiles({name:'statement.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
@@ -213,7 +212,7 @@ async function main() {
                 if (creates === 1) return route.fulfill({status: 422, json: {message: 'No AI chat provider is available.'}});
                 return route.fulfill({json: {status: 'complete', result: {
                     period: {start:'2025-01-01',end:'2025-12-31',source:'Abrechnungsperiode 2025',status:'found'},
-                    accounts: ['2000','2100','2200'].map((account,index) => ({account,confidence:index===0?'supported':'low',pages:index===0?[2,3]:[],amount: index === 2 ? null : index === 1 ? 0 : 1939.39,source:'<b>Source evidence</b>',status:index===2?'not_found':'found'}))
+                    accounts: ['2000','2100'].map((account,index) => ({account,confidence:index===0?'supported':'low',pages:index===0?[2,3]:[],amount: index === 1 ? 0 : 1939.39,source:'<b>Source evidence</b>',status:'found'}))
                 }}});
             });
             await page.evaluate(() => openBooking({unitId:1}, {assignmentPreview:true, initialDocumentSelection: null}));
@@ -229,13 +228,13 @@ async function main() {
             await preview.getByText('No AI chat provider is available.',{exact:true}).waitFor();
             await preview.getByRole('button',{name:'Retry',exact:true}).click();
             await preview.getByRole('table').waitFor();
-            assert.deepEqual(await preview.locator('tbody tr td:first-child').allTextContents(), ['Allocatable costs','Non-allocatable costs','Reserve contribution']);
-            assert.equal(await preview.locator('tbody tr').count(),3);
+            assert.deepEqual(await preview.locator('tbody tr td:first-child').allTextContents(), ['Allocatable costs','Non-allocatable costs']);
+            assert.equal(await preview.locator('tbody tr').count(),2);
             assert.equal(await preview.getByText('Evidence matched', {exact:true}).count(),1);
             assert.equal(await preview.getByText('Low confidence', {exact:true}).count(),1);
-            assert.deepEqual(await preview.locator('tbody tr td:last-child').allTextContents(), ['2, 3', '—', '']);
-            assert.equal(await preview.locator('tbody tr').last().locator('td').last().textContent(),'');
-            assert.doesNotMatch(await preview.innerText(), /2000|2100|2200|Source evidence|Needs review|Building comparison|Not found/);
+            assert.deepEqual(await preview.locator('tbody tr td:last-child').allTextContents(), ['2, 3', '—']);
+            assert.equal(await preview.locator('tbody tr').last().locator('td').last().textContent(),'—');
+            assert.doesNotMatch(await preview.innerText(), /2000|2100|Source evidence|Needs review|Building comparison|Not found/);
             assert.equal(await preview.locator('blockquote b').count(),0);
             assert.match(await preview.innerText(), /2025-01-01/);
             await preview.getByRole('button',{name:'Close',exact:true}).click();
@@ -460,12 +459,15 @@ async function main() {
 
     await test('booking defaults, reverted text and trailing empty rows stay clean', async page => {
         await openBooking(page);
+        assert.equal(await bookingDialog(page).getByRole('combobox', {name: 'Account', exact: true}).count(), 1);
         const description = bookingDialog(page).getByRole('textbox', { name: 'Description', exact: true });
         await description.fill('Changed');
         await description.fill('');
-        const amount = page.locator('[data-role="amount"]').first();
+        const amount = bookingDialog(page).getByRole('spinbutton', {name: 'Amount', exact: true}).first();
         await amount.fill('20');
         assert.equal(await page.locator('.domus-booking-entry').count(), 2);
+        assert.equal(await bookingDialog(page).getByRole('combobox', {name: 'Account', exact: true}).count(), 2);
+        assert.equal(await bookingDialog(page).getByRole('spinbutton', {name: 'Amount', exact: true}).count(), 2);
         await amount.fill('');
         await description.press('Escape');
         await waitClosed(page);

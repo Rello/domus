@@ -533,7 +533,8 @@
             createPropertyPartner: (propertyId, data) => request('POST', `/properties/${propertyId}/partners`, data),
             createPartner: data => request('POST', '/partners', data),
             updatePartner: (id, data) => request('PUT', `/partners/${id}`, data),
-            deletePartner: id => request('DELETE', `/partners/${id}`),
+            getPartnerDeletionSummary: id => request('GET', `/partners/${id}/deletion-summary`),
+            deletePartner: (id, tenancyId) => request('DELETE', `/partners/${id}` + (tenancyId ? `?tenancyId=${encodeURIComponent(tenancyId)}` : '')),
             getTenancies: filters => {
                 const params = appendFilters(withYear(), filters || {});
                 return request('GET', buildUrl('/tenancies', params));
@@ -1288,11 +1289,12 @@
             const ariaLabel = options.ariaLabel || t('domus', 'More actions');
             const buttonLabel = options.buttonLabel || `${label}`;
             const menuId = options.id || ('domus-action-menu-' + Math.random().toString(36).slice(2));
+            const panelId = menuId + '-panel';
             return '<div class="domus-action-menu" id="' + Domus.Utils.escapeHtml(menuId) + '">' +
-                '<button type="button" class="domus-action-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-label="' + Domus.Utils.escapeHtml(ariaLabel) + '">' +
+                '<button type="button" class="domus-action-menu-toggle" aria-controls="' + Domus.Utils.escapeHtml(panelId) + '" aria-expanded="false" aria-label="' + Domus.Utils.escapeHtml(ariaLabel) + '">' +
                 Domus.Utils.escapeHtml(buttonLabel) +
                 '</button>' +
-                '<div class="domus-action-menu-panel" role="menu">' + actions.join('') + '</div>' +
+                '<div class="domus-action-menu-panel" id="' + Domus.Utils.escapeHtml(panelId) + '">' + actions.join('') + '</div>' +
                 '</div>';
         }
 
@@ -1835,12 +1837,16 @@
             });
         }
 
-        function closeActionMenus() {
+        function closeActionMenus(restoreFocus = false) {
             document.querySelectorAll('.domus-action-menu.is-open').forEach(menu => {
+                const containsFocus = menu.contains(document.activeElement);
                 menu.classList.remove('is-open');
                 const toggle = menu.querySelector('.domus-action-menu-toggle');
                 if (toggle) {
                     toggle.setAttribute('aria-expanded', 'false');
+                    if (restoreFocus && containsFocus) {
+                        toggle.focus();
+                    }
                 }
             });
         }
@@ -1879,7 +1885,7 @@
                 });
                 document.addEventListener('keydown', event => {
                     if (event.key === 'Escape') {
-                        closeActionMenus();
+                        closeActionMenus(true);
                     }
                 });
                 actionMenuHandlersBound = true;

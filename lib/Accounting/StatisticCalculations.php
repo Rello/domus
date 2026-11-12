@@ -40,10 +40,8 @@ class StatisticCalculations {
             ],
             [
                 'key' => 'depreciationAndOthers',
-                'label' => 'Depreciation & others',
-                'rule' => [
-                    ['operation' => 'add', 'operands' => ['2600', '2700']],
-                ],
+                'label' => 'Depreciation',
+                'account' => '2600',
             ],
             [
                 'key' => 'estimatedTaxes',
@@ -55,7 +53,7 @@ class StatisticCalculations {
                 'help' => [
                     'title' => 'Estimated taxes',
                     'summary' => 'Calculated with the tax rate shown above the financial table; this is not a settled tax amount.',
-                    'calculation' => 'Gross profit minus depreciation and other amounts, multiplied by the configured tax rate.',
+                    'calculation' => 'Gross profit minus depreciation, multiplied by the configured tax rate.',
                 ],
             ],
             [

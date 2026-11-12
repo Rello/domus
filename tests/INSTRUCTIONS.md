@@ -30,6 +30,8 @@ GitHub Actions runs this same PHPUnit configuration and the browser wrapper on p
 - `PLAYWRIGHT_IMAGE` can select a custom image. For a custom Playwright version,
   build with `--build-arg PLAYWRIGHT_VERSION=<version>` and use a distinct image tag.
 - Run the modal/form, dashboard, unit-workspace, and process-detail behavioral regression suites: `./tests/run-playwright.sh`.
+- Run contact filtering and renter deletion fixtures with `PLAYWRIGHT_TEST=contacts ./tests/run-playwright.sh`.
+  These cover the single-tenancy deletion offer, cancellation, extra dependencies, server errors and ordinary contact deletion.
 - Run only renter access fixtures with `PLAYWRIGHT_TEST=renter-access ./tests/run-playwright.sh`.
   These cover partner account linking, standard Guests creation, lost-response retries,
   account status, Personal visibility and narrow layout. They do not prove live email delivery.
@@ -80,7 +82,7 @@ Run `PLAYWRIGHT_TEST=dialog-template ./tests/run-playwright.sh` for shared heade
 - Run REUSE lint:
   - `./tests/run-reuse.sh`
 
-Analytics coverage includes latest-year defaults, direct parent/child booking totals,
+Analytics coverage includes account filters, year/unit drilldowns with booking counts (including zero-net activity), separate property postings, latest-year defaults, direct parent/child booking totals,
 property/unit scope, year and custom selection continuity, keyboard checkboxes,
 narrow layout, empty scopes, retry, and obsolete request failures.
 
@@ -139,8 +141,8 @@ Automatic booking assignment preview checks:
   Selecting a PDF opens the preview automatically; there is no manual Test button.
   Building Management forms are excluded because their account model differs.
 - Live model acceptance is separate: test the Hartmutstraße annual statement (2025,
-  2000 = 1939.39, 2100 = 579.48, 2200 missing), mixed actual/plan pages and columns,
-  and individual Ist-Zuführung versus Soll/balances/withdrawals/interest. Normalizer
+  2000 = 1939.39, 2100 = 579.48), mixed actual/plan pages and columns,
+  and exclusion of reserve contributions from operating costs. Normalizer
   fixtures do not establish model extraction accuracy. Use the configured provider
   and a Nextcloud taskprocessing worker; do not change global AI configuration.
 - Compare booking and document-link counts before/after, check temporary file cleanup
@@ -278,3 +280,27 @@ Personal/Team request scope, desktop and phone layout, download, Files fallback,
 failed or non-PDF responses, close-during-load cleanup and keyboard focus restoration.
 The fixture uses full Chromium with native PDF support; live Nextcloud delivery and
 Safari/Firefox PDF rendering remain separate manual checks.
+
+## Account cleanup upgrade rehearsal
+
+`tests/verify-account-upgrade.php` exercises the pending 0010/0011 migrations through
+Nextcloud's real migration runner and MariaDB query builder. It requires a disposable
+MariaDB container named `domus-upgrade-rehearsal-db` on the app containers' network,
+with database `domus_rehearsal`, root access without a password and no published ports.
+Import a pre-upgrade dump of `oc_domus_*` and `oc_migrations` before each run; the copied
+migration records must not include 0011 and the copied bookings must include account 2700.
+The source Nextcloud database must never be used as the target.
+
+Run against either local framework version:
+
+- `docker exec -u www-data nc34-app-1 php /var/tmp/own_apps/domus/tests/verify-account-upgrade.php`
+- Restore the disposable database from the same pre-upgrade dump, then run
+  `docker exec -u www-data nc35-app-1 php /var/tmp/own_apps/domus/tests/verify-account-upgrade.php`.
+
+The script supplements copied bookings with Team/property allocations, negative and
+zero amounts, custom child accounts, and document/activity links. It checks 2700 → 2300
+in-place conversion, amount reconciliation, 2200 cleanup, unchanged unrelated tables,
+recorded migration versions, normal/forced retries and full rollback after a deliberately
+failed account deletion. It changes only the disposable database. This rehearses the
+app's database migrations, not the full Nextcloud updater, and a local snapshot does
+not establish the state of production or recover previously deleted local records.

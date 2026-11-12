@@ -538,7 +538,7 @@ async function main() {
         const sections = page.getByRole('navigation', {name: 'Unit sections'});
         await sections.getByRole('link', {name: 'Finances'}).click();
         await page.locator('#domus-unit-kpi-detail tr[data-stat-year="2025"] [data-stat-year-open]').click();
-        await page.getByRole('button', {name: 'Edit Booking #101', exact: true}).waitFor();
+        await page.getByRole('button', {name: /^Edit Booking #101: /}).waitFor();
         await sections.getByRole('link', {name: 'Documents'}).click();
         const scrollBeforeReturn = await page.evaluate(() => {
             const root = document.getElementById('app-content');
@@ -549,7 +549,7 @@ async function main() {
             finances.click();
             return scroll;
         });
-        await page.getByRole('button', {name: 'Edit Booking #101', exact: true}).waitFor();
+        await page.getByRole('button', {name: /^Edit Booking #101: /}).waitFor();
         assert.equal(await page.locator('.domus-stat-year-selected').getAttribute('data-stat-year'), '2025');
         assert.equal(await page.locator('#domus-unit-kpi-detail tr[data-stat-year="2025"] [data-stat-year-open]').getAttribute('aria-expanded'), 'true');
         assert.equal(await page.evaluate(() => document.activeElement.dataset.unitSection), 'finances');
@@ -613,13 +613,13 @@ async function main() {
             Domus.Api.getDocuments = async () => [];
             Domus.Units.refreshDetail(1);
         });
-        await page.getByRole('button', {name: 'Edit Booking #101', exact: true}).waitFor();
-        await page.getByRole('button', {name: 'Edit Booking #101', exact: true}).press('Enter');
+        await page.getByRole('button', {name: /^Edit Booking #101: /}).waitFor();
+        await page.getByRole('button', {name: /^Edit Booking #101: /}).press('Enter');
         await page.getByRole('dialog', {name: 'Edit booking', exact: true}).waitFor();
         await page.getByRole('textbox', {name: 'Description', exact: true}).fill('Edited year fixture');
         await page.getByRole('button', {name: 'Save', exact: true}).click();
         await page.getByRole('dialog', {name: 'Edit booking', exact: true}).waitFor({state: 'detached'});
-        await page.waitForFunction(() => document.querySelector('.domus-stat-year-selected')?.dataset.statYear === '2025' && document.activeElement.getAttribute('aria-label') === 'Edit Booking #101');
+        await page.waitForFunction(() => document.querySelector('.domus-stat-year-selected')?.dataset.statYear === '2025' && document.activeElement.matches('[data-domus-booking-edit]') && document.activeElement.closest('[data-booking-id]')?.dataset.bookingId === '101');
     });
 
     for (const confirmStep of [false, true]) {
@@ -675,15 +675,15 @@ async function main() {
                     {number: '2001', label: 'Missing child account'},
                     {number: '2010', label: 'Booked child account'}
                 ]},
-                {number: '2200', label: 'Zero total'},
+                {number: '2990', label: 'Zero total'},
                 {number: '2300', label: 'Missing booking'},
                 {number: '2500', label: 'Negative total', status: 'disabled'}
             ];
             Domus.Api.getBookings = async filter => {
                 window.bookingFilter = filter;
                 return [{account: 2000, amount: 12.34}, {account: 2000, amount: 0.01},
-                    {account: 2010, amount: 4}, {account: 2200, amount: 10},
-                    {account: 2200, amount: -10}, {account: 2500, amount: -3}];
+                    {account: 2010, amount: 4}, {account: 2990, amount: 10},
+                    {account: 2990, amount: -10}, {account: 2500, amount: -3}];
             };
             Domus.Api.closeBookingYear = async (year, scope) => window.yearCalls.push({year, scope});
             Domus.Units.openYearStatusModal(1, {revenue: {rows: [{year: 2026, isProvisional: true}]}}, () => { window.yearRefreshed = true; });

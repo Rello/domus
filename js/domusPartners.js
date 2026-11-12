@@ -553,21 +553,34 @@
                 event.preventDefault();
                 openPartnerModal(id, 'view');
             });
-            deleteBtn?.addEventListener('click', () => {
-                Domus.UI.confirmAction({
-                    message: t('domus', 'Delete {entity}?', { entity: t('domus', 'Contact') }),
-                    confirmLabel: t('domus', 'Delete')
-                }).then(confirmed => {
-                    if (!confirmed) {
+            deleteBtn?.addEventListener('click', async () => {
+                deleteBtn.disabled = true;
+                try {
+                    const summary = await Domus.Api.getPartnerDeletionSummary(id);
+                    if (summary.relationCount > 0 && !summary.tenancy) {
+                        Domus.UI.showNotification(t('domus', 'Partner is linked and cannot be deleted.'), 'error');
                         return;
                     }
-                    Domus.Api.deletePartner(id)
-                        .then(() => {
-                            Domus.UI.showNotification(t('domus', '{entity} deleted.', { entity: t('domus', 'Contact') }), 'success');
-                            Domus.Router.back('partners');
-                        })
-                        .catch(err => Domus.UI.showNotification(err.message, 'error'));
-                });
+                    const tenancy = summary.tenancy;
+                    const confirmed = await Domus.UI.confirmAction({
+                        message: tenancy
+                            ? t('domus', 'This renter is only linked to tenancy {tenancy}. Delete the renter and this tenancy? Other contacts will remain, but their links to this tenancy will be removed. This cannot be undone.', {
+                                tenancy: [tenancy.unitLabel, tenancy.startDate].filter(Boolean).join(' · ') || String(tenancy.id)
+                            })
+                            : t('domus', 'Delete {entity}?', { entity: t('domus', 'Contact') }),
+                        confirmLabel: tenancy ? t('domus', 'Delete renter and tenancy') : t('domus', 'Delete')
+                    });
+                    if (!confirmed) return;
+                    await Domus.Api.deletePartner(id, tenancy?.id);
+                    Domus.UI.showNotification(tenancy
+                        ? t('domus', 'Renter and tenancy deleted.')
+                        : t('domus', '{entity} deleted.', { entity: t('domus', 'Contact') }), 'success');
+                    Domus.Router.back('partners');
+                } catch (error) {
+                    Domus.UI.showNotification(error.message, 'error');
+                } finally {
+                    deleteBtn.disabled = false;
+                }
             });
 
             document.getElementById('domus-partner-document-create')?.addEventListener('click', () => {

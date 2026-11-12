@@ -65,7 +65,7 @@ class TaxReportService {
             foreach ($this->bookingService->listBookings($userId, ['year' => $year]) as $booking) {
                 $unitId = $booking->getUnitId();
                 $account = $this->accountService->resolveTopAccountNumber((string)$booking->getAccount(), $topAccounts);
-                if (!isset($unitSet[$unitId]) || !in_array($account, ['2300', '2700'], true)) continue;
+                if (!isset($unitSet[$unitId]) || $account !== '2300') continue;
                 $otherCostBookings[$unitId][] = [
                     'description' => $booking->getDescription() ?? '',
                     'amount' => round((float)$booking->getAmount(), 2),
@@ -73,7 +73,7 @@ class TaxReportService {
             }
         }
         $defaults = ['depreciation' => ['2600'], 'interest' => ['2500'], 'nonAllocable' => ['2100'],
-            'otherCosts' => ['2300', '2700'], 'allocable' => ['2000'], 'propertyTax' => ['2400']];
+            'otherCosts' => ['2300'], 'allocable' => ['2000'], 'propertyTax' => ['2400']];
         $columns = [];
         foreach ($units as $unit) {
             $id = $unit->getId();

@@ -357,11 +357,11 @@
           },
           "depreciationAndOthers": {
             "type": "number",
-            "description": "Sum of accounts 2600 and 2700."
+            "description": "Amount from account 2600 (depreciation)."
           },
           "estimatedTaxes": {
             "type": "number",
-            "description": "(Gross profit minus depreciation and others) multiplied by applied taxRate."
+            "description": "(Gross profit minus depreciation) multiplied by applied taxRate."
           },
           "netProfit": {
             "type": "number",

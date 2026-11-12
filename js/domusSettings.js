@@ -135,7 +135,7 @@
                 content: '<div class="domus-tax-report">' +
                     '<p role="note">' + escape(t('domus', 'This is beta. The report shows the data in the same input format as WISO Steuer for simple transfer.')) + '</p>' +
                     '<details><summary>' + escape(t('domus', 'Calculation sources')) + '</summary><p>' + escape(t('domus', 'Rent and utility prepayments come from tenancy agreements, not recorded receipts. Costs use unit bookings for the selected year, including allocated property costs.')) + '</p>' +
-                    '<p>' + escape(t('domus', 'Utility payment and credit amounts are calculated from each renter’s settlement, not recorded payments. Other costs combine accounts 2300 and 2700, with the individual booking texts and amounts. Reserve allocations and unallocated property bookings are excluded.')) + '</p></details>' +
+                    '<p>' + escape(t('domus', 'Utility payment and credit amounts are calculated from each renter’s settlement, not recorded payments. Other costs use account 2300, with the individual booking texts and amounts. Reserve allocations and unallocated property bookings are excluded.')) + '</p></details>' +
                     '<div id="domus-tax-report-content" aria-live="polite"></div></div>' +
                     '<div class="domus-form-actions"><button type="button" id="domus-tax-report-close">' + escape(t('domus', 'Close')) + '</button></div>'
             });

@@ -243,7 +243,7 @@ class StatisticsService {
                         return $normalized === '' ? '0' : $normalized;
                 }, $accounts)));
                 if ($accounts === []) {
-                        return ['years' => [], 'series' => []];
+                        return ['years' => [], 'series' => [], 'breakdown' => []];
                 }
 
                 $rows = $this->bookingService->sumByAccountPerYear($userId, $accounts, $propertyId, $unitId);
@@ -253,6 +253,7 @@ class StatisticsService {
                         $series[$account] = [];
                 }
 
+                $breakdown = [];
                 foreach ($rows as $row) {
                         $year = (int)($row['year'] ?? 0);
                         if ($year === 0) {
@@ -262,7 +263,7 @@ class StatisticsService {
                 }
 
                 if ($years === []) {
-                        return ['years' => [], 'series' => []];
+                        return ['years' => [], 'series' => [], 'breakdown' => []];
                 } else {
                         $years = array_keys($years);
                         sort($years, SORT_NUMERIC);
@@ -283,10 +284,19 @@ class StatisticsService {
                         if ($index === null) {
                                 continue;
                         }
-                        $series[$account][$index] = round((float)($row['total'] ?? 0.0), 2);
+                        $total = round((float)($row['total'] ?? 0.0), 2);
+                        $series[$account][$index] = round($series[$account][$index] + $total, 2);
+                        $breakdown[] = [
+                                'year' => $year,
+                                'account' => $account,
+                                'unitId' => isset($row['unit_id']) ? (int)$row['unit_id'] : null,
+                                'propertyId' => isset($row['property_id']) ? (int)$row['property_id'] : null,
+                                'total' => $total,
+                                'bookingCount' => (int)($row['booking_count'] ?? 0),
+                        ];
                 }
 
-                return ['years' => $years, 'series' => $series];
+                return ['years' => $years, 'series' => $series, 'breakdown' => $breakdown];
         }
 
         private function normalizeColumns(array $columns): array {
