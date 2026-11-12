@@ -54,6 +54,11 @@ class DefaultCatalogueInstallTest extends TestCase {
             'domus_docLinks' => [['id' => 1, 'entity_type' => 'booking', 'entity_id' => 10]],
             'domus_action_logs' => [['id' => 1, 'entity_type' => 'booking', 'entity_id' => 10, 'linked_entity_type' => 'booking', 'linked_entity_id' => 11]],
         ];
+        $db->tables['domus_task_templates'] = [];
+        $db->tables['domus_task_tpl_steps'] = [];
+        // Start with current templates so this test isolates account conversion.
+        (new FillDefaultAccountsRepairStep($db))->run($this->createMock(IOutput::class));
+        $db->tables['domus_task_steps'] = [];
         $expected = $db->tables;
         $expected['domus_accounts'] = [
             ['id' => 3, 'number' => '2701', 'parent_id' => null],
@@ -64,7 +69,7 @@ class DefaultCatalogueInstallTest extends TestCase {
         }
         unset($booking);
         array_pop($expected['domus_bookings']);
-        $migration = new \OCA\Domus\Migration\Version0011Date20261111000000($db);
+        $migration = new \OCA\Domus\Migration\Version1003Date20261112000000($db, $this->createMock(\OCP\IUserManager::class), $this->createMock(\OCP\IGroupManager::class));
         $output = $this->createMock(IOutput::class);
         $migration->postSchemaChange($output, static fn() => null, []);
         self::assertSame($expected, $db->tables);

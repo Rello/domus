@@ -12,8 +12,7 @@ set_exception_handler(static function (Throwable $error): void {
     fwrite(STDERR, (string)$error . "\n");
     exit(1);
 });
-require_once dirname(__DIR__) . '/lib/Migration/Version0010Date20261105000000.php';
-require_once dirname(__DIR__) . '/lib/Migration/Version0011Date20261111000000.php';
+require_once dirname(__DIR__) . '/lib/Migration/Version1003Date20261112000000.php';
 $db = OCP\Server::get(OC\DB\ConnectionFactory::class)->getConnection('mysql', [
     'host' => 'domus-upgrade-rehearsal-db', 'port' => 3306,
     'dbname' => 'domus_rehearsal', 'user' => 'root', 'password' => '',
@@ -65,7 +64,7 @@ $insert('domus_bookings', array_replace($source, ['account' => 2701, 'team_id' =
 $insert('domus_docLinks', ['user_id' => 'rehearsal', 'entity_type' => 'booking', 'entity_id' => $childId, 'file_id' => 12345, 'file_name' => 'rehearsal.pdf', 'created_at' => time(), 'team_id' => 'rehearsal:a']);
 $insert('domus_action_logs', ['user_id' => 'rehearsal', 'entity_type' => 'booking', 'entity_id' => $parentId, 'type' => 'note', 'title' => 'Rehearsal activity', 'source' => 'manual', 'linked_entity_type' => 'booking', 'linked_entity_id' => $childId, 'created_by' => 'rehearsal', 'created_at' => time(), 'updated_at' => time(), 'team_id' => 'rehearsal:a']);
 $before = $snapshot();
-$migration = new OCA\Domus\Migration\Version0011Date20261111000000(new OC\DB\ConnectionAdapter($db));
+$migration = new OCA\Domus\Migration\Version1003Date20261112000000(new OC\DB\ConnectionAdapter($db), OCP\Server::get(OCP\IUserManager::class), OCP\Server::get(OCP\IGroupManager::class));
 
 // A late failure must roll back both the remapping and the 2200 cleanup.
 $db->executeStatement("CREATE TRIGGER rehearsal_account_failure BEFORE DELETE ON oc_domus_accounts FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Expected rehearsal failure'");
@@ -84,19 +83,18 @@ echo "PASS late-failure rollback: all copied tables unchanged\n";
 // Use Nextcloud's migration runner, including version recording and pending-step selection.
 // Override only construction so the data step cannot resolve the installation's own DB service.
 $runner = new class('domus', $db, $output) extends OC\DB\MigrationService {
-    public OCA\Domus\Migration\Version0011Date20261111000000 $dataMigration;
+    public OCA\Domus\Migration\Version1003Date20261112000000 $dataMigration;
     public function createInstance($version): OCP\Migration\IMigrationStep {
         return match ($version) {
-            '0010Date20261105000000' => new OCA\Domus\Migration\Version0010Date20261105000000(),
-            '0011Date20261111000000' => $this->dataMigration,
+            '1003Date20261112000000' => $this->dataMigration,
             default => throw new RuntimeException('Unexpected pending migration: ' . $version),
         };
     }
 };
 $runner->dataMigration = $migration;
-$assert(!in_array('0011Date20261111000000', $runner->getMigratedVersions(), true), 'Restore the pre-upgrade snapshot before rehearsing');
+$assert(!in_array('1003Date20261112000000', $runner->getMigratedVersions(), true), 'Restore the pre-upgrade snapshot before rehearsing');
 $runner->migrate();
-$assert(in_array('0011Date20261111000000', $runner->getMigratedVersions(), true), 'Migration version was not recorded');
+$assert(in_array('1003Date20261112000000', $runner->getMigratedVersions(), true), 'Migration version was not recorded');
 echo "PASS Nextcloud migration runner: pending schema/data steps executed and recorded\n";
 $after = $snapshot();
 $afterBookings = array_column($after['oc_domus_bookings'], null, 'id');

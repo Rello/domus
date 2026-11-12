@@ -5,76 +5,50 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
-## Unreleased
+## 1.3.0 - 2026-11-12
 
 ### Added
-- Filter booking analytics by account and expand year/unit details, including booking counts and zero-net activity.
-- Show service charges in tenancy lists alongside base rent.
-- Separate multiline unit notes for meter numbers and other master data, preserved on import/export and omitted from the detail header.
-- Read linked PDFs in a Domus overlay with download and Open in Nextcloud actions.
-- Generate rent-increase letters from Personal and Team Word templates or a German Markdown fallback, with calculated rents and an effective date carried into tenancy changes.
-- Interactive rent-increase calculator with rent-index ranges, configurable increase limits, service-charge recommendations, and prefilled tenancy condition changes.
-- Optional construction year in unit master data, including import, export and the read-only API.
-- Nextcloud admin audit logging for unit moves, renter access, tenancy relationships, unit imports and exports, and portfolio deletions.
-- Shared system process templates with Personal and Team customization, reset and disable options, and schedules preserved when templates change.
-- Move Personal units to Teams with their folders, documents, images, tasks, and processes, including a conflict preview and recovery from interruptions while retaining original files.
-- Nextcloud dashboard task widget with unit names and coloured icons for overdue, today, and upcoming tasks.
+- Rent-increase calculator with rent-index ranges, configurable increase limits, service-charge recommendations, and dated tenancy changes; generate letters from Personal or Team Word templates or a German Markdown fallback.
+- Move Personal units to Teams with folders, documents, images, tasks, and processes, including conflict previews, interruption recovery, and optional cleanup of unavailable attachments while retaining original files.
+- Shared system process templates with Personal and Team customization, reset and disable options, and preserved process schedules.
+- Multi-year portfolio analytics for rent, profit, profitability, and acquisition costs, with account filters and year/unit details including booking counts and zero-net activity.
 - Optional AI previews for annual-statement PDFs, with unit matching, confidence indicators, source pages, and editable booking suggestions dated at year-end.
-- Beta tax report in WISO Steuer layout, with itemized costs, subtotals, and year-closing badges.
+- Tax declaration report in WISO Steuer layout (beta), with itemized costs, subtotals, and year-closing badges.
 - Editable utility reports from Personal and Team DOCX templates, with a Markdown fallback.
 - Read-only unit and annual revenue APIs with OpenAPI documentation.
-- Multi-year portfolio analytics for rent, profit, profitability, and acquisition costs.
-- Document dates, multiple tenancy assignments, and assignment indicators.
+- Nextcloud dashboard task widget with unit names and coloured icons for overdue, today, and upcoming tasks.
+- Nextcloud admin audit logging for unit moves, renter access, tenancy relationships, imports, exports, and portfolio deletions.
+- Document dates, multiple tenancy assignments, assignment indicators, and linked PDF previews with download and Open in Nextcloud actions.
+- Optional construction year and separate multiline unit notes, preserved on import/export; construction year is also available through the read-only API.
+- Service charges alongside base rent in tenancy lists.
 
 ### Changed
-- Make tenancy corrections accessible through an Edit tenancy action and clarify the separate dated condition-change workflow.
-- Use a muted green with improved contrast for completion indicator circles.
-- Offer to delete a renter together with their tenancy when that tenancy is their only relation, with confirmation and atomic deletion.
-- Prefill new tenants’ addresses from the selected unit when creating a tenancy, while keeping the address editable.
-- Migrate bookings from account 2700 to 2300 while preserving linked documents and activities, then remove account 2700; remove legacy account 2200 and its bookings from setup and AI previews.
-- Show a single available header action as an icon-only link instead of hiding it in More actions; keep multiple actions grouped.
-- Clarify tenancy continuations with cyclic arrows and a dialog hint, and use a calculator icon for rent increases.
-- Offer to delete contacts with no remaining relations after deleting a tenancy, while retaining linked Nextcloud accounts.
-- Match the unit's empty documents panel to the compact task panel design.
-- Allow unit JSON imports directly into the selected Team portfolio.
-- Suggest the adjusted rent-index mean, limited by the increase cap, instead of the upper range value in the rent-increase calculator.
-- Show ten lines by default in the Conditions field when changing tenancy conditions.
-- Move the tax rate setting into Tax declaration and remove the General Settings section.
-- Refresh the feature overview, app introduction, and welcome tour; move detailed guides into the new wiki.
-- Combine Nextcloud integration checks and AI document-validation settings in one panel, with clearer guidance and links to OpenAI and LocalAI integration.
-- Consistent dialog headers and persistent action footers, including the welcome wizard.
-- Record activities directly from unit details.
-- Simplify document editing, previews, storage, and booking and tenancy links.
-- Review account totals and bookings before closing a financial year.
-- Improve utility settlements, tenancy checklists, period selection, and booking descriptions.
+- Separate direct tenancy corrections from dated condition changes and clarify tenancy continuations; prefill new tenants’ editable addresses from the selected unit.
+- Offer to delete a renter together with their only tenancy, or remove contacts left without relations after tenancy deletion, with confirmation and retention of linked Nextcloud accounts.
+- Move bookings from account 2700 to 2300 while preserving documents and activities, then remove account 2700; remove legacy account 2200 and its bookings.
+- Allow unit JSON imports and demo content creation in the selected Team portfolio.
+- Review account totals and bookings before closing a financial year; improve utility settlements, tenancy checklists, period selection, and booking descriptions.
+- Simplify document editing, storage, and booking/tenancy links; record activities directly from unit details.
+- Use consistent dialog headers and persistent action footers, clearer header actions, more accessible completion indicators, and compact empty document panels.
+- Move the tax rate setting into Tax declaration and combine Nextcloud integration checks with AI document-validation settings.
+- Refresh the feature overview, app introduction, and welcome tour, with detailed guides in the wiki.
 
 ### Fixed
-- Label booking account and amount fields, preserve visible date and year-status text in accessible names, and correct action disclosure semantics and Escape focus return.
-- Store newly created and imported Team units’ documents in dedicated folders inside the assigned Team folder.
-- Remove unused legacy Viewer loading and the missing Chart.js source-map reference from the Domus page.
-- Allow demo content creation in the selected Team while retaining management access checks.
-- Start the document-template picker in the active Team folder’s Templates subfolder.
-- Identify unavailable move attachments by title and assignment, allow explicitly skipping them with optional link cleanup after a successful move, and distinguish unavailable contacts or templates from changed records.
-- Keep dialogs open when text selection is dragged outside the frame and confirm before discarding edited tenancy rent calculations.
-- Show rent-increase Word template validation errors on Nextcloud 34.
-- Resolve dedicated Team folders on Nextcloud 34 when moving Personal units to Teams.
-- Roll back tenancy replacements and condition changes completely when saving fails, and validate storage limits before changing contracts.
-- Serialize year closure and reopening, and remove all matching closures when reopening years with legacy duplicates.
-- Preserve early process completion on unit import so the first skipped step can be reopened, including legacy archives.
-- Batch process enrichment on the dashboard to avoid a separate database query for every open step.
-- Clear the previous allocation when switching draft bookings between a unit and a distribution key, and reject incompatible allocations.
-- Delete property-only bookings, booking document and activity links, and year closures atomically with their property, and include financial records in the deletion summary.
-- Prevent account renumbering in the editor and API to preserve historical booking totals.
-- Keep browser saves and uploads in the tab’s Personal or Team context when another tab switches Teams.
-- Preserve custom accounts, process templates, and existing process schedules when upgrading from 1.2 or 1.3 betas.
-- Clean up deleted users’ Personal portfolios and move journals, preserve Team history, and continue Team rules through an authorized remaining member.
-- Isolate custom Personal accounts per user and protect shared system accounts from editing, including through the API.
-- Use reminder dates as deadlines and keep deferred tasks visible.
-- Preserve booking and document edits across retries and nested dialogs.
-- Keep closed-year bookings and document links read-only.
-- Prevent duplicate document assignments and clean up links when unlinking documents.
+- Preserve custom accounts, process templates, and existing schedules when upgrading from 1.2.0, and isolate Personal custom accounts per user while protecting system accounts.
+- Store new and imported Team units’ documents inside the assigned Team folder; resolve dedicated Team folders on Nextcloud 34 and open document/template pickers in the appropriate folders.
+- Keep saves and uploads in the browser tab’s Personal or Team context when another tab switches Teams.
+- Roll back failed tenancy replacements and condition changes completely, and validate storage limits before changing contracts.
+- Serialize year closure and reopening, remove legacy duplicate closures, and keep closed-year bookings and document links read-only.
+- Delete property financial records and their links atomically, include them in deletion summaries, and prevent account renumbering from changing historical totals.
+- Clear incompatible allocations when switching draft bookings between units and distribution keys, and reject invalid allocation combinations.
+- Preserve booking and document edits across retries and nested dialogs, prevent duplicate document assignments, and clean up links when unlinking documents.
 - Restore booking deletion, description clearing, and selected-year booking dates.
-- Fix dashboard resizing and open document pickers in the selected unit's folder.
+- Preserve early process completion on unit import, use reminder dates as deadlines, and keep deferred tasks visible.
+- Clean up deleted users’ Personal portfolios and move journals while preserving Team history and continuing Team rules through an authorized member.
+- Keep dialogs open when text selection ends outside them, confirm before discarding edited rent calculations, and display Word template validation errors on Nextcloud 34.
+- Improve accessible field labels, date/year-status names, action disclosure semantics, and keyboard focus return.
+- Fix dashboard resizing and reduce dashboard queries for open process steps; remove unused Viewer loading and a missing source-map reference.
+- Correct German integration wording, translate account-access errors, and remove duplicate translation entries.
 
 ## 1.2.0 - 2026-10-18
 ### Added

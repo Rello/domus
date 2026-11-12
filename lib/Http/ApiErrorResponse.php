@@ -45,6 +45,7 @@ class ApiErrorResponse {
             'The record belongs to another Team.' => $l10n->t('The record belongs to another Team.'),
             'The record does not belong to the selected Team.' => $l10n->t('The record does not belong to the selected Team.'),
             'The record is not available to this owner.' => $l10n->t('The record is not available to this owner.'),
+            'The account is not editable in this portfolio.' => $l10n->t('The account is not editable in this portfolio.'),
             'Team records cannot use personal data transfer.' => $l10n->t('Team records cannot use personal data transfer.'),
             'This request has already been reviewed.' => $l10n->t('This request has already been reviewed.'),
             default => $message,

@@ -5,7 +5,7 @@
  */
 namespace OCA\Domus\Tests\Unit;
 
-use OCA\Domus\Migration\Version0008Date20261028000000;
+use OCA\Domus\Migration\Version1003Date20261112000000;
 use OCA\Domus\Migration\FillDefaultAccountsRepairStep;
 use OCA\Domus\Tests\Support\{LegacyCatalogueFixture, TransferDatabase};
 use OCA\Domus\Db\TaskTemplateMapper;
@@ -20,7 +20,7 @@ class ConsolidatedMigrationTest extends TestCase {
         $users->method('get')->willReturnCallback(fn ($uid) => $uid === 'deleted' ? null : $this->createMock(IUser::class));
         $groups = $this->createMock(IGroupManager::class);
         $groups->method('isInGroup')->willReturnCallback(fn ($uid) => $uid === 'guest');
-        (new Version0008Date20261028000000($db, $users, $groups))->postSchemaChange(
+        (new Version1003Date20261112000000($db, $users, $groups))->postSchemaChange(
             $this->createMock(IOutput::class), static fn () => null, []);
     }
 

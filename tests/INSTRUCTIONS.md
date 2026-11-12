@@ -223,8 +223,8 @@ requires an enabled/configured `admin_audit` app and separate fixture actions.
 
 ## Consolidated 1.3 migration
 
-`Version0008Date20261028000000` contains the final schema additions since 1.2,
-replacing beta-only migrations 0006 and 0007. Migrations 0001–0005 shipped in
+`Version1003Date20261112000000` contains the final schema and data changes since 1.2,
+replacing all beta-only migrations (0006–0011). Migrations 0001–0005 shipped in
 1.2 and remain unchanged. The new ID also runs on beta installations; existing
 columns, tables and indexes are retained without rewriting migration records.
 The default-catalogue repair step remains registered for installation and upgrade.
@@ -238,7 +238,8 @@ It also runs the consolidated data migration against separate 1.2 and beta.6
 SQLite schemas with custom account hierarchies, customized/disabled templates,
 Team records and existing processes. The query adapter uses real SQL and database
 constraints, while user/group lookup uses fixtures. Nextcloud's updater itself
-and older data migrations are outside this check.
+and older data migrations are outside this check. The SQL fixtures also verify account
+2700 conversion, account 2200/link cleanup, late-failure rollback, and fresh default installation.
 
 Run `./tests/run-unit.sh --filter 'ConsolidatedMigration|DefaultCatalogueInstall'`
 for catalogue visibility, unchanged defaults, guest/deleted-user exclusions,
@@ -283,12 +284,14 @@ Safari/Firefox PDF rendering remain separate manual checks.
 
 ## Account cleanup upgrade rehearsal
 
-`tests/verify-account-upgrade.php` exercises the pending 0010/0011 migrations through
+`tests/verify-account-upgrade.php` exercises the consolidated 1003 migration through
 Nextcloud's real migration runner and MariaDB query builder. It requires a disposable
 MariaDB container named `domus-upgrade-rehearsal-db` on the app containers' network,
 with database `domus_rehearsal`, root access without a password and no published ports.
 Import a pre-upgrade dump of `oc_domus_*` and `oc_migrations` before each run; the copied
-migration records must not include 0011 and the copied bookings must include account 2700.
+migration records must include the beta catalogue migration 0008 but not 1003 and the copied bookings must include account 2700.
+This focused account rehearsal expects an already-migrated beta catalogue; the separate
+SQLite check above covers the complete 1.2 upgrade and fresh installation.
 The source Nextcloud database must never be used as the target.
 
 Run against either local framework version:

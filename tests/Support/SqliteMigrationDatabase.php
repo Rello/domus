@@ -11,6 +11,7 @@ class SqliteMigrationDatabase implements \OCP\IDBConnection {
     public function beginTransaction(): void { $this->connection->beginTransaction(); }
     public function commit(): void { $this->connection->commit(); }
     public function rollBack(): void { $this->connection->rollBack(); }
+    public function tableExists(string $table): bool { return $this->connection->createSchemaManager()->tablesExist([$table]); }
     public function getQueryBuilder(): mixed { return new SqliteMigrationQuery($this->connection); }
 }
 
@@ -18,10 +19,14 @@ class SqliteMigrationQuery {
     public const PARAM_INT = 1;
     public const PARAM_STR = 2;
     public const PARAM_NULL = 0;
+    public const PARAM_INT_ARRAY = \Doctrine\DBAL\Connection::PARAM_INT_ARRAY;
+    public const PARAM_STR_ARRAY = \Doctrine\DBAL\Connection::PARAM_STR_ARRAY;
     private \Doctrine\DBAL\Query\QueryBuilder $query;
     public function __construct(private \Doctrine\DBAL\Connection $db) { $this->query = $db->createQueryBuilder(); }
     public function expr(): self { return $this; }
     public function eq(string $column, string $parameter): string { return $this->query->expr()->eq($this->db->quoteIdentifier($column), $parameter); }
+    public function createFunction(string $expression): string { return $expression; }
+    public function in(string $column, string $parameter): string { return $this->query->expr()->in($this->db->quoteIdentifier($column), $parameter); }
     public function isNull(string $column): string { return $this->query->expr()->isNull($this->db->quoteIdentifier($column)); }
     public function set(string $column, string $value): self { $this->query->set($this->db->quoteIdentifier($column), $value); return $this; }
     public function values(array $values): self {
@@ -34,6 +39,7 @@ class SqliteMigrationQuery {
     public function executeQuery(): object {
         return new class($this->query->executeQuery()) {
             public function __construct(private \Doctrine\DBAL\Result $result) {}
+            public function fetchOne(): mixed { return $this->result->fetchOne(); }
             public function fetchAll(): array { return $this->result->fetchAllAssociative(); }
             public function closeCursor(): void { $this->result->free(); }
         };

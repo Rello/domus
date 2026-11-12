@@ -6,6 +6,7 @@
 OC.L10N.register(
     "domus",
     {
+        "The account is not editable in this portfolio.": "Das Konto kann in diesem Portfolio nicht bearbeitet werden.",
         "Tax advisor fees": "Steuerberaterhonorar",
         "Depreciation & others": "Abschreibung & Sonstiges",
     "Property bookings without a unit" : "Objektbuchungen ohne Einheit",
@@ -302,7 +303,7 @@ OC.L10N.register(
         "Nextcloud Integration Check": "Nextcloud-Integrationsprüfung",
         "AI": "KI",
         "Assistant (PDF extraction)": "Assistant (PDF-Textextraktion)",
-        "OpenAI and LocalAI integration": "OpenAI and LocalAI integration",
+        "OpenAI and LocalAI integration": "Integration von OpenAI und LocalAI",
         "AI document validation": "KI-Dokumentprüfung",
         "Uploaded documents will be processed by the Nextcloud Assistant. From the document, bookings and unit information will be extracted and suggested for review.": "Hochgeladene Dokumente werden vom Nextcloud Assistant verarbeitet. Aus dem Dokument werden Buchungen und Informationen zur Einheit extrahiert und zur Überprüfung vorgeschlagen.",
         "AI document validation is disabled or unavailable.": "Die KI-Dokumentprüfung ist deaktiviert oder nicht verfügbar.",
@@ -1450,8 +1451,6 @@ OC.L10N.register(
         "Units in selected properties": "Einheiten in ausgewählten Objekten",
         "View tasks": "Aufgaben anzeigen",
         "All years": "Alle Jahre",
-        "Annual base rent": "Jährliche Kaltmiete",
-        "Estimated annual net profit": "Geschätzter jährlicher Nettogewinn",
         "Closed": "Abgeschlossen",
         "Could not load portfolio development. Please retry.": "Die Portfolio-Entwicklung konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
         "Details by unit and year": "Details nach Einheit und Jahr",

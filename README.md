@@ -63,10 +63,3 @@ Die Funktionsübersicht beschreibt den aktuellen Entwicklungsstand. Veröffentli
 
 ## Maintainer
 - [Marcel Scherello](https://github.com/rello) (author, project leader)
-
-## Unterstützung
-Unterstützt von PhpStorm von [JetBrains](https://www.jetbrains.com/?from=AudioPlayerforNextcloudandownCloud)
-
-<p>
-  <img src="https://raw.githubusercontent.com/rello/analytics/master/screenshots/jetbrains.svg" alt="JetBrains" width="250" title="JetBrains">
-</p>

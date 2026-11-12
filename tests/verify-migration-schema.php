@@ -51,7 +51,7 @@ foreach ($historical as $file) {
     $apply('OCA\\Domus\\Migration\\' . basename($file, '.php'), $schema);
 }
 $baseline = clone $schema;
-$migration = \OCA\Domus\Migration\Version0008Date20261028000000::class;
+$migration = \OCA\Domus\Migration\Version1003Date20261112000000::class;
 $apply($migration, $schema);
 $final = clone $schema;
 $assert = static function (bool $condition, string $message): void {
@@ -163,13 +163,13 @@ foreach (['fresh' => $final, 'upgrade' => $baseline] as $label => $yearSchema) {
     foreach ($yearSchema->toSql($platform) as $sql) $db->exec($sql);
     $db->exec("INSERT INTO domus_units (user_id, label, created_at, updated_at) VALUES ('year-test', 'Existing', 1, 1)");
     $beforeYear = clone $yearSchema;
-    $apply(\OCA\Domus\Migration\Version0009Date20261030000000::class, $yearSchema);
+    $apply(\OCA\Domus\Migration\Version1003Date20261112000000::class, $yearSchema);
     foreach ($comparator->compareSchemas($beforeYear, $yearSchema)->toSaveSql($platform) as $sql) $db->exec($sql);
     $assert($db->query('SELECT construction_year FROM domus_units')->fetchColumn() === null, "$label: existing year stays empty");
     $db->exec('UPDATE domus_units SET construction_year = 1984');
     $assert((int)$db->query('SELECT construction_year FROM domus_units')->fetchColumn() === 1984, "$label: year persists");
     $beforeRetry = clone $yearSchema;
-    $apply(\OCA\Domus\Migration\Version0009Date20261030000000::class, $yearSchema);
+    $apply(\OCA\Domus\Migration\Version1003Date20261112000000::class, $yearSchema);
     $assert($comparator->compareSchemas($beforeRetry, $yearSchema)->toSaveSql($platform) === [], "$label: year migration is retry-safe");
 }
 echo "Construction year migration passed.\n";
@@ -180,14 +180,69 @@ foreach (['fresh' => $final, 'upgrade' => $baseline] as $label => $notesSchema) 
     foreach ($notesSchema->toSql($platform) as $sql) $db->exec($sql);
     $db->exec("INSERT INTO domus_units (user_id, label, notes, created_at, updated_at) VALUES ('notes-test', 'Existing', 'Description', 1, 1)");
     $beforeNotes = clone $notesSchema;
-    $apply(\OCA\Domus\Migration\Version0010Date20261105000000::class, $notesSchema);
+    $apply(\OCA\Domus\Migration\Version1003Date20261112000000::class, $notesSchema);
     foreach ($comparator->compareSchemas($beforeNotes, $notesSchema)->toSaveSql($platform) as $sql) $db->exec($sql);
     $assert($db->query('SELECT additional_notes FROM domus_units')->fetchColumn() === null, "$label: new notes stay empty");
     $db->exec("UPDATE domus_units SET additional_notes = 'Meter 12345'");
     $assert($db->query('SELECT notes FROM domus_units')->fetchColumn() === 'Description', "$label: description preserved");
     $assert($db->query('SELECT additional_notes FROM domus_units')->fetchColumn() === 'Meter 12345', "$label: notes persist");
     $beforeRetry = clone $notesSchema;
-    $apply(\OCA\Domus\Migration\Version0010Date20261105000000::class, $notesSchema);
+    $apply(\OCA\Domus\Migration\Version1003Date20261112000000::class, $notesSchema);
     $assert($comparator->compareSchemas($beforeRetry, $notesSchema)->toSaveSql($platform) === [], "$label: notes migration is retry-safe");
 }
 echo "Unit notes migration passed.\n";
+
+// Exercise the complete data step, including failures after account conversion.
+foreach (['fresh' => false, '1.2 populated' => true] as $label => $populated) {
+    $connection = \Doctrine\DBAL\DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
+    foreach ($final->toSql($platform) as $sql) $connection->executeStatement($sql);
+    $adapter = new \OCA\Domus\Tests\Support\SqliteMigrationDatabase($connection);
+    $dataMigration = new $migration($adapter, $users, $groups);
+    if ($populated) {
+        foreach (\OCA\Domus\Tests\Support\LegacyCatalogueFixture::tables() as $table => $rows) {
+            foreach ($rows as $row) {
+                $quoted = [];
+                foreach ($row as $column => $value) $quoted[$connection->quoteIdentifier($column)] = $value;
+                $connection->insert($table, $quoted);
+            }
+        }
+        $connection->executeStatement("INSERT INTO domus_accounts (id, number, label_en, label_de, is_system, created_at, updated_at) VALUES (20, '2700', 'Old costs', 'Alte Kosten', 1, 1, 1), (21, '2200', 'Old reserve', 'Alte Rücklage', 1, 1, 1)");
+        $connection->executeStatement("INSERT INTO domus_bookings (id, user_id, account, date, amount, year, created_at, updated_at) VALUES (20, 'alice', 2700, '2025-12-31', 123.45, 2025, 1, 1), (21, 'alice', 2200, '2025-12-31', 50, 2025, 1, 1)");
+        $connection->executeStatement("INSERT INTO domus_docLinks (id, user_id, entity_type, entity_id, file_id, file_name, created_at) VALUES (20, 'alice', 'booking', 20, 100, 'cost.pdf', 1), (21, 'alice', 'booking', 21, 101, 'reserve.pdf', 1)");
+        $connection->executeStatement('UPDATE domus_bookings SET source_property_booking_id = 21 WHERE id = 20');
+        $snapshot = static function () use ($connection, $final): array {
+            $rows = [];
+            foreach ($final->getTables() as $table) $rows[$table->getName()] = $connection->fetchAllAssociative('SELECT * FROM ' . $connection->quoteIdentifier($table->getName()));
+            return $rows;
+        };
+        $before = $snapshot();
+        // Fail after cleanup and catalogue creation, proving one transaction covers both.
+        $connection->executeStatement("CREATE TRIGGER fail_schedule BEFORE UPDATE ON domus_task_steps BEGIN SELECT RAISE(ABORT, 'Expected migration failure'); END");
+        $failed = false;
+        try {
+            $dataMigration->postSchemaChange($output, static fn () => null, []);
+        } catch (\Throwable $error) {
+            $assert(str_contains($error->getMessage(), 'Expected migration failure'), 'Unexpected rollback failure');
+            $failed = true;
+        }
+        $assert($failed && $snapshot() === $before, 'Data migration did not fully roll back');
+        $connection->executeStatement('DROP TRIGGER fail_schedule');
+    }
+    $dataMigration->postSchemaChange($output, static fn () => null, []);
+    (new \OCA\Domus\Migration\FillDefaultAccountsRepairStep($adapter))->run($output);
+    if ($populated) {
+        $booking = $connection->fetchAssociative('SELECT * FROM domus_bookings WHERE id = 20');
+        $assert((int)$booking['account'] === 2300 && (float)$booking['amount'] === 123.45 && $booking['source_property_booking_id'] === null, 'Conversion lost booking data or retained deleted source');
+        $assert((int)$connection->fetchOne('SELECT COUNT(*) FROM domus_bookings WHERE id = 21') === 0, '2200 booking retained');
+        $assert($connection->fetchFirstColumn('SELECT id FROM domus_docLinks') === [20], 'Document links not preserved/cleaned correctly');
+        $assert((int)$connection->fetchOne("SELECT COUNT(*) FROM domus_accounts WHERE number IN ('2200', '2700')") === 0, 'Obsolete accounts retained');
+        $once = $snapshot();
+        $dataMigration->postSchemaChange($output, static fn () => null, []);
+        $assert($snapshot() === $once, 'Combined migration retry changed data');
+    } else {
+        $assert((int)$connection->fetchOne('SELECT COUNT(*) FROM domus_accounts') === 11, 'Fresh install defaults missing');
+        $assert((int)$connection->fetchOne("SELECT COUNT(*) FROM domus_task_templates WHERE scope_key = 'system'") === 2, 'Fresh system templates missing or duplicated');
+        $assert((int)$connection->fetchOne('SELECT COUNT(*) FROM domus_task_tpl_steps') === 10, 'Fresh template steps missing or duplicated');
+    }
+    echo "PASS $label: complete data migration, default repair" . ($populated ? ", account conversion, cleanup, rollback and retry" : '') . "\n";
+}
