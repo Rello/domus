@@ -210,7 +210,7 @@ class UnitTransferService {
             $this->importTasks($this->normalizeRecords($payload['tasks'] ?? []), $unit->getId(), $userId, $now);
 
             $templateMap = $this->importTemplates($this->normalizeRecords($payload['taskTemplates'] ?? []), $now);
-            $this->importWorkflowRuns($this->normalizeRecords($payload['workflowRuns'] ?? []), $templateMap, $unit->getId(), $userId, $warnings, $now);
+            $this->importWorkflowRuns($this->normalizeRecords($payload['workflowRuns'] ?? []), $templateMap, $unit->getId(), $userId, $warnings, $now, $partnerMap);
 
             $this->connection->commit();
         } catch (\Throwable $e) {
@@ -522,7 +522,7 @@ class UnitTransferService {
         return $templateMap;
     }
 
-    private function importWorkflowRuns(array $runs, array $templateMap, int $unitId, string $userId, array &$warnings, int $now): void {
+    private function importWorkflowRuns(array $runs, array $templateMap, int $unitId, string $userId, array &$warnings, int $now, array $partnerMap): void {
         foreach ($runs as $runData) {
             $templateId = $runData['templateId'] ?? null;
             $mappedTemplateId = $templateId ? ($templateMap[(int)$templateId] ?? null) : null;
@@ -583,7 +583,13 @@ class UnitTransferService {
                 $step->setClosedAt($this->normalizeNullableTimestamp($stepData['closedAt'] ?? null));
                 $step->setClosedBy($this->normalizeUserReference($stepData['closedBy'] ?? null, $userId));
                 $step->setActionType($stepData['actionType'] ?? null);
-                $step->setActionUrl($stepData['actionUrl'] ?? null);
+                $actionUrl = $stepData['actionUrl'] ?? null;
+                if ($step->getActionType() === 'editContact') {
+                    $contactId = $partnerMap[(int)$actionUrl] ?? null;
+                    $actionUrl = $contactId === null ? null : (string)$contactId;
+                    if ($contactId === null) $step->setActionType(null);
+                }
+                $step->setActionUrl($actionUrl);
                 $step->setCreatedAt($this->normalizeTimestamp($stepData['createdAt'] ?? null, $now));
                 $step->setUpdatedAt($this->normalizeTimestamp($stepData['updatedAt'] ?? null, $now));
                 $this->taskStepMapper->insert($step);

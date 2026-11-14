@@ -132,7 +132,7 @@
                 });
             }
 
-            if (options.canManageDocuments !== false) {
+            if (options.canManageDocuments !== false && Domus.Access.can('deleteRecords')) {
                 const unlinkAction = options.showUnlinkAction
                     ? '<button type="button" class="domus-icon-only-button" data-doc-unlink="' + Domus.Utils.escapeHtml(doc.id) + '" aria-label="' +
                         Domus.Utils.escapeHtml(t('domus', 'Remove document link {file}', { file: fileName })) + '" title="' +
@@ -715,6 +715,7 @@
         }
 
         function openDetailModal(documentId, options = {}) {
+            if (!Domus.Access.require('deleteRecords')) return;
             Domus.Api.getDocumentDetail(documentId)
                 .then(detail => {
                     const context = resolveDocumentEditContext(documentId, detail, options);

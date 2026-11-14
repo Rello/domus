@@ -27,6 +27,7 @@ class PartnerService {
         private IL10N $l10n,
         private IDBConnection $connection,
         private ?AuditService $audit = null,
+        private ?ManagementAccessContext $access = null,
     ) {
     }
 
@@ -44,6 +45,7 @@ class PartnerService {
     }
 
     public function createPartner(array $data, string $userId, string $role, bool $auditAccount = true): Partner {
+        if (!empty($data['ncUserId'])) $this->access?->assertCapability('manageRenterAccess');
         $this->permissionService->assertPartnerTypeAllowed($data['partnerType'] ?? '');
         if (!isset($data['name']) || trim((string)$data['name']) === '') {
             throw new \InvalidArgumentException($this->l10n->t('Partner name is required.'));
@@ -75,6 +77,10 @@ class PartnerService {
             $this->permissionService->assertPartnerTypeAllowed($data['partnerType']);
         }
         $oldUid = $partner->getNcUserId();
+        if ((array_key_exists('ncUserId', $data) && $data['ncUserId'] !== $oldUid)
+            || ($oldUid && isset($data['partnerType']) && $data['partnerType'] !== $partner->getPartnerType())) {
+            $this->access?->assertCapability('manageRenterAccess');
+        }
         $targetType = $data['partnerType'] ?? $partner->getPartnerType();
         $fields = ['partnerType', 'name', 'street', 'zip', 'city', 'country', 'email', 'phone', 'customerRef', 'notes', 'ncUserId'];
         foreach ($fields as $field) {

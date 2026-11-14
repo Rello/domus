@@ -49,7 +49,7 @@ class WorkflowRunService {
     /**
      * @throws DbException
      */
-    public function startWorkflowRun(string $entityType, int $entityId, int $templateId, ?int $year, ?string $name, string $userId): WorkflowRun {
+    public function startWorkflowRun(string $entityType, int $entityId, int $templateId, ?int $year, ?string $name, string $userId, ?int $contactId = null): WorkflowRun {
         $this->assertEntityExists($entityType, $entityId, $userId);
 
         $template = $this->templateMapper->findById($templateId);
@@ -65,6 +65,11 @@ class WorkflowRunService {
             throw new ConflictException($this->l10n->t('Template has no steps.'));
         }
 
+        foreach ($steps as $step) {
+            if ($step->getActionType() === 'editContact' && $contactId === null) {
+                throw new ConflictException($this->l10n->t('Start this process from a tenancy change.'));
+            }
+        }
         $now = time();
         $displayName = $name !== null && trim($name) !== '' ? trim($name) : $template->getName();
 
@@ -96,7 +101,7 @@ class WorkflowRunService {
                 $taskStep->setDefaultDueDaysOffset((int)$stepTemplate->getDefaultDueDaysOffset());
                 $taskStep->setAllowEarlyCompletion((int)$stepTemplate->getAllowEarlyCompletion());
                 $taskStep->setActionType($stepTemplate->getActionType());
-                $taskStep->setActionUrl($stepTemplate->getActionUrl());
+                $taskStep->setActionUrl($stepTemplate->getActionType() === 'editContact' ? (string)$contactId : $stepTemplate->getActionUrl());
                 $isOpen = $order === 1;
                 $taskStep->setStatus($isOpen ? self::STEP_STATUS_OPEN : self::STEP_STATUS_NEW);
                 $taskStep->setDueDate($isOpen ? $this->buildDueDate((int)$stepTemplate->getDefaultDueDaysOffset(), $now) : null);

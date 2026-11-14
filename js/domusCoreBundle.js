@@ -502,6 +502,8 @@
             },
             closeBookingYear: (year, data) => request('POST', `/booking-years/${year}/close`, data),
             reopenBookingYear: (year, data) => request('POST', `/booking-years/${year}/reopen`, data),
+            previewFinancialHistory: data => request('POST', '/financial-history/preview', data),
+            removeFinancialHistory: data => request('POST', '/financial-history/remove', data),
             createUnit: data => request('POST', '/units', data),
             updateUnit: (id, data) => request('PUT', `/units/${id}`, data),
             deleteUnit: id => request('DELETE', `/units/${id}`),
@@ -1197,6 +1199,7 @@
                 btn.addEventListener('click', options.onClick);
             }
 
+            Domus.Access?.button(btn, options.permission);
             return btn;
         }
 
@@ -1233,6 +1236,7 @@
                 btn.addEventListener('click', options.onClick);
             }
 
+            Domus.Access?.button(btn, options.permission);
             return btn;
         }
 
@@ -1245,7 +1249,7 @@
         }
 
         function buildQuickActionCard(action) {
-            const disabled = action.disabled === true;
+            const disabled = action.disabled === true || (action.permission && !Domus.Access.can(action.permission));
             const prominent = action.prominent === true;
             const cardClassName = 'domus-dashboard-quick-card' +
                 (disabled ? ' domus-dashboard-quick-card-disabled' : '') +
@@ -1361,7 +1365,7 @@
         function buildEmptyStateAction(message, options = {}) {
             const resolvedMessage = message || getDefaultEmptyStateMessage();
             const iconClass = options.iconClass || 'domus-icon-info';
-            const hasAction = Boolean(options.actionId);
+            const hasAction = Boolean(options.actionId) && (!options.permission || Domus.Access.can(options.permission));
             const element = document.createElement('div');
             const classes = ['domus-empty-state-action'];
             if (options.className) {
@@ -1426,6 +1430,7 @@
                 btn.addEventListener('click', options.onClick);
             }
 
+            Domus.Access?.button(btn, options.permission);
             return btn.outerHTML;
         }
 
@@ -2082,6 +2087,7 @@
         function buildSectionHeader(title, action) {
             const actions = (Array.isArray(action) ? action : [action]).filter(Boolean);
             const renderAction = (item) => {
+                if (item.permission && !Domus.Access.can(item.permission)) return '';
                 if (item.href) {
                     let attrs = ' href="' + Domus.Utils.escapeHtml(item.href) + '"';
                     if (item.id) {
@@ -2829,6 +2835,10 @@
                 name = 'renter';
                 args = [];
             }
+            if (Domus.state.managementContext?.mode === 'unavailable' && !['settings', 'renter'].includes(name)) {
+                name = 'settings';
+                args = [];
+            }
             const normalizedArgs = normalizeArgs(args);
             const currentView = Domus.state.currentView;
             const currentArgs = getCurrentArgsSnapshot();
@@ -2964,12 +2974,22 @@
             const select = document.createElement('select');
             select.id = 'domus-context-select';
             select.setAttribute('aria-label', t('domus', 'Data context'));
-            select.add(new Option(t('domus', 'Personal'), ''));
+            if (Domus.state.managementContext?.allowPersonal !== false) {
+                select.add(new Option(t('domus', 'Personal'), ''));
+            } else {
+                const placeholder = new Option(t('domus', 'Select a Team.'), '');
+                placeholder.disabled = true;
+                select.add(placeholder);
+            }
             select.disabled = true;
             wrapper.appendChild(select);
             header.appendChild(wrapper);
             Domus.Api.get('/teams').then(result => {
                 const teams = Array.isArray(result?.teams) ? result.teams : [];
+                if (result.allowPersonal === false && select.options[0]?.textContent === t('domus', 'Personal')) {
+                    select.options[0].textContent = t('domus', 'Select a Team.');
+                    select.options[0].disabled = true;
+                }
                 teams.forEach(team => select.add(new Option(team.displayName, team.teamId)));
                 select.value = Domus.state.managementContext?.activeTeamId || '';
                 select.title = t('domus', 'Data context') + ': ' + (select.selectedOptions[0]?.textContent || '');
@@ -3155,6 +3175,7 @@
             if (Domus.state.currentView === 'renterPreview') {
                 return [{ view: 'renterPreview', label: t('domus', 'My tenancies'), icon: 'domus-icon-tenancy', args: Domus.state.currentViewArgs }];
             }
+            if (Domus.state.managementContext?.mode === 'unavailable') return [];
             return Domus.Role.getNavigationItems();
         }
 
@@ -3186,6 +3207,26 @@
     /**
      * Tasks
      */
+    // Portfolio authorization is independent of the Landlord/Building management view.
+    Domus.Access = {
+        can(capability) {
+            const context = Domus.state.managementContext;
+            if (context?.permissions) return context.permissions[capability] === true;
+            return !context?.activeTeamId && context?.canManage !== false;
+        },
+        require(capability) {
+            if (this.can(capability)) return true;
+            Domus.UI.showNotification(t('domus', 'This action requires a Team administrator.'), 'error');
+            return false;
+        },
+        button(button, capability) {
+            if (capability && !this.can(capability)) {
+                button.disabled = true;
+                button.title = t('domus', 'This action requires a Team administrator.');
+            }
+        }
+    };
+
     Domus.Role = (function() {
         const roleConfigs = {
             landlord: {
@@ -3294,7 +3335,7 @@
         }
 
         function hasCapability(capability) {
-            return !!getRoleConfig().capabilities?.[capability];
+            return !!getRoleConfig().capabilities?.[capability] && (capability !== 'manageTenancies' || Domus.Access.can('manageTenancies'));
         }
 
         function isTenantView() {

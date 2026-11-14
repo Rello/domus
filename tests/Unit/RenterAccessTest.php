@@ -69,7 +69,7 @@ class RenterAccessTest extends TestCase {
                 throw new \DomainException('Team denied');
             }
         };
-        $teams->method('assertTeamAdmin')->willReturnCallback(fn ($team) => $policy($team, $this->users[$this->actor]));
+        $teams->method('assertTeamMember')->willReturnCallback(fn ($team) => $policy($team, $this->users[$this->actor]));
         $teams->method('getGuestCreationContext')->willReturnCallback(fn () => ['canCreate' => $this->guestsAllowed, 'message' => 'Guests policy blocks creation']);
         $access = new ManagementAccessContext($session, $request, $teams, $l10n, $groups);
         $directory = $this->createMock(IUserManager::class);

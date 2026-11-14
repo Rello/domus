@@ -780,7 +780,7 @@ async function main() {
             window.moveCalls = [];
             Domus.Api.get = async path => {
                 if (path === '/units/1') return {...unitData, propertyId: null};
-                if (path === '/teams') return {teams: [{teamId: 'team-a', displayName: 'Management'}]};
+                if (path === '/teams') return {teams: [{teamId: 'team-a', displayName: 'Management', role: 'admin'}]};
                 if (path === '/units/1/move') return saved;
                 return null;
             };
@@ -865,7 +865,7 @@ async function main() {
             await route.fulfill({contentType: 'application/json', body: JSON.stringify({unitId: 1, warnings: []})});
         });
         await page.evaluate(() => {
-            Domus.state.managementContext = {activeTeamId: 'team-a'};
+            Domus.state.managementContext = {activeTeamId: 'team-a', teamRole: 'admin', permissions: {managePortfolio: true}};
             Domus.Api.getUnitsStatisticsOverview = async () => ({rows: []});
             Domus.Units.renderList();
         });

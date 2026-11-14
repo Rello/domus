@@ -64,7 +64,7 @@ class RenterPortalTest extends TestCase {
         });
         $teams = $this->createMock(TeamIntegrationService::class);
         $teams->method('isTeamMember')->willReturnCallback(fn ($team, $uid) => $this->staffMember && $team === 'a' && $uid === 'staff');
-        $teams->method('assertTeamAdmin')->willReturnCallback(function ($team) {
+        $teams->method('assertTeamMember')->willReturnCallback(function ($team) {
             if ($this->actor !== 'staff' || $team !== 'a' || !$this->staffMember) throw new \DomainException('Denied');
         });
         $staff = $this->createMock(IUser::class);

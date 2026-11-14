@@ -693,13 +693,13 @@
             const canImport = !Domus.Role.isTenantView();
             const importButton = canImport
                 ? Domus.UI.createIconButton('domus-icon-add', t('domus', 'Import'), {
-                    id: 'domus-unit-import',
+                    permission: 'managePortfolio', id: 'domus-unit-import',
                     className: 'domus-scope-add-button secondary'
                 }).outerHTML
                 : '';
             const header = '<div class="domus-toolbar">' +
                 Domus.UI.buildScopeAddButton('domus-icon-unit', t('domus', 'Add {entity}', {entity: t('domus', 'Unit')}), {
-                    id: 'domus-unit-create',
+                    permission: 'managePortfolio', id: 'domus-unit-create',
                     className: 'primary'
                 }) +
                 importButton +
@@ -713,7 +713,7 @@
                 }),
                 {
                     iconClass: 'domus-icon-unit',
-                    actionId: 'domus-units-empty-create'
+                    permission: 'managePortfolio', actionId: 'domus-units-empty-create'
                 }
             );
             const content = cards.length
@@ -1086,6 +1086,122 @@
             return {content: withUnit(String(value)), alignRight: false};
         }
 
+        function openFinancialHistoryModal({unitId}, onComplete) {
+            if (!unitId || !Domus.Access.can('deleteRecords')) return;
+            const escape = Domus.Utils.escapeHtml;
+            let years = [];
+            let year = null;
+            let preview = null;
+            let busy = true;
+            let closed = false;
+            let errorMessage = '';
+            const container = document.createElement('div');
+            const modal = Domus.UI.openModal({
+                title: t('domus', 'Remove financial history'), content: container, size: 'large',
+                onClose: () => { closed = true; }
+            });
+            const payload = () => ({year, unitId});
+            const date = value => escape(value ? Domus.Utils.formatDate(value) : '—');
+            function render() {
+                const yearOptions = years.map(value => '<option value="' + value + '"' + (value === year ? ' selected' : '') + '>' + escape(Domus.Utils.formatYear(value)) + '</option>').join('');
+                let content = '<p>' + escape(t('domus', 'Remove bookings and tenancy history before the first retained year. Documents and contacts are kept.')) + '</p><br>' +
+                    Domus.UI.buildFormTable([
+                        Domus.UI.buildFormRow({label: t('domus', 'First retained year'), content: '<select id="domus-history-year" required' + (busy || !years.length ? ' disabled' : '') + '>' + yearOptions + '</select>'})
+                    ]);
+                if (errorMessage) content += '<p role="alert">' + escape(errorMessage) + '</p>';
+                if (busy) content += '<p role="status">' + escape(t('domus', 'Loading…')) + '</p>';
+                if (preview) {
+                    content += '<div id="domus-history-preview"><h3 id="domus-history-preview-heading" tabindex="-1">' + escape(t('domus', 'Preview')) + '</h3><p>' +
+                        escape(t('domus', 'Remove history before {year}.', {year: preview.year})) + '</p>';
+                    const summary = [
+                        [t('domus', 'Bookings to delete'), preview.bookings.length],
+                        [t('domus', 'Tenancies to delete'), preview.deleteTenancies.length],
+                        [t('domus', 'Tenancies to adjust'), preview.adjustTenancies.length],
+                        [t('domus', 'Year closures to remove'), preview.removedClosures],
+                        [t('domus', 'Activities to remove'), preview.removedActivities],
+                        [t('domus', 'Obsolete reminders to close'), preview.closedTasks],
+                        [t('domus', 'Document assignments to preserve'), preview.preservedDocuments]
+                    ];
+                    content += Domus.UI.buildTable([t('domus', 'Change'), t('domus', 'Count')], summary.map(row => row.map(value => escape(String(value)))), {wrapPanel: false});
+                    if (preview.bookings.length) content += '<h4>' + escape(t('domus', 'Bookings to delete')) + '</h4>' + Domus.UI.buildTable(
+                        [t('domus', 'ID'), t('domus', 'Year'), t('domus', 'Date'), t('domus', 'Description'), t('domus', 'Amount')],
+                        preview.bookings.map(row => [escape(String(row.id)), escape(String(row.year)), date(row.date), escape(row.description), escape(Domus.Utils.formatCurrency(row.amount))]), {wrapPanel: false});
+                    const tenancies = [...preview.deleteTenancies.map(row => ({...row, action: t('domus', 'Delete')})),
+                        ...preview.adjustTenancies.map(row => ({...row, action: t('domus', 'Adjust start date')}))];
+                    if (tenancies.length) content += '<h4>' + escape(t('domus', 'Tenancy changes')) + '</h4>' + Domus.UI.buildTable(
+                        [t('domus', 'ID'), t('domus', 'Start date'), t('domus', 'End date'), t('domus', 'Change')],
+                        tenancies.map(row => [escape(String(row.id)), date(row.startDate), date(row.endDate), escape(row.action) + (row.newStartDate ? ': ' + date(row.newStartDate) : '')]), {wrapPanel: false});
+                    if (preview.adjustTenancies.length) content += '<p>' + escape(t('domus', 'Existing conditions are kept and a dated note records each original and adjusted start date. Date changes can affect rent-review reminders.')) + '</p>';
+                    content += '<p>' + escape(t('domus', 'All files are kept. Documents assigned to removed bookings or tenancies remain available on their unit or property. General documents are unchanged.')) + '</p>';
+                    preview.blockers.forEach(message => { content += '<p role="alert">' + escape(message) + '</p>'; });
+                    if (!preview.hasChanges) content += '<p>' + escape(t('domus', 'There is no financial history before this year.')) + '</p>';
+                    if (preview.hasChanges && !preview.blockers.length) content += '<p>' + escape(t('domus', 'This permanently removes financial history, including closed years. It cannot be undone in Domus.')) + '</p><br>' +
+                        '<div class="domus-checkbox-row"><input class="checkbox" id="domus-history-confirm" type="checkbox"' + (busy ? ' disabled' : '') + '><label for="domus-history-confirm">' + escape(t('domus', 'I have reviewed the preview and want to remove this financial history.')) + '</label></div>';
+                    content += '</div>';
+                }
+                content += '<div class="domus-form-actions"><button type="button" id="domus-history-preview-button"' + (busy ? ' disabled' : '') + '>' + escape(years.length || busy ? t('domus', 'Preview') : t('domus', 'Retry')) + '</button>' +
+                    (preview?.hasChanges && !preview.blockers.length ? '<button type="button" class="primary" id="domus-history-remove" disabled>' + escape(t('domus', 'Remove financial history')) + '</button>' : '') + '</div>';
+                container.innerHTML = '<div class="domus-form">' + content + '</div>';
+                modal.refreshFooter();
+                const invalidate = () => {
+                    year = Number(container.querySelector('#domus-history-year').value);
+                    preview = null;
+                    container.querySelector('#domus-history-preview')?.remove();
+                    modal.modalEl.querySelector('#domus-history-remove')?.remove();
+                    errorMessage = '';
+                };
+                container.querySelector('#domus-history-year').addEventListener('change', invalidate);
+                modal.modalEl.querySelector('#domus-history-preview-button')?.addEventListener('click', loadPreview);
+                container.querySelector('#domus-history-confirm')?.addEventListener('change', event => {
+                    modal.modalEl.querySelector('#domus-history-remove').disabled = !event.target.checked || busy;
+                });
+                modal.modalEl.querySelector('#domus-history-remove')?.addEventListener('click', removeHistory);
+            }
+            async function loadYears() {
+                busy = true;
+                errorMessage = '';
+                render();
+                try {
+                    const statistics = await Domus.Api.getUnitStatistics(unitId);
+                    years = Domus.Utils.collectStatisticsYears(statistics);
+                    year = years[years.length - 1];
+                } catch (error) { errorMessage = error.message; }
+                finally { busy = false; if (!closed) render(); }
+            }
+            async function loadPreview() {
+                if (busy) return;
+                if (!years.length) { await loadYears(); return; }
+                const input = container.querySelector('#domus-history-year');
+                if (!input.reportValidity()) return;
+                year = Number(input.value);
+                busy = true;
+                preview = null;
+                errorMessage = '';
+                render();
+                try { preview = await Domus.Api.previewFinancialHistory(payload()); }
+                catch (error) { errorMessage = error.message; }
+                finally { busy = false; if (!closed) { render(); modal.modalEl.querySelector('#domus-history-preview-heading')?.focus(); } }
+            }
+            async function removeHistory() {
+                if (busy || !preview || !container.querySelector('#domus-history-confirm')?.checked) return;
+                const data = {...payload(), token: preview.token};
+                busy = true;
+                errorMessage = '';
+                render();
+                try {
+                    await Domus.Api.removeFinancialHistory(data);
+                    modal.close();
+                    Domus.UI.showNotification(t('domus', 'Financial history removed. Documents were preserved.'), 'success');
+                    onComplete?.();
+                } catch (error) {
+                    // A failed/stale preview must be requested and reviewed again.
+                    preview = null;
+                    errorMessage = error.message;
+                } finally { busy = false; if (!closed) render(); }
+            }
+            loadYears();
+        }
+
         function openYearStatusModal(unitId, statistics, onComplete, modalOptions = {}) {
             const years = Domus.Utils.collectStatisticsYears(statistics);
             const provisionalMap = Domus.Utils.collectProvisionalMap(statistics);
@@ -1110,6 +1226,7 @@
             const failedCount = () => checks.filter(account => account.total <= 0).length;
 
             function button(id, label, primary = false, disabled = false) {
+                if (id === 'submit' && !Domus.Access.can('closeYears')) disabled = true;
                 return '<button type="button" id="domus-year-status-' + id + '"' +
                     (primary ? ' class="primary"' : '') + (disabled ? ' disabled' : '') + '>' + escape(label) + '</button>';
             }
@@ -1288,6 +1405,7 @@
         }
 
         function openUnitCreateForm(defaults = {}, onCreated, modalOptions = {}) {
+            if (!Domus.Access.require('managePortfolio')) return;
             Domus.Api.getProperties()
                 .then(properties => {
                     const propertyOptions = [{
@@ -1411,6 +1529,7 @@
         }
 
         function openGuidedCreateWorkflow(defaults = {}, onFinished) {
+            if (!Domus.Access.require('managePortfolio')) return;
             const partnerType = Domus.Permission.getTenancyPartnerFilter();
             const partnerTypeLabel = Domus.Partners.getPartnerTypeLabel(partnerType);
             const steps = getUnitWorkflowSteps(partnerTypeLabel);
@@ -1428,6 +1547,7 @@
         }
 
         function openCreateModal(defaults = {}, onCreated, options = {}) {
+            if (!Domus.Access.require('managePortfolio')) return;
             if (options.useGuidedWorkflow === false) {
                 openUnitCreateForm(defaults, onCreated, options);
                 return;
@@ -1701,7 +1821,7 @@
                     ]
                     : [
                         (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action) ? Domus.UI.buildIconLabelButton('domus-icon-tenancy', tenancyLabels.action, {
-                            id: 'domus-add-tenancy',
+                            permission: 'manageTenancies', id: 'domus-add-tenancy',
                             className: 'domus-action-menu-item'
                         }) : '',
                         canManageBookings ? Domus.UI.buildIconLabelButton('domus-icon-booking', t('domus', 'Add {entity}', {entity: t('domus', 'Booking')}), {
@@ -1709,7 +1829,7 @@
                             className: 'domus-action-menu-item'
                         }) : '',
                         canManageDistributions ? Domus.UI.buildIconLabelButton('domus-icon-document', t('domus', 'Add {entity}', {entity: t('domus', 'Distribution')}), {
-                            id: 'domus-add-unit-distribution',
+                            permission: 'managePortfolio', id: 'domus-add-unit-distribution',
                             className: 'domus-action-menu-item'
                         }) : '',
                         canManageDistributions ? Domus.UI.buildIconLabelButton('domus-icon-document', t('domus', 'Distribution Report'), {
@@ -1732,16 +1852,19 @@
                     className: 'domus-action-menu-item'
                 }),
                 !Domus.state.managementContext?.activeTeamId && !unit.propertyId ? Domus.UI.buildIconLabelButton('domus-icon-unit', t('domus', 'Move to Team…'), {
-                    id: 'domus-unit-move',
+                    permission: 'managePortfolio', id: 'domus-unit-move',
                     className: 'domus-action-menu-item'
                 }) : '',
                 !Domus.state.managementContext?.activeTeamId ? Domus.UI.buildIconLabelButton('domus-icon-document', t('domus', 'Export data'), {
                     id: 'domus-unit-export',
                     className: 'domus-action-menu-item'
                 }) : '',
-                Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
+                Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {permission: 'deleteRecords',
                     id: 'domus-unit-delete',
                     className: 'domus-action-menu-item'
+                }),
+                Domus.UI.buildIconLabelButton('domus-icon-confirm-year', t('domus', 'Remove financial history'), {
+                    permission: 'deleteRecords', id: 'domus-unit-history-remove', className: 'domus-action-menu-item'
                 })
             ]).filter(Boolean);
             const actionMenu = Domus.UI.buildActionMenu(menuActions, {
@@ -1768,7 +1891,7 @@
             const hero = Domus.UI.buildDetailHero({
                 indicator: '<div class="domus-hero-indicator domus-hero-image-card">' +
                     Domus.UI.buildEntityImage('unit', unit, {variant: 'hero', alt: unit.label || t('domus', 'Unit')}) +
-                    '<button type="button" class="domus-hero-image-edit" id="domus-unit-image-edit" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Edit picture')) + '">' +
+                    '<button type="button" class="domus-hero-image-edit" ' + (Domus.Access.can('managePortfolio') ? '' : 'disabled ') + 'id="domus-unit-image-edit" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Edit picture')) + '">' +
                     '<span class="domus-icon domus-icon-edit" aria-hidden="true"></span></button></div>',
                 kicker,
                 title: unit.label,
@@ -1798,7 +1921,7 @@
 
         function buildUnitFinanceTables({ id, unit, statistics, canManageBookings, canManageDistributions, documentActionsEnabled }) {
             const distributionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Distribution'), canManageDistributions ? {
-                id: 'domus-add-unit-distribution-inline',
+                permission: 'managePortfolio', id: 'domus-add-unit-distribution-inline',
                 title: t('domus', 'Add {entity}', {entity: t('domus', 'Distribution')}),
                 iconClass: 'domus-icon-add'
             } : null);
@@ -2056,7 +2179,7 @@
                     emptyActionId: 'domus-unit-tenancies-empty-create',
                     emptyIconClass: 'domus-icon-tenancy'
                 }), (unitDetailConfig.showTenancyActions && canManageTenancies && tenancyLabels.action) ? {
-                    id: 'domus-add-tenancy-inline',
+                    permission: 'manageTenancies', id: 'domus-add-tenancy-inline',
                     title: tenancyLabels.action,
                     iconClass: 'domus-icon-add'
                 } : null),
@@ -2310,6 +2433,9 @@
         }
 
         function bindDetailActions(id, unit) {
+            document.getElementById('domus-unit-history-remove')?.addEventListener('click', () => {
+                openFinancialHistoryModal({unitId: Number(id)}, () => refreshDetail(id));
+            });
             const detailsBtn = document.getElementById('domus-unit-masterdata');
             const deleteBtn = document.getElementById('domus-unit-delete');
             const exportBtn = document.getElementById('domus-unit-export');
@@ -2444,6 +2570,7 @@
         }
 
         function openDocumentLocationModal(unit) {
+            if (!Domus.Access.require('managePortfolio')) return;
             Domus.UI.openDocumentLocationModal({
                 currentPath: unit.documentPath || '',
                 formIdPrefix: 'domus-unit-document-location',
@@ -2453,6 +2580,7 @@
         }
 
         function openUnitModal(id, mode = 'edit') {
+            if (!Domus.Access.can('managePortfolio')) mode = 'view';
             Promise.all([
                 Domus.Api.get('/units/' + id),
                 Domus.Api.getProperties()
@@ -2475,7 +2603,7 @@
                     let modal;
                     const headerActions = [];
                     if (mode === 'view' && !Domus.Role.isTenantView()) {
-                        headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
+                        if (Domus.Access.can('managePortfolio')) headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
                             modal?.close();
                             openUnitModal(id, 'edit');
                         }));
@@ -2505,6 +2633,7 @@
         }
 
         async function openMoveModal(unit) {
+            if (!Domus.Access.require('managePortfolio')) return;
             const content = document.createElement('div');
             const explanation = document.createElement('p');
             explanation.textContent = t('domus', 'Move this unit and its related data to a Team. The complete folder tree and linked files will be copied. Original files are retained. Team members will gain access.');
@@ -2651,7 +2780,7 @@
             try {
                 const [teams, saved] = await Promise.all([Domus.Api.get('/teams'), Domus.Api.get(base)]);
                 if (closed) return;
-                (teams?.teams || []).forEach(team => select.add(new Option(team.displayName, team.teamId)));
+                (teams?.teams || []).filter(team => team.role === 'admin').forEach(team => select.add(new Option(team.displayName, team.teamId)));
                 job = saved.status === 'new' ? null : saved;
                 if (job && job.status !== 'cancelled') select.value = job.teamId;
                 status.textContent = select.options.length ? '' : t('domus', 'No Teams are available.');
@@ -2820,6 +2949,7 @@
         }
 
         function openImportModal() {
+            if (!Domus.Access.require('managePortfolio')) return;
             const isBuildingManagement = Domus.Permission.isBuildingManagement();
             const propertyPromise = isBuildingManagement ? Domus.Api.getProperties().catch(() => []) : Promise.resolve([]);
             propertyPromise.then(properties => {
@@ -3103,6 +3233,7 @@
         }
 
         function openUnitImageModal(unit) {
+            if (!Domus.Access.require('managePortfolio')) return;
             Domus.UI.openEntityImageModal('unit', unit, () => refreshDetail(unit.id));
         }
 
@@ -3112,7 +3243,8 @@
             refreshDetail,
             renderListInline,
             openCreateModal,
-            openYearStatusModal
+            openYearStatusModal,
+            openFinancialHistoryModal
         };
     })();
     Domus.UnitSettlements = (function () {
@@ -3393,6 +3525,7 @@
                 });
                 const createBtn = modal.modalEl.querySelector('#domus-create-settlement');
                 if (createBtn) {
+                    Domus.Access.button(createBtn, 'managePortfolio');
                     createBtn.addEventListener('click', () => {
                         if (isCreating || templateStatus === null) return;
                         const reportFormat = templateStatus.ready ? 'docx' : 'md';

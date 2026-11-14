@@ -16,6 +16,7 @@ class AuditService {
         'unit_move.started', 'unit_move.completed', 'unit_move.failed', 'unit_move.cancelled',
         'account.linked', 'account.unlinked', 'account.replaced', 'tenancy.relationships_changed',
         'unit.exported', 'unit.imported', 'property.deleted', 'unit.deleted', 'tenancy.deleted', 'partner.deleted',
+        'financial_history.deleted',
     ];
 
     public function __construct(

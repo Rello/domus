@@ -5625,6 +5625,11 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
     margin: 8px 0;
 }
 
+#app-content .domus-required-app > a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 .domus-required-app-status {
     width: 20px;
     text-align: center;
@@ -5882,3 +5887,19 @@ a.domus-back-button:hover { text-decoration: underline; background: transparent;
 .domus-icon-calculator { background-image: url(../img/calculator.svg); }
 .domus-modal-title-group { flex: 1; min-width: 0; }
 .domus-modal-title-group p { margin: 6px 0 0; font-size: 14px; font-weight: normal; }
+
+/* Shared checkbox alignment; Nextcloud .checkbox + label supplies the control appearance. */
+.domus-checkbox-row { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.domus-checkbox-row[hidden] { display: none; }
+.domus-checkbox-row > label { margin: 0; flex: 1; }
+.domus-form .domus-checkbox-row > label { display: block; margin: 0; font-weight: normal; }
+.domus-checkbox-row > input[type="checkbox"]:not(.checkbox),
+.domus-settings label > input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; margin: 0; flex: 0 0 20px; }
+.domus-settings label:has(> input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
+.domus-scope-note { margin-top: 16px; }
+.domus-team-picker { display: flex; align-items: center; gap: 8px; margin-block: 8px 16px; }
+.domus-selected-teams { display: flex; flex: 1; flex-wrap: wrap; gap: 4px; min-width: 0; min-height: 36px; padding: 3px; box-sizing: border-box; border: 1px solid var(--color-border-dark); border-radius: var(--border-radius-large); }
+.domus-team-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 0 6px; line-height: 24px; }
+.domus-team-chip > span { overflow-wrap: anywhere; min-width: 0; }
+.domus-team-chip > button { background: transparent; border: 0; margin: 0; min-width: 24px; min-height: 24px; height: 24px; line-height: 24px; padding: 0; flex-shrink: 0; }
+.domus-team-options { max-height: 45vh; overflow-y: auto; margin-block: 12px; }

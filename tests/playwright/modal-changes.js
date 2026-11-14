@@ -1134,6 +1134,51 @@ async function main() {
         assert.equal(await page.evaluate(() => window.fixtureDocuments.length), 1);
     });
 
+    await test('member saves booking changes while existing document assignments stay read-only', async page => {
+        await page.evaluate(() => {
+            Domus.state.managementContext = {activeTeamId: 'team-a', canManage: true, teamRole: 'member',
+                permissions: {editBookings: true, addDocuments: true, deleteRecords: false}};
+            window.bookingSaves = [];
+            window.assignmentMutations = [];
+            window.notifications = [];
+            Domus.UI.showNotification = (message, type) => window.notifications.push({message, type});
+            Domus.Api.getDocuments = async () => [{id: 7, fileName: 'Invoice.pdf'}];
+            Domus.Api.getDocumentDetail = async () => ({
+                document: {id: 7, filePath: '/Invoice.pdf', fileName: 'Invoice.pdf'},
+                linkedEntities: [{id: 7, entityType: 'booking', entityId: 402},
+                    {id: 9, entityType: 'tenancy', entityId: 12}]
+            });
+            Domus.Api.get = async path => path === '/units/1/tenancies'
+                ? [{id: 12, partners: [{name: 'Existing renter'}]}, {id: 13, partners: [{name: 'New renter'}]}]
+                : {unitId: 1, account: '2000', amount: 100, date: '2026-09-25', description: 'Existing booking'};
+            Domus.Api.updateBooking = async (id, payload) => window.bookingSaves.push({id, payload});
+            for (const method of ['attachDocumentToTargets', 'unlinkDocument']) {
+                Domus.Api[method] = async () => {
+                    window.assignmentMutations.push(method);
+                    throw new Error('403: Team administrator required');
+                };
+            }
+            Domus.Bookings.openEditModal(402);
+        });
+        const booking = page.getByRole('dialog', {name: 'Edit booking', exact: true});
+        const existing = booking.getByRole('checkbox', {name: 'Existing renter', exact: true});
+        await existing.waitFor();
+        assert.equal(await existing.isChecked(), true);
+        assert.equal(await existing.isDisabled(), true);
+        assert.equal(await booking.getByRole('checkbox', {name: 'New renter', exact: true}).isDisabled(), true);
+        await booking.locator('[name="description"]').fill('Updated by member');
+        await booking.getByRole('button', {name: 'Save', exact: true}).click();
+        await booking.waitFor({state: 'detached'});
+        const result = await page.evaluate(() => ({saves: window.bookingSaves,
+            mutations: window.assignmentMutations, notifications: window.notifications}));
+        assert.equal(result.saves.length, 1);
+        assert.equal(result.saves[0].id, 402);
+        assert.equal(result.saves[0].payload.description, 'Updated by member');
+        assert.deepEqual(result.mutations, []);
+        assert.equal(result.notifications.some(item => item.type === 'error'), false);
+        assert.equal(result.notifications.some(item => item.message === 'Changes saved.'), true);
+    });
+
     for (const direct of [false, true]) {
     for (const width of [1280, 390]) {
         await test(`booking documents allow editing existing tenancy assignments ${direct ? 'directly' : 'in document editor'} (${width}px)`, async page => {

@@ -96,6 +96,18 @@ class SystemTaskTemplates {
                     ],
                 ],
             ],
+            [
+                'key' => 'tenant_change',
+                'name' => 'Tenant change',
+                'description' => null,
+                'steps' => [[
+                    'title' => 'Confirm forwarding address and contact details',
+                    'description' => null,
+                    'defaultDueDaysOffset' => 0,
+                    'actionType' => 'editContact',
+                    'actionUrl' => null,
+                ]],
+            ],
         ];
     }
 }

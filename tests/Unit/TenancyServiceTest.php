@@ -39,6 +39,92 @@ class TenancyServiceTest extends TestCase {
         self::assertSame([['id' => 3, 'name' => 'Contact 3']], $service->deleteTenancy(1, 'alice'));
     }
 
+    /** @dataProvider tenancyChangeOperations */
+    public function testTenantChangeHookParticipatesInSaveTransaction(string $operation, bool $fail, ?string $existingEnd = null): void {
+        $db = new \OCA\Domus\Tests\Support\TransferDatabase();
+        $db->tables = ['saved' => []];
+        $old = new Tenancy(); $old->setId(1); $old->setUnitId(7); $old->setStartDate('2026-01-01'); $old->setBaseRent('500'); $old->setEndDate($existingEnd);
+        $mapper = $this->createMock(TenancyMapper::class);
+        $mapper->method('findForUser')->willReturn($old);
+        $mapper->method('findByUser')->willReturn([$old]);
+        foreach (['insert', 'update'] as $method) {
+            $mapper->method($method)->willReturnCallback(function ($row) use ($db, $method) {
+                $db->tables['saved'][] = $method;
+                if ($method === 'insert') $row->setId(2);
+                return $row;
+            });
+        }
+        $relations = $this->createMock(PartnerRelMapper::class);
+        $row = new PartnerRel(); $row->setPartnerId(3);
+        $relations->method('findForTenancy')->willReturn([$row]);
+        $relations->method('insert')->willReturnArgument(0);
+        $partner = new Partner(); $partner->setId(3); $partner->setPartnerType('tenant');
+        $partners = $this->createMock(PartnerMapper::class);
+        $partners->method('findForUser')->willReturn($partner);
+        $partners->method('findForUserByIds')->willReturn([$partner]);
+        $unit = new Unit(); $unit->setId(7);
+        $units = $this->createMock(UnitMapper::class); $units->method('findForUser')->willReturn($unit);
+        $permissions = $this->createMock(PermissionService::class);
+        $permissions->method('guardTenancyFinancialFields')->willReturnArgument(1);
+        $change = $this->createMock(\OCA\Domus\Service\TenantChangeService::class);
+        $change->expects($operation === 'create' ? self::once() : self::never())->method('created')
+            ->willReturnCallback(function ($incoming, $userId, $endedTenancies) use ($db, $fail, $old, $existingEnd) { self::assertSame($existingEnd !== null && $existingEnd < '2026-12-01' ? [] : [$old], $endedTenancies); self::assertSame(0, $db->commits); if ($fail) throw new \RuntimeException('Process failure'); });
+        $service = new TenancyService($mapper, $units, $partners, $relations, $permissions,
+            $this->createMock(IL10N::class), $db, null, $change);
+        try {
+            $data = ['unitId' => 7, 'startDate' => '2026-12-01', 'baseRent' => '600', 'partnerIds' => [3]];
+            if ($operation === 'end') $service->updateTenancy(1, ['endDate' => '2026-11-30'], 'alice', 'landlord');
+            elseif ($operation === 'create') $service->createTenancy($data, 'alice', 'landlord');
+            else $service->changeConditions(1, $data, 'alice', 'landlord');
+            self::assertFalse($fail);
+            self::assertSame(1, $db->commits);
+        } catch (\RuntimeException $error) {
+            self::assertTrue($fail);
+            self::assertSame('Process failure', $error->getMessage());
+            self::assertSame([], $db->tables['saved']);
+            self::assertSame(1, $db->rollbacks);
+        }
+    }
+
+    public static function tenancyChangeOperations(): array {
+        return [['end', false], ['create', false], ['create', true], ['create', false, '2026-11-30'], ['create', false, '2026-10-31'], ['create', false, '2027-01-31'], ['conditions', false]];
+    }
+
+    /** @dataProvider replacementEndDates */
+    public function testReplacementShortensEarlierOverlapAndPreservesFuturePeriods(?string $endDate, bool $shortens): void {
+        $current = new Tenancy(); $current->setId(1); $current->setUnitId(7);
+        $current->setStartDate('2013-01-01'); $current->setEndDate($endDate);
+        $future = new Tenancy(); $future->setId(2); $future->setUnitId(7); $future->setStartDate('2027-02-01');
+        $sameDay = new Tenancy(); $sameDay->setId(3); $sameDay->setUnitId(7); $sameDay->setStartDate('2026-12-01');
+        $mapper = $this->createMock(TenancyMapper::class);
+        $mapper->method('findByUser')->with('alice', 7)->willReturn([$future, $current, $sameDay]);
+        $mapper->expects($shortens ? self::once() : self::never())->method('update')
+            ->with(self::callback(fn ($row) => $row->getId() === 1 && $row->getEndDate() === '2026-11-30'))
+            ->willReturnArgument(0);
+        $mapper->method('insert')->willReturnCallback(function ($row) { $row->setId(4); return $row; });
+        $relations = $this->createMock(PartnerRelMapper::class);
+        $relations->method('insert')->willReturnArgument(0);
+        $partners = $this->createMock(PartnerMapper::class);
+        $contact = new Partner(); $contact->setId(9); $contact->setPartnerType('tenant');
+        $partners->method('findForUser')->willReturn($contact);
+        $units = $this->createMock(UnitMapper::class);
+        $unit = new Unit(); $unit->setId(7); $units->method('findForUser')->willReturn($unit);
+        $permissions = $this->createMock(PermissionService::class);
+        $permissions->method('guardTenancyFinancialFields')->willReturnArgument(1);
+        $db = $this->createMock(\OCP\IDBConnection::class);
+        $db->expects(self::once())->method('commit');
+        $service = new TenancyService($mapper, $units, $partners, $relations, $permissions, $this->createMock(IL10N::class), $db);
+        $created = $service->createTenancy(['unitId' => 7, 'startDate' => '2026-12-01', 'baseRent' => '1', 'partnerIds' => [9]], 'alice', 'landlord');
+        self::assertSame('2026-12-01', $created->getStartDate());
+        self::assertSame($shortens ? '2026-11-30' : $endDate, $current->getEndDate());
+        self::assertNull($future->getEndDate(), 'Scheduled condition change stays available for manual review');
+        self::assertNull($sameDay->getEndDate(), 'Do not create an end date before a record starts');
+    }
+
+    public static function replacementEndDates(): array {
+        return [[null, true], ['2027-01-31', true], ['2026-12-01', true], ['2026-11-30', false], ['2026-10-31', false]];
+    }
+
     /** @dataProvider replacementFailures */
     public function testReplacementRollsBackAllWrites(bool $conditions, string $failure): void {
         $db = new \OCA\Domus\Tests\Support\TransferDatabase();

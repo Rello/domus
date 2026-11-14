@@ -54,6 +54,12 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Prefer the reusable wrappers `tests/run-unit.sh` and `tests/run-playwright.sh` over ad hoc container commands.
 - In summaries, distinguish checks that passed from checks that were not run.
 
+## UI reuse
+
+- Reuse existing UI helpers, controls, badges and `Domus.UI.openModal` before adding new markup or styling.
+- Checkbox controls must keep the box and label aligned on the same row. Prefer Nextcloud’s `input.checkbox` followed by a matching `label[for]`, wrapped in the shared `.domus-checkbox-row`. Keep help text outside the row. Do not introduce a different checkbox appearance for settings.
+- Reuse `.domus-badge` for selected items and shared modal/form actions for selection dialogs. Verify long labels and narrow screens.
+
 ## Frontend conventions
 
 - Use plain ES6 JavaScript; this app does not use Node.js/Vue components or a frontend build pipeline.

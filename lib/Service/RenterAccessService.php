@@ -17,12 +17,13 @@ class RenterAccessService {
         private TeamIntegrationService $teams,
         private IUserManager $users,
         private IL10N $l10n,
+        private ?ScopePolicyService $scopePolicy = null,
     ) {
     }
 
     private function managementPartner(int $partnerId, string $teamId): array {
         $this->access->assertSubmittedTeam($teamId);
-        $this->teams->assertTeamAdmin($teamId);
+        $this->teams->assertTeamMember($teamId);
         $partner = $this->mapper->partner($teamId, $partnerId);
         if ($partner === null) {
             throw new \DomainException($this->l10n->t('This tenant is not available in the selected Team.'));
@@ -43,6 +44,7 @@ class RenterAccessService {
 
     /** Link an explicit account, or find/create a guest using the contact's email. */
     public function link(int $partnerId, string $teamId, ?string $ncUserId = null): array {
+        $this->teams->assertTeamAdmin($teamId);
         $partner = $this->managementPartner($partnerId, $teamId);
         if (!empty($partner['nc_user_id'])) {
             $status = $this->status($partnerId, $teamId);
@@ -84,6 +86,7 @@ class RenterAccessService {
         $partners = [];
         $tenancies = [];
         foreach ($this->mapper->partnersForUser($uid) as $partner) {
+            if ($this->scopePolicy !== null && !$this->scopePolicy->allowsTeam($partner['team_id'])) continue;
             $contact = ['id' => (int)$partner['id'], 'teamId' => $partner['team_id'], 'name' => $partner['name']];
             foreach (['email', 'phone', 'street', 'zip', 'city', 'country'] as $field) {
                 $contact[$field] = $partner[$field] ?? null;

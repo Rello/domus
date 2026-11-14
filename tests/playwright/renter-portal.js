@@ -151,7 +151,7 @@ const { chromium } = require('playwright');
         console.log('PASS revocation, keyboard/narrow layout and authorized staff/renter switches');
 
         await page.evaluate(() => {
-            Domus.state.managementContext = { mode: 'team', activeTeamId: 'a', canManage: true };
+            Domus.state.managementContext = { mode: 'team', activeTeamId: 'a', canManage: true, permissions: {manageRenterAccess: true, manageTenancies: true} };
             Domus.Api.getActionLogs = async () => activities;
             Domus.Api.getActionLogEntry = async id => activities.find(entry => entry.id === Number(id));
             Domus.Api.get = async path => path === '/partners/1' ? { id: 1, partnerType: 'tenant', name: 'Alice', tenancies: [] }

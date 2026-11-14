@@ -78,6 +78,33 @@ async function main() {
         catch (error) { failures++; console.error(`FAIL ${name}\n${error.stack}`); }
         finally { await page.close(); }
     }
+    await test('tenant change edits the outgoing contact without completing the step', async page => {
+        await page.addScriptTag({path: 'js/domusPartners.js'});
+        await page.getByRole('button', {name:'Close modal', exact:true}).click();
+        await page.evaluate(() => {
+            run.steps = [{id: 91, title: 'Confirm forwarding address and contact details', status: 'open', actionType: 'editContact', actionUrl: '37'}];
+            window.contactReads = []; window.contactWrites = [];
+            Domus.Api.get = async path => {
+                contactReads.push(path);
+                if (path !== '/partners/37') throw new Error('Wrong contact target');
+                return {id: 37, name: 'Departing tenant', partnerType: 'tenant', street: 'Old street'};
+            };
+            Domus.Api.updatePartner = async (id, data) => { contactWrites.push({id, data}); };
+        });
+        await page.getByRole('button', {name:'Open process', exact:true}).click();
+        await page.getByRole('button', {name:'Edit contact', exact:true}).click();
+        const editor = page.getByRole('dialog', {name:'Edit contact', exact:true});
+        await editor.waitFor();
+        await editor.locator('input[name="street"]').fill('Forwarding street 12');
+        await editor.getByRole('button', {name:'Save', exact:true}).click();
+        await editor.waitFor({state:'detached'});
+        assert.deepEqual(await page.evaluate(() => contactReads), ['/partners/37']);
+        const writes = await page.evaluate(() => contactWrites);
+        assert.equal(writes[0].id, 37);
+        assert.equal(writes[0].data.street, 'Forwarding street 12');
+        assert.equal(await page.evaluate(() => run.steps[0].status), 'open');
+        assert.equal(await page.getByRole('dialog', {name:'Fixture process',exact:true}).isVisible(), true);
+    });
     await test('one surface, native keyboard descriptions and safe text', async page => {
         assert.equal(await page.locator('.domus-modal').count(), 1);
         assert.equal(await page.locator('.domus-process-step').count(), 3);

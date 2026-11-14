@@ -77,6 +77,8 @@ return [
         ['name' => 'Statistics#accountTotals', 'url' => 'api/statistics/accounts', 'verb' => 'GET'],
         ['name' => 'BookingYear#close', 'url' => 'api/booking-years/{year}/close', 'verb' => 'POST'],
         ['name' => 'BookingYear#reopen', 'url' => 'api/booking-years/{year}/reopen', 'verb' => 'POST'],
+        ['name' => 'FinancialHistory#preview', 'url' => 'api/financial-history/preview', 'verb' => 'POST'],
+        ['name' => 'FinancialHistory#remove', 'url' => 'api/financial-history/remove', 'verb' => 'POST'],
 
         // Partner
         ['name' => 'Partner#index', 'url' => 'api/partners', 'verb' => 'GET'],
@@ -139,6 +141,8 @@ return [
         ['name' => 'Settings#createDemoContent', 'url' => 'api/settings/demo-content', 'verb' => 'POST'],
 
         // Nextcloud Teams and Guests integration
+        ['name' => 'TeamIntegration#policy', 'url' => '/api/settings/access-policy', 'verb' => 'GET'],
+        ['name' => 'TeamIntegration#savePolicy', 'url' => '/api/settings/access-policy', 'verb' => 'PUT'],
         ['name' => 'TeamIntegration#index', 'url' => '/api/teams', 'verb' => 'GET'],
         ['name' => 'TeamIntegration#folder', 'url' => '/api/teams/{teamId}/folder', 'verb' => 'GET'],
         ['name' => 'TeamIntegration#guestCreation', 'url' => '/api/teams/{teamId}/guest-creation', 'verb' => 'GET'],

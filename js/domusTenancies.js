@@ -373,6 +373,7 @@
         }
 
         function openTenancyCreateForm(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage, modalOptions = {}) {
+            if (!Domus.Access.require('manageTenancies')) return;
             const tenancyLabels = Domus.Role.getTenancyLabels();
             const effectiveTitle = title || t('domus', 'Add {entity}', { entity: tenancyLabels.singular });
             const effectiveSuccessMessage = successMessage || t('domus', '{entity} created.', { entity: Domus.Role.getTenancyLabels().singular });
@@ -612,6 +613,7 @@
         }
 
         function openGuidedCreateWorkflow(prefill = {}, onFinished) {
+            if (!Domus.Access.require('manageTenancies')) return;
             const partnerType = Domus.Role.isBuildingMgmtView() ? 'owner' : 'tenant';
             const partnerTypeLabel = Domus.Partners.getPartnerTypeLabel(partnerType);
             const steps = getTenancyWorkflowSteps(partnerTypeLabel);
@@ -619,6 +621,7 @@
         }
 
         function openCreateModal(prefill = {}, onCreated, submitFn = Domus.Api.createTenancy, title, successMessage, modalOptions = {}) {
+            if (!Domus.Access.require('manageTenancies')) return;
             const hasPartnerPrefill = Boolean(prefill?.partnerId || (prefill?.partnerIds && prefill.partnerIds.length));
             if (modalOptions.useGuidedWorkflow === false || hasPartnerPrefill) {
                 openTenancyCreateForm(prefill, onCreated, submitFn, title, successMessage, modalOptions);
@@ -657,7 +660,7 @@
                     const canManageTenancies = !previewPartner && Domus.Role.hasCapability('manageTenancies');
                     const documentActionsEnabled = !previewPartner && Domus.Role.hasCapability('manageDocuments');
                     const menuActions = canManageTenancies ? [
-                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
+                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {permission: 'deleteRecords',
                             id: 'domus-tenancy-delete',
                             className: 'domus-action-menu-item'
                         })
@@ -743,7 +746,7 @@
                         (canManageTenancies ? '<div class="domus-tenancy-direct-actions">' +
                         Domus.UI.buildQuickActionCard({
                             iconClass: 'domus-icon-edit', title: t('domus', 'Edit tenancy'),
-                            id: 'domus-tenancy-edit', compact: true
+                            permission: 'manageTenancies', id: 'domus-tenancy-edit', compact: true
                         }) +
                         Domus.UI.buildQuickActionCard({
                             iconClass: 'domus-icon-cycle', title: t('domus', 'Change conditions from date…'),
@@ -751,7 +754,7 @@
                         }) +
                         (String(tenancy.status).toLowerCase() === 'active' ? Domus.UI.buildQuickActionCard({
                             iconClass: 'domus-icon-calculator', title: t('domus', 'Calculate rent increase'),
-                            id: 'domus-tenancy-rent-increase', compact: true
+                            permission: 'manageTenancies', id: 'domus-tenancy-rent-increase', compact: true
                         }) : '') +
                         '</div>' : '') +
                         kpiTiles +
@@ -888,6 +891,7 @@
         }
 
         function openTenancyModal(id, tenancy, mode = 'edit') {
+            if (!Domus.Access.can('manageTenancies')) mode = 'view';
             const partnerTypeFilter = Domus.Role.isBuildingMgmtView() ? 'owner' : 'tenant';
             Promise.all([
                 Domus.Api.getUnits(),
@@ -908,7 +912,7 @@
                     let modal;
                     const headerActions = [];
                     if (mode === 'view') {
-                        headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
+                        if (Domus.Access.can('manageTenancies')) headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
                             modal?.close();
                             openTenancyModal(id, tenancy, 'edit');
                         }));
@@ -933,6 +937,7 @@
         }
 
         function openRentIncreaseModal(tenancy) {
+            if (!Domus.Access.require('manageTenancies')) return;
             if (!Domus.Role.hasCapability('manageTenancies') || String(tenancy.status).toLowerCase() !== 'active') return;
             const escape = Domus.Utils.escapeHtml;
             const label = escape;
@@ -1388,6 +1393,7 @@
         }
 
         function openChangeConditionsModal(tenancy, effectiveDate = null) {
+            if (!Domus.Access.require('manageTenancies')) return;
             const today = new Date().toISOString().split('T')[0];
             const prefill = Object.assign({}, tenancy, { startDate: effectiveDate || today, endDate: '' });
 

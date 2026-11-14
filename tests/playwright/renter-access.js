@@ -50,7 +50,7 @@ const { chromium } = require('playwright');
         await page.addScriptTag({ path: 'js/domusPartners.js' });
         await page.addScriptTag({ path: 'js/domusTenancies.js' });
         await page.evaluate(() => {
-            Domus.state.managementContext = { mode: 'team', activeTeamId: 'a' };
+            Domus.state.managementContext = { mode: 'team', activeTeamId: 'a', permissions: {manageRenterAccess: true, deleteRecords: true} };
             Domus.Documents = { renderLatestList: () => '' };
             Domus.Tenancies.renderInline = () => '';
             Domus.UI.confirmAction = async () => true;

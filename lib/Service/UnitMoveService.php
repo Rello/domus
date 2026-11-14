@@ -215,6 +215,7 @@ class UnitMoveService {
     }
 
     private function teamFolder(string $teamId, string $userId): Folder {
+        $this->teams->assertTeamAdmin($teamId);
         $details = $this->teams->getTeamFolder($teamId);
         if (!$details || empty($details['mountPoint'])) throw new ConflictException($this->l10n->t('This Team has no accessible Team folder.'));
         try {

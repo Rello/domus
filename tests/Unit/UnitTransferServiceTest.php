@@ -87,6 +87,26 @@ class UnitTransferServiceTest extends TestCase {
         $service->importUnitDataset(['unit' => ['label' => 'Unit'], 'workflowRuns' => [['templateKey' => 'custom', 'completionType' => 'invalid']]], 'target', 'landlord');
     }
 
+    public function testTenantChangeContactTargetsAreRemappedAndMissingTargetsAreDisabled(): void {
+        $service = $this->service();
+        $template = new \OCA\Domus\Db\TaskTemplate(); $template->setId(21);
+        $this->dependencies['taskTemplateMapper']->method('findByKey')->willReturn($template);
+        $this->dependencies['workflowRunMapper']->method('insert')->willReturnCallback(function ($run) { $run->setId(31); return $run; });
+        $saved = [];
+        $this->dependencies['taskStepMapper']->method('insert')->willReturnCallback(function ($step) use (&$saved) { $saved[] = $step; return $step; });
+        $service->importUnitDataset(['unit' => ['label' => 'Unit'],
+            'partners' => [['id' => 7, 'name' => 'Departing tenant', 'partnerType' => 'tenant']],
+            'workflowRuns' => [['templateKey' => 'tenant_change', 'steps' => [
+                ['actionType' => 'editContact', 'actionUrl' => '7'],
+                ['actionType' => 'editContact', 'actionUrl' => '999'],
+            ]]],
+        ], 'target', 'landlord');
+        self::assertSame('107', $saved[0]->getActionUrl());
+        self::assertSame('editContact', $saved[0]->getActionType());
+        self::assertNull($saved[1]->getActionUrl());
+        self::assertNull($saved[1]->getActionType());
+    }
+
     public function testImportAuditRunsOnlyAfterCommit(): void {
         $service = $this->service();
         $committed = false;

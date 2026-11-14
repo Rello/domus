@@ -5,6 +5,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
+## Unreleased
+
+### Added
+- Start a Tenant change process for departing tenants when a new tenancy replaces theirs, with a direct action to update forwarding addresses and contact details.
+- Remove unit financial history before a selected year, with a preview, notes for shortened tenancies, and preservation of all documents.
+- Let server administrators select available Teams and disable Personal portfolios in Domus settings.
+
+### Changed
+- Let Team members manage daily bookings, contacts, documents, and tasks while reserving structural changes, access management, and deletion for Team administrators on Nextcloud 34 and 35.
+- Simplify portfolio settings with aligned controls, removable Team badges, and a searchable Team selector.
+
+### Fixed
+- End overlapping earlier tenancies the day before a replacement starts, including periods with a scheduled condition change, while preserving future periods for review.
+- Underline app links in the Nextcloud integration settings.
+
 ## 1.3.0 - 2026-11-12
 
 ### Added

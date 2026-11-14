@@ -26,13 +26,14 @@ class TeamIntegrationController extends Controller {
         private ManagementAccessContext $managementContext,
         private LoggerInterface $logger,
         private IL10N $l10n,
+        private \OCA\Domus\Service\ScopePolicyService $scopePolicy,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
 
     #[NoAdminRequired]
     public function index(): DataResponse {
-        return $this->respond(fn (): array => ['teams' => $this->integrationService->listTeams()]);
+        return $this->respond(fn (): array => ['teams' => $this->integrationService->listTeams(), 'allowPersonal' => $this->scopePolicy->allowsPersonal()]);
     }
 
     #[NoAdminRequired]
@@ -53,6 +54,15 @@ class TeamIntegrationController extends Controller {
     #[NoAdminRequired]
     public function deactivate(): DataResponse {
         return $this->respond(fn (): array => ['managementContext' => $this->managementContext->selectTeam('')]);
+    }
+
+    // No NoAdminRequired: Nextcloud also enforces admin authorization and CSRF protection.
+    public function policy(): DataResponse {
+        return $this->respond(fn (): array => $this->scopePolicy->adminSettings());
+    }
+
+    public function savePolicy(bool $allowPersonal, array $enabledTeamIds): DataResponse {
+        return $this->respond(fn (): array => $this->scopePolicy->save($allowPersonal, $enabledTeamIds));
     }
 
     private function respond(callable $action): DataResponse {

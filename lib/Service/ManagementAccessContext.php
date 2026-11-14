@@ -25,6 +25,7 @@ class ManagementAccessContext {
         private IL10N $l10n,
         private IGroupManager $groupManager,
         private ?IConfig $config = null,
+        private ?ScopePolicyService $scopePolicy = null,
     ) {
     }
 
@@ -42,18 +43,20 @@ class ManagementAccessContext {
         $teamId = trim($this->request->getHeader('X-Domus-Team'));
         // Explicit Personal scope overrides the saved Team for this request only.
         if (strcasecmp($teamId, 'personal') === 0) {
+            $this->scopePolicy?->assertPersonalAllowed();
             return null;
         }
         if ($teamId === '' && $this->config !== null) {
             $teamId = trim($this->config->getUserValue($this->actorUserId(), 'domus', 'activeTeamId', ''));
         }
         if ($teamId === '') {
+            $this->scopePolicy?->assertPersonalAllowed();
             return null;
         }
         if ($this->teams === null) {
             throw new \RuntimeException($this->l10n->t('Nextcloud Teams are not available.'));
         }
-        $this->teams->assertTeamAdmin($teamId);
+        $this->teams->assertTeamMember($teamId);
         return $teamId;
     }
 
@@ -63,6 +66,7 @@ class ManagementAccessContext {
             throw new \DomainException($this->l10n->t('A staff account is required for management access.'));
         }
         $this->teams?->clearRequestCache();
+        if ($teamId === null) $this->scopePolicy?->assertPersonalAllowed();
         if ($teamId !== null && ($this->teams === null || !$this->teams->isTeamMember($teamId, $user->getUID()))) {
             throw new \DomainException($this->l10n->t('You do not have access to this Team.'));
         }
@@ -80,11 +84,12 @@ class ManagementAccessContext {
             throw new \RuntimeException($this->l10n->t('Team selection is unavailable.'));
         }
         $this->teams?->clearRequestCache();
+        if ($teamId === '') $this->scopePolicy?->assertPersonalAllowed();
         if ($teamId !== '') {
             if ($this->teams === null) {
                 throw new \RuntimeException($this->l10n->t('Nextcloud Teams are not available.'));
             }
-            $this->teams->assertTeamAdmin($teamId);
+            $this->teams->assertTeamMember($teamId);
         }
         $this->config->setUserValue($this->actorUserId(), 'domus', 'activeTeamId', $teamId);
         return $this->capabilities();
@@ -116,6 +121,21 @@ class ManagementAccessContext {
         return $actor;
     }
 
+    public function teamRole(): string {
+        $teamId = $this->activeTeamId();
+        if ($teamId === null) {
+            $this->legacyOwnerUserId();
+            return 'admin';
+        }
+        return $this->teams?->roleForUser($teamId, $this->actorUserId()) ?? 'none';
+    }
+
+    public function assertCapability(string $capability): void {
+        if (!(TeamPermissionService::capabilities($this->teamRole())[$capability] ?? false)) {
+            throw new \DomainException($this->l10n->t('This action requires a Team administrator.'));
+        }
+    }
+
     public function capabilities(): array {
         try {
             $teamId = $this->activeTeamId();
@@ -126,6 +146,18 @@ class ManagementAccessContext {
                 throw $e;
             }
             $teamId = null;
+            if ($this->scopePolicy !== null && !$this->scopePolicy->allowsPersonal()
+                && !$this->groupManager->isInGroup($this->actorUserId(), 'guest_app')) {
+                try {
+                    $available = $this->teams?->listTeams() ?? [];
+                } catch (\RuntimeException) {
+                    $available = [];
+                }
+                if (count($available) === 1) {
+                    $teamId = $available[0]['teamId'];
+                    $this->config->setUserValue($this->actorUserId(), 'domus', 'activeTeamId', $teamId);
+                }
+            }
         }
         $canManageLegacy = false;
         if ($teamId === null) {
@@ -136,11 +168,19 @@ class ManagementAccessContext {
                 // Guest accounts have no management entitlement.
             }
         }
+        $role = $teamId !== null ? $this->teams->roleForUser($teamId, $this->actorUserId()) : ($canManageLegacy ? 'admin' : 'none');
         return [
             'actorUserId' => $this->actorUserId(),
             'activeTeamId' => $teamId,
             'canManage' => $teamId !== null || $canManageLegacy,
-            'mode' => $teamId !== null ? 'team' : ($canManageLegacy ? 'personal' : 'external'),
+            'teamRole' => $role,
+            'permissions' => TeamPermissionService::capabilities($role),
+            'mode' => $teamId !== null ? 'team' : ($canManageLegacy ? 'personal' :
+                ($this->groupManager->isInGroup($this->actorUserId(), 'guest_app') ? 'external' : 'unavailable')),
+            ...($this->scopePolicy === null ? [] : [
+                'allowPersonal' => $this->scopePolicy->allowsPersonal(),
+                'isAdmin' => $this->scopePolicy->isAdmin(),
+            ]),
         ];
     }
 }

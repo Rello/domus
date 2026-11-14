@@ -31,6 +31,7 @@ class TeamIntegrationServiceTest extends TestCase {
         ?ITeamManager $teamManager = null,
         ?array $legacyFolders = null,
         ?\OCP\Files\Folder $userFolder = null,
+        ?\OCA\Domus\Service\CirclesRoleService $roleProvider = null,
     ): TeamIntegrationService {
         $user = $this->createMock(IUser::class);
         $user->method('getUID')->willReturn('manager');
@@ -70,6 +71,8 @@ class TeamIntegrationServiceTest extends TestCase {
         $l10n = $this->createMock(IL10N::class);
         $l10n->method('t')->willReturnArgument(0);
 
+        $roles = $roleProvider ?? $this->createMock(\OCA\Domus\Service\CirclesRoleService::class);
+        if ($roleProvider === null) $roles->method('role')->willReturn('admin');
         $arguments = [
             $teamManager,
             $userSession,
@@ -78,6 +81,8 @@ class TeamIntegrationServiceTest extends TestCase {
             $appManager,
             $appConfig,
             $l10n,
+            null,
+            $roles,
         ];
         if ($legacyFolders === null) return new TeamIntegrationService(...$arguments);
         $service = $this->getMockBuilder(TeamIntegrationService::class)
@@ -89,7 +94,7 @@ class TeamIntegrationServiceTest extends TestCase {
         return $service;
     }
 
-    public function testSelectedTeamMemberGetsTemporaryAdminPermission(): void {
+    public function testEffectiveAdministratorGetsAdminPermission(): void {
         $service = $this->buildService([new Team('team-a', 'Portfolio A', null)]);
 
         self::assertSame([['teamId' => 'team-a', 'displayName' => 'Portfolio A', 'role' => 'admin']], $service->listTeams());
@@ -242,4 +247,23 @@ class TeamIntegrationServiceTest extends TestCase {
             'Domus not allowlisted' => [true, false, [], 'files', false],
         ];
     }
+    public function testMemberMayEnterTeamButCannotAdministerIt(): void {
+        $roles = $this->createMock(\OCA\Domus\Service\CirclesRoleService::class);
+        $roles->method('role')->willReturn('member');
+        $service = $this->buildService([new Team('team-a', 'A', null)], roleProvider: $roles);
+        self::assertSame('member', $service->listTeams()[0]['role']);
+        $service->assertTeamMember('team-a');
+        $this->expectException(\DomainException::class);
+        $service->assertTeamAdmin('team-a');
+    }
+
+    public function testUnavailableRoleProviderFailsClosed(): void {
+        $roles = $this->createMock(\OCA\Domus\Service\CirclesRoleService::class);
+        $roles->method('role')->willThrowException(new \RuntimeException('Provider unavailable'));
+        $service = $this->buildService([new Team('team-a', 'A', null)], roleProvider: $roles);
+        self::assertSame('none', $service->roleForUser('team-a', 'manager'));
+        $this->expectException(\DomainException::class);
+        $service->assertTeamMember('team-a');
+    }
+
 }

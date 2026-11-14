@@ -21,10 +21,10 @@ class DefaultCatalogueInstallTest extends TestCase {
         self::assertNotContains('2700', array_column($db->tables['domus_accounts'], 'number'));
         self::assertContains('2300', array_column($db->tables['domus_accounts'], 'number'));
         self::assertSame([1], array_values(array_unique(array_column($db->tables['domus_accounts'], 'is_system'))));
-        self::assertCount(2, $db->tables['domus_task_templates']);
-        self::assertCount(10, $db->tables['domus_task_tpl_steps']);
-        self::assertSame(['system', 'system'], array_column($db->tables['domus_task_templates'], 'scope_key'));
-        self::assertSame(['year_end', 'dunning'], array_column($db->tables['domus_task_templates'], 'key'));
+        self::assertCount(3, $db->tables['domus_task_templates']);
+        self::assertCount(11, $db->tables['domus_task_tpl_steps']);
+        self::assertSame(['system', 'system', 'system'], array_column($db->tables['domus_task_templates'], 'scope_key'));
+        self::assertSame(['year_end', 'dunning', 'tenant_change'], array_column($db->tables['domus_task_templates'], 'key'));
         $templateIds = array_column($db->tables['domus_task_templates'], 'id');
         foreach ($db->tables['domus_task_tpl_steps'] as $step) {
             self::assertContains($step['template_id'], $templateIds);
@@ -89,8 +89,8 @@ class DefaultCatalogueInstallTest extends TestCase {
         $output = $this->createMock(IOutput::class);
         $installer->run($output);
         self::assertSame($existing, array_slice($db->tables['domus_task_templates'], 0, 3));
-        self::assertSame(['system', 'system'], array_column(array_slice($db->tables['domus_task_templates'], 3), 'scope_key'));
-        self::assertCount(11, $db->tables['domus_task_tpl_steps']);
+        self::assertSame(['system', 'system', 'system'], array_column(array_slice($db->tables['domus_task_templates'], 3), 'scope_key'));
+        self::assertCount(12, $db->tables['domus_task_tpl_steps']);
         $once = $db->tables;
         $installer->run($output);
         self::assertSame($once, $db->tables);

@@ -307,3 +307,51 @@ recorded migration versions, normal/forced retries and full rollback after a del
 failed account deletion. It changes only the disposable database. This rehearses the
 app's database migrations, not the full Nextcloud updater, and a local snapshot does
 not establish the state of production or recover previously deleted local records.
+
+## Server-wide scope policy
+
+Run `./tests/run-unit.sh --filter ScopePolicyServiceTest` and
+`PLAYWRIGHT_TEST=scope-policy ./tests/run-playwright.sh` for administrator-only
+policy writes, assigned/enabled Team intersection, explicit and implicit Personal
+rejection, revoked scopes, background execution, no-scope settings recovery, Team
+search, failed saves and phone layout. The admin directory adapter uses the Teams
+app's unscoped listing (with an isolated NC34 query adapter). Live directory and
+dependency-injection checks are separate from fixture tests.
+
+Existing installations allow Personal and all Teams until the first policy save.
+Saving stores an explicit Team list; Teams created later require activation.
+Disabling a scope preserves records and files. Only server administrators can
+configure this policy, regardless of their portfolio/Team role.
+
+## Team administrator/member permissions
+
+
+- Run `./tests/run-unit.sh --filter 'TeamPermission|TeamIntegration|ManagementAccess'` for the mutation policy, payload escalation checks, middleware role changes, and role adapter.
+- Run `PLAYWRIGHT_TEST=team-permissions ./tests/run-playwright.sh` for member/admin UI controls, demotion refresh, direct form entry and missing-capability behavior.
+- With local NC34/NC35 stacks running, run `docker exec -u www-data nc34-app-1 php /var/tmp/own_apps/domus/tests/verify-team-roles.php` and the equivalent for `nc35-app-1`.
+  The live check creates temporary users and Teams, exercises effective direct and nested membership, promotion, demotion and revocation, then removes its fixtures. It does not change existing memberships or portfolios.
+- Domus maps effective Circles owner/administrator to admin and moderator/member to member. Members can edit contacts and open-year bookings, add documents, and manage task progress. Structural changes, renter-account assignment, settings, document replacement/removal and deletion require admin. Existing validations and file permissions still apply. Circles owns membership-cache refresh; Domus does not persist role decisions.
+
+## Financial history cleanup
+
+- Run `./tests/run-unit.sh --filter FinancialHistoryServiceTest` for cutoff boundaries, preview invalidation, transaction rollback, document reassignment, distribution dependencies and Personal/Team isolation.
+- Run `PLAYWRIGHT_TEST=financial-history ./tests/run-playwright.sh` for desktop/phone preview, available-year dropdown and retry, unit-only requests, confirmation, changed year, stale-preview errors, cancellation and permissions.
+- From a unit's **More actions → Remove financial history**, choose the first retained year from its available financial years and review the preview. The selected year itself is retained. This removes older bookings (including closed years), deletes tenancies ending before the cutoff, and moves overlapping tenancy start dates to 1 January with a dated note in their conditions. This can change rent-review reminders.
+- All files, document metadata and contacts are preserved. Document links belonging to removed records are reassigned to their unit/property; general documents are unchanged. Old closure records and activities referencing deleted records are removed; reminders directly referencing deleted tenancies are closed.
+- The dialog always targets the current unit. Cleanup is blocked if it leaves property distributions or property-level closures behind; whole-property cleanup is not offered by this dialog. A changed preview requires a new review. Cleanup does not prohibit later imports or entries for older years.
+- Fixtures do not run cleanup against existing Nextcloud data. A live destructive smoke test requires a disposable portfolio.
+
+## Tenant change
+
+The bundled Tenant change template has one forwarding-address/contact-details step.
+Creating a new tenancy starts it for the latest tenancy ended by that creation,
+only when the contact sets are disjoint. Manual end-date changes, already ended
+tenancies, first lettings, condition changes, shared-contact continuations and
+owner contacts do not start it. Each departing tenant gets one process with a
+contact-edit action; saving the contact does not complete the step.
+Tenancy replacement and process creation share a transaction and roll back together.
+Disabling the template in the selected portfolio suppresses automatic creation.
+There is no historical backfill or scheduled background trigger.
+
+Run `./tests/run-unit.sh --filter 'TenantChange|TenancyService|DefaultCatalogue|ConsolidatedMigration|UnitTransfer'`
+and `PLAYWRIGHT_TEST=process-detail ./tests/run-playwright.sh`. These are fixture checks, not a live tenancy change.

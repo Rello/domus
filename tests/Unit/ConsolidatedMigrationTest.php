@@ -72,6 +72,7 @@ class ConsolidatedMigrationTest extends TestCase {
         self::assertSame($original['domus_bookings'], $db->tables['domus_bookings']);
         self::assertSame($original['domus_workflow_runs'], $db->tables['domus_workflow_runs']);
         self::assertSame($original['domus_task_steps'][0] + ['default_due_days_offset' => -3], $db->tables['domus_task_steps'][0]);
+        (new FillDefaultAccountsRepairStep($db))->run($this->createMock(IOutput::class));
         $once = $db->tables;
         $this->migrate($db);
         (new FillDefaultAccountsRepairStep($db))->run($this->createMock(IOutput::class));
@@ -95,7 +96,9 @@ class ConsolidatedMigrationTest extends TestCase {
             $db = new TransferDatabase();
             $db->tables = ['domus_accounts' => [], 'domus_task_templates' => [], 'domus_task_tpl_steps' => []];
             (new FillDefaultAccountsRepairStep($db))->run($this->createMock(IOutput::class));
-            foreach ($db->tables['domus_task_templates'] as &$template) $template['scope_key'] = 'global';
+            foreach ($db->tables['domus_task_templates'] as &$template) {
+                if ($template['key'] !== 'tenant_change') $template['scope_key'] = 'global';
+            }
             unset($template);
             $table = $kind === 'template' ? 'domus_task_templates' : 'domus_task_tpl_steps';
             $db->tables[$table][0][$column] = $value;
@@ -136,14 +139,16 @@ class ConsolidatedMigrationTest extends TestCase {
         $db->tables = ['domus_accounts' => [], 'domus_task_templates' => [], 'domus_task_tpl_steps' => []];
         $installer = new FillDefaultAccountsRepairStep($db);
         $installer->run($this->createMock(IOutput::class));
-        foreach ($db->tables['domus_task_templates'] as &$template) $template['scope_key'] = 'global';
+        foreach ($db->tables['domus_task_templates'] as &$template) {
+                if ($template['key'] !== 'tenant_change') $template['scope_key'] = 'global';
+            }
         unset($template);
         $db->tables['domus_units'] = [['user_id' => 'alice', 'team_id' => null]];
         $legacy = $db->tables;
         $this->migrate($db);
         self::assertNotContains('user:alice', array_column($db->tables['domus_task_templates'], 'scope_key'));
         $shared = array_values(array_filter($db->tables['domus_task_templates'], fn ($row) => $row['scope_key'] === 'system'));
-        self::assertCount(2, $shared);
+        self::assertCount(3, $shared);
         foreach ($shared as $template) {
             $old = array_values(array_filter($legacy['domus_task_templates'], fn ($row) => $row['key'] === $template['key']))[0];
             self::assertSame($old['name'], $template['name']);

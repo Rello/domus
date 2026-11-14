@@ -120,7 +120,7 @@ async function preview(page) {
     });
     await test('assigned row shows Team scope and failed replacement keeps original', true, async page => {
         await page.evaluate(() => {
-            Domus.state.managementContext = {activeTeamId: 'team-a'};
+            Domus.state.managementContext = {activeTeamId: 'team-a', permissions: {manageSettings: true, deleteRecords: true, manageTenancies: true, managePortfolio: true}};
             const select = document.createElement('select'); select.id = 'domus-context-select';
             select.add(new Option('Example Team', 'team-a')); document.body.appendChild(select);
             Domus.Api.getSettings = async () => ({settings: {}, utilityReportTemplate: template});
@@ -172,7 +172,7 @@ async function preview(page) {
     }, 390);
     await test('template picker starts in the active Team and reports a missing Team folder', false, async page => {
         await page.evaluate(() => {
-            Domus.state.managementContext = {activeTeamId: 'team-a'};
+            Domus.state.managementContext = {activeTeamId: 'team-a', permissions: {manageSettings: true, deleteRecords: true, manageTenancies: true, managePortfolio: true}};
             Domus.Api.getSettings = async () => ({settings: {}, utilityReportTemplate: template});
             Domus.Api.get = async path => path === '/teams/team-a/folder'
                 ? {folder: window.missingFolder ? null : {mountPoint: '/Shared Team/'}} : [];

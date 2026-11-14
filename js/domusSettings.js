@@ -32,6 +32,7 @@
         }
 
         function createDemoContent(role, buttonEl) {
+            if (!Domus.Access.require('manageSettings')) return;
             const config = getDemoContentConfig(role);
             return Domus.UI.confirmAction({
                 message: config.confirmMessage,
@@ -75,6 +76,7 @@
         }
 
         function buildForm(settings) {
+            if (!Domus.Access.can('manageSettings')) return '<p>' + Domus.Utils.escapeHtml(t('domus', 'Tax rate')) + ': ' + Domus.Utils.escapeHtml(settings?.taxRate ?? '') + '</p>';
             const taxRate = settings?.taxRate ?? '';
             const rows = [
                 Domus.UI.buildFormRow({
@@ -210,7 +212,7 @@
                 escape(item.status.name || t('domus', 'Assigned template')) +
                     (item.status.error ? '<div class="domus-error" role="status">' + escape(item.status.error) + '</div>' : ''),
                 escape(item.title), escape(templateScopeLabel()),
-                Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove assignment'), {id: item.id})
+                Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Remove assignment'), {permission: 'deleteRecords', id: item.id})
             ]);
             return rows.length ? Domus.UI.buildTable([t('domus', 'Document'), t('domus', 'Process'), t('domus', 'Scope'), ''], rows, {wrapPanel: false})
                 : '<p class="domus-muted">' + escape(t('domus', 'No document template configured.')) + '</p>';
@@ -220,7 +222,7 @@
             return buildSettingsSection({
                 id: 'domus-document-templates-panel',
                 title: t('domus', 'Document templates'),
-                headerActions: Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add template'), {id: 'domus-template-add'}),
+                headerActions: Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add template'), {permission: 'manageSettings', id: 'domus-template-add'}),
                 body: '<div id="domus-template-list">' + buildTemplateRows(status, rentStatus) + '</div>'
             });
         }
@@ -365,8 +367,8 @@
         }
 
         function buildAiControl(status) {
-            return '<div class="domus-ai-control"><input type="checkbox" class="checkbox" id="domus-ai-validation" aria-describedby="domus-ai-validation-description"' + (status?.enabled ? ' checked' : '') + (!status?.available && !status?.enabled ? ' disabled' : '') + '>' +
-                '<label for="domus-ai-validation">' + Domus.Utils.escapeHtml(t('domus', 'AI document validation')) + '</label>' +
+            return '<div class="domus-ai-control"><div class="domus-checkbox-row"><input type="checkbox" class="checkbox" id="domus-ai-validation" aria-describedby="domus-ai-validation-description"' + (status?.enabled ? ' checked' : '') + (!Domus.Access.can('manageSettings') || (!status?.available && !status?.enabled) ? ' disabled' : '') + '>' +
+                '<label for="domus-ai-validation">' + Domus.Utils.escapeHtml(t('domus', 'AI document validation')) + '</label></div>' +
                 '<p id="domus-ai-validation-description">' + Domus.Utils.escapeHtml(t('domus', 'Uploaded documents will be processed by the Nextcloud Assistant. From the document, bookings and unit information will be extracted and suggested for review.')) + '</p></div>';
         }
 
@@ -401,7 +403,7 @@
                 const linkLabel = enabled ? t('domus', 'Open app') : t('domus', 'Open App Store');
                 return '<li class="domus-required-app">' +
                     '<span class="domus-required-app-status' + (enabled ? ' domus-required-app-enabled' : ' domus-required-app-unavailable') + '" aria-label="' + Domus.Utils.escapeHtml(status) + '" title="' + Domus.Utils.escapeHtml(status) + '">' + (enabled ? '✓' : 'X') + '</span>' +
-                    (app.appUrl ? '<a href="' + Domus.Utils.escapeHtml(OC.generateUrl(enabled ? app.appUrl : app.storeUrl)) + '" target="_blank" rel="noopener noreferrer" title="' + Domus.Utils.escapeHtml(linkLabel) + '">' + Domus.Utils.escapeHtml(app.name) + '</a>' : '<span>' + Domus.Utils.escapeHtml(app.name) + '</span>') +
+                    (app.appUrl ? '<a class="domus-link-underline" href="' + Domus.Utils.escapeHtml(OC.generateUrl(enabled ? app.appUrl : app.storeUrl)) + '" target="_blank" rel="noopener noreferrer" title="' + Domus.Utils.escapeHtml(linkLabel) + '">' + Domus.Utils.escapeHtml(app.name) + '</a>' : '<span>' + Domus.Utils.escapeHtml(app.name) + '</span>') +
                     '<span class="domus-muted">' + Domus.Utils.escapeHtml(status) + '</span></li>';
             }).join('');
             return buildSettingsSection({
@@ -444,6 +446,10 @@
         }
 
         function bindDemoButton() {
+            if (!Domus.Access.can('manageSettings')) {
+                document.querySelectorAll('#domus-demo-content-button, #domus-demo-content-building-button').forEach(button => button.disabled = true);
+                return;
+            }
             const button = document.getElementById('domus-demo-content-button');
             const buildingButton = document.getElementById('domus-demo-content-building-button');
             if (buildingButton) {
@@ -511,7 +517,7 @@
 
         function buildRulesSection() {
             return buildSettingsSection({id: 'domus-rules-panel', title: t('domus', 'Rulesets'),
-                headerActions: Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add ruleset'), {id: 'domus-rule-add'}),
+                headerActions: Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add ruleset'), {permission: 'manageSettings', id: 'domus-rule-add'}),
                 body:
                 '<p>' + Domus.Utils.escapeHtml(t('domus', 'Rules create tasks when a review is needed. Deferred tasks are checked again before they return.')) + '</p>' +
                 '<div id="domus-rule-list"></div>'});
@@ -532,8 +538,8 @@
                     escape(rule.scope === 'allUnits' ? t('domus', 'All units') : rule.scope === 'units' ? t('domus', 'Selected units') : t('domus', 'Units in selected properties')),
                     escape(rule.enabled ? t('domus', 'Enabled') : t('domus', 'Disabled')),
                     '<div class="domus-rule-actions">' +
-                        Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), {dataset: {ruleEdit: rule.id}}) +
-                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {dataset: {ruleDelete: rule.id}}) +
+                        Domus.UI.buildIconButton('domus-icon-edit', t('domus', 'Edit'), {permission: 'manageSettings', dataset: {ruleEdit: rule.id}}) +
+                        Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {permission: 'deleteRecords', dataset: {ruleDelete: rule.id}}) +
                     '</div>'
                 ]}));
                 host.innerHTML = rules.length ? Domus.UI.buildTable([
@@ -554,6 +560,7 @@
         }
 
         async function openRuleEditor(rule, host) {
+            if (!Domus.Access.require('manageSettings')) return;
             const escape = Domus.Utils.escapeHtml;
             try {
                 const {units, properties} = await Domus.Api.get('/rules/options');
@@ -626,8 +633,102 @@
             } catch (error) { if (host.isConnected) Domus.UI.showNotification(error.message, 'error'); }
         }
 
+        function buildScopeSection() {
+            return buildSettingsSection({
+                id: 'domus-access-policy-panel', title: t('domus', 'Personal and Teams'),
+                body: '<p>' + Domus.Utils.escapeHtml(t('domus', 'Team members can edit bookings, contacts and tasks and add documents; only Team administrators and owners can change properties, units, tenancies or settings, manage renter access, close financial years or delete data.')) + '</p>' +
+                    '<div id="domus-access-policy" aria-live="polite"></div>'
+            });
+        }
+
+        async function bindScopeSection() {
+            const host = document.getElementById('domus-access-policy');
+            if (!host) return;
+            const escape = Domus.Utils.escapeHtml;
+            const admin = Domus.state.managementContext?.isAdmin === true;
+            host.textContent = t('domus', 'Loading…');
+            try {
+                const result = await Domus.Api.get(admin ? '/settings/access-policy' : '/teams');
+                if (!host.isConnected) return;
+                const teams = result.teams || [];
+                host.innerHTML = (admin ? '' : '<p class="domus-scope-note">' + escape(t('domus', 'Teams must be enabled for Domus by a Nextcloud administrator.')) + '</p>') +
+                    (Domus.state.managementContext?.mode === 'unavailable' ? '<p role="status">' + escape(t('domus', 'Select an enabled Team to use Domus. If none are available, contact your administrator.')) + '</p>' : '') +
+                    (admin ? '<form id="domus-access-policy-form">' +
+                    (result.enabledTeamIds === null ? '<p>' + escape(t('domus', 'All Teams are currently allowed. Saving creates an explicit list; new Teams will then require activation.')) + '</p>' : '') +
+                    '<div id="domus-enabled-teams-label" class="domus-scope-note">' + escape(t('domus', 'Teams enabled for Domus')) + '</div>' +
+                    '<div class="domus-team-picker"><div id="domus-selected-teams" class="domus-selected-teams" role="group" aria-labelledby="domus-enabled-teams-label"></div>' +
+                    '<button type="button" id="domus-add-teams">' + escape(t('domus', 'Add')) + '</button></div>' +
+                    '<div class="domus-checkbox-row"><input class="checkbox" id="domus-allow-personal" type="checkbox" name="allowPersonal"' + (result.allowPersonal ? ' checked' : '') + '><label for="domus-allow-personal">' + escape(t('domus', 'Allow Personal portfolios')) + '</label></div>' +
+                    '<p>' + escape(t('domus', 'Disabling Personal or a Team preserves its data and prevents portfolio access.')) + '</p>' +
+                    '<div class="domus-form-actions"><button type="submit">' + escape(t('domus', 'Save')) + '</button></div></form>' :
+                    '<div id="domus-enabled-teams-label">' + escape(t('domus', 'Your Teams')) + '</div>' +
+                    '<div class="domus-team-picker"><div class="domus-selected-teams" role="group" aria-labelledby="domus-enabled-teams-label">' +
+                    teams.map(team => '<span class="domus-badge domus-badge-muted domus-team-chip"><span>' + escape(team.displayName) + '</span></span>').join('') + '</div></div>');
+                if (!admin) return;
+                const form = host.querySelector('form');
+                const selected = new Set(result.enabledTeamIds === null ? teams.map(team => team.teamId) : result.enabledTeamIds);
+                const badges = form.querySelector('#domus-selected-teams');
+                function renderBadges() {
+                    badges.innerHTML = teams.filter(team => selected.has(team.teamId)).map(team =>
+                        '<span class="domus-badge domus-badge-muted domus-team-chip"><span>' + escape(team.displayName) + '</span>' +
+                        '<button type="button" data-remove-team="' + escape(team.teamId) + '" aria-label="' + escape(t('domus', 'Remove {name}', {name: team.displayName})) + '">×</button></span>').join('');
+                    badges.querySelectorAll('[data-remove-team]').forEach(button => {
+                        button.onclick = () => { selected.delete(button.dataset.removeTeam); renderBadges(); form.querySelector('#domus-add-teams').focus(); };
+                    });
+                }
+                renderBadges();
+                form.querySelector('#domus-add-teams').onclick = () => {
+                    const draft = new Set(selected);
+                    const modal = Domus.UI.openModal({title: t('domus', 'Teams enabled for Domus'), content:
+                        '<label for="domus-team-filter">' + escape(t('domus', 'Search Teams')) + '</label><input id="domus-team-filter" type="search">' +
+                        '<div class="domus-team-options">' + teams.map((team, index) =>
+                            '<div data-team-row class="domus-checkbox-row"><input class="checkbox" id="domus-team-option-' + index + '" type="checkbox" value="' + escape(team.teamId) + '"' + (draft.has(team.teamId) ? ' checked' : '') + '><label for="domus-team-option-' + index + '">' + escape(team.displayName) + '</label></div>').join('') + '</div>' +
+                        '<div class="domus-form-actions"><button type="button" data-cancel>' + escape(t('domus', 'Cancel')) + '</button><button type="button" data-apply>' + escape(t('domus', 'Apply')) + '</button></div>'});
+                    modal.modalEl.querySelector('input[type="search"]').oninput = event => {
+                        const search = event.target.value.toLocaleLowerCase();
+                        modal.modalEl.querySelectorAll('[data-team-row]').forEach(row => { row.hidden = !row.textContent.toLocaleLowerCase().includes(search); });
+                    };
+                    modal.modalEl.querySelectorAll('input[type="checkbox"]').forEach(input => {
+                        input.onchange = () => { if (input.checked) draft.add(input.value); else draft.delete(input.value); };
+                    });
+                    modal.modalEl.querySelector('[data-cancel]').onclick = modal.close;
+                    modal.modalEl.querySelector('[data-apply]').onclick = () => {
+                        selected.clear(); draft.forEach(id => selected.add(id)); renderBadges(); modal.close();
+                    };
+                };
+                form.onsubmit = async event => {
+                    event.preventDefault();
+                    const button = form.querySelector('button[type="submit"]');
+                    button.disabled = true;
+                    try {
+                        await Domus.Api.put('/settings/access-policy', {
+                            allowPersonal: form.elements.allowPersonal.checked,
+                            enabledTeamIds: Array.from(selected)
+                        });
+                        window.location.reload();
+                    } catch (error) {
+                        button.disabled = false;
+                        Domus.UI.showNotification(error.message || t('domus', 'Unable to save Domus access settings.'), 'error');
+                    }
+                };
+            } catch (error) {
+                if (!host.isConnected) return;
+                host.innerHTML = '<p role="alert">' + escape(error.message || t('domus', 'Unable to load Domus access settings.')) + '</p><button type="button">' + escape(t('domus', 'Retry')) + '</button>';
+                host.querySelector('button').onclick = bindScopeSection;
+            }
+        }
+
         function render(section = '') {
             const view = Domus.Router.beginView();
+            if (Domus.state.managementContext?.mode === 'unavailable') {
+                Domus.UI.renderContent('<div class="domus-settings"><h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' + buildScopeSection() + '</div>');
+                bindSectionToggles();
+                const panel = document.getElementById('domus-access-policy-panel');
+                panel.classList.remove('domus-collapsed');
+                panel.querySelector('.domus-section-header').setAttribute('aria-expanded', 'true');
+                bindScopeSection();
+                return;
+            }
             Domus.UI.showLoading(t('domus', 'Loading…'));
             Domus.Api.getSettings()
                 .then(response => {
@@ -636,6 +737,7 @@
                     const currentRole = Domus.Role?.getCurrentRole?.() || Domus.state.role || 'landlord';
                     const content = '<div class="domus-settings">' +
                         '<h2>' + Domus.Utils.escapeHtml(t('domus', 'Settings')) + '</h2>' +
+                        buildScopeSection() +
                         buildTeamSection(response?.requiredApps, response?.aiDocumentValidation) +
                         buildTaxSection(settings) +
                         buildTemplateSection(response?.utilityReportTemplate, response?.rentIncreaseTemplate) +
@@ -649,6 +751,7 @@
                     document.getElementById('domus-renter-preview-button').addEventListener('click', () => {
                         Domus.Router.navigate('renterPreview');
                     });
+                    bindScopeSection();
                     bindForm();
                     bindAiSection();
                     document.getElementById('domus-tax-report-button').onclick = openTaxReport;

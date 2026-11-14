@@ -13,6 +13,7 @@ use OCP\{IRequest, IUserSession};
 
 class UnitMoveMiddleware extends Middleware {
     private ?string $lockedUser = null;
+    private bool $exclusive = false;
     public function __construct(private UnitMoveGuard $guard, private IRequest $request, private IUserSession $session) {}
 
     public function beforeController(Controller $controller, string $methodName): void {
@@ -21,7 +22,8 @@ class UnitMoveMiddleware extends Middleware {
             || in_array($this->request->getMethod(), ['GET', 'HEAD', 'OPTIONS'], true)) return;
         $userId = $this->session->getUser()?->getUID();
         if ($userId === null) return;
-        $this->guard->acquire($userId);
+        $this->exclusive = $controller instanceof \OCA\Domus\Controller\FinancialHistoryController && $methodName === 'remove';
+        $this->guard->acquire($userId, $this->exclusive);
         $this->lockedUser = $userId;
         // Pause this actor's writes while copying; reads and Team selection stay available.
         try {
@@ -44,7 +46,7 @@ class UnitMoveMiddleware extends Middleware {
 
     private function release(): void {
         if ($this->lockedUser !== null) {
-            $this->guard->release($this->lockedUser);
+            $this->guard->release($this->lockedUser, $this->exclusive);
             $this->lockedUser = null;
         }
     }

@@ -1740,7 +1740,7 @@
                     bookingDocumentDetails = details;
                     initialTenancyIds = assignment.existing.map(option => String(option.id));
                     tenancyAssignmentRoot.innerHTML = (assignment.available.length + assignment.existing.length)
-                        ? renderTenancyAssignment(assignment)
+                        ? renderTenancyAssignment(assignment, details.length > 0 && !Domus.Access.can('deleteRecords'))
                         : '<span class="muted">' + Domus.Utils.escapeHtml(t('domus', 'No tenancies available.')) + '</span>';
                 } catch (error) {
                     if (request !== tenancyRequest || !form.isConnected || form.querySelector('[name="unitId"]')?.value !== unitId) return;
@@ -1986,11 +1986,11 @@
             });
         }
 
-        function renderTenancyAssignment(assignment) {
+        function renderTenancyAssignment(assignment, readOnly = false) {
             const choices = [...(assignment?.existing || []).map(option => ({...option, checked: true})), ...(assignment?.available || [])];
             if (!choices.length) return '';
             return '<fieldset class="domus-document-tenancies"><legend>' + Domus.Utils.escapeHtml(t('domus', 'Assign to tenancies')) + '</legend>' +
-                choices.map(option => '<label class="domus-document-tenancy-option"><input type="checkbox" name="additionalTenancyIds" value="' + Domus.Utils.escapeHtml(option.id) + '"' + (option.checked ? ' checked' : '') + '>' +
+                choices.map(option => '<label class="domus-document-tenancy-option"><input type="checkbox" name="additionalTenancyIds" value="' + Domus.Utils.escapeHtml(option.id) + '"' + (option.checked ? ' checked' : '') + (readOnly ? ' disabled' : '') + '>' +
                     '<span>' + Domus.Utils.escapeHtml(option.label) + '</span></label>').join('') + '</fieldset>';
         }
 
@@ -2123,8 +2123,8 @@
                 '<div class="domus-form-actions">' +
                 (formOptions.readOnly ? '<button type="button" id="domus-booking-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Close')) + '</button>' : (
                 (sectionMode?.primary === 'document' || formOptions.editDocumentLinkId ? '' : '<button type="button" id="domus-booking-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>') +
-                (isBookingEditMode ? '<button type="button" class="domus-ghost" id="domus-booking-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' : '') +
-                (formOptions.editDocumentLinkId ? '<button type="button" class="domus-ghost" id="domus-document-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete document')) + '</button>' : '') +
+                (isBookingEditMode && Domus.Access.can('deleteRecords') ? '<button type="button" class="domus-ghost" id="domus-booking-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' : '') +
+                (formOptions.editDocumentLinkId && Domus.Access.can('deleteRecords') ? '<button type="button" class="domus-ghost" id="domus-document-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete document')) + '</button>' : '') +
                 '<button type="submit" class="primary">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>')) +
                 '</div>' +
                 '</form>' +

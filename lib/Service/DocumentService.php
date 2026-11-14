@@ -241,6 +241,7 @@ class DocumentService {
             }
         }
         if ($existingLink !== null) {
+            $this->managementContext->assertCapability('deleteRecords');
             $existingLink->setFileName($this->buildDisplayTitle($file->getName(), $title));
             $existingLink->setNote($note !== null && trim($note) !== '' ? trim($note) : null);
             if ($documentDate !== null) $existingLink->setDocumentDate($documentDate);

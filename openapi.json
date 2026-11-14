@@ -52,7 +52,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Use Personal (case-insensitive) to explicitly select the signed-in user's Personal portfolio, or a verified Team ID. Omission or an empty value uses the saved active Team, or Personal if none is selected. Does not change the saved selection.",
+            "description": "Use Personal (case-insensitive) to explicitly select the signed-in user's Personal portfolio, or a verified Team ID. Omission or an empty value uses the saved active Team, or Personal if none is selected. Does not change the saved selection. The server administrator must allow Personal portfolios or enable the requested Team for Domus; disabled scopes are rejected.",
             "example": "Personal"
           },
           {
@@ -159,7 +159,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Use Personal (case-insensitive) to explicitly select the signed-in user's Personal portfolio, or a verified Team ID. Omission or an empty value uses the saved active Team, or Personal if none is selected. Does not change the saved selection.",
+            "description": "Use Personal (case-insensitive) to explicitly select the signed-in user's Personal portfolio, or a verified Team ID. Omission or an empty value uses the saved active Team, or Personal if none is selected. Does not change the saved selection. The server administrator must allow Personal portfolios or enable the requested Team for Domus; disabled scopes are rejected.",
             "example": "Personal"
           },
           {

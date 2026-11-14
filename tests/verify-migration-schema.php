@@ -241,8 +241,8 @@ foreach (['fresh' => false, '1.2 populated' => true] as $label => $populated) {
         $assert($snapshot() === $once, 'Combined migration retry changed data');
     } else {
         $assert((int)$connection->fetchOne('SELECT COUNT(*) FROM domus_accounts') === 11, 'Fresh install defaults missing');
-        $assert((int)$connection->fetchOne("SELECT COUNT(*) FROM domus_task_templates WHERE scope_key = 'system'") === 2, 'Fresh system templates missing or duplicated');
-        $assert((int)$connection->fetchOne('SELECT COUNT(*) FROM domus_task_tpl_steps') === 10, 'Fresh template steps missing or duplicated');
+        $assert((int)$connection->fetchOne("SELECT COUNT(*) FROM domus_task_templates WHERE scope_key = 'system'") === 3, 'Fresh system templates missing or duplicated');
+        $assert((int)$connection->fetchOne('SELECT COUNT(*) FROM domus_task_tpl_steps') === 11, 'Fresh template steps missing or duplicated');
     }
     echo "PASS $label: complete data migration, default repair" . ($populated ? ", account conversion, cleanup, rollback and retry" : '') . "\n";
 }

@@ -29,6 +29,7 @@ class TenancyService {
         private IL10N $l10n,
         private IDBConnection $connection,
         private ?AuditService $audit = null,
+        private ?TenantChangeService $tenantChange = null,
     ) {
     }
 
@@ -122,9 +123,12 @@ class TenancyService {
             if ($reference !== null) {
                 $this->closeOverlappingTenancies($reference, $data['partnerIds'], $startDate, $userId);
             }
-            $this->closeOpenTenanciesForUnit((int)$data['unitId'], $startDate, $userId);
+            $endedTenancies = $this->closeEarlierOverlappingTenanciesForUnit((int)$data['unitId'], $startDate, $userId);
             $inserted = $this->tenancyMapper->insert($tenancy);
             $this->syncPartnerRelations($inserted, $data['partnerIds'] ?? [], $userId, $role);
+            if ($reference === null) {
+                $this->tenantChange?->created($inserted, $userId, $endedTenancies);
+            }
             $this->connection->commit();
         } catch (\Throwable $e) {
             $this->connection->rollBack();
@@ -172,10 +176,17 @@ class TenancyService {
                 $tenancy->$setter($data[$field] !== '' ? $data[$field] : null);
             }
         }
-        $tenancy->setUpdatedAt(time());
-        $updated = $this->tenancyMapper->update($tenancy);
-        if (isset($data['partnerIds'])) {
-            $this->syncPartnerRelations($updated, $data['partnerIds'], $userId, $role);
+        $this->connection->beginTransaction();
+        try {
+            $tenancy->setUpdatedAt(time());
+            $updated = $this->tenancyMapper->update($tenancy);
+            if (isset($data['partnerIds'])) {
+                $this->syncPartnerRelations($updated, $data['partnerIds'], $userId, $role);
+            }
+            $this->connection->commit();
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+            throw $e;
         }
         $this->audit?->relationships($id, $userId, $updated->getTeamId(), $oldUnitId, $updated->getUnitId(), $oldPartners, $updated->getPartnerIds() ?? []);
         $this->hydratePartners($updated, $userId);
@@ -381,12 +392,14 @@ class TenancyService {
         }
     }
 
-    private function closeOpenTenanciesForUnit(int $unitId, \DateTimeImmutable $newStartDate, string $userId): void {
+    private function closeEarlierOverlappingTenanciesForUnit(int $unitId, \DateTimeImmutable $newStartDate, string $userId): array {
+        $endedTenancies = [];
         $tenancies = $this->tenancyMapper->findByUser($userId, $unitId);
         $newEndDate = $newStartDate->modify('-1 day');
 
         foreach ($tenancies as $tenancy) {
-            if ($tenancy->getEndDate() !== null) {
+            $existingEnd = $this->parseDate($tenancy->getEndDate());
+            if ($existingEnd !== null && $existingEnd < $newStartDate) {
                 continue;
             }
 
@@ -398,6 +411,8 @@ class TenancyService {
             $tenancy->setEndDate($newEndDate->format('Y-m-d'));
             $tenancy->setUpdatedAt(time());
             $this->tenancyMapper->update($tenancy);
+            $endedTenancies[] = $tenancy;
         }
+        return $endedTenancies;
     }
 }

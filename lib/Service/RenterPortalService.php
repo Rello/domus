@@ -17,7 +17,7 @@ class RenterPortalService {
     private const CONTACT_FIELDS = ['name', 'email', 'phone', 'street', 'zip', 'city', 'country'];
     public function __construct(private RenterPortalMapper $mapper, private RenterAccessMapper $accounts,
         private ManagementAccessContext $access, private TeamIntegrationService $teams,
-        private IRootFolder $files, private IUserManager $users, private IURLGenerator $urls, private IL10N $l10n) {}
+        private IRootFolder $files, private IUserManager $users, private IURLGenerator $urls, private IL10N $l10n, private ?ScopePolicyService $scopePolicy = null) {}
 
     private function denied(): never {
         throw new \DomainException($this->l10n->t('This tenancy or document is no longer available to you.'));
@@ -25,10 +25,11 @@ class RenterPortalService {
 
     private function management(string $teamId): void {
         $this->access->assertSubmittedTeam($teamId);
-        $this->teams->assertTeamAdmin($teamId);
+        $this->teams->assertTeamMember($teamId);
     }
 
     private function tenancyRow(string $teamId, int $tenancyId): array {
+        if ($this->scopePolicy !== null && !$this->scopePolicy->allowsTeam($teamId)) $this->denied();
         $row = $this->mapper->rows('domus_tenancies', ['team_id' => $teamId, 'id' => $tenancyId])[0] ?? null;
         if ($row === null || !$this->mapper->rows('domus_units', ['team_id' => $teamId, 'id' => (int)$row['unit_id']])) $this->denied();
         return $row;
@@ -180,6 +181,7 @@ class RenterPortalService {
     }
 
     public function requestCorrection(string $teamId, int $partnerId, array $proposed): array {
+        if ($this->scopePolicy !== null && !$this->scopePolicy->allowsTeam($teamId)) $this->denied();
         $uid = $this->access->actorUserId();
         $contact = $this->mapper->rows('domus_partners', ['team_id' => $teamId, 'id' => $partnerId, 'partner_type' => 'tenant', 'nc_user_id' => $uid])[0] ?? null;
         if (!$contact || !$this->accounts->linkedTenancies($teamId, $partnerId)) $this->denied();

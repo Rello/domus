@@ -151,8 +151,9 @@
 
         function getActionMeta(actionType) {
             const map = {
+                editContact: { permission: 'editContacts', label: t('domus', 'Edit contact'), icon: 'domus-icon-partner' },
                 booking: { label: t('domus', 'Add booking'), icon: 'domus-icon-booking' },
-                closeBookingYear: { label: t('domus', 'Close booking year'), icon: 'domus-icon-confirm-year' },
+                closeBookingYear: { permission: 'closeYears', label: t('domus', 'Close booking year'), icon: 'domus-icon-confirm-year' },
                 document: { label: t('domus', 'Add document'), icon: 'domus-icon-document' },
                 serviceChargeReport: { label: t('domus', 'Service charge report'), icon: 'domus-icon-document' },
                 url: { label: t('domus', 'Own link'), icon: 'domus-icon-external' }
@@ -330,6 +331,7 @@
                     icon: actionMeta.icon,
                     label: actionMeta.label,
                     type: 'run',
+                    permission: actionMeta.permission,
                     dataset: {
                         actionType: task.actionType || '',
                         actionUrl: task.actionUrl || '',
@@ -393,6 +395,7 @@
                 ? '<div class="domus-task-detail-actions">' + actionItems.map(item => (
                     '<div class="domus-task-detail-action-row">' +
                     Domus.UI.buildIconButton(item.icon, item.label, {
+                        permission: ['delete', 'cancel'].includes(item.type) ? 'deleteRecords' : item.type === 'reference' ? 'manageSettings' : item.permission,
                         className: 'domus-task-detail-action-button',
                         dataset: Object.assign({ modalAction: item.type }, item.dataset)
                     }) +
@@ -1038,6 +1041,12 @@
         }
 
         function runTaskAction(actionType, actionUrl, actionYear, entityType, entityId, onComplete) {
+            if (actionType === 'editContact') {
+                if (!Domus.Access.require('editContacts')) return;
+                if (!/^[1-9][0-9]*$/.test(String(actionUrl || ''))) return;
+                Domus.Partners.openPartnerModal(Number(actionUrl), 'edit', onComplete || (() => {}));
+                return;
+            }
             if (actionType === 'url') {
                 if (!actionUrl) {
                     Domus.UI.showNotification(t('domus', 'Link URL is required.'), 'error');
@@ -1124,7 +1133,7 @@
 
             Promise.all(loadData)
                 .then(([templates, entityLists, currentEntity]) => {
-                    const allTemplates = templates || [];
+                    const allTemplates = (templates || []).filter(template => template.key !== 'tenant_change');
                     const getTemplateById = (templateId, selectedEntityType) => allTemplates.find(template => (
                         String(template.id) === String(templateId)
                         && (!selectedEntityType || template.appliesTo === selectedEntityType)
@@ -1448,6 +1457,7 @@
                 const stepTitle = translateTemplateText(step.title) || step.title || '';
                 const description = translateTemplateText(step.description) || step.description || '';
                 const buildAction = (title, iconClass, action, prominent = false) => Domus.UI.buildQuickActionCard({
+                    permission: action === 'run' ? actionMeta?.permission : null,
                     id: 'domus-process-' + run.id + '-' + step.id + '-' + action,
                     title,
                     iconClass,
@@ -1482,7 +1492,7 @@
                 '<ol class="domus-process-steps">' + rows + '</ol>' +
                 '<details class="domus-process-menu"><summary tabindex="0">' + escape(t('domus', 'More actions')) + '</summary>' +
                 '<button type="button" data-process-action="refresh">' + escape(t('domus', 'Refresh process')) + '</button>' +
-                '<button type="button" data-process-action="delete">' + escape(run.status === 'open' ? t('domus', 'Cancel process') : t('domus', 'Delete')) + '</button></details>' +
+                (Domus.Access.can('deleteRecords') ? '<button type="button" data-process-action="delete">' + escape(run.status === 'open' ? t('domus', 'Cancel process') : t('domus', 'Delete')) + '</button>' : '') + '</details>' +
                 '</div>';
         }
 
@@ -1983,17 +1993,17 @@
                     Domus.Utils.escapeHtml(statusLabel),
                     '<div class="domus-task-template-actions">' +
                         Domus.UI.buildIconButton('domus-icon-edit', template.isSystem ? t('domus', 'Customize') : t('domus', 'Edit'), {
-                            className: 'domus-task-template-edit',
+                            permission: 'manageSettings', className: 'domus-task-template-edit',
                             dataset: { id: template.id }
                         }) +
                         Domus.UI.buildIconButton(toggleIcon, toggleLabel, {
-                            className: 'domus-task-template-toggle',
+                            permission: 'manageSettings', className: 'domus-task-template-toggle',
                             dataset: { id: template.id }
                         }) +
                         (template.isOverride ? Domus.UI.buildIconButton('domus-icon-back', t('domus', 'Reset to system default'), {
-                            className: 'domus-task-template-reset', dataset: { id: template.id }
+                            permission: 'manageSettings', className: 'domus-task-template-reset', dataset: { id: template.id }
                         }) : template.isSystem ? '' : Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {
-                            className: 'domus-task-template-delete', dataset: { id: template.id }
+                            permission: 'manageSettings', className: 'domus-task-template-delete', dataset: { id: template.id }
                         })) +
                         '</div>'
                 ]
@@ -2039,6 +2049,7 @@
         }
 
         function openTemplateModal(template, onSaved) {
+            if (!Domus.Access.require('manageSettings')) return;
             const isEdit = !!template?.id;
             const refreshTemplate = () => {
                 if (!template?.id) {
@@ -2065,7 +2076,7 @@
                 }),
                 Domus.UI.buildFormRow({
                     label: t('domus', 'Active'),
-                    className: 'domus-task-template-active-row',
+                    permission: 'manageSettings', className: 'domus-task-template-active-row',
                     content: '<input type="checkbox" name="isActive"' + (template?.isActive ? ' checked' : '') + '>'
                 })
             ];
@@ -2081,7 +2092,7 @@
                 '<div class="domus-task-steps-title">' +
                 '<strong>' + Domus.Utils.escapeHtml(t('domus', 'Steps')) + '</strong>' +
                 Domus.UI.buildIconButton('domus-icon-add', t('domus', 'Add step'), {
-                    id: 'domus-task-step-add',
+                    permission: 'manageSettings', id: 'domus-task-step-add',
                     className: 'domus-task-step-add-button'
                 }) +
                 '</div>' +
@@ -2131,6 +2142,7 @@
         }
 
         function openStepModal(templateId, step, onSaved) {
+            if (!Domus.Access.require('manageSettings')) return;
             const actionOptions = [
                 { value: '', label: t('domus', 'No action') },
                 { value: 'booking', label: t('domus', 'Add booking') },
@@ -2138,6 +2150,9 @@
                 { value: 'serviceChargeReport', label: t('domus', 'Service charge report') },
                 { value: 'url', label: t('domus', 'Own link') },
             ];
+            if (step?.actionType === 'editContact') {
+                actionOptions.push({ value: 'editContact', label: t('domus', 'Edit contact') });
+            }
             const selectedAction = step?.actionType || '';
             const isSystemYearStatusAction = selectedAction === 'closeBookingYear';
             const rows = [
@@ -2246,7 +2261,7 @@
                     className: 'domus-task-step-edit',
                     dataset: { id: step.id }
                 }) +
-                Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {
+                Domus.UI.buildIconButton('domus-icon-delete', t('domus', 'Delete'), {permission: 'deleteRecords',
                     className: 'domus-task-step-delete',
                     dataset: { id: step.id }
                 }) +

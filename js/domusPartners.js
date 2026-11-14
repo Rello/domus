@@ -368,7 +368,7 @@
                     });
                     const partnerTypeLabel = getPartnerTypeLabel(partner.partnerType);
                     const menuActions = [
-                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
+                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {permission: 'deleteRecords',
                             id: 'domus-partner-delete',
                             className: 'domus-action-menu-item'
                         })
@@ -477,6 +477,10 @@
                 badge.outerHTML = '<a id="domus-partner-renter-access-badge" class="domus-badge ' + badgeClass + '" href="' +
                     Domus.Utils.escapeHtml(href) + '"' + attributes + '>' + Domus.Utils.escapeHtml(label) + '</a>';
                 if (linked) return;
+                if (!Domus.Access.can('manageRenterAccess')) {
+                    document.getElementById('domus-partner-renter-access-badge')?.removeAttribute('href');
+                    return;
+                }
                 document.getElementById('domus-partner-renter-access-badge')?.addEventListener('click', event => {
                     event.preventDefault();
                     const modal = Domus.UI.openModal({
@@ -588,7 +592,7 @@
             });
         }
 
-        function openPartnerModal(id, mode = 'edit') {
+        function openPartnerModal(id, mode = 'edit', onSaved) {
             Domus.Api.get('/partners/' + id)
                 .then(partner => {
                     let modal;
@@ -609,7 +613,8 @@
                         .then(() => {
                             Domus.UI.showNotification(t('domus', '{entity} updated.', { entity: t('domus', 'Contact') }), 'success');
                             modal.close();
-                            renderDetail(id);
+                            if (onSaved) onSaved();
+                            else renderDetail(id);
                         })
                         .catch(err => Domus.UI.showNotification(err.message, 'error')),
                     { mode });
@@ -712,7 +717,7 @@
             const rows = [
                 inputField('name', t('domus', 'Name'), partner?.name || '', { required: true, isView, className: rowClassName }),
                 ...(partnerTypeConfig.hideField ? [] : [selectField('partnerType', t('domus', 'Type'), partnerTypeOptions, defaultPartnerType, {
-                    disabled: partnerTypeConfig.disabled,
+                    disabled: partnerTypeConfig.disabled || (partner?.ncUserId && !Domus.Access.can('manageRenterAccess')),
                     required: true,
                     isView,
                     className: rowClassName
@@ -764,7 +769,8 @@
             getPartnerTypeOptions,
             getPartnerTypeLabel,
             buildPartnerFields,
-            openCreateModal
+            openCreateModal,
+            openPartnerModal
         };
     })();
 
@@ -779,7 +785,7 @@
             const sectionTitle = options.sectionTitle || (entityType === 'property'
                 ? t('domus', 'Property contacts') : t('domus', 'Unit contacts'));
             const header = Domus.UI.buildSectionHeader(sectionTitle, {
-                id: addId,
+                permission: 'managePortfolio', id: addId,
                 title: t('domus', 'Add contact'),
                 iconClass: 'domus-icon-add'
             });
@@ -796,7 +802,7 @@
             });
             const body = rows.length
                 ? Domus.UI.buildTable([t('domus', 'Name'), t('domus', 'Type'), t('domus', 'Contact')], rows, { wrapPanel: false })
-                : Domus.UI.buildEmptyStateAction('', { actionId: emptyAddId });
+                : Domus.UI.buildEmptyStateAction('', { permission: 'managePortfolio', actionId: emptyAddId });
 
             return '<div class="domus-panel">' + header + '<div class="domus-panel-body">' + body + '</div></div>';
         }
@@ -814,6 +820,7 @@
         }
 
         function openAddModal(entityType, entityId, onRefresh) {
+            if (!Domus.Access.require('managePortfolio')) return;
             Domus.Api.getPartners()
                 .then(partners => {
                     const existingPartners = (partners || []).filter(partner => !['tenant', 'owner'].includes(partner.partnerType));

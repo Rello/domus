@@ -79,7 +79,7 @@
             const isEmptyState = options.isEmptyState === true;
             const quickCards = (isEmptyState ? [
                 {
-                    id: 'domus-dashboard-unit-create',
+                    permission: 'managePortfolio', id: 'domus-dashboard-unit-create',
                     iconClass: 'domus-icon-unit',
                     title: t('domus', 'Add first unit'),
                     copy: t('domus', 'Create a new rentable object'),

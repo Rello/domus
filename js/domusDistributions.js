@@ -143,8 +143,8 @@
                 const unitValue = item.unitValue || null;
                 const cells = [
                     propertyDetailVariant
-                        ? '<div class="domus-distribution-name-cell"><button type="button" class="domus-table-action-button domus-distribution-open">' + Domus.Utils.escapeHtml(item.name || '') + '</button></div>'
-                        : '<button type="button" class="domus-table-action-button domus-distribution-open">' + Domus.Utils.escapeHtml(item.name || '') + '</button>',
+                        ? '<div class="domus-distribution-name-cell"><button type="button" class="domus-table-action-button domus-distribution-open" ' + (Domus.Access.can('managePortfolio') ? '' : 'disabled') + '>' + Domus.Utils.escapeHtml(item.name || '') + '</button></div>'
+                        : '<button type="button" class="domus-table-action-button domus-distribution-open" ' + (Domus.Access.can('managePortfolio') ? '' : 'disabled') + '>' + Domus.Utils.escapeHtml(item.name || '') + '</button>',
                     propertyDetailVariant
                         ? buildTypeBadge(item.type)
                         : Domus.Utils.escapeHtml(getTypeLabel(item.type))
@@ -276,6 +276,7 @@
         }
 
         function openCreateKeyModal(propertyId, onCreated, options = {}) {
+            if (!Domus.Access.require('managePortfolio')) return;
             if (!canManageDistributions()) {
                 Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
                 return;
@@ -373,6 +374,7 @@
         }
 
         function openCreateUnitValueModal(unit, onCreated, defaults = {}, options = {}) {
+            if (!Domus.Access.require('managePortfolio')) return;
             if (!canManageDistributions()) {
                 Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
                 return;
@@ -476,6 +478,7 @@
         }
 
         function openEditKeyModal(propertyId, distribution, onSaved) {
+            if (!Domus.Access.require('managePortfolio')) return;
             if (!canManageDistributions()) {
                 Domus.UI.showNotification(t('domus', 'This action is only available for building management.'), 'error');
                 return;

@@ -577,7 +577,7 @@
                 Domus.UI.buildFormTable(rows) +
                 '<div class="domus-form-actions">' +
                 '<button type="button" id="domus-action-log-cancel">' + Domus.Utils.escapeHtml(t('domus', 'Cancel')) + '</button>' +
-                '<button type="button" id="domus-action-log-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' +
+                (Domus.Access.can('deleteRecords') ? '<button type="button" id="domus-action-log-delete">' + Domus.Utils.escapeHtml(t('domus', 'Delete')) + '</button>' : '') +
                 '<button type="submit" class="primary" id="domus-action-log-submit">' + Domus.Utils.escapeHtml(t('domus', 'Save')) + '</button>' +
                 '</div>' +
                 '</form>' +

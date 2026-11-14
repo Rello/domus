@@ -33,6 +33,8 @@ class TeamIntegrationService {
         private IAppManager $appManager,
         private IAppConfig $appConfig,
         private IL10N $l10n,
+        private ?ScopePolicyService $scopePolicy = null,
+        private ?CirclesRoleService $roles = null,
     ) {
     }
 
@@ -40,31 +42,47 @@ class TeamIntegrationService {
         $user = $this->getStaffUser();
         $this->assertTeamsAvailable();
 
-        return array_map(static fn ($team): array => [
+        return array_map(fn ($team): array => [
             'teamId' => $team->getId(),
             'displayName' => $team->getDisplayName(),
-            'role' => 'admin',
-        ], $this->teamsForUser($user->getUID()));
+            'role' => $this->roleForUser($team->getId(), $user->getUID()),
+        ], array_values(array_filter($this->teamsForUser($user->getUID()),
+            fn ($team): bool => $this->scopePolicy === null || $this->scopePolicy->allowsTeam($team->getId()))));
     }
 
-    public function assertTeamAdmin(string $teamId): void {
+    public function assertTeamMember(string $teamId): void {
         if ($teamId === '') {
             throw new \DomainException($this->l10n->t('Select a Team.'));
         }
 
-        foreach ($this->listTeams() as $team) {
-            if ($team['teamId'] === $teamId) {
-                return;
-            }
-        }
+        $user = $this->getStaffUser();
+        if ($this->roleForUser($teamId, $user->getUID()) !== 'none') return;
 
         throw new \DomainException($this->l10n->t('You do not have access to this Team.'));
+    }
+
+    public function roleForUser(string $teamId, string $uid): string {
+        if (!$this->isTeamMember($teamId, $uid)) return 'none';
+        try {
+            return ($this->roles ?? new CirclesRoleService())->role($teamId, $uid);
+        } catch (\Throwable) {
+            // An unavailable provider or missing cached membership never grants write access.
+            return 'none';
+        }
+    }
+
+    public function assertTeamAdmin(string $teamId): void {
+        $user = $this->getStaffUser();
+        if ($this->roleForUser($teamId, $user->getUID()) !== 'admin') {
+            throw new \DomainException($this->l10n->t('This action requires a Team administrator.'));
+        }
     }
 
     /** Used to recheck the staff account supplying an authenticated renter document. */
     public function isTeamMember(string $teamId, string $uid): bool {
         $this->assertTeamsAvailable();
-        if ($this->groupManager->isInGroup($uid, self::GUEST_GROUP_ID)) return false;
+        if ($this->groupManager->isInGroup($uid, self::GUEST_GROUP_ID)
+            || ($this->scopePolicy !== null && !$this->scopePolicy->allowsTeam($teamId))) return false;
         foreach ($this->teamsForUser($uid) as $team) {
             if ($team->getId() === $teamId) return true;
         }
@@ -72,7 +90,7 @@ class TeamIntegrationService {
     }
 
     public function getTeamFolder(string $teamId): ?array {
-        $this->assertTeamAdmin($teamId);
+        $this->assertTeamMember($teamId);
         if (!$this->hasTeamFolderProvider()) {
             return $this->getLegacyTeamFolder($teamId);
         }

@@ -223,7 +223,7 @@
             const iconClass = Domus.Utils.escapeHtml(options.iconClass || '');
             const action = Domus.Utils.escapeHtml(options.action || '');
             const id = Domus.Utils.escapeHtml(String(options.id || ''));
-            const disabledAttr = options.disabled ? ' disabled' : '';
+            const disabledAttr = options.disabled || !Domus.Access.can('manageSettings') ? ' disabled' : '';
             return '<button type="button" class="domus-icon-only-button domus-account-action" data-account-action="' + action + '" data-account-id="' + id + '" aria-label="' + safeLabel + '" title="' + safeTitle + '"' +
                 disabledAttr + '>' +
                 '<span class="domus-icon ' + iconClass + '" aria-hidden="true"></span>' +
@@ -298,6 +298,7 @@
         }
 
         function openAccountModal(options) {
+            if (!Domus.Access.require('manageSettings')) return;
             const mode = options.mode || 'create';
             const account = options.account || {};
             const modal = Domus.UI.openModal({

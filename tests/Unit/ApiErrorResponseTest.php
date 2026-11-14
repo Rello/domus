@@ -130,8 +130,8 @@ class ApiErrorResponseTest extends TestCase {
 
     public function testApplicationRegistersApiErrorMiddleware(): void {
         $registration = $this->createMock(IRegistrationContext::class);
-        $registration->expects(self::exactly(2))->method('registerMiddleware')->withConsecutive(
-            [ApiErrorMiddleware::class], [\OCA\Domus\Middleware\UnitMoveMiddleware::class],
+        $registration->expects(self::exactly(3))->method('registerMiddleware')->withConsecutive(
+            [ApiErrorMiddleware::class], [\OCA\Domus\Middleware\TeamPermissionMiddleware::class], [\OCA\Domus\Middleware\UnitMoveMiddleware::class],
         );
         (new Application())->register($registration);
     }

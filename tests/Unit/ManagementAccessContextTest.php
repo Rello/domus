@@ -26,7 +26,8 @@ class ManagementAccessContextTest extends TestCase {
         $request = $this->createMock(IRequest::class);
         $request->method('getHeader')->with('X-Domus-Team')->willReturn($selectedTeam);
         $teams = $this->createMock(TeamIntegrationService::class);
-        $teams->method('assertTeamAdmin')->willReturnCallback(static function (string $teamId): void {
+        $teams->method('roleForUser')->willReturn('admin');
+        $teams->method('assertTeamMember')->willReturnCallback(static function (string $teamId): void {
             if ($teamId !== 'team-a') {
                 throw new \DomainException('Unknown Team');
             }
@@ -43,6 +44,8 @@ class ManagementAccessContextTest extends TestCase {
             'actorUserId' => 'manager',
             'activeTeamId' => 'team-a',
             'canManage' => true,
+            'teamRole' => 'admin',
+            'permissions' => \OCA\Domus\Service\TeamPermissionService::capabilities('admin'),
             'mode' => 'team',
         ], $this->context('team-a')->capabilities());
     }
@@ -64,7 +67,8 @@ class ManagementAccessContextTest extends TestCase {
         $config->expects(self::never())->method('getUserValue');
         $config->expects(self::never())->method('setUserValue');
         $teams = $this->createMock(TeamIntegrationService::class);
-        $teams->expects(self::never())->method('assertTeamAdmin');
+        $teams->method('roleForUser')->willReturn('admin');
+        $teams->expects(self::never())->method('assertTeamMember');
         $context = new ManagementAccessContext(
             $session, $request, $teams, $this->createMock(IL10N::class),
             $this->createMock(IGroupManager::class), $config,
@@ -115,8 +119,9 @@ class ManagementAccessContextTest extends TestCase {
         $request = $this->createMock(IRequest::class);
         $request->method('getHeader')->willReturn('');
         $teams = $this->createMock(TeamIntegrationService::class);
+        $teams->method('roleForUser')->willReturn('admin');
         $teams->expects(self::once())->method('clearRequestCache');
-        $teams->expects(self::exactly(2))->method('assertTeamAdmin')->with('team-b');
+        $teams->expects(self::exactly(2))->method('assertTeamMember')->with('team-b');
         $selected = 'team-a';
         $config = $this->createMock(\OCP\IConfig::class);
         $config->method('getUserValue')->willReturnCallback(static function () use (&$selected) { return $selected; });

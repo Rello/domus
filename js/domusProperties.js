@@ -173,7 +173,7 @@
         function renderListContent() {
             const header = '<div class="domus-toolbar">' +
                 Domus.UI.buildScopeAddButton('domus-icon-property', t('domus', 'Add {entity}', { entity: t('domus', 'Property') }), {
-                    id: 'domus-property-create-btn',
+                    permission: 'managePortfolio', id: 'domus-property-create-btn',
                     className: 'primary'
                 }) +
                 '</div>';
@@ -192,7 +192,7 @@
                         }),
                         {
                             iconClass: 'domus-icon-property',
-                            actionId: 'domus-properties-empty-create'
+                            permission: 'managePortfolio', actionId: 'domus-properties-empty-create'
                         }
                     );
             Domus.UI.renderContent(header + content);
@@ -221,6 +221,7 @@
         }
 
         function openPropertyCreateForm(defaults = {}, onCreated, modalOptions = {}) {
+            if (!Domus.Access.require('managePortfolio')) return;
             const content = buildPropertyForm(defaults);
             const wrappedContent = typeof modalOptions.wrapContent === 'function' ? modalOptions.wrapContent(content) : content;
             const modal = Domus.UI.openModal({
@@ -276,6 +277,7 @@
         }
 
         function openGuidedCreateWorkflow(defaults = {}, onFinished) {
+            if (!Domus.Access.require('managePortfolio')) return;
             const steps = getPropertyWorkflowSteps();
             openPropertyCreateForm(
                 defaults,
@@ -289,6 +291,7 @@
         }
 
         function openCreateModal() {
+            if (!Domus.Access.require('managePortfolio')) return;
             openGuidedCreateWorkflow();
         }
 
@@ -384,7 +387,7 @@
                     });
                     const menuActions = [
                         !isBuildingManagement ? Domus.UI.buildIconLabelButton('domus-icon-unit', t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }), {
-                            id: 'domus-add-unit',
+                            permission: 'managePortfolio', id: 'domus-add-unit',
                             className: 'domus-action-menu-item'
                         }) : '',
                         showBookingFeatures && !isBuildingManagement ? Domus.UI.buildIconLabelButton('domus-icon-booking', t('domus', 'Add {entity}', { entity: t('domus', 'Booking') }), {
@@ -399,7 +402,7 @@
                             id: 'domus-property-document-location',
                             className: 'domus-action-menu-item'
                         }),
-                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {
+                        Domus.UI.buildIconLabelButton('domus-icon-delete', t('domus', 'Delete'), {permission: 'deleteRecords',
                             id: 'domus-property-delete',
                             className: 'domus-action-menu-item'
                         })
@@ -418,7 +421,7 @@
                     const hero = Domus.UI.buildDetailHero({
                         indicator: '<div class="domus-hero-indicator domus-hero-image-card">' +
                             Domus.UI.buildEntityImage('property', property, {variant: 'hero', alt: property.name || t('domus', 'Property')}) +
-                            '<button type="button" class="domus-hero-image-edit" id="domus-property-image-edit" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Edit picture')) + '">' +
+                            '<button type="button" class="domus-hero-image-edit" ' + (Domus.Access.can('managePortfolio') ? '' : 'disabled ') + 'id="domus-property-image-edit" aria-label="' + Domus.Utils.escapeHtml(t('domus', 'Edit picture')) + '">' +
                             '<span class="domus-icon domus-icon-edit" aria-hidden="true"></span></button></div>',
                         kicker: property.description,
                         title: property.name,
@@ -430,12 +433,12 @@
                     });
 
                     const unitsHeader = Domus.UI.buildSectionHeader(t('domus', 'Units'), {
-                        id: 'domus-add-unit-inline',
+                        permission: 'managePortfolio', id: 'domus-add-unit-inline',
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Unit') }),
                         iconClass: 'domus-icon-add'
                     });
                     const distributionsHeader = Domus.UI.buildSectionHeader(t('domus', 'Distribution'), canManageDistributions ? {
-                        id: 'domus-add-distribution-inline',
+                        permission: 'managePortfolio', id: 'domus-add-distribution-inline',
                         title: t('domus', 'Add {entity}', { entity: t('domus', 'Distribution') }),
                         iconClass: 'domus-icon-add'
                     } : null);
@@ -698,6 +701,7 @@
         }
 
         function openDocumentLocationModal(property) {
+            if (!Domus.Access.require('managePortfolio')) return;
             Domus.UI.openDocumentLocationModal({
                 currentPath: property.documentPath || '',
                 formIdPrefix: 'domus-property-document-location',
@@ -707,12 +711,13 @@
         }
 
         function openPropertyModal(id, mode = 'edit') {
+            if (!Domus.Access.can('managePortfolio')) mode = 'view';
             Domus.Api.getProperty(id)
                 .then(property => {
                     let modal;
                     const headerActions = [];
                     if (mode === 'view') {
-                        headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
+                        if (Domus.Access.can('managePortfolio')) headerActions.push(Domus.UI.buildModalAction(t('domus', 'Edit'), () => {
                             modal?.close();
                             openPropertyModal(id, 'edit');
                         }));
@@ -849,6 +854,7 @@
         };
 
         function openPropertyImageModal(property) {
+            if (!Domus.Access.require('managePortfolio')) return;
             Domus.UI.openEntityImageModal('property', property, () => renderDetail(property.id));
         }
 
