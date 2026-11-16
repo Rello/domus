@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
-## Unreleased
+## 1.3.1 - 2026-11-16
 
 ### Added
 - Start a Tenant change process for departing tenants when a new tenancy replaces theirs, with a direct action to update forwarding addresses and contact details.
