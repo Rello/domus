@@ -37,7 +37,7 @@ class UserCleanupService {
                 foreach (['domus_task_templates', 'domus_accounts'] as $table) {
                     $this->delete($table, ['scope_key' => 'user:' . $uid, 'team_id' => null]);
                 }
-                foreach (['domus_docLinks', 'domus_action_logs', 'domus_partner_rel', 'domus_dist_key_units', 'domus_bookings', 'domus_tenancies', 'domus_dist_keys', 'domus_units', 'domus_properties', 'domus_partners', 'domus_rule_sets'] as $table) {
+                foreach (['domus_doclinks', 'domus_action_logs', 'domus_partner_rel', 'domus_dist_key_units', 'domus_bookings', 'domus_tenancies', 'domus_dist_keys', 'domus_units', 'domus_properties', 'domus_partners', 'domus_rule_sets'] as $table) {
                     $this->delete($table, ['user_id' => $uid, 'team_id' => null]);
                 }
                 // Journals belong to the initiating account, including completed moves.

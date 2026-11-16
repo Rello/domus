@@ -73,11 +73,11 @@ class UnitMoveDataService {
         }
         // The supported move is a self-contained unit, including its related contacts.
         $entities['partner'] = array_column($graph['domus_partners'], 'id');
-        foreach (['domus_docLinks', 'domus_action_logs', 'domus_tasks', 'domus_workflow_runs', 'domus_task_steps'] as $table) {
+        foreach (['domus_doclinks', 'domus_action_logs', 'domus_tasks', 'domus_workflow_runs', 'domus_task_steps'] as $table) {
             $graph[$table] = [];
             foreach ($entities as $type => $ids) foreach ($ids as $id) {
-                if ($type === 'partner' && !in_array($table, ['domus_docLinks', 'domus_action_logs'], true)) continue;
-                $scope = in_array($table, ['domus_docLinks', 'domus_action_logs'], true) ? $owner : ['team_id' => null];
+                if ($type === 'partner' && !in_array($table, ['domus_doclinks', 'domus_action_logs'], true)) continue;
+                $scope = in_array($table, ['domus_doclinks', 'domus_action_logs'], true) ? $owner : ['team_id' => null];
                 array_push($graph[$table], ...$this->rows($table, ['entity_type' => $type, 'entity_id' => (int)$id] + $scope));
             }
         }
@@ -108,7 +108,12 @@ class UnitMoveDataService {
     }
 
     public function fingerprint(array $graph): string {
-        return hash('sha256', json_encode($graph, JSON_THROW_ON_ERROR));
+        // In-progress moves can still contain the old table name in their saved inventory.
+        $normalized = [];
+        foreach ($graph as $table => $rows) {
+            $normalized[$table === 'domus_docLinks' ? 'domus_doclinks' : $table] = $rows;
+        }
+        return hash('sha256', json_encode($normalized, JSON_THROW_ON_ERROR));
     }
 
     /** Caller owns the move lock and transaction. */
@@ -150,11 +155,11 @@ class UnitMoveDataService {
                     $values += ['document_path' => $path, 'document_folder_id' => $folderId, 'updated_at' => time()];
                     if ($row['image_file_id']) $values['image_file_id'] = $files[(int)$row['image_file_id']];
                 }
-                if ($table === 'domus_docLinks') {
+                if ($table === 'domus_doclinks') {
                     if (in_array((int)$row['file_id'], $ignoredFileIds, true)) {
                         if ($removeMissingLinks) {
                             $qb = $this->db->getQueryBuilder();
-                            $qb->delete('domus_docLinks')
+                            $qb->delete('domus_doclinks')
                                 ->where($qb->expr()->eq('id', $qb->createNamedParameter((int)$row['id'])))
                                 ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
                                 ->andWhere($qb->expr()->isNull('team_id'));

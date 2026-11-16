@@ -47,7 +47,7 @@ class RenterPortalTest extends TestCase {
                 ['team_id' => 'b', 'partner_id' => 3, 'type' => 'tenancy', 'relation_id' => 22],
             ],
             'domus_units' => [['id' => 101, 'team_id' => 'a', 'label' => 'Home A', 'notes' => 'PRIVATE UNIT'], ['id' => 202, 'team_id' => 'b', 'label' => 'Home B']],
-            'domus_docLinks' => [
+            'domus_doclinks' => [
                 ['id' => 51, 'team_id' => 'a', 'entity_type' => 'tenancy', 'entity_id' => 11, 'file_id' => 501, 'user_id' => 'staff', 'file_name' => 'Contract.pdf', 'note' => 'PRIVATE NOTE', 'created_at' => 1],
                 ['id' => 52, 'team_id' => 'a', 'entity_type' => 'unit', 'entity_id' => 101, 'file_id' => 501, 'user_id' => 'staff'],
                 ['id' => 53, 'team_id' => 'b', 'entity_type' => 'tenancy', 'entity_id' => 22, 'file_id' => 502, 'user_id' => 'staff-b', 'file_name' => 'Other.pdf', 'created_at' => 1],
@@ -126,7 +126,7 @@ class RenterPortalTest extends TestCase {
             $this->denied(fn () => $this->service->content(51));
             $this->$flag = true;
         }
-        $this->db->tables['domus_docLinks'][0]['entity_id'] = 22;
+        $this->db->tables['domus_doclinks'][0]['entity_id'] = 22;
         self::assertSame([], $this->service->documents('a', 11));
         $this->denied(fn () => $this->service->content(51));
     }

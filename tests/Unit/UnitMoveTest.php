@@ -14,6 +14,16 @@ use OCP\IL10N;
 use PHPUnit\Framework\TestCase;
 
 class UnitMoveTest extends TestCase {
+    public function testSavedLegacyDocumentInventoryKeepsItsFingerprint(): void {
+        $data = new UnitMoveDataService($this->db, $this->l10n);
+        $rows = [['id' => 5, 'file_id' => 123]];
+        $legacy = ['domus_units' => [['id' => 1]], 'domus_docLinks' => $rows, 'accounts' => []];
+        $current = ['domus_units' => [['id' => 1]], 'domus_doclinks' => $rows, 'accounts' => []];
+        self::assertSame($data->fingerprint($legacy), $data->fingerprint($current));
+        $current['domus_doclinks'][0]['file_id'] = 456;
+        self::assertNotSame($data->fingerprint($legacy), $data->fingerprint($current));
+    }
+
     private TransferDatabase $db;
     private MoveFilesystem $fs;
     private UnitMoveService $service;
@@ -57,7 +67,7 @@ class UnitMoveTest extends TestCase {
             'domus_booking_years' => [['id' => 40, 'unit_id' => 10, 'year' => 2025, 'closed_at' => 123, 'team_id' => null]],
             'domus_partner_rel' => [['id' => 50, 'type' => 'tenancy', 'relation_id' => 20, 'partner_id' => 60] + $owner],
             'domus_partners' => [['id' => 60, 'name' => 'Renter', 'nc_user_id' => 'renter'] + $owner],
-            'domus_docLinks' => [['id' => 70, 'entity_type' => 'unit', 'entity_id' => 10, 'file_id' => $this->receipt] + $owner,
+            'domus_doclinks' => [['id' => 70, 'entity_type' => 'unit', 'entity_id' => 10, 'file_id' => $this->receipt] + $owner,
                 ['id' => 71, 'entity_type' => 'tenancy', 'entity_id' => 20, 'file_id' => $this->receipt] + $owner],
             'domus_tasks' => [['id' => 80, 'entity_type' => 'unit', 'entity_id' => 10, 'rule_id' => 90, 'team_id' => null]],
             'domus_rule_sets' => [['id' => 90, 'definition' => json_encode(['scope' => 'allUnits', 'scopeIds' => [], 'enabled' => true])] + $owner],
@@ -163,7 +173,7 @@ class UnitMoveTest extends TestCase {
         self::assertSame('unlinked', $this->fs->nodes[$target . '/unlinked.txt']->content);
         self::assertSame('receipt', $this->fs->nodes['/alice/files/Unit/2025/receipt.pdf']->content);
         self::assertSame('image', $this->fs->nodes['/alice/files/cover.jpg']->content);
-        $links = $this->db->tables['domus_docLinks'];
+        $links = $this->db->tables['domus_doclinks'];
         self::assertNotSame($this->receipt, $links[0]['file_id']);
         self::assertSame($links[0]['file_id'], $links[1]['file_id']);
         self::assertSame('team-a', $links[1]['team_id']);
@@ -193,7 +203,7 @@ class UnitMoveTest extends TestCase {
         $copiedId = $this->fs->nodes['/alice/files/' . $this->service->status(10)['destination'] . '/2025/receipt.pdf']->getId();
         $this->fs->failFile = null;
         $this->finish();
-        self::assertSame($copiedId, $this->db->tables['domus_docLinks'][0]['file_id']);
+        self::assertSame($copiedId, $this->db->tables['domus_doclinks'][0]['file_id']);
     }
 
     public function testChangedSourcePreventsCutoverAndCancellationRetainsFiles(): void {
@@ -285,7 +295,7 @@ class UnitMoveTest extends TestCase {
     }
 
     public function testMissingDocumentShowsEveryAssignmentAndStoredTitle(): void {
-        foreach ($this->db->tables['domus_docLinks'] as &$link) {
+        foreach ($this->db->tables['domus_doclinks'] as &$link) {
             $link['file_id'] = 11446;
             $link['file_name'] = 'Rental contract.pdf';
         }
@@ -305,33 +315,33 @@ class UnitMoveTest extends TestCase {
     }
 
     public function testIgnoringMissingDocumentsKeepsLinksUnlessRemovalWasRequested(): void {
-        $this->db->tables['domus_docLinks'][0]['file_id'] = 11446;
+        $this->db->tables['domus_doclinks'][0]['file_id'] = 11446;
         $preview = $this->service->preview(10, 'team-a');
         $this->service->start(10, 'team-a', $preview['token'], true);
         $this->finish();
-        self::assertSame(11446, $this->db->tables['domus_docLinks'][0]['file_id']);
-        self::assertSame('team-a', $this->db->tables['domus_docLinks'][0]['team_id']);
-        self::assertNotSame($this->receipt, $this->db->tables['domus_docLinks'][1]['file_id']);
+        self::assertSame(11446, $this->db->tables['domus_doclinks'][0]['file_id']);
+        self::assertSame('team-a', $this->db->tables['domus_doclinks'][0]['team_id']);
+        self::assertNotSame($this->receipt, $this->db->tables['domus_doclinks'][1]['file_id']);
     }
 
     public function testCleanupOnlyRemovesReviewedMissingLinksAtCompletion(): void {
-        $this->db->tables['domus_docLinks'][0]['file_id'] = 11446;
+        $this->db->tables['domus_doclinks'][0]['file_id'] = 11446;
         $preview = $this->service->preview(10, 'team-a');
         $this->service->start(10, 'team-a', $preview['token'], true, true);
-        self::assertCount(2, $this->db->tables['domus_docLinks']);
+        self::assertCount(2, $this->db->tables['domus_doclinks']);
         $this->finish();
-        self::assertCount(1, $this->db->tables['domus_docLinks']);
-        self::assertSame(71, $this->db->tables['domus_docLinks'][0]['id']);
+        self::assertCount(1, $this->db->tables['domus_doclinks']);
+        self::assertSame(71, $this->db->tables['domus_doclinks'][0]['id']);
         self::assertArrayHasKey('/alice/files/Unit/2025/receipt.pdf', $this->fs->nodes);
     }
 
     public function testCancellingDoesNotCleanUpLinks(): void {
-        $this->db->tables['domus_docLinks'][0]['file_id'] = 11446;
+        $this->db->tables['domus_doclinks'][0]['file_id'] = 11446;
         $preview = $this->service->preview(10, 'team-a');
         $this->service->start(10, 'team-a', $preview['token'], true, true);
         $this->service->cancel(10);
-        self::assertCount(2, $this->db->tables['domus_docLinks']);
-        self::assertNull($this->db->tables['domus_docLinks'][0]['team_id']);
+        self::assertCount(2, $this->db->tables['domus_doclinks']);
+        self::assertNull($this->db->tables['domus_doclinks'][0]['team_id']);
     }
 
     public function testNewMissingFileAfterPreviewRequiresAnotherReview(): void {
@@ -343,14 +353,14 @@ class UnitMoveTest extends TestCase {
     }
 
     public function testRestoredFileDuringMoveIsNotCleanedUp(): void {
-        $this->db->tables['domus_docLinks'][0]['file_id'] = 11446;
+        $this->db->tables['domus_doclinks'][0]['file_id'] = 11446;
         $preview = $this->service->preview(10, 'team-a');
         $this->service->start(10, 'team-a', $preview['token'], true, true);
         $this->fs->nextId = 11446;
         $this->fs->file('/alice/files/restored.pdf', 'restored');
         try { $this->finish(); self::fail('Expected restored file conflict'); }
         catch (ConflictException $e) {}
-        self::assertCount(2, $this->db->tables['domus_docLinks']);
+        self::assertCount(2, $this->db->tables['domus_doclinks']);
         self::assertNull($this->db->tables['domus_units'][0]['team_id']);
     }
 
@@ -404,7 +414,7 @@ class UnitMoveTest extends TestCase {
         $this->start();
         $this->finish();
         self::assertSame('Team/Missing', $this->db->tables['domus_units'][0]['document_path']);
-        self::assertNotSame($this->receipt, $this->db->tables['domus_docLinks'][0]['file_id']);
+        self::assertNotSame($this->receipt, $this->db->tables['domus_doclinks'][0]['file_id']);
     }
 
     public function testReadonlyDestinationIsRejectedBeforeStarting(): void {

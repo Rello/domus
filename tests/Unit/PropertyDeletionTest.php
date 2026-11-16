@@ -50,7 +50,7 @@ class PropertyDeletionTest extends TestCase {
                 ['id' => 2, 'property_id' => 9, 'unit_id' => 34],
                 ['id' => 3, 'property_id' => 10, 'unit_id' => null],
             ],
-            'domus_docLinks' => [
+            'domus_doclinks' => [
                 ['id' => 1, 'user_id' => 'owner', 'entity_type' => 'booking', 'entity_id' => 1],
                 ['id' => 2, 'user_id' => 'owner', 'entity_type' => 'booking', 'entity_id' => 3],
             ],
@@ -86,7 +86,7 @@ class PropertyDeletionTest extends TestCase {
         });
         $service->deleteProperty(9, 'owner');
         self::assertSame([3], array_column($db->tables['domus_bookings'], 'id'));
-        self::assertSame([2], array_column($db->tables['domus_docLinks'], 'id'));
+        self::assertSame([2], array_column($db->tables['domus_doclinks'], 'id'));
         self::assertSame([4], array_column($db->tables['domus_action_logs'], 'id'));
         self::assertSame([3], array_column($db->tables['domus_booking_years'], 'id'));
         self::assertSame(1, $db->commits);

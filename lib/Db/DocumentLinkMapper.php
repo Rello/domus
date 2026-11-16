@@ -13,7 +13,7 @@ use OCP\IDBConnection;
 
 class DocumentLinkMapper extends TeamScopedMapper {
     public function __construct(IDBConnection $db, ?ManagementAccessContext $access = null) {
-        parent::__construct($db, 'domus_docLinks', DocumentLink::class, $access);
+        parent::__construct($db, 'domus_doclinks', DocumentLink::class, $access);
     }
 
     /**

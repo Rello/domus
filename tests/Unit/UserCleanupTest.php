@@ -22,7 +22,7 @@ class UserCleanupTest extends TestCase {
 
     public function testPersonalGraphRemovedButTeamHistoryAndOtherUsersSurviveRepeatedCleanup(): void {
         $db = new TransferDatabase();
-        foreach (['properties', 'units', 'tenancies', 'bookings', 'partners', 'docLinks', 'action_logs', 'partner_rel', 'dist_keys', 'dist_key_units', 'rule_sets'] as $name) {
+        foreach (['properties', 'units', 'tenancies', 'bookings', 'partners', 'doclinks', 'action_logs', 'partner_rel', 'dist_keys', 'dist_key_units', 'rule_sets'] as $name) {
             $db->tables['domus_' . $name] = [
                 ['id' => 1, 'user_id' => 'alice', 'team_id' => null],
                 ['id' => 2, 'user_id' => 'alice', 'team_id' => 'team-a'],
@@ -55,7 +55,7 @@ class UserCleanupTest extends TestCase {
         $db->tables['domus_unit_moves'] = [['id' => 1, 'user_id' => 'alice', 'status' => 'copying'], ['id' => 2, 'user_id' => 'alice', 'status' => 'completed'], ['id' => 3, 'user_id' => 'bob', 'status' => 'copying']];
         $service = $this->service($db);
         $service->cleanup('alice');
-        foreach (['properties', 'units', 'tenancies', 'bookings', 'partners', 'docLinks', 'action_logs', 'partner_rel', 'dist_keys', 'dist_key_units', 'rule_sets', 'tasks', 'task_steps', 'workflow_runs'] as $name) {
+        foreach (['properties', 'units', 'tenancies', 'bookings', 'partners', 'doclinks', 'action_logs', 'partner_rel', 'dist_keys', 'dist_key_units', 'rule_sets', 'tasks', 'task_steps', 'workflow_runs'] as $name) {
             self::assertSame([2, 3], array_column($db->tables['domus_' . $name], 'id'), $name);
         }
         self::assertSame([2, 3, 4], array_column($db->tables['domus_accounts'], 'id'));

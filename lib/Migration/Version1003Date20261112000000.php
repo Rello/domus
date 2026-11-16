@@ -12,9 +12,13 @@ use OCP\Migration\SimpleMigrationStep;
 
 /** Final schema additions since the 1.2 release; safe on existing beta schemas. */
 class Version1003Date20261112000000 extends SimpleMigrationStep {
+    public function preSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
+        (new NormalizeDocumentLinkTable($this->db))->run($options['tablePrefix'] ?? '');
+    }
+
     public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
         $schema = $schemaClosure();
-        $documents = $schema->getTable('domus_docLinks');
+        $documents = $schema->getTable('domus_doclinks');
         if (!$documents->hasColumn('document_date')) {
             $documents->addColumn('document_date', 'string', ['length' => 10, 'notnull' => false]);
         }
@@ -145,7 +149,7 @@ class Version1003Date20261112000000 extends SimpleMigrationStep {
     private function personalOwners(): array {
         $owners = [];
         foreach (['domus_properties', 'domus_units', 'domus_partners', 'domus_partner_rel',
-            'domus_tenancies', 'domus_bookings', 'domus_docLinks', 'domus_dist_keys',
+            'domus_tenancies', 'domus_bookings', 'domus_doclinks', 'domus_dist_keys',
             'domus_dist_key_units', 'domus_tasks', 'domus_workflow_runs', 'domus_action_logs', 'domus_rule_sets'] as $table) {
             $ownerColumn = in_array($table, ['domus_tasks', 'domus_workflow_runs'], true) ? 'created_by' : 'user_id';
             foreach ($this->rows($table, ['team_id' => null], [$ownerColumn]) as $row) {
@@ -263,7 +267,7 @@ class Version1003Date20261112000000 extends SimpleMigrationStep {
         $result->closeCursor();
         foreach ($bookings as $booking) {
             $id = (int)$booking['id'];
-            $this->deleteLinks('domus_docLinks', 'entity_type', 'entity_id', $id);
+            $this->deleteLinks('domus_doclinks', 'entity_type', 'entity_id', $id);
             $this->deleteLinks('domus_action_logs', 'entity_type', 'entity_id', $id);
             $this->deleteLinks('domus_action_logs', 'linked_entity_type', 'linked_entity_id', $id);
             $update = $this->db->getQueryBuilder();

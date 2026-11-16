@@ -62,7 +62,7 @@ class DomusMigrationRoundTripTest extends TestCase {
             'domus_partners' => [['id' => 7, 'user_id' => 'source', 'name' => 'Partner']],
             'domus_tenancies' => [['id' => 9, 'user_id' => 'source', 'unit_id' => 5]],
             'domus_bookings' => [['id' => 11, 'user_id' => 'source', 'unit_id' => 5]],
-            'domus_docLinks' => [['id' => 13, 'user_id' => 'source', 'entity_type' => 'unit', 'entity_id' => 5, 'file_id' => 15]],
+            'domus_doclinks' => [['id' => 13, 'user_id' => 'source', 'entity_type' => 'unit', 'entity_id' => 5, 'file_id' => 15]],
             'domus_tasks' => [['id' => 17, 'created_by' => 'source', 'entity_type' => 'unit', 'entity_id' => 5, 'title' => 'Task', 'closed_by' => 'source']],
             'domus_workflow_runs' => [['id' => 19, 'created_by' => 'source', 'entity_type' => 'unit', 'entity_id' => 5, 'template_id' => 21, 'closed_by' => 'source']],
             'domus_task_steps' => [['id' => 23, 'sort_order' => 1, 'workflow_run_id' => 19, 'entity_type' => 'unit', 'entity_id' => 5, 'allow_early_completion' => 1, 'closed_by' => 'source']],
@@ -100,7 +100,7 @@ class DomusMigrationRoundTripTest extends TestCase {
         $service->import($this->user('target'), $this->source($archive), $output);
         $this->assertSame(1, $db->commits);
         $this->assertSame(0, $db->rollbacks);
-        $this->assertSame(115, $db->tables['domus_docLinks'][0]['file_id']);
+        $this->assertSame(115, $db->tables['domus_doclinks'][0]['file_id']);
         foreach ($db->tables['domus_action_logs'] as $entry) {
             $this->assertSame('target', $entry['user_id']);
             $this->assertSame('target', $entry['created_by']);

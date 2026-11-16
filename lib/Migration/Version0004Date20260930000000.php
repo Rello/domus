@@ -23,7 +23,7 @@ class Version0004Date20260930000000 extends SimpleMigrationStep {
         'domus_partner_rel' => 'domus_prel_team',
         'domus_tenancies' => 'domus_ten_team',
         'domus_bookings' => 'domus_book_team',
-        'domus_docLinks' => 'domus_doc_team',
+        'domus_doclinks' => 'domus_doc_team',
         'domus_dist_keys' => 'domus_dkey_team',
         'domus_dist_key_units' => 'domus_dku_team',
         'domus_accounts' => 'domus_acct_team',

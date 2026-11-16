@@ -32,7 +32,7 @@ class FinancialHistoryService {
             $this->mapper->lockScope($propertyId !== null ? 'domus_properties' : 'domus_units', $propertyId ?? $unitId, $userId);
             foreach ($initial['units'] as $unit) $this->mapper->lockScope('domus_units', (int)$unit['id'], $userId);
             foreach (['bookings' => 'domus_bookings', 'deleteTenancies' => 'domus_tenancies', 'adjustTenancies' => 'domus_tenancies',
-                'documents' => 'domus_docLinks', 'relations' => 'domus_partner_rel', 'activities' => 'domus_action_logs',
+                'documents' => 'domus_doclinks', 'relations' => 'domus_partner_rel', 'activities' => 'domus_action_logs',
                 'tasks' => 'domus_tasks', 'closures' => 'domus_booking_years'] as $key => $table) {
                 foreach ($initial[$key] as $row) $this->mapper->lockScope($table, (int)$row['id'], $userId, !in_array($key, ['tasks', 'closures'], true));
             }
@@ -47,7 +47,7 @@ class FinancialHistoryService {
             // Retarget links in place: keep files, document metadata and link IDs accessible.
             foreach ($plan['documents'] as $document) {
                 $parent = $plan['parents'][$document['entity_type'] . ':' . $document['entity_id']];
-                $this->mapper->change('domus_docLinks', $document, [
+                $this->mapper->change('domus_doclinks', $document, [
                     'entity_type' => $parent['type'], 'entity_id' => $parent['id'],
                 ], $userId);
             }
@@ -152,7 +152,7 @@ class FinancialHistoryService {
                 $plan['parents'][$type . ':' . $id] = $parent;
             }
             $ids = array_column($rows, 'id');
-            array_push($plan['documents'], ...$this->mapper->rows('domus_docLinks', ['entity_type' => $type, 'entity_id' => $ids], $userId));
+            array_push($plan['documents'], ...$this->mapper->rows('domus_doclinks', ['entity_type' => $type, 'entity_id' => $ids], $userId));
             foreach (['entity', 'linked_entity'] as $prefix) foreach ($this->mapper->rows('domus_action_logs', [$prefix . '_type' => $type, $prefix . '_id' => $ids], $userId) as $activity) {
                 $plan['activities'][(int)$activity['id']] = $activity;
             }

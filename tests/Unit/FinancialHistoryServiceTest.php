@@ -26,7 +26,7 @@ class FinancialHistoryServiceTest extends TestCase {
         $this->db->tables = [
             'domus_properties' => [['id' => 2, 'name' => 'House'] + $owner],
             'domus_units' => [['id' => 1, 'property_id' => 2, 'label' => 'Flat'] + $owner, ['id' => 9, 'property_id' => 2, 'label' => 'Shop'] + $owner],
-            'domus_bookings' => [], 'domus_tenancies' => [], 'domus_docLinks' => [], 'domus_partner_rel' => [],
+            'domus_bookings' => [], 'domus_tenancies' => [], 'domus_doclinks' => [], 'domus_partner_rel' => [],
             'domus_action_logs' => [], 'domus_tasks' => [], 'domus_booking_years' => [], 'domus_rule_context' => [],
         ];
         foreach ([[10, 2022, 1], [11, 2024, 1], [12, 2021, 9]] as [$id, $year, $unitId]) {
@@ -39,7 +39,7 @@ class FinancialHistoryServiceTest extends TestCase {
                 'end_date' => $end, 'conditions' => 'Original conditions', 'updated_at' => 1] + $owner;
         }
         foreach ([[30, 'booking', 10], [31, 'tenancy', 20], [32, 'unit', 1], [33, 'booking', 11]] as [$id, $type, $entity]) {
-            $this->db->tables['domus_docLinks'][] = ['id' => $id, 'entity_type' => $type, 'entity_id' => $entity,
+            $this->db->tables['domus_doclinks'][] = ['id' => $id, 'entity_type' => $type, 'entity_id' => $entity,
                 'file_id' => 100, 'note' => 'Keep my note', 'document_date' => '2022-01-01'] + $owner;
         }
         $this->db->tables['domus_partner_rel'] = [['id' => 40, 'type' => 'tenancy', 'relation_id' => 20, 'partner_id' => 99] + $owner];
@@ -75,7 +75,7 @@ class FinancialHistoryServiceTest extends TestCase {
 
     public function testRemovalPreservesDocumentsContactsAndLaterHistory(): void {
         $preview = $this->service->preview(2024, 1, null);
-        $documents = $this->db->tables['domus_docLinks'];
+        $documents = $this->db->tables['domus_doclinks'];
         $this->audit->expects(self::once())->method('record')->with('financial_history.deleted', 1, 'alice', null, self::anything());
         $this->service->remove(2024, 1, null, $preview['token']);
         self::assertSame([11, 12], array_column($this->db->tables['domus_bookings'], 'id'));
@@ -87,7 +87,7 @@ class FinancialHistoryServiceTest extends TestCase {
         foreach ([0, 1] as $index) {
             $documents[$index]['entity_type'] = 'unit'; $documents[$index]['entity_id'] = 1;
         }
-        self::assertSame($documents, $this->db->tables['domus_docLinks']);
+        self::assertSame($documents, $this->db->tables['domus_doclinks']);
         self::assertSame([], $this->db->tables['domus_partner_rel']);
         self::assertSame([], $this->db->tables['domus_action_logs']);
         self::assertSame([], $this->db->tables['domus_rule_context']);
@@ -112,7 +112,7 @@ class FinancialHistoryServiceTest extends TestCase {
     }
 
     public static function staleChanges(): array {
-        return [['domus_bookings', 'amount', '999'], ['domus_docLinks', 'note', 'Changed'], ['domus_tenancies', 'conditions', 'Changed']];
+        return [['domus_bookings', 'amount', '999'], ['domus_doclinks', 'note', 'Changed'], ['domus_tenancies', 'conditions', 'Changed']];
     }
 
     public function testMissingPreviewTokenIsRejected(): void {
@@ -125,7 +125,7 @@ class FinancialHistoryServiceTest extends TestCase {
         $this->db->tables['domus_bookings'][] = ['id' => 13, 'year' => 2022, 'date' => '2022-01-01', 'amount' => '250',
             'unit_id' => null, 'property_id' => 2, 'distribution_key_id' => 8] + $owner;
         $this->db->tables['domus_bookings'][0]['source_property_booking_id'] = 13;
-        $this->db->tables['domus_docLinks'][] = ['id' => 34, 'entity_type' => 'booking', 'entity_id' => 13, 'file_id' => 101] + $owner;
+        $this->db->tables['domus_doclinks'][] = ['id' => 34, 'entity_type' => 'booking', 'entity_id' => 13, 'file_id' => 101] + $owner;
         $unitPreview = $this->service->preview(2024, 1, null);
         self::assertNotEmpty($unitPreview['blockers']);
         try { $this->service->remove(2024, 1, null, $unitPreview['token']); self::fail('Expected blocker'); }
@@ -135,8 +135,8 @@ class FinancialHistoryServiceTest extends TestCase {
         self::assertSame(2, $propertyPreview['unitCount']);
         $this->service->remove(2024, null, 2, $propertyPreview['token']);
         self::assertSame([11], array_column($this->db->tables['domus_bookings'], 'id'));
-        self::assertSame('property', $this->db->tables['domus_docLinks'][4]['entity_type']);
-        self::assertSame(2, $this->db->tables['domus_docLinks'][4]['entity_id']);
+        self::assertSame('property', $this->db->tables['domus_doclinks'][4]['entity_type']);
+        self::assertSame(2, $this->db->tables['domus_doclinks'][4]['entity_id']);
     }
 
     public function testRollbackRestoresDatesDocumentsAndDependenciesAfterFailure(): void {
@@ -176,7 +176,7 @@ class FinancialHistoryServiceTest extends TestCase {
     }
 
     public function testTeamCleanupOnlyChangesTheSelectedTeam(): void {
-        foreach (['domus_properties', 'domus_units', 'domus_bookings', 'domus_tenancies', 'domus_docLinks', 'domus_partner_rel', 'domus_action_logs', 'domus_tasks', 'domus_booking_years'] as $table) {
+        foreach (['domus_properties', 'domus_units', 'domus_bookings', 'domus_tenancies', 'domus_doclinks', 'domus_partner_rel', 'domus_action_logs', 'domus_tasks', 'domus_booking_years'] as $table) {
             foreach ($this->db->tables[$table] as &$row) $row['team_id'] = 'team-a';
             unset($row);
         }

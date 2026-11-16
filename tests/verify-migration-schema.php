@@ -58,7 +58,7 @@ $assert = static function (bool $condition, string $message): void {
     if (!$condition) throw new \RuntimeException($message);
 };
 $assert(count($schema->getTables()) === count($baseline->getTables()) + 1, 'Only the unit move table should be added');
-foreach (['domus_docLinks' => 'document_date', 'domus_units' => 'document_folder_id',
+foreach (['domus_doclinks' => 'document_date', 'domus_units' => 'document_folder_id',
     'domus_task_templates' => 'system_template_id', 'domus_task_steps' => 'default_due_days_offset'] as $table => $column) {
     $assert($schema->getTable($table)->hasColumn($column), "Missing $table.$column");
 }
@@ -94,7 +94,7 @@ $assert($platform->getAlterSchemaSQL($comparator->compareSchemas($final, $schema
 echo "PASS completed beta schema and retry: no schema changes\n";
 // A beta.2 installation has document_date but none of the later additions.
 $partial = clone $baseline;
-$partial->getTable('domus_docLinks')->addColumn('document_date', 'string', ['length' => 10, 'notnull' => false]);
+$partial->getTable('domus_doclinks')->addColumn('document_date', 'string', ['length' => 10, 'notnull' => false]);
 $apply($migration, $partial);
 $assert($platform->getAlterSchemaSQL($comparator->compareSchemas($final, $partial)) === [], 'Partial beta upgrade differs from final schema');
 echo "PASS partial beta upgrade: same final schema\n";
@@ -110,7 +110,7 @@ $groups = new class implements \OCP\IGroupManager {
     public function getUserGroupIds(\OCP\IUser $user): array { return []; }
 };
 $beta6 = clone $baseline;
-$beta6->getTable('domus_docLinks')->addColumn('document_date', 'string', ['length' => 10, 'notnull' => false]);
+$beta6->getTable('domus_doclinks')->addColumn('document_date', 'string', ['length' => 10, 'notnull' => false]);
 foreach (['1.2' => $baseline, 'beta.6' => $beta6] as $version => $oldSchema) {
     $connection = \Doctrine\DBAL\DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
     foreach ($oldSchema->toSql($platform) as $sql) $connection->executeStatement($sql);
@@ -208,7 +208,7 @@ foreach (['fresh' => false, '1.2 populated' => true] as $label => $populated) {
         }
         $connection->executeStatement("INSERT INTO domus_accounts (id, number, label_en, label_de, is_system, created_at, updated_at) VALUES (20, '2700', 'Old costs', 'Alte Kosten', 1, 1, 1), (21, '2200', 'Old reserve', 'Alte Rücklage', 1, 1, 1)");
         $connection->executeStatement("INSERT INTO domus_bookings (id, user_id, account, date, amount, year, created_at, updated_at) VALUES (20, 'alice', 2700, '2025-12-31', 123.45, 2025, 1, 1), (21, 'alice', 2200, '2025-12-31', 50, 2025, 1, 1)");
-        $connection->executeStatement("INSERT INTO domus_docLinks (id, user_id, entity_type, entity_id, file_id, file_name, created_at) VALUES (20, 'alice', 'booking', 20, 100, 'cost.pdf', 1), (21, 'alice', 'booking', 21, 101, 'reserve.pdf', 1)");
+        $connection->executeStatement("INSERT INTO domus_doclinks (id, user_id, entity_type, entity_id, file_id, file_name, created_at) VALUES (20, 'alice', 'booking', 20, 100, 'cost.pdf', 1), (21, 'alice', 'booking', 21, 101, 'reserve.pdf', 1)");
         $connection->executeStatement('UPDATE domus_bookings SET source_property_booking_id = 21 WHERE id = 20');
         $snapshot = static function () use ($connection, $final): array {
             $rows = [];
@@ -234,7 +234,7 @@ foreach (['fresh' => false, '1.2 populated' => true] as $label => $populated) {
         $booking = $connection->fetchAssociative('SELECT * FROM domus_bookings WHERE id = 20');
         $assert((int)$booking['account'] === 2300 && (float)$booking['amount'] === 123.45 && $booking['source_property_booking_id'] === null, 'Conversion lost booking data or retained deleted source');
         $assert((int)$connection->fetchOne('SELECT COUNT(*) FROM domus_bookings WHERE id = 21') === 0, '2200 booking retained');
-        $assert($connection->fetchFirstColumn('SELECT id FROM domus_docLinks') === [20], 'Document links not preserved/cleaned correctly');
+        $assert($connection->fetchFirstColumn('SELECT id FROM domus_doclinks') === [20], 'Document links not preserved/cleaned correctly');
         $assert((int)$connection->fetchOne("SELECT COUNT(*) FROM domus_accounts WHERE number IN ('2200', '2700')") === 0, 'Obsolete accounts retained');
         $once = $snapshot();
         $dataMigration->postSchemaChange($output, static fn () => null, []);

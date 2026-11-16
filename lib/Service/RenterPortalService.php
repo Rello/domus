@@ -96,7 +96,7 @@ class RenterPortalService {
 
     private function documentsForTenancy(string $teamId, int $id, bool $preview = false): array {
         $documents = [];
-        foreach ($this->mapper->rows('domus_docLinks', ['team_id' => $teamId, 'entity_type' => 'tenancy', 'entity_id' => $id]) as $link) {
+        foreach ($this->mapper->rows('domus_doclinks', ['team_id' => $teamId, 'entity_type' => 'tenancy', 'entity_id' => $id]) as $link) {
             try { $file = $this->linkedFile($link); } catch (\Throwable) { continue; }
             $documents[] = ['id' => (int)$link['id'], 'fileName' => $link['file_name'] ?: $file->getName(),
                 'fileUrl' => $preview ? $this->urls->linkToRoute('domus.RenterPortal.previewContent', ['teamId' => $teamId, 'tenancyId' => $id, 'id' => (int)$link['id']])
@@ -114,13 +114,13 @@ class RenterPortalService {
 
     public function previewContent(string $teamId, int $tenancyId, int $id): File {
         $this->management($teamId);
-        $link = $this->mapper->rows('domus_docLinks', ['team_id' => $teamId, 'id' => $id, 'entity_type' => 'tenancy', 'entity_id' => $tenancyId])[0] ?? null;
+        $link = $this->mapper->rows('domus_doclinks', ['team_id' => $teamId, 'id' => $id, 'entity_type' => 'tenancy', 'entity_id' => $tenancyId])[0] ?? null;
         if (!$link) $this->denied();
         return $this->linkedFile($link);
     }
 
     public function content(int $id): File {
-        $link = $this->mapper->rows('domus_docLinks', ['id' => $id, 'entity_type' => 'tenancy'])[0] ?? null;
+        $link = $this->mapper->rows('domus_doclinks', ['id' => $id, 'entity_type' => 'tenancy'])[0] ?? null;
         if (!$link || empty($link['team_id'])) $this->denied();
         $this->contacts($link['team_id'], (int)$link['entity_id']);
         return $this->linkedFile($link);

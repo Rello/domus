@@ -51,7 +51,7 @@ class DefaultCatalogueInstallTest extends TestCase {
                 ['id' => 15, 'account' => 2701, 'source_property_booking_id' => null, 'team_id' => null],
                 ['id' => 12, 'account' => 2200, 'source_property_booking_id' => null, 'team_id' => null],
             ],
-            'domus_docLinks' => [['id' => 1, 'entity_type' => 'booking', 'entity_id' => 10]],
+            'domus_doclinks' => [['id' => 1, 'entity_type' => 'booking', 'entity_id' => 10]],
             'domus_action_logs' => [['id' => 1, 'entity_type' => 'booking', 'entity_id' => 10, 'linked_entity_type' => 'booking', 'linked_entity_id' => 11]],
         ];
         $db->tables['domus_task_templates'] = [];

@@ -17,8 +17,8 @@ class Version0002Date20260421000000 extends SimpleMigrationStep {
         /** @var ISchemaWrapper $schema */
         $schema = $schemaClosure();
 
-        if ($schema->hasTable('domus_docLinks')) {
-            $table = $schema->getTable('domus_docLinks');
+        if ($schema->hasTable('domus_doclinks')) {
+            $table = $schema->getTable('domus_doclinks');
             if (!$table->hasColumn('note')) {
                 $table->addColumn('note', 'text', ['notnull' => false]);
             }

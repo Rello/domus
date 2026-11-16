@@ -258,7 +258,7 @@ class UnitMoveService {
         };
         if ($source !== null) $walk($source, '');
         else $entries[] = ['id' => 0, 'path' => '', 'folder' => true, 'size' => 0, 'etag' => ''];
-        $fileIds = array_column($graph['domus_docLinks'], 'file_id');
+        $fileIds = array_column($graph['domus_doclinks'], 'file_id');
         if ($unit['image_file_id']) $fileIds[] = $unit['image_file_id'];
         $fileIds = array_unique(array_map('intval', $fileIds));
         sort($fileIds);
@@ -294,7 +294,7 @@ class UnitMoveService {
             'tenancy' => ['domus_tenancies', $this->l10n->t('Tenancy')],
             'booking' => ['domus_bookings', $this->l10n->t('Booking')],
             'partner' => ['domus_partners', $this->l10n->t('Contact')]];
-        foreach ($graph['domus_docLinks'] as $link) {
+        foreach ($graph['domus_doclinks'] as $link) {
             if ((int)$link['file_id'] !== $fileId) continue;
             [$table, $type] = $types[$link['entity_type']];
             $record = array_column($graph[$table], null, 'id')[$link['entity_id']] ?? [];

@@ -17,6 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Simplify portfolio settings with aligned controls, removable Team badges, and a searchable Team selector.
 
 ### Fixed
+- Fix PostgreSQL upgrades and document queries by normalizing legacy mixed-case document-link tables while preserving existing data.
 - End overlapping earlier tenancies the day before a replacement starts, including periods with a scheduled condition change, while preserving future periods for review.
 - Underline app links in the Nextcloud integration settings.
 

@@ -150,8 +150,8 @@ class Version0001Date20251201000000 extends SimpleMigrationStep {
             $table->addIndex(['source_property_booking_id'], 'domus_book_source');
         }
 
-        if (!$schema->hasTable('domus_docLinks')) {
-            $table = $schema->createTable('domus_docLinks');
+        if (!$schema->hasTable('domus_doclinks')) {
+            $table = $schema->createTable('domus_doclinks');
             $table->addColumn('id', 'bigint', ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('user_id', 'string', ['notnull' => true, 'length' => 64]);
             $table->addColumn('entity_type', 'string', ['notnull' => true, 'length' => 32]);

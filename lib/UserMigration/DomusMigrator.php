@@ -40,7 +40,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         'distributionKeyUnits' => 'domus_dist_key_units',
         'bookings' => 'domus_bookings',
         'partnerRelations' => 'domus_partner_rel',
-        'documentLinks' => 'domus_docLinks',
+        'documentLinks' => 'domus_doclinks',
         'bookingYears' => 'domus_booking_years',
         'actionLogs' => 'domus_action_logs',
         'workflowRuns' => 'domus_workflow_runs',
@@ -79,7 +79,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
             'year', 'property_id', 'unit_id', 'distribution_key_id', 'status', 'period_from',
             'period_to', 'source_property_booking_id', 'description', 'created_at', 'updated_at', 'team_id',
         ],
-        'domus_docLinks' => [
+        'domus_doclinks' => [
             'id', 'user_id', 'entity_type', 'entity_id', 'file_id', 'file_name',
             'note', 'created_at', 'team_id', 'document_date',
         ],
@@ -147,7 +147,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
             'domus_partner_rel',
             'domus_tenancies',
             'domus_bookings',
-            'domus_docLinks',
+            'domus_doclinks',
             'domus_dist_keys',
             'domus_dist_key_units',
             'domus_action_logs',
@@ -158,7 +158,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
         $rows += $this->countByColumn('domus_workflow_runs', 'created_by', $uid);
         $rows += $this->countByColumn('domus_tasks', 'created_by', $uid);
 
-        return max(1, $rows * 2 + $this->documentFiles->estimateSize($uid, $this->fetchAllByUser('domus_docLinks', $uid)));
+        return max(1, $rows * 2 + $this->documentFiles->estimateSize($uid, $this->fetchAllByUser('domus_doclinks', $uid)));
     }
 
     public function export(IUser $user, IExportDestination $exportDestination, OutputInterface $output): void {
@@ -189,7 +189,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 'distributionKeyUnits' => $this->fetchAllByUser('domus_dist_key_units', $uid),
                 'bookings' => $bookings,
                 'partnerRelations' => $this->fetchAllByUser('domus_partner_rel', $uid),
-                'documentLinks' => $this->fetchAllByUser('domus_docLinks', $uid),
+                'documentLinks' => $this->fetchAllByUser('domus_doclinks', $uid),
                 'bookingYears' => $this->fetchBookingYears($propertyIds, $unitIds),
                 'actionLogs' => $this->fetchAllByUser('domus_action_logs', $uid),
                 'workflowRuns' => $workflowRuns,
@@ -329,7 +329,7 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
             'domus_partner_rel' => 'user_id',
             'domus_tenancies' => 'user_id',
             'domus_bookings' => 'user_id',
-            'domus_docLinks' => 'user_id',
+            'domus_doclinks' => 'user_id',
             'domus_dist_keys' => 'user_id',
             'domus_dist_key_units' => 'user_id',
             'domus_action_logs' => 'user_id',
@@ -568,12 +568,12 @@ class DomusMigrator implements IMigrator, ISizeEstimationMigrator {
                 continue;
             }
 
-            $values = $this->valuesWithoutId('domus_docLinks', $row);
+            $values = $this->valuesWithoutId('domus_doclinks', $row);
             $values['user_id'] = $uid;
             $values['entity_id'] = $entityId;
             $values['file_id'] = $maps['file'][(int)$row['file_id']]
                 ?? throw new UserMigrationException($this->l10n->t('Missing imported Domus document'));
-            $id = $this->insertAndReturnId('domus_docLinks', $values);
+            $id = $this->insertAndReturnId('domus_doclinks', $values);
             if (isset($row['id'])) {
                 $idMap[(int)$row['id']] = $id;
             }

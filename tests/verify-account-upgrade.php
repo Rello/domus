@@ -61,7 +61,7 @@ $account = array_values(array_filter($original['oc_domus_accounts'], static fn (
 $teamAccountId = $insert('domus_accounts', array_replace($account, ['team_id' => 'rehearsal:a', 'scope_key' => 'team:rehearsal:a', 'is_system' => 0]));
 $customAccountId = $insert('domus_accounts', array_replace($account, ['number' => '2701', 'parent_id' => $teamAccountId, 'team_id' => 'rehearsal:a', 'scope_key' => 'team:rehearsal:a', 'is_system' => 0]));
 $insert('domus_bookings', array_replace($source, ['account' => 2701, 'team_id' => 'rehearsal:a', 'amount' => '19.99']));
-$insert('domus_docLinks', ['user_id' => 'rehearsal', 'entity_type' => 'booking', 'entity_id' => $childId, 'file_id' => 12345, 'file_name' => 'rehearsal.pdf', 'created_at' => time(), 'team_id' => 'rehearsal:a']);
+$insert('domus_doclinks', ['user_id' => 'rehearsal', 'entity_type' => 'booking', 'entity_id' => $childId, 'file_id' => 12345, 'file_name' => 'rehearsal.pdf', 'created_at' => time(), 'team_id' => 'rehearsal:a']);
 $insert('domus_action_logs', ['user_id' => 'rehearsal', 'entity_type' => 'booking', 'entity_id' => $parentId, 'type' => 'note', 'title' => 'Rehearsal activity', 'source' => 'manual', 'linked_entity_type' => 'booking', 'linked_entity_id' => $childId, 'created_by' => 'rehearsal', 'created_at' => time(), 'updated_at' => time(), 'team_id' => 'rehearsal:a']);
 $before = $snapshot();
 $migration = new OCA\Domus\Migration\Version1003Date20261112000000(new OC\DB\ConnectionAdapter($db), OCP\Server::get(OCP\IUserManager::class), OCP\Server::get(OCP\IGroupManager::class));
@@ -117,7 +117,7 @@ $assert(count($afterBookings) === count($before['oc_domus_bookings']) - count($r
 $actual2300 = array_sum(array_map($cents, array_filter($afterBookings, static fn ($row) => (int)$row['account'] === 2300)));
 $assert($actual2300 === $expected2300, '2300 amounts do not reconcile');
 $assert(!array_filter($afterBookings, static fn ($row) => (int)$row['account'] === 2700), '2700 bookings remain');
-foreach (['oc_domus_docLinks', 'oc_domus_action_logs'] as $table) {
+foreach (['oc_domus_doclinks', 'oc_domus_action_logs'] as $table) {
     $expected = array_values(array_filter($before[$table], static fn ($row) =>
         !(($row['entity_type'] === 'booking' && in_array((int)$row['entity_id'], $removed2200, true)) ||
           (($row['linked_entity_type'] ?? null) === 'booking' && in_array((int)$row['linked_entity_id'], $removed2200, true)))));
@@ -132,7 +132,7 @@ foreach ($before['oc_domus_accounts'] as $account) {
 }
 $assert($after['oc_domus_accounts'] === $expectedAccounts, 'Account cleanup changed unrelated definitions');
 foreach ($tables as $table) {
-    if (in_array($table, ['oc_domus_bookings', 'oc_domus_accounts', 'oc_domus_docLinks', 'oc_domus_action_logs', 'oc_domus_units'], true)) continue;
+    if (in_array($table, ['oc_domus_bookings', 'oc_domus_accounts', 'oc_domus_doclinks', 'oc_domus_action_logs', 'oc_domus_units'], true)) continue;
     $assert($before[$table] === $after[$table], 'Unrelated table changed: ' . $table);
 }
 foreach ($before['oc_domus_units'] as $index => $unit) {
