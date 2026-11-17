@@ -33,12 +33,16 @@
 
         function createDemoContent(role, buttonEl) {
             if (!Domus.Access.require('manageSettings')) return;
+            if (Domus.state.managementContext?.activeTeamId) {
+                Domus.UI.showNotification(t('domus', 'Demo content can only be created in the Personal workspace.'), 'error');
+                return;
+            }
             const config = getDemoContentConfig(role);
             return Domus.UI.confirmAction({
                 message: config.confirmMessage,
                 confirmLabel: config.confirmLabel
             }).then(confirmed => {
-                if (!confirmed) {
+                if (!confirmed || Domus.state.managementContext?.activeTeamId) {
                     return false;
                 }
                 if (buttonEl) {
@@ -328,6 +332,13 @@
         }
 
         function buildDemoSection(role) {
+            if (Domus.state.managementContext?.activeTeamId) {
+                return buildSettingsSection({
+                    id: 'domus-demo-settings-panel',
+                    title: t('domus', 'Create Demo Content'),
+                    body: '<p>' + Domus.Utils.escapeHtml(t('domus', 'Demo content can only be created in the Personal workspace.')) + '</p>'
+                });
+            }
             const showLandlord = role === 'landlord';
             const showBuilding = role === 'buildingMgmt';
             return buildSettingsSection({

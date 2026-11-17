@@ -328,6 +328,7 @@ configure this policy, regardless of their portfolio/Team role.
 
 - Run `./tests/run-unit.sh --filter 'TeamPermission|TeamIntegration|ManagementAccess'` for the mutation policy, payload escalation checks, middleware role changes, and role adapter.
 - Run `PLAYWRIGHT_TEST=team-permissions ./tests/run-playwright.sh` for member/admin UI controls, demotion refresh, direct form entry and missing-capability behavior.
+- Demo workspace restrictions are covered by `./tests/run-unit.sh --filter DemoContentService` and the `team-permissions` browser suite: both demo types remain available in Personal, Team creation is denied before writes, initial onboarding skips Teams, and changing to a Team during confirmation cancels creation.
 - With local NC34/NC35 stacks running, run `docker exec -u www-data nc34-app-1 php /var/tmp/own_apps/domus/tests/verify-team-roles.php` and the equivalent for `nc35-app-1`.
   The live check creates temporary users and Teams, exercises effective direct and nested membership, promotion, demotion and revocation, then removes its fixtures. It does not change existing memberships or portfolios.
 - Domus maps effective Circles owner/administrator to admin and moderator/member to member. Members can edit contacts and open-year bookings, add documents, and manage task progress. Structural changes, renter-account assignment, settings, document replacement/removal and deletion require admin. Existing validations and file permissions still apply. Circles owns membership-cache refresh; Domus does not persist role decisions.

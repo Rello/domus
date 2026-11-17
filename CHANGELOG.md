@@ -5,6 +5,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Changelog
 
+## Unreleased
+
+### Changed
+- Restrict demo content creation to the Personal workspace in both Landlord and Building Mgmt views.
+
 ## 1.3.1 - 2026-11-16
 
 ### Added

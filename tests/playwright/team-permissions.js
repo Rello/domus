@@ -53,6 +53,54 @@ async function main() {
         console.log('PASS missing Team permissions fail closed');
         await page.evaluate(() => { Domus.state.managementContext = {activeTeamId: null, canManage: true}; });
         assert.equal(await page.evaluate(() => Domus.Access.can('managePortfolio')), true);
+
+        await page.evaluate(() => {
+            window.demoWrites = [];
+            Domus.Api.createDemoContent = async data => { window.demoWrites.push(data); return {status: 'success'}; };
+        });
+        for (const width of [1280, 390]) {
+            await page.setViewportSize({width, height: 900});
+            for (const role of ['landlord', 'buildingMgmt']) {
+                await page.evaluate(role => {
+                    Domus.Role.setRoleInfo({availableRoles: ['landlord', 'buildingMgmt'], currentRole: role});
+                    Domus.state.managementContext = {activeTeamId: 'team-a', canManage: true, permissions: {manageSettings: true}};
+                    Domus.Settings.render();
+                }, role);
+                const panel = page.locator('#domus-demo-settings-panel');
+                await panel.locator('.domus-section-header').click();
+                await panel.getByText('Demo content can only be created in the Personal workspace.', {exact: true}).waitFor();
+                assert.equal(await panel.locator('button').count(), 0);
+                const before = await page.evaluate(() => demoWrites.length);
+                await page.evaluate(role => Domus.Settings.createDemoContent(role), role);
+                assert.equal(await page.getByRole('dialog').count(), 0);
+                assert.equal(await page.evaluate(() => demoWrites.length), before);
+                assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+
+                await page.evaluate(() => {
+                    Domus.state.managementContext = {activeTeamId: null, canManage: true};
+                    Domus.Settings.render();
+                });
+                await panel.locator('.domus-section-header').click();
+                await panel.locator('button').click();
+                await page.getByRole('dialog').getByRole('button', {name: /^Create demo content/}).click();
+                await page.waitForFunction(count => demoWrites.length === count, before + 1);
+                assert.deepEqual(await page.evaluate(() => demoWrites.at(-1)), {role});
+                console.log('PASS demo creation restricted to Personal for ' + role + ' at ' + width + 'px');
+            }
+        }
+        await page.evaluate(() => {
+            Domus.Settings.render();
+        });
+        await page.locator('#domus-demo-settings-panel .domus-section-header').click();
+        await page.locator('#domus-demo-settings-panel button').click();
+        const writesBeforeSwitch = await page.evaluate(() => {
+            Domus.state.managementContext = {activeTeamId: 'team-a', canManage: true, permissions: {manageSettings: true}};
+            return demoWrites.length;
+        });
+        await page.getByRole('dialog').getByRole('button', {name: /^Create demo content/}).click();
+        await page.getByRole('dialog').waitFor({state: 'detached'});
+        assert.equal(await page.evaluate(() => demoWrites.length), writesBeforeSwitch);
+        console.log('PASS changing to a Team while confirming does not create demo content');
         assert.deepEqual(errors, []);
     } finally { await browser.close(); }
 }

@@ -43,11 +43,12 @@ class DemoContentService {
         private IConfig $config,
         private IL10N $l10n,
         private LoggerInterface $logger,
+        private ManagementAccessContext $managementContext,
     ) {
     }
 
     public function createInitialDemoContentIfNeeded(string $userId): void {
-        if ($userId === '') {
+        if ($userId === '' || $this->managementContext->activeTeamId() !== null) {
             return;
         }
 
@@ -83,6 +84,9 @@ class DemoContentService {
     }
 
     public function createDemoContent(string $userId, string $role): array {
+        if ($this->managementContext->activeTeamId() !== null) {
+            throw new \DomainException($this->l10n->t('Demo content can only be created in the Personal workspace.'));
+        }
         $this->connection->beginTransaction();
 
         try {
