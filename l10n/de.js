@@ -802,6 +802,7 @@ OC.L10N.register(
         "Only open tasks can be closed.": "Nur offene Aufgaben können abgeschlossen werden.",
         "open": "offen",
         "Open": "Offen",
+        "Open document": "Dokument öffnen",
         "Open all documents": "Alle Dokumente öffnen",
         "Open dashboard": "Dashboard öffnen",
         "Open fullscreen": "Vollbild öffnen",

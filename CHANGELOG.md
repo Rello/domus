@@ -10,6 +10,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 ### Changed
 - Restrict demo content creation to the Personal workspace in both Landlord and Building Mgmt views.
 
+### Fixed
+- Label document actions “Open document” (“Dokument öffnen” in German), keeping task statuses translated as “Offen”.
+
 ## 1.3.1 - 2026-11-16
 
 ### Added

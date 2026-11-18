@@ -1279,7 +1279,7 @@
                     const document = (documents || []).find(item => item.fileUrl);
                     if (document) {
                         const link = window.document.createElement('a');
-                        link.href = document.fileUrl; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = t('domus', 'Open');
+                        link.href = document.fileUrl; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = t('domus', 'Open document');
                         root.querySelector('#rent-word-result').appendChild(link);
                     }
                     modal.protectChanges();
@@ -1375,7 +1375,7 @@
                         link.href = document.fileUrl;
                         link.target = '_blank';
                         link.rel = 'noopener noreferrer';
-                        link.textContent = t('domus', 'Open');
+                        link.textContent = t('domus', 'Open document');
                         root.querySelector('#rent-letter-result').appendChild(link);
                     }
                     modal.protectChanges();

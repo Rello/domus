@@ -3449,7 +3449,7 @@
                 const reportUrl = createdReportDocument?.fileUrl || '';
                 const reportLabel = createdReportDocument?.fileName || t('domus', 'Utility Bill Statement');
                 const openMarkup = '<button type="button" id="domus-settlement-open"' + (reportUrl ? '' : ' disabled') + '>' +
-                    Domus.Utils.escapeHtml(t('domus', 'Open')) + '</button>';
+                    Domus.Utils.escapeHtml(t('domus', 'Open document')) + '</button>';
 
                 return '<div class="domus-settlement-review">' +
                     '<div class="domus-settlement-report-row">' +
