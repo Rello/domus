@@ -403,7 +403,7 @@
                 { id: 'circles', name: t('domus', 'Teams'), appUrl: '/apps/circles/teams/', storeUrl: '/settings/apps/organization/circles?q=teams' },
                 { id: 'groupfolders', name: t('domus', 'Team Folders'), appUrl: '/settings/admin/groupfolders', storeUrl: '/settings/apps/search/groupfolders?q=groupfolders' },
                 { id: 'guests', name: t('domus', 'Guests'), appUrl: '/settings/admin/guests', storeUrl: '/settings/apps/search/guests?q=guests' },
-                { name: t('domus', 'Assistant (PDF extraction)'), available: aiStatus?.assistant, appUrl: '/apps/assistant/', storeUrl: '/settings/apps/search/assistant' },
+                { name: t('domus', 'Assistant (PDF extraction)'), available: aiStatus?.pdfParser, appUrl: '/apps/assistant/', storeUrl: '/settings/apps/search/assistant' },
                 { name: t('domus', 'OpenAI and LocalAI integration'), available: aiStatus?.chatProvider, appUrl: '/settings/apps/search/integration_openai', storeUrl: '/settings/apps/search/integration_openai' }
             ];
             const rows = apps.map(app => {

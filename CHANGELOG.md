@@ -14,6 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 - Label document actions “Open document” (“Dokument öffnen” in German), keeping task statuses translated as “Offen”.
 - Round distributed unit shares to the correct cent on half-cent amounts, and store reversals of zero shares as 0 instead of -0.
 - Calculate booking totals in unit finances, analytics, and the revenue API on PostgreSQL.
+- Show AI document validation as unavailable when the Assistant app's PDF parser is missing or incompatible, instead of reporting every PDF as unreadable.
 
 ## 1.3.1 - 2026-11-16
 

@@ -107,3 +107,16 @@ date. Multiple linked renter names are combined; the first renter supplies the
 postal address, falling back to the unit address. This workflow calculates and
 renders the selected values; it does not validate legal eligibility or send the
 letter. The user's Word template remains a separate file, outside app source.
+
+
+## Optional Assistant PDF extraction
+
+AI booking assignment needs embedded PDF text. Domus ships no Composer
+dependencies, so `BookingAssignmentPdfParser` borrows the `smalot/pdfparser`
+library bundled with the Assistant app. That library is not a Nextcloud public
+API and may change or disappear with an Assistant update. Keep all access in
+`BookingAssignmentPdfParser`: it loads the parser once, checks the
+`parseContent()` → `getPages()` → `getText()` contract, and reports a missing
+or changed parser as "Assistant PDF parsing is unavailable" rather than as an
+unreadable PDF. `AiDocumentValidationService::status()` exposes this as
+`pdfParser`, and AI validation is only `available` when it is true.
