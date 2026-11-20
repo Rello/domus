@@ -7,6 +7,7 @@
 
 namespace OCA\Domus\Service;
 
+use OCA\Domus\Accounting\Money;
 use OCA\Domus\Exception\ConflictException;
 use OCA\Domus\Exception\ResourceNotFoundException;
 use OCA\Domus\Db\Booking;
@@ -55,7 +56,7 @@ class DistributionService {
                 $unitBooking->setAccount($booking->getAccount());
                 $unitBooking->setDate($booking->getDate());
                 $unitBooking->setDeliveryDate($booking->getDeliveryDate() ?? $booking->getDate());
-                $unitBooking->setAmount((string)$share['amount']);
+                $unitBooking->setAmount(Money::fromCents(Money::toCents((string)$share['amount'])));
                 $unitBooking->setYear((int)$booking->getYear());
                 $unitBooking->setPropertyId($booking->getPropertyId());
                 $unitBooking->setUnitId($share['unitId']);
@@ -234,7 +235,7 @@ class DistributionService {
                 $reversal->setAccount($unitBooking->getAccount());
                 $reversal->setDate($unitBooking->getDate());
                 $reversal->setDeliveryDate($unitBooking->getDeliveryDate() ?? $unitBooking->getDate());
-                $reversal->setAmount((string)(-1 * (float)$unitBooking->getAmount()));
+                $reversal->setAmount(Money::negate((string)$unitBooking->getAmount()));
                 $reversal->setYear((int)$unitBooking->getYear());
                 $reversal->setPropertyId($unitBooking->getPropertyId());
                 $reversal->setUnitId($unitBooking->getUnitId());
@@ -326,37 +327,37 @@ class DistributionService {
         ];
     }
 
-    private function allocateShares(array $units, array $weights, float $amount): array {
+    private function allocateShares(array $units, array $values, float $base, string $amount): array {
         $result = [];
-        $runningTotal = 0.0;
+        $cents = Money::toCents($amount);
+        $runningTotal = 0;
         // An explicit base can include units outside this portfolio. Only the
         // represented portion is distributable; the rest is not a rounding remainder.
-        $representedAmount = round($amount * array_sum($weights), 2);
+        $representedCents = Money::share($cents, (float)array_sum($values), $base);
         $lastWeightedUnit = null;
         foreach ($units as $unit) {
-            if (($weights[$unit->getId()] ?? 0) > 0) {
+            if (($values[$unit->getId()] ?? 0) > 0) {
                 $lastWeightedUnit = $unit->getId();
             }
         }
 
         foreach ($units as $unit) {
             $unitId = $unit->getId();
-            if (!array_key_exists($unitId, $weights)) {
+            if (!array_key_exists($unitId, $values)) {
                 throw new \InvalidArgumentException($this->l10n->t('Missing distribution weight for unit %s.', [$unit->getLabel()]));
             }
-            $weight = $weights[$unitId];
             if ($unitId === $lastWeightedUnit) {
-                $shareAmount = round($representedAmount - $runningTotal, 2);
+                $shareCents = $representedCents - $runningTotal;
             } else {
-                $shareAmount = round($amount * $weight, 2);
-                $runningTotal += $shareAmount;
+                $shareCents = Money::share($cents, (float)$values[$unitId], $base);
+                $runningTotal += $shareCents;
             }
 
             $result[$unitId] = [
                 'unitId' => $unitId,
                 'unitLabel' => $unit->getLabel(),
-                'amount' => $shareAmount,
-                'weight' => $weight,
+                'amount' => $shareCents / 100.0,
+                'weight' => $values[$unitId] / $base,
             ];
         }
 
@@ -415,8 +416,7 @@ class DistributionService {
                 throw new \InvalidArgumentException($this->l10n->t('Invalid distribution value.'));
             }
         }
-        $weights = array_map(static fn($value) => $value / $details['base'], $details['shares']);
-        $shares = $this->allocateShares($units, $weights, (float)$booking->getAmount());
+        $shares = $this->allocateShares($units, $details['shares'], (float)$details['base'], (string)$booking->getAmount());
         foreach ($shares as $unitId => &$share) {
             $share['shareValue'] = $details['shares'][$unitId];
             $share['shareBase'] = $details['base'];
