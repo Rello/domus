@@ -76,28 +76,6 @@ class BookingMapper extends TeamScopedMapper {
     /**
      * @throws Exception
      */
-    public function sumByAccount(string $userId, int $year, ?int $propertyId = null, ?int $unitId = null): array {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('account')
-            ->selectAlias($this->sumAmount($qb), 'total')
-            ->from($this->getTableName())
-            ->where($this->ownerExpression($qb, $userId))
-            ->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)));
-
-        if ($propertyId !== null) {
-            $qb->andWhere($qb->expr()->eq('property_id', $qb->createNamedParameter($propertyId, $qb::PARAM_INT)));
-        }
-
-        if ($unitId !== null) {
-            $qb->andWhere($qb->expr()->eq('unit_id', $qb->createNamedParameter($unitId, $qb::PARAM_INT)));
-        }
-
-        return $qb->executeQuery()->fetchAll();
-    }
-
-    /**
-     * @throws Exception
-     */
     public function sumByAccountGrouped(string $userId, ?int $year, string $groupBy, ?int $groupId = null): array {
         $groupColumn = $groupBy === 'unit' ? 'unit_id' : 'property_id';
         $qb = $this->db->getQueryBuilder();

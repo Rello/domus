@@ -33,7 +33,6 @@ class BookingMapperSumTest extends TestCase {
 
     public static function sumQueries(): array {
         return [
-            'per account' => [fn(BookingMapper $mapper) => $mapper->sumByAccount('alice', 2026)],
             'grouped' => [fn(BookingMapper $mapper) => $mapper->sumByAccountGrouped('alice', null, 'unit')],
             'per year' => [fn(BookingMapper $mapper) => $mapper->sumByAccountPerYear('alice', ['2000'])],
         ];
