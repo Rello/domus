@@ -79,7 +79,7 @@ class BookingMapper extends TeamScopedMapper {
     public function sumByAccount(string $userId, int $year, ?int $propertyId = null, ?int $unitId = null): array {
         $qb = $this->db->getQueryBuilder();
         $qb->select('account')
-            ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
+            ->selectAlias($this->sumAmount($qb), 'total')
             ->from($this->getTableName())
             ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year, $qb::PARAM_INT)));
@@ -104,7 +104,7 @@ class BookingMapper extends TeamScopedMapper {
         $qb->select('year')
             ->addSelect($groupColumn)
             ->addSelect('account')
-            ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
+            ->selectAlias($this->sumAmount($qb), 'total')
             ->from($this->getTableName())
             ->where($this->ownerExpression($qb, $userId))
             ->groupBy('year')
@@ -138,7 +138,7 @@ class BookingMapper extends TeamScopedMapper {
         $qb->select('year')
             ->addSelect('account', 'unit_id', 'property_id')
             ->selectAlias($qb->createFunction('COUNT(*)'), 'booking_count')
-            ->selectAlias($qb->createFunction('SUM(amount)'), 'total')
+            ->selectAlias($this->sumAmount($qb), 'total')
             ->from($this->getTableName())
             ->where($this->ownerExpression($qb, $userId))
             ->andWhere($qb->expr()->in('account', $qb->createNamedParameter($accounts, $qb::PARAM_INT_ARRAY)))
@@ -208,5 +208,13 @@ class BookingMapper extends TeamScopedMapper {
             ->groupBy('account');
 
         return $qb->executeQuery()->fetchAll();
+    }
+
+    /**
+     * Amounts are stored as strings; PostgreSQL cannot SUM a character column, so cast explicitly.
+     * The generous scale avoids rounding stored values before they are summed.
+     */
+    private function sumAmount($qb): mixed {
+        return $qb->createFunction('SUM(CAST(' . $qb->getColumnName('amount') . ' AS DECIMAL(30,10)))');
     }
 }

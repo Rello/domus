@@ -12,6 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 ### Fixed
 - Label document actions “Open document” (“Dokument öffnen” in German), keeping task statuses translated as “Offen”.
+- Calculate booking totals in unit finances, analytics, and the revenue API on PostgreSQL.
 
 ## 1.3.1 - 2026-11-16
 
