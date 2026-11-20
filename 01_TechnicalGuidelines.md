@@ -120,3 +120,8 @@ API and may change or disappear with an Assistant update. Keep all access in
 or changed parser as "Assistant PDF parsing is unavailable" rather than as an
 unreadable PDF. `AiDocumentValidationService::status()` exposes this as
 `pdfParser`, and AI validation is only `available` when it is true.
+
+Uploaded PDFs are parsed from PHP's temporary upload file and are never written
+to the user's Nextcloud files. Uploads and selected files above
+`BookingAssignmentPdfParser::MAX_BYTES` (10 MB) are rejected before parsing,
+because the parser needs many times the file size in memory.

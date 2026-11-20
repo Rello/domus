@@ -132,4 +132,80 @@ class BookingAssignmentPdfParserTest extends TestCase {
         $this->expectExceptionMessage('Unable to read this PDF.');
         $this->parserWith($broken)->extract('alice', '/file.pdf', null);
     }
+
+    private function uploadParser(IRootFolder $root, object $assistantParser): BookingAssignmentPdfParser {
+        $apps = $this->createMock(IAppManager::class); $apps->method('isEnabledForUser')->willReturn(true);
+        $l10n = $this->createMock(IL10N::class); $l10n->method('t')->willReturnArgument(0);
+        return new class($root, $apps, $l10n, $assistantParser) extends BookingAssignmentPdfParser {
+            public function __construct($root, $apps, $l10n, private object $assistantParser) { parent::__construct($root, $apps, $l10n); }
+            protected function assistantParser(): object { return $this->assistantParser; }
+            protected function isUploadedFile(string $path): bool { return is_file($path); }
+        };
+    }
+
+    private function textParser(?array &$parsed = null): object {
+        $parsed = [];
+        return new class($parsed) {
+            public function __construct(private array &$parsed) {}
+            public function parseContent($content): object {
+                $this->parsed[] = $content;
+                return new class { public function getPages(): array { return [new class { public function getText(): string { return 'Invoice 42'; } }]; } };
+            }
+        };
+    }
+
+    public function testUploadsAreParsedWithoutWritingToUserFiles(): void {
+        $root = $this->createMock(IRootFolder::class);
+        $root->expects(self::never())->method('getUserFolder');
+        $upload = tempnam(sys_get_temp_dir(), 'domus-test-');
+        file_put_contents($upload, "%PDF-1.7\ninvoice");
+        try {
+            $text = $this->uploadParser($root, $this->textParser($parsed))->extract('alice', null, ['error' => UPLOAD_ERR_OK, 'tmp_name' => $upload]);
+        } finally {
+            unlink($upload);
+        }
+        self::assertSame("[DOMUS PDF PAGE 1 ]\nInvoice 42", $text);
+        self::assertSame(["%PDF-1.7\ninvoice"], $parsed);
+    }
+
+    /** @dataProvider oversizedUploads */
+    public function testOversizedUploadsAreRejectedBeforeParsing(int $error, int $bytes): void {
+        $root = $this->createMock(IRootFolder::class);
+        $root->expects(self::never())->method('getUserFolder');
+        $upload = tempnam(sys_get_temp_dir(), 'domus-test-');
+        $handle = fopen($upload, 'w'); fwrite($handle, '%PDF-'); ftruncate($handle, $bytes); fclose($handle);
+        $parser = $this->uploadParser($root, $this->textParser($parsed));
+        try {
+            $parser->extract('alice', null, ['error' => $error, 'tmp_name' => $upload]);
+            self::fail('Oversized upload was accepted');
+        } catch (\InvalidArgumentException $e) {
+            self::assertSame('Select a PDF of at most 10 MB.', $e->getMessage());
+        } finally {
+            unlink($upload);
+        }
+        self::assertSame([], $parsed);
+    }
+
+    public static function oversizedUploads(): array {
+        return [
+            'above Domus limit' => [UPLOAD_ERR_OK, BookingAssignmentPdfParser::MAX_BYTES + 1],
+            'above PHP upload limit' => [UPLOAD_ERR_INI_SIZE, 0],
+            'above form limit' => [UPLOAD_ERR_FORM_SIZE, 0],
+        ];
+    }
+
+    public function testOversizedStoredFilesAreRejectedBeforeReading(): void {
+        $root = $this->createMock(IRootFolder::class);
+        $folder = $this->createMock(Folder::class);
+        $file = $this->createMock(File::class);
+        $file->method('getMimeType')->willReturn('application/pdf');
+        $file->method('isReadable')->willReturn(true);
+        $file->method('getSize')->willReturn(BookingAssignmentPdfParser::MAX_BYTES + 1);
+        $file->expects(self::never())->method('getContent');
+        $folder->method('get')->willReturn($file);
+        $root->method('getUserFolder')->willReturn($folder);
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Select a PDF of at most 10 MB.');
+        $this->uploadParser($root, $this->textParser())->extract('alice', '/large.pdf', null);
+    }
 }
