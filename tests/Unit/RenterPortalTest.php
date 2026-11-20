@@ -237,7 +237,7 @@ class RenterPortalTest extends TestCase {
         $request = $this->db->tables['domus_corrections'][0];
         try {
             $mapper->decide($request, ['name' => 'Alice'], ['name' => 'Changed'], 'staff', true, function () use ($mapper) {
-                $mapper->insert('domus_action_logs', ['title' => 'Rolled back']);
+                $mapper->insert('domus_action_logs', ['team_id' => 'a', 'title' => 'Rolled back']);
                 throw new \RuntimeException('Activity write failed');
             });
             self::fail('Expected activity failure');

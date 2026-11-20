@@ -120,7 +120,7 @@ class RenterPortalService {
     }
 
     public function content(int $id): File {
-        $link = $this->mapper->rows('domus_doclinks', ['id' => $id, 'entity_type' => 'tenancy'])[0] ?? null;
+        $link = $this->mapper->tenancyDocumentLink($id);
         if (!$link || empty($link['team_id'])) $this->denied();
         $this->contacts($link['team_id'], (int)$link['entity_id']);
         return $this->linkedFile($link);

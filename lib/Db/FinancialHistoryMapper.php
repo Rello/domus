@@ -12,11 +12,22 @@ use OCP\IL10N;
 
 /** Internal graph operations. The service supplies authorized parent/child IDs, never client table names. */
 class FinancialHistoryMapper extends TeamScopedMapper {
+    /** Tables a financial history cleanup may read, lock or change; owner or Team scope is always added. */
+    private const TABLES = ['domus_action_logs', 'domus_booking_years', 'domus_bookings', 'domus_doclinks',
+        'domus_partner_rel', 'domus_properties', 'domus_tasks', 'domus_tenancies', 'domus_units'];
+
     public function __construct(IDBConnection $db, ManagementAccessContext $access, private IL10N $l10n) {
         parent::__construct($db, 'domus_units', Unit::class, $access);
     }
 
+    private function assertTable(string $table): void {
+        if (!in_array($table, self::TABLES, true)) {
+            throw new \LogicException('Table ' . $table . ' is not part of the financial history cleanup.');
+        }
+    }
+
     public function rows(string $table, array $where, string $userId, bool $owned = true): array {
+        $this->assertTable($table);
         // Keep large cleanups below database parameter limits, including SQLite.
         foreach ($where as $key => $value) {
             if (!is_array($value) || count($value) <= 500) continue;
@@ -46,6 +57,7 @@ class FinancialHistoryMapper extends TeamScopedMapper {
     }
 
     public function change(string $table, array $row, array $values, string $userId, bool $owned = true): void {
+        $this->assertTable($table);
         $qb = $this->db->getQueryBuilder();
         if ($values === []) $qb->delete($table);
         else {
@@ -87,6 +99,7 @@ class FinancialHistoryMapper extends TeamScopedMapper {
     }
 
     public function lockScope(string $table, int $id, string $userId, bool $owned = true): void {
+        $this->assertTable($table);
         $qb = $this->db->getQueryBuilder();
         $qb->update($table)->set('id', $qb->createNamedParameter($id, $qb::PARAM_INT))
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, $qb::PARAM_INT)));
