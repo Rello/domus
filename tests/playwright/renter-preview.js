@@ -56,7 +56,7 @@ async function main() {
                 if (previewFailures.documents) throw new Error('Document failure');
                 return Number(id) === 10 ? [{ id: 50, fileName: 'Contract.pdf', fileUrl: 'https://example.test/contract.pdf', note: 'Internal document note', createdAt: 1700000000 }] : [];
             };
-            Domus.Api.getSettings = async () => ({ settings: {}, aiDocumentValidation:{available:true,enabled:false,assistant:true,taskProcessing:true,chatProvider:true} });
+            Domus.Api.getSettings = async () => ({ settings: {}, aiDocumentValidation:{available:true,enabled:false,assistant:true,pdfParser:true,taskProcessing:true,chatProvider:true} });
             window.aiUpdates = [];
             Domus.Api.updateSettings = async data => {window.aiUpdates.push(data); return {settings:data};};
             const getPreviewData = Domus.Api.get;

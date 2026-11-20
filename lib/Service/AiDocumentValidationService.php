@@ -13,7 +13,7 @@ class AiDocumentValidationService {
     public const SETTING = 'aiDocumentValidation';
 
     public function __construct(private IAppManager $apps, private ManagementAccessContext $access,
-        private PortfolioSettingsService $settings) {}
+        private PortfolioSettingsService $settings, private BookingAssignmentPdfParser $pdfParser) {}
 
     protected function manager(): IManager { return \OCP\Server::get(IManager::class); }
 
@@ -28,8 +28,10 @@ class AiDocumentValidationService {
         } catch (\Throwable) {
             // Optional AI infrastructure must not break ordinary document workflows.
         }
+        // Assistant can be enabled while its bundled PDF parser is missing or changed.
+        $pdfParser = $assistant && $this->pdfParser->isAvailable();
         $enabled = $this->settings->getValue($this->access->managementUserId(), self::SETTING, '0') === '1';
-        return ['assistant' => $assistant, 'taskProcessing' => $processing, 'chatProvider' => $provider,
-            'available' => $assistant && $processing && $provider, 'enabled' => $enabled];
+        return ['assistant' => $assistant, 'pdfParser' => $pdfParser, 'taskProcessing' => $processing, 'chatProvider' => $provider,
+            'available' => $pdfParser && $processing && $provider, 'enabled' => $enabled];
     }
 }
