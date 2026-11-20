@@ -319,6 +319,7 @@ class FinancialDomainTest extends TestCase {
             'refund' => ['-100', ['100', '100'], [-10.0, -10.0]],
             'zero last share' => ['100', ['100', '0'], [10.0, 0.0]],
             'no represented share' => ['100', ['0', '0'], [0.0, 0.0]],
+            'exact half cent' => ['0.60', ['375', '625'], [0.23, 0.37]],
         ];
     }
 }
