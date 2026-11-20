@@ -236,6 +236,7 @@
         "PDF upload failed.": "Das Hochladen der PDF ist fehlgeschlagen.",
         "Select a text PDF. Scanned PDFs are not supported.": "Bitte eine Text-PDF auswählen. Gescannte PDFs werden nicht unterstützt.",
         "Select an accessible PDF file.": "Bitte eine zugängliche PDF-Datei auswählen.",
+        "Select a PDF of at most 10 MB.": "Bitte eine PDF mit höchstens 10 MB auswählen.",
         "Unable to read this PDF. Scanned or unsupported PDFs cannot be processed.": "Diese PDF kann nicht gelesen werden. Gescannte oder nicht unterstützte PDFs können nicht verarbeitet werden.",
         "AI task processing is unavailable.": "Die KI-Aufgabenverarbeitung ist nicht verfügbar.",
         "Select exactly one PDF.": "Bitte genau eine PDF auswählen.",
